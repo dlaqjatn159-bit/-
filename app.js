@@ -57,6 +57,7 @@ function switchMainTrack(track) {
         renderHistory();
         updateOfflineStatus();
         renderTagEditor();
+        renderColorEditor();
     } else {
         if (curationSec) { curationSec.classList.remove('hidden'); curationSec.style.setProperty('display', 'block', 'important'); }
         if (window.concierge && typeof window.concierge.start === 'function' && !window.__conciergeStarted) {
@@ -402,7 +403,8 @@ function renderTagEditor() {
     const tones = ['warm', 'cool', 'neutral', 'deep'];
     box.innerHTML = list.map(f => {
         const m = f.manual || {};
-        const toneBtns = tones.map(t => {
+        const nColors = getFabricColors(f.id).length;
+        const toneBtns = nColors ? `<span class="text-[11px] text-slate-500">톤은 색상별로 지정 (${nColors}개 색)</span>` : tones.map(t => {
             const isManual = m.tone && f.tone === t;
             const isGuess = !m.tone && f.tone === t;
             const cls = isManual ? 'bg-amber-800 text-white border-amber-900' : (isGuess ? 'bg-white text-slate-500 border-dashed border-slate-400' : 'bg-white text-slate-600 border-slate-300');
@@ -411,7 +413,7 @@ function renderTagEditor() {
         const guessLabel = m.mood ? '' : ` (자동: ${MOOD_LABELS[f.mood] || '-'})`;
         const moodOpts = `<option value="">자동 추측${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]}</option>`).join('');
         const done = isManualTagged(f);
-        const status = done ? '<span class="text-[10px] font-bold text-emerald-700">✓ 분류 완료</span>' : ((m.tone || m.mood) ? '<span class="text-[10px] font-bold text-amber-700">일부만 지정</span>' : '<span class="text-[10px] text-slate-400">자동 추측</span>');
+        const status = (nColors && !hasColorTones(f.id)) ? '<span class="text-[10px] font-bold text-amber-700">색상 톤 필요</span>' : done ? '<span class="text-[10px] font-bold text-emerald-700">✓ 분류 완료</span>' : ((m.tone || m.mood) ? '<span class="text-[10px] font-bold text-amber-700">일부만 지정</span>' : '<span class="text-[10px] text-slate-400">자동 추측</span>');
         const dens = ['light', 'medium', 'heavy'].map(dv => {
             const on = m.density && f.density === dv;
             const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
@@ -429,7 +431,7 @@ function renderTagEditor() {
                 ${status}
             </div>
             <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                <span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>${toneBtns}
+                ${nColors ? '' : '<span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>'}${toneBtns}
                 <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">분위기</span>
                 <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
                 ${densBlock}
@@ -439,34 +441,142 @@ function renderTagEditor() {
     }).join('');
 }
 
+// ---- 원단 색상 관리 ----
+let __colorSel = '';
+function toggleColorSection(forceOpen) {
+    const content = document.getElementById('colorCollapsible');
+    const chevron = document.getElementById('colorAccordionChevron');
+    const statusText = document.getElementById('colorAccordionStatus');
+    if (!content) return;
+    const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
+    content.classList.toggle('hidden', !shouldOpen);
+    if (chevron) chevron.style.transform = shouldOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    if (statusText) statusText.textContent = shouldOpen ? '접기' : '펼치기';
+    if (shouldOpen) renderColorEditor();
+}
+function renderColorEditor() {
+    const cnt = document.getElementById('colorCount');
+    if (cnt) cnt.textContent = `${Object.keys(colorsStore()).filter(id => FABRIC_DB.some(f => f.id === id)).length}개 원단`;
+    const bookSel = document.getElementById('colorBook'), fabSel = document.getElementById('colorFab'), box = document.getElementById('colorEditor');
+    if (!bookSel || !fabSel || !box) return;
+    const curtains = FABRIC_DB.filter(f => f.categoryType !== '블라인드');
+    const books = [...new Set(curtains.map(f => f.book))];
+    if (bookSel.dataset.sig !== books.join('|')) { const cur = bookSel.value; bookSel.innerHTML = books.map(b => `<option value="${b}">${b}</option>`).join(''); bookSel.dataset.sig = books.join('|'); bookSel.value = books.includes(cur) ? cur : (books.includes('데미안') ? '데미안' : books[0]); }
+    const list = curtains.filter(f => f.book === bookSel.value);
+    const sig = bookSel.value + '|' + list.map(f => f.id + ':' + getFabricColors(f.id).length).join(',');
+    if (fabSel.dataset.sig !== sig) {
+        const cur = fabSel.value;
+        fabSel.innerHTML = list.map(f => `<option value="${f.id}">${f.name} (${f.categoryType})${getFabricColors(f.id).length ? ' · 색 ' + getFabricColors(f.id).length + '개' : ''}</option>`).join('');
+        fabSel.dataset.sig = sig;
+        fabSel.value = list.some(f => f.id === cur) ? cur : (list[0] ? list[0].id : '');
+    }
+    __colorSel = fabSel.value;
+    if (!__colorSel) { box.innerHTML = '<div class="text-xs text-slate-400 py-3">원단이 없습니다.</div>'; return; }
+    const colors = getFabricColors(__colorSel);
+    const tones = ['warm', 'cool', 'neutral', 'deep'];
+    const rowsHtml = colors.length ? colors.map(cl => {
+        const btns = tones.map(t => {
+            const on = cl.tone === t;
+            const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
+            return `<button onclick="colorSetTone('${cl.name}','${on ? '' : t}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TONE_LABELS[t]}</button>`;
+        }).join('');
+        return `<div class="flex items-center gap-1.5 py-1.5 border-b border-slate-100">
+            <span class="w-14 text-xs font-bold text-slate-800 flex-shrink-0">${cl.name}${/^\d+$/.test(cl.name) ? '번' : ''}</span>${btns}
+            <button onclick="colorRemove('${cl.name}')" class="ml-auto text-[11px] text-rose-500 font-bold px-2">삭제</button>
+        </div>`;
+    }).join('') : '<div class="text-xs text-slate-400 py-3">등록된 색상이 없습니다. 아래에서 번호 범위(예: 1~10)를 추가하세요.</div>';
+    const unset = colors.filter(c => !c.tone).length;
+    box.innerHTML = `<div class="text-[11px] text-slate-500 mb-1">${colors.length ? `색 ${colors.length}개 · 톤 미지정 ${unset}개` : ''}</div>${rowsHtml}`;
+}
+function colorAddRange() {
+    const from = parseInt((document.getElementById('colorFrom') || {}).value, 10), to = parseInt((document.getElementById('colorTo') || {}).value, 10);
+    if (!__colorSel || !from || !to || to < from || to - from > 200) { showToast('번호 범위를 확인해 주세요. (예: 1 ~ 10)', 'error'); return; }
+    const names = []; for (let i = from; i <= to; i++) names.push(String(i));
+    const n = addFabricColors(__colorSel, names);
+    showToast(`색상 ${n}개를 추가했습니다.`);
+    renderColorEditor(); renderTagEditor();
+}
+function colorAddName() {
+    const el = document.getElementById('colorNewName');
+    const n = addFabricColors(__colorSel, [el ? el.value : '']);
+    if (el) el.value = '';
+    if (!n) showToast('이름을 입력하거나, 이미 있는 색상입니다.', 'info');
+    renderColorEditor(); renderTagEditor();
+}
+function colorBulkTone(tone) {
+    const from = parseInt((document.getElementById('colorBulkFrom') || {}).value, 10), to = parseInt((document.getElementById('colorBulkTo') || {}).value, 10);
+    if (!__colorSel || !from || !to || to < from) { showToast('시작·끝 번호를 확인해 주세요. (예: 1 ~ 8)', 'error'); return; }
+    let n = 0;
+    getFabricColors(__colorSel).forEach(cl => { if (/^\d+$/.test(cl.name)) { const v = parseInt(cl.name, 10); if (v >= from && v <= to) { setColorTone(__colorSel, cl.name, tone); n++; } } });
+    showToast(n ? `${from}~${to}번 ${n}개 색을 "${TONE_LABELS[tone]}"으로 지정했습니다.` : '해당 번호의 색이 없습니다. 먼저 번호를 추가해 주세요.', n ? 'success' : 'info');
+    renderColorEditor(); renderTagEditor();
+}
+function colorSetTone(name, tone) { setColorTone(__colorSel, name, tone); renderColorEditor(); renderTagEditor(); }
+function colorRemove(name) { removeFabricColor(__colorSel, name); renderColorEditor(); renderTagEditor(); }
+function handleColorFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const finish = (rows) => {
+        const res = importColorRows(rows);
+        if (res.error) showToast(res.error, 'error');
+        else { showToast(`색상 ${res.colors}개 (원단 ${res.fabrics}개)를 불러왔습니다.${res.unknown ? ` 찾지 못한 원단 ${res.unknown}줄은 건너뜀` : ''}`); renderColorEditor(); renderTagEditor(); }
+    };
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+        if (typeof XLSX === 'undefined') { showToast('엑셀 읽기 도구를 불러오지 못했습니다. CSV로 저장해 올려 주세요.', 'error'); event.target.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                finish(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: false }));
+            } catch (err) { showToast('엑셀 파일을 읽지 못했습니다: ' + err.message, 'error'); }
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        Papa.parse(file, { header: false, skipEmptyLines: 'greedy', complete: r => finish(r.data), error: err => showToast('CSV 읽기 오류: ' + err.message, 'error') });
+    }
+    event.target.value = '';
+}
+
 // ---- 사진 ----
-let __photoFound = {};     // 원단ID → 찾은 사진 주소
+let __photoFound = {};     // 원단ID(또는 원단ID__색상) → 찾은 사진 주소
+// 사진 대상: 원단 대표 사진 + 색상별 사진
+function photoTargets() {
+    const list = [];
+    FABRIC_DB.forEach(f => {
+        list.push({ key: f.id, fabric: f, color: '', urls: fabricPhotoUrls(f.id) });
+        getFabricColors(f.id).forEach(cl => list.push({ key: f.id + '__' + cl.name, fabric: f, color: cl.name, urls: fabricPhotoUrls(f.id, cl.name).slice(0, 3) }));
+    });
+    return list;
+}
 async function checkPhotos() {
     const statusEl = document.getElementById('photoCount');
     const missEl = document.getElementById('photoMissing');
     if (statusEl) statusEl.textContent = '확인 중...';
     __photoFound = {};
+    const photoTargetsAtStart = null;
     let done = 0, offline = false;
-    const queue = FABRIC_DB.slice();
+    const targets = photoTargets();
+    const queue = targets.slice();
     async function worker() {
         while (queue.length) {
-            const f = queue.shift();
-            for (const url of fabricPhotoUrls(f.id)) {
+            const t = queue.shift();
+            for (const url of t.urls) {
                 try {
                     const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-                    if (res.ok) { __photoFound[f.id] = url; break; }
+                    if (res.ok) { __photoFound[t.key] = url; break; }
                 } catch (e) { offline = true; break; }
             }
             done++;
-            if (statusEl && done % 10 === 0) statusEl.textContent = `확인 중... ${done}/${FABRIC_DB.length}`;
+            if (statusEl && done % 10 === 0) statusEl.textContent = `확인 중... ${done}/${targets.length}`;
         }
     }
     await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
     if (offline) { if (statusEl) statusEl.textContent = '확인 실패'; showToast('인터넷에 연결된 상태에서 확인해 주세요.', 'error'); return; }
     const found = Object.keys(__photoFound).length;
-    if (statusEl) statusEl.textContent = `${found} / ${FABRIC_DB.length}장`;
+    if (statusEl) statusEl.textContent = `${found} / ${targets.length}장`;
     if (missEl) {
-        const miss = FABRIC_DB.filter(f => !__photoFound[f.id] && f.categoryType !== '블라인드').map(f => `${f.book} ${f.name}`);
+        const miss = photoTargets().filter(t => !__photoFound[t.key] && t.fabric.categoryType !== '블라인드').map(t => `${t.fabric.book} ${t.fabric.name}${colorSuffix(t.color)}`);
         missEl.textContent = miss.length ? `사진이 없는 커튼 원단 ${miss.length}개: ${miss.slice(0, 12).join(', ')}${miss.length > 12 ? ' …' : ''}` : '커튼 원단 사진이 모두 준비되었습니다.';
     }
 }
@@ -475,7 +585,7 @@ function downloadPhotoNameList() {
     const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const checked = Object.keys(__photoFound).length > 0;
     const rows = [['책자', '구분', '품명', '사진 파일명', checked ? '사진 있음' : '(사진 확인하기를 누르면 표시됨)']];
-    FABRIC_DB.forEach(f => rows.push([f.book, f.categoryType || '', f.name, `${f.id}.jpg`, checked ? (__photoFound[f.id] ? 'O' : '') : '']));
+    photoTargets().forEach(t => rows.push([t.fabric.book, t.fabric.categoryType || '', t.fabric.name + colorSuffix(t.color), t.color ? `${t.fabric.id}__${t.color}.jpg` : `${t.fabric.id}.jpg`, checked ? (__photoFound[t.key] ? 'O' : '') : '']));
     const csv = '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n');
     const link = document.createElement('a');
     link.download = '원단_사진_파일명_목록.csv';
@@ -724,6 +834,7 @@ function updateCurtainData(roomId, curtainId, key, val) {
     const c = room.curtains.find(item => item.id === curtainId);
     if (!c) return;
 
+    const prevFabricId = c.fabricId;
     c[key] = val;
 
     if (key === 'bookFilter') {
@@ -768,6 +879,7 @@ function updateCurtainData(roomId, curtainId, key, val) {
         }
         renderRooms();
     }
+    if (c.fabricId !== prevFabricId) c.colorName = '';
     calculateAll();
 }
 
@@ -869,6 +981,8 @@ function renderRooms() {
                 c.fabricId = curFab.id;
             }
             const isBlind = curFab && curFab.calcType === "hebe";
+            const fabColors = curFab ? getFabricColors(curFab.id) : [];
+            const colorSelect = fabColors.length ? `<div class="mt-1.5"><label class="block text-[10px] font-bold ${c.colorName ? 'text-slate-500' : 'text-rose-600'} mb-0.5">색상 번호 ${c.colorName ? '' : '(선택 필요)'}</label><select onchange="updateCurtainData(${room.id}, ${c.id}, 'colorName', this.value)" class="w-full px-2 py-1 border ${c.colorName ? 'border-slate-300' : 'border-rose-400'} rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0"><option value="">(색상 선택)</option>${fabColors.map(cl => `<option value="${cl.name}" ${c.colorName === cl.name ? 'selected' : ''}>${cl.name}${/^\\d+$/.test(cl.name) ? '번' : ''}${cl.tone ? ' · ' + TONE_LABELS[cl.tone] : ''}</option>`).join('')}</select></div>` : '';
 
             let deduction = 3;
             if (c.installType === 'rod35') deduction = 10;
@@ -966,6 +1080,7 @@ function renderRooms() {
                             <select onchange="updateCurtainData(${room.id}, ${c.id}, 'fabricId', this.value)" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0">
                                 ${fabricOptionsHtml}
                             </select>
+                            ${colorSelect}
                         </div>
                     </div>
 
@@ -1508,6 +1623,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                         shapeFee: isBlind ? 0 : (c.shapeFee || 0),
                         leadBand: isBlind ? false : Boolean(c.leadBand),
                         hotelFit: isBlind ? false : Boolean(c.hotelFit),
+                        colorName: c.colorName || '',
                         calc: c.calc
                     };
                 })

@@ -109,7 +109,7 @@
             qtyText: p.qtyText,
             actualH: p.actualCurtainHeight,
             fabBook: fab.book || (isBlind ? "블라인드" : "샘플북"),
-            fabName: fab.name || (isBlind ? "블라인드" : "원단"),
+            fabName: (fab.name || (isBlind ? "블라인드" : "원단")) + (typeof colorSuffix === "function" ? colorSuffix(c.colorName) : ""),
             hwText: isBlind ? '블라인드 일체형' : `기본 레일 (${p.numJa}자)`
         };
     }
@@ -158,7 +158,8 @@
                     shapeFee: isBlind ? 0 : (c.shapeFee || 0),
                     leadBand: isBlind ? false : Boolean(c.leadBand),
                     hotelFit: isBlind ? false : Boolean(c.hotelFit),
-                    calc: c.calc
+                    colorName: c.colorName || '',
+            calc: c.calc
                 };
             })
         }));
@@ -388,31 +389,60 @@
                 const targetCategory = isTargetBlind ? '블라인드' : (queueItem.presetType === 'sheer' ? '속지' : '겉지');
                 
                 let pool = getLiveCategoryPool(targetCategory);
-                let candidates = [...pool];
-                // 점수가 같으면 사장님이 직접 분류한 원단을 먼저 보여줌 (자동 추정만 된 원단보다 우선)
-                candidates.sort((a, b) => (getV1MatchScore(b, state.editingRoom, targetCategory) - getV1MatchScore(a, state.editingRoom, targetCategory))
-                    || ((typeof isManualTagged === 'function' && isManualTagged(b) ? 1 : 0) - (typeof isManualTagged === 'function' && isManualTagged(a) ? 1 : 0)));
-                const showcaseList = candidates.slice(0, 3);
+                // 원단마다 "공간에 가장 어울리는 색"까지 계산해 순위를 매김. 점수가 같으면 사장님이 직접 분류한 원단을 먼저
+                const ranked = pool.map(f => ({ f: f, best: bestColorFor(f, state.editingRoom, targetCategory) }));
+                ranked.sort((a, b) => (b.best.score - a.best.score)
+                    || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
+                const showcaseList = ranked.slice(0, 3);
+                state.colorPick = state.colorPick || {};
 
                 html += '<div class="bookmark-stage" style="padding: 1.5rem 2rem; box-sizing: border-box;">';
                 html += `<div style="display: grid; grid-template-columns: repeat(${Math.max(1, showcaseList.length)}, 1fr); gap: 1.25rem; width: 100%; height: 92vh; align-items: stretch;">`;
                 
-                showcaseList.forEach((f, idx) => {
+                showcaseList.forEach((entry, idx) => {
+                    const f = entry.f, best = entry.best;
+                    const pick = state.colorPick[f.id] || best.color || '';
+                    const pickInfo = best.ranked.find(r => r.name === pick);
+                    const view = pickInfo ? Object.assign({}, f, { tone: pickInfo.tone || f.tone, manual: Object.assign({}, f.manual, { tone: !!pickInfo.tone || !!(f.manual && f.manual.tone) }) }) : f;
                     const bgStyle = idx === 0 ? SOLID_TEXTURES.l1 : (idx === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
                     const tagText = (f.tags && f.tags.length > 0) ? f.tags.join(' ') : (`#${f.unit || '폭'}`);
-                    const reasonText = (typeof recommendReason === 'function') ? recommendReason(f, state.editingRoom, targetCategory) : '';
-                    const photoTag = (typeof fabricPhotoUrls === 'function')
-                        ? `<img class="fabric-photo" alt="" loading="lazy" data-id="${f.id}" data-i="0" src="${fabricPhotoUrls(f.id)[0]}" onerror="window.concierge.imgFallback(this)">`
-                        : '';
+                    const reasonText = recommendReason(view, state.editingRoom, targetCategory);
                     const pillTag = `[${f.book || '샘플'}] ${queueItem.label}`;
+                    const photoTag = `<img class="fabric-photo" alt="" loading="lazy" data-id="${f.id}" data-color="${pick}" data-i="0" src="${fabricPhotoUrls(f.id, pick)[0]}" onerror="window.concierge.imgFallback(this)">`;
 
                     html += `<div class="bookmark-card" onclick="window.concierge.handleQueueFabricClick('${f.id}')" style="position: relative; width: 100%; height: 100%; cursor: pointer;">`;
                     html += `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>`;
                     html += photoTag;
                     html += '<div class="bookmark-gradient" style="pointer-events: none;"></div>';
+                    if (best.ranked.length > 0) {
+                        // 색상 번호 선택 (눌러서 바꿔 볼 수 있음). 추천 색은 별표로 표시
+                        // 색상 번호 선택. 색이 많은 원단(예: 36번까지)은 10개만 먼저 보여주고 "전체 보기"로 모두 펼침
+                        const MAX_CHIPS = 10;
+                        const expanded = !!(state.colorExpanded && state.colorExpanded[f.id]);
+                        const numSort = (x, y) => (/^\d+$/.test(x.name) && /^\d+$/.test(y.name)) ? parseInt(x.name, 10) - parseInt(y.name, 10) : x.name.localeCompare(y.name, 'ko');
+                        const base = best.classified ? best.ranked.slice() : best.ranked.slice().sort(numSort);
+                        let shown;
+                        if (expanded) shown = best.ranked.slice().sort(numSort);
+                        else {
+                            shown = base.slice(0, MAX_CHIPS);
+                            if (pick && !shown.some(r => r.name === pick)) { const pr = best.ranked.find(r => r.name === pick); if (pr) shown = [pr].concat(shown.slice(0, MAX_CHIPS - 1)); }
+                        }
+                        const bestName = best.classified ? best.ranked[0].name : '';
+                        html += '<div class="color-row" onclick="event.stopPropagation()">';
+                        html += `<span class="color-row-label">${expanded ? '번호를 눌러 선택하세요' : (best.classified ? '어울리는 색부터' : '색상 번호를 눌러 주세요')}</span>`;
+                        html += `<div class="color-chips ${expanded ? 'expanded' : ''}">`;
+                        shown.forEach(r => {
+                            const star = (r.name === bestName) ? '★' : '';
+                            html += `<button class="color-chip ${r.name === pick ? 'active' : ''}" onclick="event.stopPropagation(); window.concierge.pickColor('${f.id}','${r.name}')">${star}${r.name}</button>`;
+                        });
+                        if (best.ranked.length > MAX_CHIPS) {
+                            html += `<button class="color-chip more" onclick="event.stopPropagation(); window.concierge.toggleColors('${f.id}')">${expanded ? '접기 ▲' : `전체 ${best.ranked.length}개 ▼`}</button>`;
+                        }
+                        html += '</div></div>';
+                    }
                     html += '<div class="bookmark-content" style="pointer-events: none;">';
                     html += `<span class="bookmark-tag">${pillTag}</span>`;
-                    html += `<h3 class="bookmark-name font-serif-kr">${f.name}</h3>`;
+                    html += `<h3 class="bookmark-name font-serif-kr">${f.name}${colorSuffix(pick)}</h3>`;
                     if (reasonText) html += `<p class="bookmark-desc" style="font-weight: 600; color: #fff;">${reasonText}</p>`;
                     html += `<p class="bookmark-desc">${tagText}</p>`;
                     html += '</div></div>';
@@ -676,8 +706,31 @@
         proceedToFabricQueue: function() {
             goToStep("4-Fabric-Queue");
         },
+        toggleColors: function(fabId) {
+            state.colorExpanded = state.colorExpanded || {};
+            state.colorExpanded[fabId] = !state.colorExpanded[fabId];
+            render();
+        },
+        pickColor: function(fabId, colorName) {
+            state.colorPick = state.colorPick || {};
+            state.colorPick[fabId] = colorName;
+            render();
+        },
         handleQueueFabricClick: function(fabId) {
-            state.pendingItemQueue[state.currentItemIndex].fabricId = fabId;
+            const item = state.pendingItemQueue[state.currentItemIndex];
+            const fabric = getLiveDb().find(f => f.id === fabId) || {};
+            const cat = item.presetType === 'blind' ? '블라인드' : (item.presetType === 'sheer' ? '속지' : '겉지');
+            const best = bestColorFor(fabric, state.editingRoom, cat);
+            state.colorPick = state.colorPick || {};
+            const chosen = state.colorPick[fabId] || best.color || '';
+            if (best.ranked.length > 0 && !chosen) {
+                if (typeof showToast === 'function') showToast('색상 번호를 먼저 눌러 주세요.', 'info');
+                return;
+            }
+            item.fabricId = fabId;
+            item.colorName = chosen;
+            state.colorPick = {};
+            state.colorExpanded = {};
 
             if (state.currentItemIndex + 1 < state.pendingItemQueue.length) {
                 state.currentItemIndex++;
@@ -717,6 +770,7 @@
                         pleatType: isBlind ? '민자' : (item.presetType === 'panel' ? '패널' : '나비주름'),
                         bookFilter: "ALL",
                         fabricId: item.fabricId,
+                        colorName: item.colorName || '',
                         installType: isBlind ? 'none' : (item.presetType === 'panel' ? 'rail_2line' : 'rail'),
                         floorGap: item.floorGap || 0,
                         hwName: isBlind ? '블라인드 일체형' : (item.presetType === 'panel' ? '2줄 패널 레일' : '기본 레일'),
@@ -751,7 +805,7 @@
         // 원단 사진 불러오기 실패 시 다음 확장자(.jpg → .webp → .png)를 시도하고, 모두 없으면 사진 칸을 없앰
         imgFallback: function(el) {
             const i = parseInt(el.getAttribute('data-i') || '0', 10) + 1;
-            const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(el.getAttribute('data-id')) : [];
+            const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(el.getAttribute('data-id'), el.getAttribute('data-color') || '') : [];
             if (i < urls.length) { el.setAttribute('data-i', i); el.src = urls[i]; } else { el.remove(); }
         },
         staffTap: function() {
