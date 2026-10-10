@@ -901,10 +901,11 @@ function openTicketModal() {
 
         if (globalInstallFee > 0) {
             const installCard = document.createElement('div');
-            installCard.className = "flex justify-between items-center bg-stone-100/70 px-3 py-2 rounded-xl text-xs font-sans text-stone-700";
+            installCard.className = "flex justify-between items-center px-3 py-2 rounded-xl text-xs font-sans text-stone-800";
+            installCard.style.cssText = "background: rgba(250,238,227,0.95); border: 1px solid #efd9c3;";
             installCard.innerHTML = `
                 <span class="font-bold text-[11px]">시공 및 설치비</span>
-                <span class="font-bold font-mono text-[11px]">${globalInstallFee.toLocaleString()}원</span>
+                <span class="font-bold font-mono text-[11px]" style="color:#91401a">${globalInstallFee.toLocaleString()}원</span>
             `;
             listEl.appendChild(installCard);
         }
@@ -1029,9 +1030,10 @@ function drawTicket(ctx, data, W) {
         // 시공비
         if (data.install > 0) {
             if (drawing) {
-                rr(CX, y, CW, 92, 36); ctx.fillStyle = 'rgba(120,100,80,0.08)'; ctx.fill();
-                setFont(700, 30, SANS); text('시공 및 설치비', CX + 40, y + 58, 'left', '#44392f');
-                text(won(data.install), CX + CW - 40, y + 58, 'right', '#44392f');
+                rr(CX, y, CW, 92, 36); ctx.fillStyle = 'rgba(250,238,227,0.95)'; ctx.fill();
+                ctx.strokeStyle = '#efd9c3'; ctx.lineWidth = 2; ctx.stroke();
+                setFont(700, 30, SANS); text('시공 및 설치비', CX + 40, y + 58, 'left', DARK);
+                setFont(700, 32, SANS); text(won(data.install), CX + CW - 40, y + 58, 'right', ACCENT);
             }
             y += 92 + 40;
         }
@@ -1056,7 +1058,8 @@ function drawTicket(ctx, data, W) {
     return { pass, hdr };
 }
 
-function buildTicketCanvas() {
+function buildTicketCanvas(opts) {
+    opts = opts || {};
     const data = ticketData();
     const W = 1080;
     const probe = document.createElement('canvas').getContext('2d');
@@ -1064,6 +1067,7 @@ function buildTicketCanvas() {
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = height;
     const ctx = canvas.getContext('2d');
+    if (opts.solidBg) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, height); }   // 인쇄/PDF는 흰 종이 위에
     // 바탕 (둥근 모서리 카드)
     const grad = ctx.createLinearGradient(0, 0, 0, height);
     grad.addColorStop(0, '#fbf9f5'); grad.addColorStop(1, '#f4ede4');
@@ -1107,8 +1111,57 @@ async function downloadTicketImage() {
     }
 }
 
-function printTicket() {
-    window.print();
+async function preparePrintSheet() {
+    try {
+        if (document.fonts && document.fonts.load) {
+            await Promise.all([
+                document.fonts.load('700 38px "Noto Serif KR"'),
+                document.fonts.load('700 28px Pretendard'),
+                document.fonts.load('400 24px Pretendard')
+            ]);
+        }
+    } catch (e) {}
+    const img = document.getElementById('printImg');
+    img.src = buildTicketCanvas({ solidBg: true }).toDataURL('image/png');
+    if (img.decode) { try { await img.decode(); } catch (e) {} }
+}
+
+// 인쇄 중에는 견적서 이미지(#printSheet)만 남기고 나머지 화면을 숨깁니다.
+// (고객 화면은 "항상 표시"로 고정돼 있어서 스타일시트만으로는 숨겨지지 않기 때문에 직접 숨기고, 끝나면 되돌립니다.)
+let __printHidden = [];
+function isolatePrintSheet() {
+    restorePrintIsolation();
+    Array.from(document.body.children).forEach(el => {
+        if (el.id === 'printSheet' || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return;
+        __printHidden.push({ el, value: el.style.getPropertyValue('display'), priority: el.style.getPropertyPriority('display') });
+        el.style.setProperty('display', 'none', 'important');
+    });
+    const sheet = document.getElementById('printSheet');
+    if (sheet) sheet.style.setProperty('display', 'flex', 'important');
+    const restoreOnce = () => { restorePrintIsolation(); };
+    window.addEventListener('afterprint', restoreOnce, { once: true });
+    ['pointerdown', 'touchstart', 'keydown'].forEach(ev => document.addEventListener(ev, restoreOnce, { once: true, capture: true }));
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') restoreOnce(); }, { once: true });
+}
+function restorePrintIsolation() {
+    __printHidden.forEach(({ el, value, priority }) => {
+        if (value) el.style.setProperty('display', value, priority); else el.style.removeProperty('display');
+    });
+    __printHidden = [];
+    const sheet = document.getElementById('printSheet');
+    if (sheet) sheet.style.removeProperty('display');
+}
+
+// 견적서 인쇄 / PDF 저장: 저장되는 이미지와 똑같은 모양을 한 장으로 출력
+async function printTicket() {
+    await preparePrintSheet();
+    const prevTitle = document.title;
+    const custName = (document.getElementById('custName').value || '').trim();
+    document.title = `${custName ? custName + '_' : ''}맞춤견적서`;      // PDF 기본 파일명
+    window.addEventListener('afterprint', () => { document.title = prevTitle; }, { once: true });
+    isolatePrintSheet();
+    // 화면이 바뀐 뒤 인쇄 창을 열어야 안정적입니다.
+    setTimeout(() => window.print(), 120);
 }
 
 function showToast(msg, type = "success") {

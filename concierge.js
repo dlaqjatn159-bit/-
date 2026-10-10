@@ -477,7 +477,7 @@
 
                 html += '<div class="tailor-stage" style="width: 100vw; height: 100vh; padding: 1.5rem; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">';
                 
-                html += '<div style="background: #ffffff; border: 1.5px solid #e5dcd0; border-radius: 32px; padding: 2.4rem; max-width: 580px; width: 100%; box-shadow: 0 24px 60px rgba(43,34,26,0.12); display: flex; flex-direction: column; gap: 1.2rem;" class="font-serif-kr" id="ticketCaptureArea">';
+                html += '<div style="background: #ffffff; border: 1.5px solid #e5dcd0; border-radius: 32px; padding: 2.4rem; max-width: 580px; width: 100%; box-shadow: 0 24px 60px rgba(43,34,26,0.12); display: flex; flex-direction: column; gap: 1.2rem;" class="font-serif-kr">';
                 
                 html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #e5dcd0; padding-bottom: 1rem;">';
                 html += '<div>';
@@ -509,7 +509,7 @@
 
                 html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; font-family: Pretendard, sans-serif; margin-top: 0.5rem;">';
                 html += '<button onclick="window.concierge.goToSpaceCanvas()" style="background: #ffffff; border: 1.5px solid #e5dcd0; color: #2b221a; padding: 0.95rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">← 공간 추가하기</button>';
-                html += '<button onclick="window.concierge.openOfficialModal()" style="background: #91401a; border: none; color: #fff; padding: 0.95rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 6px 18px rgba(145,64,26,0.3);">공식 견적서 발권 (저장/인쇄)</button>';
+                html += '<button onclick="window.concierge.openOfficialModal()" style="background: #91401a; border: none; color: #fff; padding: 0.95rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 6px 18px rgba(145,64,26,0.3);">견적서 발행</button>';
                 html += '</div>';
 
                 html += '</div>';

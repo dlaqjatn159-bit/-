@@ -498,21 +498,25 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 }
 
 /* 인쇄 모드 */
+@page { size: A4 portrait; margin: 10mm; }
+#printSheet { display: none; }
 @media print {
-    body * {
-        visibility: hidden !important;
+    /* 인쇄할 때는 견적서 이미지 한 장만 출력 (다른 화면 요소는 모두 숨김) */
+    html, body { background: #ffffff !important; height: auto !important; overflow: visible !important; }
+    body > *:not(#printSheet) { display: none !important; }
+    #printSheet {
+        display: flex !important;
+        justify-content: center;
+        align-items: flex-start;
+        width: 100%;
     }
-    #ticketCaptureArea, #ticketCaptureArea * {
-        visibility: visible !important;
-    }
-    #ticketCaptureArea {
-        position: fixed !important;
-        left: 50% !important;
-        top: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-        background: white !important;
+    #printSheet img {
+        display: block;
+        max-width: 100%;
+        max-height: 275mm;      /* A4 한 장에 맞춤 */
+        width: auto;
+        height: auto;
+        object-fit: contain;
     }
 }
 
