@@ -1,3 +1,4 @@
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261019';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -24,7 +25,8 @@ function calculateAll() {
             const cost = staff ? Costing.costItem(c, fab, p) : null;
 
             c.calc = {
-                fabName: p.fabName, fabBook: p.fabBook, calcType: p.calcType,
+                fabName: (p.fabName || '') + (typeof colorSuffix === 'function' ? colorSuffix(c.colorName) : ''), fabBook: p.fabBook, calcType: p.calcType,
+                colorName: c.colorName || '',
                 numWidths: p.numWidths, totalYards: p.totalYards, appliedHebe: p.appliedHebe, qtyText: p.qtyText,
                 curtainSubtotal: p.curtainSubtotal, numJa: p.numJa, leadBandCost: p.leadBandCost,
                 actualCurtainHeight: p.actualCurtainHeight,

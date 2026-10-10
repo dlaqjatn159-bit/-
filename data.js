@@ -1,3 +1,4 @@
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261019';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -13,6 +14,7 @@ const STORE_KEYS = {
     draft: 'redam_draft_v1',         // 작성 중인 상담 자동 저장
     history: 'redam_history_v1',     // 지난 상담 이력 (직원 모드에서만 열람)
     tags: 'redam_tags_v1',           // 사장님이 직접 지정한 원단 분류(언더톤·무드)
+    colors: 'redam_colors_v1',       // 원단별 색상 번호와 색상별 톤
     legacy: 'curtain_fabric_db_v23'  // 구버전 앱이 남긴 데이터 (원가 포함 → 삭제 권장)
 };
 
@@ -210,7 +212,7 @@ function deriveRoomMood(room) {
     return 'balanced_neutral';
 }
 
-function isManualTagged(f) { return !!(f && f.manual && f.manual.tone && f.manual.mood); }
+function isManualTagged(f) { return !!(f && f.manual && f.manual.mood && (f.manual.tone || hasColorTones(f.id))); }
 
 function calculateFabricMatchScore(fabric, room, category) {
     let score = 0;
@@ -266,17 +268,124 @@ function recommendReason(fabric, room, category) {
     return parts.slice(0, 2).join(' · ');
 }
 
-// ---- 원단 사진: photos/원단ID.jpg (없으면 .webp, .png 순서로 찾고, 없으면 색상 배경) ----
-function fabricPhotoUrls(id) {
+// ---- 원단 사진: photos/원단ID.jpg, 색상별은 photos/원단ID__번호.jpg (없으면 .webp, .png 순서로 찾고, 없으면 원단 대표 사진 → 색상 배경) ----
+function fabricPhotoUrls(id, color) {
     const base = 'photos/' + encodeURIComponent(id);
-    return [base + '.jpg', base + '.webp', base + '.png'];
+    const generic = [base + '.jpg', base + '.webp', base + '.png'];
+    const col = normalizeColorName(color);
+    if (!col) return generic;
+    const cb = base + '__' + encodeURIComponent(col);
+    return [cb + '.jpg', cb + '.webp', cb + '.png'].concat(generic);
 }
 
 // 사진 파일을 못 찾으면 다음 확장자를 시도하고, 모두 없으면 사진 칸을 없앰
 function photoFallback(el) {
     const i = parseInt(el.getAttribute('data-i') || '0', 10) + 1;
-    const urls = fabricPhotoUrls(el.getAttribute('data-id'));
+    const urls = fabricPhotoUrls(el.getAttribute('data-id'), el.getAttribute('data-color') || '');
     if (i < urls.length) { el.setAttribute('data-i', i); el.src = urls[i]; } else { el.style.visibility = 'hidden'; }
+}
+
+// ==============================================================
+// 원단 색상 (샘플북에서 같은 원단이 번호별로 색이 다른 경우: 예) 블랑 1~10번)
+//  - 색상은 번호(또는 이름)로 구분하고, 색마다 톤을 지정합니다. 가격은 원단 단위로 같습니다.
+//  - 견적서·발주서에는 "블랑 3번"처럼 표시됩니다.
+// ==============================================================
+let __colorsCache = null;
+function normalizeColorName(v) {
+    const s = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+    if (!s) return '';
+    const m = /^(\d+)\s*번?$/.exec(s);
+    return m ? String(parseInt(m[1], 10)) : s;
+}
+function colorSuffix(name) {
+    const n = normalizeColorName(name);
+    if (!n) return '';
+    return /^\d+$/.test(n) ? ` ${n}번` : ` ${n}`;
+}
+function colorsStore() {
+    if (__colorsCache) return __colorsCache;
+    try { const t = JSON.parse(localStorage.getItem(STORE_KEYS.colors)); __colorsCache = (t && typeof t === 'object') ? t : {}; } catch (e) { __colorsCache = {}; }
+    return __colorsCache;
+}
+function saveColorsStore() {
+    try { localStorage.setItem(STORE_KEYS.colors, JSON.stringify(colorsStore())); } catch (e) { console.warn('색상 저장 실패', e); }
+}
+function replaceColorsStore(obj) { __colorsCache = (obj && typeof obj === 'object') ? obj : {}; saveColorsStore(); }
+function colorSort(a, b) {
+    const na = /^\d+$/.test(a.name), nb = /^\d+$/.test(b.name);
+    if (na && nb) return parseInt(a.name, 10) - parseInt(b.name, 10);
+    if (na !== nb) return na ? -1 : 1;
+    return a.name.localeCompare(b.name, 'ko');
+}
+function getFabricColors(id) { return colorsStore()[id] || []; }
+function hasColorTones(id) { return getFabricColors(id).some(c => !!c.tone); }
+function addFabricColors(id, names) {
+    const store = colorsStore(); const list = store[id] || [];
+    let added = 0;
+    names.map(normalizeColorName).filter(Boolean).forEach(n => { if (!list.some(c => c.name === n)) { list.push({ name: n, tone: null }); added++; } });
+    list.sort(colorSort); store[id] = list; saveColorsStore();
+    return added;
+}
+function setColorTone(id, name, tone) {
+    const c = getFabricColors(id).find(x => x.name === normalizeColorName(name));
+    if (!c) return;
+    c.tone = (tone && TONE_LABELS[tone]) ? tone : null;
+    saveColorsStore();
+}
+function removeFabricColor(id, name) {
+    const store = colorsStore(); const n = normalizeColorName(name);
+    store[id] = (store[id] || []).filter(c => c.name !== n);
+    if (store[id].length === 0) delete store[id];
+    saveColorsStore();
+}
+// 색상 입력표(엑셀/CSV) 행을 읽어 반영: 열 이름에 "원단 ID", "색상", "톤"이 들어 있으면 됩니다.
+function importColorRows(rows) {
+    let hi = -1;
+    for (let i = 0; i < Math.min(rows.length, 15); i++) {
+        const t = (rows[i] || []).map(x => String(x == null ? '' : x)).join('|');
+        if (t.includes('원단') && t.includes('ID') && t.includes('색상')) { hi = i; break; }
+    }
+    if (hi < 0) return { error: "머리글(원단 ID, 색상, 색상 톤)을 찾지 못했습니다." };
+    const head = rows[hi].map(x => String(x == null ? '' : x));
+    const iId = head.findIndex(h => h.includes('원단') && h.includes('ID'));
+    const iColor = head.findIndex(h => h.includes('색상') && !h.includes('톤') && !h.includes('파일'));
+    const iTone = head.findIndex(h => h.includes('톤'));
+    const known = new Set(FABRIC_DB.map(f => f.id));
+    const next = {}; let colorCount = 0, unknown = 0;
+    for (let i = hi + 1; i < rows.length; i++) {
+        const r = rows[i] || [];
+        const id = String(r[iId] == null ? '' : r[iId]).trim();
+        const name = normalizeColorName(r[iColor]);
+        if (!id || id.startsWith('(예시)') || !name) continue;
+        if (!known.has(id)) { unknown++; continue; }
+        next[id] = next[id] || [];
+        if (next[id].some(c => c.name === name)) continue;
+        next[id].push({ name, tone: iTone >= 0 ? normalizeToneInput(r[iTone]) : null });
+        colorCount++;
+    }
+    Object.keys(next).forEach(id => next[id].sort(colorSort));
+    // 입력표에 등장한 원단만 교체하고, 나머지 원단의 기존 색상은 유지
+    const store = colorsStore();
+    Object.keys(next).forEach(id => { store[id] = next[id]; });
+    saveColorsStore();
+    return { fabrics: Object.keys(next).length, colors: colorCount, unknown };
+}
+// 한 원단에서 공간(바닥·벽·분위기·채광)에 가장 잘 어울리는 색을 고름
+function rankColorsFor(fabric, room, category) {
+    const colors = getFabricColors(fabric.id);
+    const ranked = colors.map(c => {
+        const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
+        return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + (c.tone ? 0.5 : 0) };
+    });
+    ranked.sort((a, b) => (b.score - a.score) || colorSort(a, b));
+    return ranked;
+}
+function bestColorFor(fabric, room, category) {
+    const colors = getFabricColors(fabric.id);
+    if (colors.length === 0) return { color: null, score: calculateFabricMatchScore(fabric, room, category), ranked: [], classified: false };
+    const ranked = rankColorsFor(fabric, room, category);
+    const classified = colors.some(c => !!c.tone);
+    return { color: classified ? ranked[0].name : null, score: ranked[0].score, ranked, classified };
 }
 
 // ---- 사장님이 직접 지정한 분류(덮어쓰기). 엑셀을 다시 불러와도 유지됩니다 ----
@@ -515,6 +624,7 @@ function applyPrivatePack(pack) {
     Costing.setPrivate({ rules: pack.rules, costs: pack.costs || {} });
     savePrivateStore();
     if (pack.tags && typeof pack.tags === 'object') saveTagOverrides(pack.tags);
+    if (pack.colors && typeof pack.colors === 'object') replaceColorsStore(pack.colors);
     if (Array.isArray(pack.fabrics) && pack.fabrics.length > 0) {
         FABRIC_DB = pack.fabrics.map(f => autoTagFabricAttributes(f));
         applyTagOverrides(FABRIC_DB);
@@ -543,7 +653,7 @@ function handlePrivatePackUpload(event) {
 function exportPrivatePack() {
     if (!Costing.hasData()) { showToast("내보낼 원가 데이터가 없습니다.", "info"); return; }
     const pack = { type: 'redam-private-pack', version: 1, savedAt: new Date().toISOString(),
-        rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides() };
+        rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides(), colors: colorsStore() };
     const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
