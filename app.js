@@ -27,6 +27,10 @@ window.onload = function() {
     calculateAll();
     document.body.dataset.mode = 'customer';
     switchMainTrack('curation');
+    restoreDraftOnLoad();
+    setInterval(saveDraftTick, 3000);
+    updateOfflineStatus();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', updateOfflineStatus);
 
     if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
@@ -50,6 +54,8 @@ function switchMainTrack(track) {
         renderRooms();
         renderDbTable();
         updatePrivateStatus();
+        renderHistory();
+        updateOfflineStatus();
     } else {
         if (curationSec) { curationSec.classList.remove('hidden'); curationSec.style.setProperty('display', 'block', 'important'); }
         if (window.concierge && typeof window.concierge.start === 'function' && !window.__conciergeStarted) {
@@ -96,7 +102,9 @@ function presentToCustomer() {
 
 // 새 상담 시작: 이전 고객의 입력을 전부 비움
 function startNewConsultation() {
-    if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?')) return;
+    if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
+    archiveConsultation(collectConsultation(), Date.now());
+    clearDraft();
     initDefaultRooms();
     globalInstallFee = 30000;
     globalVatOption = 'consumer';
@@ -106,6 +114,7 @@ function startNewConsultation() {
     const expressCust = document.getElementById('expressCustName'); if (expressCust) expressCust.value = '';
     renderRooms();
     calculateAll();
+    renderHistory();
     showToast('새 상담을 시작합니다.');
 }
 
@@ -202,6 +211,158 @@ function startIdleWatch() {
 function stopIdleWatch() {
     clearInterval(idleTimer);
     ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.removeEventListener(ev, markActivity, true));
+}
+
+// ==============================================================
+// 작성 중 상담 자동 저장 / 상담 이력
+//  - 3초마다 바뀐 내용만 저장합니다. (원가·계산 결과는 저장하지 않음)
+//  - 다시 열었을 때 3시간 이내의 상담이면 자동 복구, 오래됐으면 "상담 이력"으로 옮겨
+//    다음 고객에게 보이지 않게 합니다. 이력은 직원 모드(PIN)에서만 볼 수 있습니다.
+// ==============================================================
+const DRAFT_FRESH_MS = 3 * 60 * 60 * 1000;
+const HISTORY_MAX = 30;
+let __lastDraftJson = '';
+
+function collectConsultation() {
+    const src = (appMode === 'staff' || !window.concierge) ? rooms : window.concierge.getRoomsForSave();
+    return {
+        name: ((document.getElementById('custName') || {}).value || '').trim(),
+        rooms: src.map(r => ({
+            name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood,
+            curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
+        })),
+        installFee: globalInstallFee,
+        vat: globalVatOption
+    };
+}
+
+function estimateSnapshotTotal(snap) {
+    let sum = 0;
+    snap.rooms.forEach(r => r.curtains.forEach(c => {
+        sum += Pricing.priceItem(c, Pricing.pickFabric(FABRIC_DB, c.fabricId)).curtainSubtotal;
+    }));
+    return Pricing.totals(sum, snap.installFee, snap.vat).finalPrice;
+}
+
+function saveDraftTick() {
+    try {
+        const snap = collectConsultation();
+        if (snap.rooms.length === 0) {
+            if (__lastDraftJson !== '') clearDraft();
+            return;
+        }
+        const json = JSON.stringify(snap);
+        if (json === __lastDraftJson) return;
+        __lastDraftJson = json;
+        localStorage.setItem(STORE_KEYS.draft, JSON.stringify(Object.assign({ updatedAt: Date.now() }, snap)));
+    } catch (e) { console.warn('자동 저장 실패', e); }
+}
+function clearDraft() {
+    __lastDraftJson = '';
+    try { localStorage.removeItem(STORE_KEYS.draft); } catch (e) {}
+}
+
+function loadHistory() {
+    try { const h = JSON.parse(localStorage.getItem(STORE_KEYS.history)); return Array.isArray(h) ? h : []; } catch (e) { return []; }
+}
+function saveHistory(list) {
+    try { localStorage.setItem(STORE_KEYS.history, JSON.stringify(list.slice(0, HISTORY_MAX))); } catch (e) { console.warn('이력 저장 실패', e); }
+}
+function archiveConsultation(snap, updatedAt) {
+    if (!snap || !snap.rooms || snap.rooms.length === 0) return;
+    const list = loadHistory();
+    list.unshift({ id: 'h' + Date.now() + Math.floor(Math.random() * 1000), updatedAt: updatedAt || Date.now(), name: snap.name || '', total: estimateSnapshotTotal(snap), snapshot: snap });
+    saveHistory(list);
+}
+
+function applySnapshot(snap) {
+    roomIdCounter = 1; curtainIdCounter = 100;
+    rooms = snap.rooms.map(r => Object.assign({}, r, {
+        id: roomIdCounter++,
+        curtains: r.curtains.map(c => Object.assign({}, c, { id: curtainIdCounter++ }))
+    }));
+    globalInstallFee = snap.installFee;
+    globalVatOption = snap.vat || 'consumer';
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    set('custName', snap.name || ''); set('expressCustName', snap.name || '');
+    set('expressInstallFee', globalInstallFee); set('expressVatOption', globalVatOption);
+    calculateAll();
+    if (window.concierge) window.concierge.loadFromMaster(rooms, globalInstallFee);
+}
+
+function restoreDraftOnLoad() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(STORE_KEYS.draft)); } catch (e) {}
+    if (!d || !Array.isArray(d.rooms) || d.rooms.length === 0) return false;
+    if (Date.now() - d.updatedAt > DRAFT_FRESH_MS) {
+        archiveConsultation(d, d.updatedAt);       // 오래된 상담은 이력으로 옮기고 새로 시작
+        clearDraft();
+        return false;
+    }
+    applySnapshot(d);
+    __lastDraftJson = JSON.stringify(collectConsultation());
+    showToast('진행 중이던 상담을 복구했습니다.', 'info');
+    return true;
+}
+
+function renderHistory() {
+    const box = document.getElementById('historyList');
+    if (!box) return;
+    const list = loadHistory();
+    const cnt = document.getElementById('historyCount'); if (cnt) cnt.textContent = list.length;
+    if (list.length === 0) { box.innerHTML = '<div class="text-xs text-slate-400 py-3 text-center">저장된 상담이 없습니다.</div>'; return; }
+    const pad = n => String(n).padStart(2, '0');
+    box.innerHTML = list.map(h => {
+        const d = new Date(h.updatedAt);
+        const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const nm = (h.name || '(이름 없음)').replace(/</g, '&lt;');
+        const nRooms = h.snapshot.rooms.length;
+        return `<div class="flex items-center justify-between gap-2 py-2 border-b border-slate-100 text-xs">
+            <div class="min-w-0">
+                <div class="font-bold text-slate-800 truncate">${nm}</div>
+                <div class="text-[11px] text-slate-400">${when} · 공간 ${nRooms}개 · ${(h.total || 0).toLocaleString()}원</div>
+            </div>
+            <div class="flex gap-1.5 flex-shrink-0">
+                <button onclick="loadHistoryItem('${h.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap">불러오기</button>
+                <button onclick="deleteHistoryItem('${h.id}')" class="text-rose-500 hover:bg-rose-50 font-bold px-2 py-1.5 rounded-lg">삭제</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function loadHistoryItem(id) {
+    const list = loadHistory();
+    const item = list.find(h => h.id === id);
+    if (!item) return;
+    if (!confirm('이 상담을 불러옵니다. 지금 작성 중인 상담은 이력에 보관됩니다.\n(현재 단가표 기준으로 금액을 다시 계산합니다)')) return;
+    archiveConsultation(collectConsultation(), Date.now());
+    saveHistory(loadHistory().filter(h => h.id !== id));       // 불러온 상담은 "진행 중"이 되므로 이력에서 이동
+    applySnapshot(item.snapshot);
+    renderRooms();
+    renderHistory();
+    warnIfQuoteFabricsMissing();
+    showToast('상담을 불러왔습니다. 현재 단가표 기준으로 다시 계산했습니다.', 'info');
+}
+
+function deleteHistoryItem(id) {
+    if (!confirm('이 상담 기록을 삭제할까요?')) return;
+    saveHistory(loadHistory().filter(h => h.id !== id));
+    renderHistory();
+}
+
+// 오프라인 사용 준비 상태 표시
+async function updateOfflineStatus() {
+    const el = document.getElementById('offlineStatus');
+    if (!el) return;
+    try {
+        if (!('serviceWorker' in navigator) || !window.caches) { el.textContent = '오프라인: 이 브라우저는 지원하지 않습니다'; return; }
+        if (!navigator.serviceWorker.controller) { el.textContent = '오프라인: 준비 중 — 인터넷이 연결된 상태에서 앱을 한 번 더 열어 주세요'; el.style.color = '#b45309'; return; }
+        const keys = (await (await caches.open('redam-app-v1')).keys()).map(r => r.url);
+        const has = s => keys.some(u => u.includes(s));
+        const ready = has('index.html') && has('tailwindcss.com') && has('font-awesome') && has('fonts.googleapis.com') && keys.some(u => /\.woff2?(\?|$)/.test(u));
+        el.textContent = ready ? '오프라인: 사용 준비 완료 ✓' : '오프라인: 저장 중 — 인터넷이 연결된 상태에서 앱을 한 번 더 열어 주세요';
+        el.style.color = ready ? '#15803d' : '#b45309';
+    } catch (e) { el.textContent = ''; }
 }
 
 // ==============================================================

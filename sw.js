@@ -1,0 +1,96 @@
+/* ==========================================================================
+   Re.dam 오프라인 지원 (Service Worker)
+   - 앱 파일: 인터넷이 되면 항상 최신 파일을 받고, 안 되면(또는 4초 넘게 느리면) 저장해 둔 파일로 실행
+   - 외부 도구(Tailwind·아이콘·글꼴 등): 처음 한 번 받아 저장해 두고 이후엔 저장본 사용
+   ========================================================================== */
+const CACHE = 'redam-app-v1';
+const SCOPE = self.registration.scope;
+
+self.addEventListener('install', event => {
+    event.waitUntil(precache().then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil((async () => {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+        await self.clients.claim();
+    })());
+});
+
+// index.html 안에 적힌 모든 파일(내 파일 + 외부 도구)을 미리 받아 둠. 일부가 실패해도 설치는 계속됨.
+async function precache() {
+    const cache = await caches.open(CACHE);
+    const indexUrl = new URL('./index.html', SCOPE).href;
+    let html = '';
+    try {
+        const res = await fetch(new Request(indexUrl, { cache: 'reload' }));
+        html = await res.clone().text();
+        await cache.put(indexUrl, res);
+    } catch (e) { /* 오프라인 상태에서 설치된 경우 */ }
+
+    const urls = new Set();
+    (html.match(/(?:src|href)="[^"#]+"/g) || []).forEach(m => {
+        const u = m.slice(m.indexOf('"') + 1, -1);
+        if (/^(data:|mailto:|tel:|javascript:)/.test(u)) return;
+        try {
+            const abs = new URL(u, SCOPE);
+            if (abs.pathname === '/' && abs.origin !== self.location.origin) return;   // preconnect 같은 주소만 있는 항목 제외
+            urls.add(abs.href);
+        } catch (e) {}
+    });
+    urls.delete(indexUrl);
+
+    await Promise.allSettled([...urls].map(async href => {
+        const local = href.startsWith(self.location.origin);
+        const res = await fetch(new Request(href, local ? { cache: 'reload' } : { mode: 'no-cors' }));
+        if (res.ok || res.type === 'opaque') await cache.put(href, res);
+    }));
+}
+
+self.addEventListener('fetch', event => {
+    const req = event.request;
+    if (req.method !== 'GET') return;
+    const url = new URL(req.url);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+    event.respondWith(url.origin === self.location.origin ? networkFirst(req) : cacheFirst(req));
+});
+
+async function networkFirst(req) {
+    const cache = await caches.open(CACHE);
+    const fallback = async () => {
+        const hit = await cache.match(req);
+        if (hit) return hit;
+        if (req.mode === 'navigate') {
+            return (await cache.match(req, { ignoreSearch: true }))
+                || (await cache.match(new URL('./index.html', SCOPE).href))
+                || (await cache.match(SCOPE));
+        }
+        return undefined;
+    };
+    try {
+        const res = await Promise.race([
+            fetch(req),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
+        ]);
+        if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
+        return res;
+    } catch (err) {
+        const hit = await fallback();
+        if (hit) return hit;
+        return fetch(req);      // 저장본이 없으면 끝까지 네트워크를 기다림
+    }
+}
+
+async function cacheFirst(req) {
+    const cache = await caches.open(CACHE);
+    const hit = await cache.match(req);
+    if (hit) return hit;
+    try {
+        const res = await fetch(req);
+        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone()).catch(() => {});
+        return res;
+    } catch (e) {
+        return Response.error();
+    }
+}

@@ -182,6 +182,20 @@
         }
     }
 
+    // 키패드는 기본으로 오른쪽 아래. 누른 입력칸을 가리게 되면 왼쪽 아래로 옮깁니다.
+    function positionKeypad(target) {
+        const sheet = document.getElementById("v2VirtualKeypadSheet");
+        const box = document.getElementById(`measureBox_${target}`);
+        if (!sheet) return;
+        sheet.classList.remove("at-left");
+        if (window.innerWidth <= 700 || !box) return;
+        const m = 24, w = sheet.offsetWidth, h = sheet.offsetHeight;
+        const r = box.getBoundingClientRect();
+        const hits = (left) => !(r.right < left || r.left > left + w || r.bottom < window.innerHeight - m - h || r.top > window.innerHeight - m);
+        const rightLeft = window.innerWidth - m - w;
+        if (hits(rightLeft) && !hits(m)) sheet.classList.add("at-left");
+    }
+
     function hideKeypadDirectly() {
         const sheet = document.getElementById("v2VirtualKeypadSheet");
         if (sheet) sheet.classList.remove("active");
@@ -762,6 +776,13 @@
             goToStep("1-Space", false);
         },
         syncToMaster: function() { syncToV1MasterRooms(); },
+        // 자동 저장용: 고객이 완료한 공간만 (계산 결과는 제외)
+        getRoomsForSave: function() {
+            return state.roomsCart.filter(r => r.isConfigured).map(r => ({
+                name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood,
+                curtains: r.curtains
+            }));
+        },
         openOfficialModal: function() {
             syncToV1MasterRooms();
             if (typeof window.openTicketModal === 'function') {
@@ -777,6 +798,7 @@
             document.getElementById("v2KeypadTargetLabel").textContent = target === "width" ? "넓이" : "높이";
             document.getElementById("v2KeypadValueDisplay").textContent = state.editingRoom[target];
             document.getElementById("v2VirtualKeypadSheet").classList.add("active");
+            positionKeypad(target);
         },
         closeKeypad: function() {
             hideKeypadDirectly();

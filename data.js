@@ -10,6 +10,8 @@ const STORE_KEYS = {
     fabrics: 'redam_fabrics_v1',     // 공개 원단 정보(판매가)
     priv: 'redam_private_v1',        // 비공개: 원가 규칙 + 원단별 원가 (직원 모드에서만 사용)
     pin: 'redam_pin_v1',             // 직원 모드 PIN(해시)
+    draft: 'redam_draft_v1',         // 작성 중인 상담 자동 저장
+    history: 'redam_history_v1',     // 지난 상담 이력 (직원 모드에서만 열람)
     legacy: 'curtain_fabric_db_v23'  // 구버전 앱이 남긴 데이터 (원가 포함 → 삭제 권장)
 };
 
