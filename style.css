@@ -623,3 +623,6 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     object-fit: cover;
     pointer-events: none;
 }
+
+/* 화면 크기 계산이 외부 도구(Tailwind) 없이도 같게 나오도록 */
+.bookmark-stage, .bookmark-canvas, .ambient-stage, .tailor-stage { box-sizing: border-box; }

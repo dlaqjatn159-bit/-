@@ -128,6 +128,7 @@
             floorTone: r.floorTone || "warm",
             wallTone: r.wallTone || "cool",
             mood: r.mood || "soft_warm",
+            wantMood: r.wantMood || null,
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
                 let realFab = liveDb.find(f => f.id === c.fabricId);
@@ -340,6 +341,19 @@
                 html += renderBookmarkCard("풍부한 채광", "남향/고층의 강하고 눈부신 직사광", "LIGHT HIGH", SOLID_TEXTURES.l1, function() { window.concierge.selectLightLevel('high'); });
                 html += renderBookmarkCard("은은한 채광", "동향/서향의 부드럽고 적당한 햇살", "LIGHT MID", SOLID_TEXTURES.l2, function() { window.concierge.selectLightLevel('mid'); });
                 html += renderBookmarkCard("차분한 채광", "북향/저층의 은은하고 낮은 채광량", "LIGHT LOW", SOLID_TEXTURES.l3, function() { window.concierge.selectLightLevel('low'); });
+                html += '</div></div>';
+                break;
+
+            // [Step 2-4: 희망 분위기 선택]
+            case "2-Base-Mood":
+                html += '<div class="bookmark-stage">';
+                html += '<div class="bookmark-canvas" style="--items-count: 3; grid-template-rows: repeat(2, 1fr);">';
+                html += renderBookmarkCard("소프트 웜", "포근하고 따뜻한 느낌", "MOOD 01", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); });
+                html += renderBookmarkCard("어반 클린", "깔끔하고 도시적인 느낌", "MOOD 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); });
+                html += renderBookmarkCard("밸런스 뉴트럴", "어디에나 무난하고 차분한 느낌", "MOOD 03", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); });
+                html += renderBookmarkCard("텍스처 린넨", "결이 살아있는 자연스러운 느낌", "MOOD 04", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); });
+                html += renderBookmarkCard("딥 프라이빗", "차분하고 아늑한 프라이빗한 느낌", "MOOD 05", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); });
+                html += renderBookmarkCard("에어리 브라이트", "가볍고 환한 느낌", "MOOD 06", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); });
                 html += '</div></div>';
                 break;
 
@@ -601,6 +615,7 @@
                 wallTone: target.wallTone || 'cool',
                 lightLevel: target.lightLevel || 'mid',
                 mood: target.mood || 'soft_warm',
+                wantMood: target.wantMood || null,
                 width: 340,
                 height: 235,
                 shapeFee: true,
@@ -628,6 +643,10 @@
         },
         selectLightLevel: function(level) {
             state.editingRoom.lightLevel = level;
+            goToStep("2-Base-Mood");
+        },
+        selectMood: function(mood) {
+            state.editingRoom.wantMood = mood;
             goToStep("3-Config-Style");
         },
         chooseWindowComposition: function(type) {
@@ -717,6 +736,7 @@
                 roomTarget.wallTone = state.editingRoom.wallTone;
                 roomTarget.lightLevel = state.editingRoom.lightLevel;
                 roomTarget.mood = state.editingRoom.mood;
+                roomTarget.wantMood = state.editingRoom.wantMood || null;
                 roomTarget.curtains = finalizedCurtains;
                 roomTarget.subtotal = roomSubSum;
 
@@ -757,7 +777,7 @@
                 return {
                     id: Date.now() + i, name: r.name,
                     floorTone: r.floorTone || 'warm', wallTone: r.wallTone || 'cool',
-                    lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm',
+                    lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
                     isConfigured: true,
                     curtains: r.curtains.map(c => ({ ...c })),
                     subtotal: sub
@@ -793,7 +813,7 @@
         // 자동 저장용: 고객이 완료한 공간만 (계산 결과는 제외)
         getRoomsForSave: function() {
             return state.roomsCart.filter(r => r.isConfigured).map(r => ({
-                name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood,
+                name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
                 curtains: r.curtains
             }));
         },

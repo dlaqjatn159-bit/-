@@ -229,7 +229,7 @@ function collectConsultation() {
     return {
         name: ((document.getElementById('custName') || {}).value || '').trim(),
         rooms: src.map(r => ({
-            name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood,
+            name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
         installFee: globalInstallFee,
@@ -412,6 +412,12 @@ function renderTagEditor() {
         const moodOpts = `<option value="">자동 추측${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]}</option>`).join('');
         const done = isManualTagged(f);
         const status = done ? '<span class="text-[10px] font-bold text-emerald-700">✓ 분류 완료</span>' : ((m.tone || m.mood) ? '<span class="text-[10px] font-bold text-amber-700">일부만 지정</span>' : '<span class="text-[10px] text-slate-400">자동 추측</span>');
+        const dens = ['light', 'medium', 'heavy'].map(dv => {
+            const on = m.density && f.density === dv;
+            const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
+            return `<button onclick="setFabricTag('${f.id}','density','${on ? '' : dv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${DENSITY_LABELS[dv]}</button>`;
+        }).join('');
+        const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">두께</span>${dens}` : '';
         const thumb = `<img class="w-10 h-10 rounded-lg object-cover bg-stone-100 flex-shrink-0" alt="" data-id="${f.id}" data-i="0" src="${fabricPhotoUrls(f.id)[0]}" onerror="photoFallback(this)">`;
         return `<div class="py-2.5 border-b border-slate-100">
             <div class="flex items-center gap-2.5">
@@ -426,7 +432,8 @@ function renderTagEditor() {
                 <span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>${toneBtns}
                 <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">분위기</span>
                 <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
-                ${(m.tone || m.mood) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
+                ${densBlock}
+                ${(m.tone || m.mood || m.density) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -1481,6 +1488,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 floorTone: r.floorTone || "warm",
                 wallTone: r.wallTone || "cool",
                 mood: r.mood || "soft_warm",
+                wantMood: r.wantMood || null,
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";
                     return {

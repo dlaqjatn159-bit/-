@@ -278,7 +278,7 @@
                                 원단 분류 (고객 추천에 쓰입니다)
                                 <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="tagCount">0/0</span>
                             </h3>
-                            <p class="text-[10px] sm:text-[11px] text-slate-400">원단마다 어울리는 톤·분위기를 지정하면 고객 화면의 추천이 달라집니다 (지정 전에는 이름으로 추측한 값)</p>
+                            <p class="text-[10px] sm:text-[11px] text-slate-400">원단마다 어울리는 톤·분위기(속지는 두께도)를 지정하면 고객 화면의 추천이 달라집니다 (지정 전에는 이름으로 추측한 값)</p>
                         </div>
                         <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex-shrink-0">
                             <span id="tagAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
@@ -305,7 +305,7 @@
                         원단 사진
                         <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="photoCount">확인 전</span>
                     </h3>
-                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">GitHub의 <b>photos</b> 폴더에 <b>원단ID.jpg</b> 이름으로 올리면 고객 화면 추천 카드에 자동으로 나타납니다. (jpg·webp·png, 가로 800px 안팎, 한 장당 150KB 이하 권장) 사진이 없는 원단은 지금처럼 색상 배경으로 보입니다.</p>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">GitHub의 <b>photos</b> 폴더에 <b>원단ID.jpg</b> 이름으로 올리면 고객 화면 추천 카드에 자동으로 나타납니다. (jpg·webp·png, 가로 1000px 안팎, 한 장당 150KB 이하 권장) 사진이 없는 원단은 지금처럼 색상 배경으로 보입니다.</p>
                     <div class="flex flex-wrap gap-2 mt-3">
                         <button onclick="checkPhotos()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">사진 확인하기</button>
                         <button onclick="downloadPhotoNameList()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">파일명 목록 내려받기 (CSV)</button>
@@ -520,12 +520,12 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261015"></script>
-    <script src="costing.js?v=20261015"></script>
-    <script src="data.js?v=20261015"></script>
-    <script src="calculator.js?v=20261015"></script>
-    <script src="concierge.js?v=20261015"></script>
-    <script src="app.js?v=20261015"></script>
+    <script src="pricing.js?v=20261016"></script>
+    <script src="costing.js?v=20261016"></script>
+    <script src="data.js?v=20261016"></script>
+    <script src="calculator.js?v=20261016"></script>
+    <script src="concierge.js?v=20261016"></script>
+    <script src="app.js?v=20261016"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

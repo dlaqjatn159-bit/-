@@ -7,6 +7,9 @@
 (function (root) {
     'use strict';
 
+    // 소폭 이음 제작 시 가장 왼쪽·오른쪽 끝단 시접분의 합 (cm) — 사장님 확인값
+    const SEAM_SIDE_ALLOWANCE = 30;
+
     // 설치 기구별 가로 차감 후 제작 세로 보정값 (cm)
     function heightDeduction(installType) {
         if (installType === 'rod35') return 10;
@@ -101,7 +104,7 @@
                             ? `${totalYards}마 (호텔핏 무이음·높이:${actualH}cm)`
                             : `${totalYards}마 (무이음·높이:${actualH}cm)`;
                     } else {
-                        const baseWidths = Math.ceil(totalW / fabricSpec) || 1;
+                        const baseWidths = Math.ceil((totalW + SEAM_SIDE_ALLOWANCE) / fabricSpec) || 1;   // 양끝 시접분 포함
                         const extraWidths = c.hotelFit ? 1 : 0;
                         numWidths = baseWidths + extraWidths;
                         const yardsPerWidth = Math.ceil((actualH + 30) / 90);
