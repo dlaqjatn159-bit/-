@@ -56,6 +56,7 @@ function switchMainTrack(track) {
         updatePrivateStatus();
         renderHistory();
         updateOfflineStatus();
+        renderTagEditor();
     } else {
         if (curationSec) { curationSec.classList.remove('hidden'); curationSec.style.setProperty('display', 'block', 'important'); }
         if (window.concierge && typeof window.concierge.start === 'function' && !window.__conciergeStarted) {
@@ -366,6 +367,129 @@ async function updateOfflineStatus() {
 }
 
 // ==============================================================
+// 원단 분류(톤·분위기) 편집 / 원단 사진 확인
+// ==============================================================
+function toggleTagSection(forceOpen) {
+    const content = document.getElementById('tagCollapsible');
+    const chevron = document.getElementById('tagAccordionChevron');
+    const statusText = document.getElementById('tagAccordionStatus');
+    if (!content) return;
+    const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
+    content.classList.toggle('hidden', !shouldOpen);
+    if (chevron) chevron.style.transform = shouldOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    if (statusText) statusText.textContent = shouldOpen ? '접기' : '펼치기';
+    if (shouldOpen) renderTagEditor();
+}
+
+function renderTagEditor() {
+    const box = document.getElementById('tagRows');
+    if (!box) return;
+    const val = (id, def) => { const el = document.getElementById(id); return el && el.value ? el.value : def; };
+    const cnt = document.getElementById('tagCount');
+    if (cnt) cnt.textContent = `${FABRIC_DB.filter(isManualTagged).length}/${FABRIC_DB.length}`;
+
+    const bookSel = document.getElementById('tagBook');
+    if (bookSel) {
+        const books = [...new Set(FABRIC_DB.map(f => f.book))];
+        const cur = bookSel.value || 'ALL';
+        const html = '<option value="ALL">전체 책자</option>' + books.map(b => `<option value="${b}">${b}</option>`).join('');
+        if (bookSel.dataset.sig !== books.join('|')) { bookSel.innerHTML = html; bookSel.dataset.sig = books.join('|'); bookSel.value = books.includes(cur) ? cur : 'ALL'; }
+    }
+    const cat = val('tagCat', '속지'), book = val('tagBook', 'ALL'), st = val('tagState', 'ALL');
+    const list = FABRIC_DB.filter(f => (cat === 'ALL' || f.categoryType === cat) && (book === 'ALL' || f.book === book) && (st !== 'UNSET' || !isManualTagged(f)));
+    if (list.length === 0) { box.innerHTML = '<div class="py-6 text-center text-xs text-slate-400">조건에 맞는 원단이 없습니다.</div>'; return; }
+
+    const tones = ['warm', 'cool', 'neutral', 'deep'];
+    box.innerHTML = list.map(f => {
+        const m = f.manual || {};
+        const toneBtns = tones.map(t => {
+            const isManual = m.tone && f.tone === t;
+            const isGuess = !m.tone && f.tone === t;
+            const cls = isManual ? 'bg-amber-800 text-white border-amber-900' : (isGuess ? 'bg-white text-slate-500 border-dashed border-slate-400' : 'bg-white text-slate-600 border-slate-300');
+            return `<button onclick="setFabricTag('${f.id}','tone','${isManual ? '' : t}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TONE_LABELS[t]}</button>`;
+        }).join('');
+        const guessLabel = m.mood ? '' : ` (자동: ${MOOD_LABELS[f.mood] || '-'})`;
+        const moodOpts = `<option value="">자동 추측${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]}</option>`).join('');
+        const done = isManualTagged(f);
+        const status = done ? '<span class="text-[10px] font-bold text-emerald-700">✓ 분류 완료</span>' : ((m.tone || m.mood) ? '<span class="text-[10px] font-bold text-amber-700">일부만 지정</span>' : '<span class="text-[10px] text-slate-400">자동 추측</span>');
+        const thumb = `<img class="w-10 h-10 rounded-lg object-cover bg-stone-100 flex-shrink-0" alt="" data-id="${f.id}" data-i="0" src="${fabricPhotoUrls(f.id)[0]}" onerror="photoFallback(this)">`;
+        return `<div class="py-2.5 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+                ${thumb}
+                <div class="min-w-0 flex-1">
+                    <div class="text-[10px] text-slate-400 truncate">[${f.book}] ${f.categoryType || ''}</div>
+                    <div class="text-xs font-bold text-slate-800 truncate">${f.name}</div>
+                </div>
+                ${status}
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                <span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>${toneBtns}
+                <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">분위기</span>
+                <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
+                ${(m.tone || m.mood) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ---- 사진 ----
+let __photoFound = {};     // 원단ID → 찾은 사진 주소
+async function checkPhotos() {
+    const statusEl = document.getElementById('photoCount');
+    const missEl = document.getElementById('photoMissing');
+    if (statusEl) statusEl.textContent = '확인 중...';
+    __photoFound = {};
+    let done = 0, offline = false;
+    const queue = FABRIC_DB.slice();
+    async function worker() {
+        while (queue.length) {
+            const f = queue.shift();
+            for (const url of fabricPhotoUrls(f.id)) {
+                try {
+                    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+                    if (res.ok) { __photoFound[f.id] = url; break; }
+                } catch (e) { offline = true; break; }
+            }
+            done++;
+            if (statusEl && done % 10 === 0) statusEl.textContent = `확인 중... ${done}/${FABRIC_DB.length}`;
+        }
+    }
+    await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+    if (offline) { if (statusEl) statusEl.textContent = '확인 실패'; showToast('인터넷에 연결된 상태에서 확인해 주세요.', 'error'); return; }
+    const found = Object.keys(__photoFound).length;
+    if (statusEl) statusEl.textContent = `${found} / ${FABRIC_DB.length}장`;
+    if (missEl) {
+        const miss = FABRIC_DB.filter(f => !__photoFound[f.id] && f.categoryType !== '블라인드').map(f => `${f.book} ${f.name}`);
+        missEl.textContent = miss.length ? `사진이 없는 커튼 원단 ${miss.length}개: ${miss.slice(0, 12).join(', ')}${miss.length > 12 ? ' …' : ''}` : '커튼 원단 사진이 모두 준비되었습니다.';
+    }
+}
+
+function downloadPhotoNameList() {
+    const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const checked = Object.keys(__photoFound).length > 0;
+    const rows = [['책자', '구분', '품명', '사진 파일명', checked ? '사진 있음' : '(사진 확인하기를 누르면 표시됨)']];
+    FABRIC_DB.forEach(f => rows.push([f.book, f.categoryType || '', f.name, `${f.id}.jpg`, checked ? (__photoFound[f.id] ? 'O' : '') : '']));
+    const csv = '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n');
+    const link = document.createElement('a');
+    link.download = '원단_사진_파일명_목록.csv';
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+}
+
+async function precachePhotos() {
+    if (Object.keys(__photoFound).length === 0) await checkPhotos();
+    const urls = Object.values(__photoFound);
+    if (urls.length === 0) { showToast('저장할 사진이 없습니다.', 'info'); return; }
+    showToast(`사진 ${urls.length}장을 저장하는 중...`, 'info');
+    let ok = 0;
+    const queue = urls.slice();
+    async function worker() { while (queue.length) { const u = queue.shift(); try { const r = await fetch(u); if (r.ok) ok++; } catch (e) {} } }
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    showToast(`사진 ${ok}장을 오프라인용으로 저장했습니다.`);
+}
+
+// ==============================================================
 // 3. 직원 화면: 데이터 관리 표시
 // ==============================================================
 function updatePrivateStatus() {
@@ -534,9 +658,9 @@ function addCurtainToRoom(roomId, presetType = "") {
         const panelFab = FABRIC_DB.find(f => f.categoryType === "겉지") || FABRIC_DB[0];
         if (panelFab) targetFabId = panelFab.id;
         pleat = "panel";
-        pleatType = "판넬";
+        pleatType = "패널";
         c.installType = "rail_2line";
-        c.hwName = "2줄 판넬/커튼 레일";
+        c.hwName = "2줄 패널 레일";
         c.hwPrice = 17000;
     }
 
@@ -626,10 +750,10 @@ function updateCurtainData(roomId, curtainId, key, val) {
             c.hwName = "25파이 봉";
             c.hwPrice = 1500;
         } else if (val === 'rail_2line') {
-            c.hwName = "2줄 판넬/커튼 레일";
+            c.hwName = "2줄 패널 레일";
             c.hwPrice = 17000;
         } else if (val === 'rail_3line') {
-            c.hwName = "3줄 판넬/커튼 레일";
+            c.hwName = "3줄 패널 레일";
             c.hwPrice = 20000;
         } else {
             c.hwName = "기본 레일";
@@ -681,9 +805,9 @@ function changeCurtainCategoryPreset(roomId, curtainId, preset) {
         const f = FABRIC_DB.find(item => item.categoryType === '겉지') || FABRIC_DB[0];
         if (f) c.fabricId = f.id;
         c.pleat = "panel";
-        c.pleatType = "판넬";
+        c.pleatType = "패널";
         c.installType = "rail_2line";
-        c.hwName = "2줄 판넬/커튼 레일";
+        c.hwName = "2줄 패널 레일";
         c.hwPrice = 17000;
         c.shapeFee = 0;
         c.leadBand = false;
@@ -785,7 +909,7 @@ function renderRooms() {
                                     <option value="1.5" ${c.pleat==="1.5"?"selected":""}>1.5배 평주름</option>
                                     <option value="2.5" ${c.pleat==="2.5"?"selected":""}>2.5배 나비</option>
                                     <option value="1.0" ${c.pleat==="1.0"?"selected":""}>1.0배 민자</option>
-                                    <option value="panel" ${c.pleat==="panel"?"selected":""}>판넬 제작</option>
+                                    <option value="panel" ${c.pleat==="panel"?"selected":""}>패널 제작</option>
                                 </select>
                             `}
                         </div>
@@ -798,15 +922,15 @@ function renderRooms() {
                                 <option value="나비주름" ${c.pleatType==="나비주름"||!c.pleatType?"selected":""}>나비주름</option>
                                 <option value="평주름" ${c.pleatType==="평주름"?"selected":""}>평주름</option>
                                 <option value="민자" ${c.pleatType==="민자"?"selected":""}>민자</option>
-                                <option value="판넬" ${c.pleatType==="판넬"||c.pleat==="panel"?"selected":""}>판넬 제작</option>
+                                <option value="패널" ${c.pleatType==="패널"||c.pleatType==="판넬"||c.pleat==="panel"?"selected":""}>패널 제작</option>
                             </select>
                         </div>
                         <div class="min-w-0">
                             <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">설치 기구</label>
                             <select onchange="updateCurtainData(${room.id}, ${c.id}, 'installType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
                                 <option value="rail" ${c.installType==='rail'?'selected':''}>기본 레일</option>
-                                <option value="rail_2line" ${c.installType==='rail_2line'?'selected':''}>2줄 레일</option>
-                                <option value="rail_3line" ${c.installType==='rail_3line'?'selected':''}>3줄 레일</option>
+                                <option value="rail_2line" ${c.installType==='rail_2line'?'selected':''}>패널 레일 (2줄)</option>
+                                <option value="rail_3line" ${c.installType==='rail_3line'?'selected':''}>패널 레일 (3줄)</option>
                                 <option value="rod35" ${c.installType==='rod35'?'selected':''}>35파이 봉</option>
                                 <option value="rod25" ${c.installType==='rod25'?'selected':''}>25파이 봉</option>
                             </select>

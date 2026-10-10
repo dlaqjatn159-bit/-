@@ -66,7 +66,7 @@
             isWideFabric = (fabricSpec >= 200);
             isSheer = (fab.categoryType === '속지' || label.includes('속지') || (fab.name && fab.name.includes('쉬폰')));
 
-            if (c.pleat === 'panel' || c.pleatType === '판넬') {
+            if (c.pleat === 'panel' || c.pleatType === '패널' || c.pleatType === '판넬') {   // '판넬'은 예전 저장본 호환용
                 isPanel = true;
                 const extraWidth = Math.max(0, width - 90);
                 panelExtraUnits = Math.ceil(extraWidth / 30);
@@ -75,7 +75,7 @@
                 totalYards = Math.ceil((width + 20) / 90) || 1;
                 numWidths = Math.ceil(width / fabricSpec) || 1;
                 fabricSellingCost = Math.round(totalYards * (fab.price || 0)) + panelConsumerLabor;
-                qtyText = `판넬 제작 (가로:${c.width}cm/높이:${actualH}cm)`;
+                qtyText = `패널 제작 (가로:${c.width}cm/높이:${actualH}cm)`;
             } else {
                 const pleatVal = parseFloat(c.pleat) || 2.0;
                 const totalW = width * pleatVal;

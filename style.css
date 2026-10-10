@@ -613,3 +613,13 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     user-select: none;
     -webkit-user-select: none;
 }
+
+/* 원단 사진 (photos 폴더에 파일이 있을 때만 보임) */
+.fabric-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}

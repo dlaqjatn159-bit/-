@@ -375,7 +375,9 @@
                 
                 let pool = getLiveCategoryPool(targetCategory);
                 let candidates = [...pool];
-                candidates.sort((a, b) => getV1MatchScore(b, state.editingRoom, targetCategory) - getV1MatchScore(a, state.editingRoom, targetCategory));
+                // 점수가 같으면 사장님이 직접 분류한 원단을 먼저 보여줌 (자동 추정만 된 원단보다 우선)
+                candidates.sort((a, b) => (getV1MatchScore(b, state.editingRoom, targetCategory) - getV1MatchScore(a, state.editingRoom, targetCategory))
+                    || ((typeof isManualTagged === 'function' && isManualTagged(b) ? 1 : 0) - (typeof isManualTagged === 'function' && isManualTagged(a) ? 1 : 0)));
                 const showcaseList = candidates.slice(0, 3);
 
                 html += '<div class="bookmark-stage" style="padding: 1.5rem 2rem; box-sizing: border-box;">';
@@ -384,14 +386,20 @@
                 showcaseList.forEach((f, idx) => {
                     const bgStyle = idx === 0 ? SOLID_TEXTURES.l1 : (idx === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
                     const tagText = (f.tags && f.tags.length > 0) ? f.tags.join(' ') : (`#${f.unit || '폭'}`);
+                    const reasonText = (typeof recommendReason === 'function') ? recommendReason(f, state.editingRoom, targetCategory) : '';
+                    const photoTag = (typeof fabricPhotoUrls === 'function')
+                        ? `<img class="fabric-photo" alt="" loading="lazy" data-id="${f.id}" data-i="0" src="${fabricPhotoUrls(f.id)[0]}" onerror="window.concierge.imgFallback(this)">`
+                        : '';
                     const pillTag = `[${f.book || '샘플'}] ${queueItem.label}`;
 
                     html += `<div class="bookmark-card" onclick="window.concierge.handleQueueFabricClick('${f.id}')" style="position: relative; width: 100%; height: 100%; cursor: pointer;">`;
                     html += `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>`;
+                    html += photoTag;
                     html += '<div class="bookmark-gradient" style="pointer-events: none;"></div>';
                     html += '<div class="bookmark-content" style="pointer-events: none;">';
                     html += `<span class="bookmark-tag">${pillTag}</span>`;
                     html += `<h3 class="bookmark-name font-serif-kr">${f.name}</h3>`;
+                    if (reasonText) html += `<p class="bookmark-desc" style="font-weight: 600; color: #fff;">${reasonText}</p>`;
                     html += `<p class="bookmark-desc">${tagText}</p>`;
                     html += '</div></div>';
                 });
@@ -687,12 +695,12 @@
                         width: Number(state.editingRoom.width),
                         height: Number(state.editingRoom.height),
                         pleat: isBlind ? '1.0' : (item.presetType === 'panel' ? 'panel' : '2.0'),
-                        pleatType: isBlind ? '민자' : (item.presetType === 'panel' ? '판넬' : '나비주름'),
+                        pleatType: isBlind ? '민자' : (item.presetType === 'panel' ? '패널' : '나비주름'),
                         bookFilter: "ALL",
                         fabricId: item.fabricId,
                         installType: isBlind ? 'none' : (item.presetType === 'panel' ? 'rail_2line' : 'rail'),
                         floorGap: item.floorGap || 0,
-                        hwName: isBlind ? '블라인드 일체형' : (item.presetType === 'panel' ? '2줄 판넬/커튼 레일' : '기본 레일'),
+                        hwName: isBlind ? '블라인드 일체형' : (item.presetType === 'panel' ? '2줄 패널 레일' : '기본 레일'),
                         hwPrice: isBlind ? 0 : 1000,
                         shapeFee: isBlind ? 0 : ((item.presetType === 'drape' && state.editingRoom.shapeFee) ? 3000 : 0),
                         leadBand: isBlind ? false : Boolean(item.presetType === 'sheer' && state.editingRoom.leadBand),
@@ -719,6 +727,12 @@
         goToCheckout: function() {
             syncToV1MasterRooms();
             goToStep("7-Final-Dossier");
+        },
+        // 원단 사진 불러오기 실패 시 다음 확장자(.jpg → .webp → .png)를 시도하고, 모두 없으면 사진 칸을 없앰
+        imgFallback: function(el) {
+            const i = parseInt(el.getAttribute('data-i') || '0', 10) + 1;
+            const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(el.getAttribute('data-id')) : [];
+            if (i < urls.length) { el.setAttribute('data-i', i); el.src = urls[i]; } else { el.remove(); }
         },
         staffTap: function() {
             if (window.RedamAuth) window.RedamAuth.tap();

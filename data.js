@@ -12,6 +12,7 @@ const STORE_KEYS = {
     pin: 'redam_pin_v1',             // 직원 모드 PIN(해시)
     draft: 'redam_draft_v1',         // 작성 중인 상담 자동 저장
     history: 'redam_history_v1',     // 지난 상담 이력 (직원 모드에서만 열람)
+    tags: 'redam_tags_v1',           // 사장님이 직접 지정한 원단 분류(언더톤·무드)
     legacy: 'curtain_fabric_db_v23'  // 구버전 앱이 남긴 데이터 (원가 포함 → 삭제 권장)
 };
 
@@ -162,11 +163,50 @@ function autoTagFabricAttributes(fabric) {
     return fabric;
 }
 
+// ---- 분류 이름표 (화면 표시용) ----
+const TONE_LABELS = { warm: '웜', cool: '쿨', neutral: '뉴트럴', deep: '딥' };
+const MOOD_LABELS = {
+    soft_warm: '소프트 웜', urban_clean: '어반 클린', balanced_neutral: '밸런스 뉴트럴',
+    textured_linen: '텍스처 린넨', deep_private: '딥 프라이빗', airy_bright: '에어리 브라이트'
+};
+const MOOD_HINTS = {
+    soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 도시적인 느낌', balanced_neutral: '어디에나 무난한 느낌',
+    textured_linen: '결이 살아있는 자연스러운 느낌', deep_private: '차분하고 프라이빗한 느낌', airy_bright: '가볍고 환한 느낌'
+};
+
+// 엑셀에 한글로 적어도(웜/쿨/…, 소프트 웜/…) 코드로 바꿔 읽음
+function normalizeToneInput(v) {
+    const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (!s) return null;
+    if (TONE_LABELS[s]) return s;
+    const map = { '웜': 'warm', '따뜻': 'warm', '쿨': 'cool', '차가운': 'cool', '뉴트럴': 'neutral', '중간': 'neutral', '무채색': 'neutral', '딥': 'deep', '다크': 'deep' };
+    for (const k in map) if (s.startsWith(k)) return map[k];
+    return null;
+}
+function normalizeMoodInput(v) {
+    const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (!s) return null;
+    if (MOOD_LABELS[s]) return s;
+    for (const code in MOOD_LABELS) if (MOOD_LABELS[code].replace(/\s+/g, '') === s) return code;
+    return null;
+}
+
+// 바닥·벽 톤으로 공간의 분위기를 정함 (예전에는 항상 '소프트 웜'으로 고정돼 있어 선택이 추천에 반영되지 않았음)
+function deriveRoomMood(room) {
+    const f = room.floorTone || 'warm', w = room.wallTone || 'warm';
+    if (f === 'deep' || w === 'deep') return 'deep_private';
+    if (f === w) return f === 'warm' ? 'soft_warm' : (f === 'cool' ? 'urban_clean' : 'balanced_neutral');
+    return 'balanced_neutral';
+}
+
+function isManualTagged(f) { return !!(f && f.manual && f.manual.tone && f.manual.mood); }
+
 function calculateFabricMatchScore(fabric, room, category) {
     let score = 0;
     const fTone = fabric.tone || 'neutral';
     const floorT = room.floorTone || 'warm';
     const wallT = room.wallTone || 'warm';
+    const roomMood = deriveRoomMood(room);
 
     if (floorT === wallT) {
         if (fTone === floorT) score += 4;
@@ -180,16 +220,88 @@ function calculateFabricMatchScore(fabric, room, category) {
         score += 4;
     }
 
-    if (fabric.mood === room.mood) {
+    if (fabric.mood === roomMood) {
         score += 4;
     } else {
-        if (room.mood === 'soft_warm' && fabric.mood === 'textured_linen') score += 2;
-        if (room.mood === 'urban_clean' && fabric.mood === 'airy_bright') score += 2;
-        if (room.mood === 'balanced_neutral' && (fabric.mood === 'soft_warm' || fabric.mood === 'urban_clean')) score += 1;
+        if (roomMood === 'soft_warm' && fabric.mood === 'textured_linen') score += 2;
+        if (roomMood === 'urban_clean' && fabric.mood === 'airy_bright') score += 2;
+        if (roomMood === 'balanced_neutral' && (fabric.mood === 'soft_warm' || fabric.mood === 'urban_clean')) score += 1;
+    }
+
+    // 채광: 환한 공간의 속지는 가볍고 환한 느낌, 어두운 공간의 속지는 따뜻한 느낌을 우대
+    if (category === '속지') {
+        if (room.lightLevel === 'high' && fabric.mood === 'airy_bright') score += 2;
+        if (room.lightLevel === 'low' && fabric.mood === 'soft_warm') score += 2;
     }
 
     if (fabric.categoryType === category) score += 2;
     return score;
+}
+
+// 추천 이유 한 줄 (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
+function recommendReason(fabric, room, category) {
+    if (!isManualTagged(fabric)) return '';
+    const floorT = room.floorTone || 'warm', wallT = room.wallTone || 'warm';
+    const roomMood = deriveRoomMood(room);
+    const parts = [];
+    if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽의 톤 차이를 부드럽게 이어줘요' : '어떤 공간에도 무난하게 어울려요');
+    else if (fabric.tone === floorT) parts.push(`바닥의 ${TONE_LABELS[floorT]} 톤과 잘 어울려요`);
+    else if (fabric.tone === wallT) parts.push(`벽의 ${TONE_LABELS[wallT]} 톤과 잘 어울려요`);
+    if (fabric.mood === roomMood) parts.push(`${MOOD_LABELS[roomMood]} · ${MOOD_HINTS[roomMood]}`);
+    if (category === '속지' && room.lightLevel === 'high' && fabric.mood === 'airy_bright') parts.push('풍부한 햇빛을 가볍게 걸러줘요');
+    if (category === '속지' && room.lightLevel === 'low' && fabric.mood === 'soft_warm') parts.push('차분한 공간을 따뜻하게 밝혀줘요');
+    return parts.slice(0, 2).join(' · ');
+}
+
+// ---- 원단 사진: photos/원단ID.jpg (없으면 .webp, .png 순서로 찾고, 없으면 색상 배경) ----
+function fabricPhotoUrls(id) {
+    const base = 'photos/' + encodeURIComponent(id);
+    return [base + '.jpg', base + '.webp', base + '.png'];
+}
+
+// 사진 파일을 못 찾으면 다음 확장자를 시도하고, 모두 없으면 사진 칸을 없앰
+function photoFallback(el) {
+    const i = parseInt(el.getAttribute('data-i') || '0', 10) + 1;
+    const urls = fabricPhotoUrls(el.getAttribute('data-id'));
+    if (i < urls.length) { el.setAttribute('data-i', i); el.src = urls[i]; } else { el.style.visibility = 'hidden'; }
+}
+
+// ---- 사장님이 직접 지정한 분류(덮어쓰기). 엑셀을 다시 불러와도 유지됩니다 ----
+function loadTagOverrides() {
+    try { const t = JSON.parse(localStorage.getItem(STORE_KEYS.tags)); return (t && typeof t === 'object') ? t : {}; } catch (e) { return {}; }
+}
+function saveTagOverrides(o) {
+    try { localStorage.setItem(STORE_KEYS.tags, JSON.stringify(o)); } catch (e) { console.warn('분류 저장 실패', e); }
+}
+function applyTagOverrides(list) {
+    const o = loadTagOverrides();
+    (list || FABRIC_DB).forEach(f => {
+        f.manual = f.manual || { tone: false, mood: false };
+        const t = o[f.id];
+        if (t && t.tone && TONE_LABELS[t.tone]) { f.tone = t.tone; f.manual.tone = true; }
+        if (t && t.mood && MOOD_LABELS[t.mood]) { f.mood = t.mood; f.manual.mood = true; }
+    });
+}
+function setFabricTag(id, key, val) {
+    const o = loadTagOverrides();
+    o[id] = o[id] || {};
+    if (!val) delete o[id][key]; else o[id][key] = val;
+    if (!o[id].tone && !o[id].mood) delete o[id];
+    saveTagOverrides(o);
+    const f = FABRIC_DB.find(x => x.id === id);
+    if (f) {
+        if (!val) { f[key] = null; f.manual = f.manual || {}; f.manual[key] = false; f.tags = null; autoTagFabricAttributes(f); applyTagOverrides([f]); }
+        else { f[key] = val; f.manual = f.manual || {}; f.manual[key] = true; }
+    }
+    saveFabricDb(false);
+    if (typeof renderTagEditor === 'function') renderTagEditor();
+}
+function clearFabricTags(id) {
+    const o = loadTagOverrides(); delete o[id]; saveTagOverrides(o);
+    const f = FABRIC_DB.find(x => x.id === id);
+    if (f) { f.tone = null; f.mood = null; f.tags = null; f.manual = { tone: false, mood: false }; autoTagFabricAttributes(f); }
+    saveFabricDb(false);
+    if (typeof renderTagEditor === 'function') renderTagEditor();
 }
 
 // ==============================================================
@@ -219,6 +331,7 @@ function loadFabricDb() {
     } catch (e) { loaded = null; }
     if (!Array.isArray(loaded) || loaded.length === 0) loaded = JSON.parse(JSON.stringify(SAMPLE_FABRICS));
     FABRIC_DB = loaded.map(f => autoTagFabricAttributes(f));
+    applyTagOverrides(FABRIC_DB);
     if (typeof updateBookFilterOptions === 'function') updateBookFilterOptions();
     if (typeof renderDbTable === 'function') renderDbTable();
     updateDbBadgeText(`DB 품목 (${FABRIC_DB.length}개)`);
@@ -303,11 +416,12 @@ function buildFabricRecords(dataRows, rules) {
             book, id: uid, name, calcType: detected.calcType, specCm: parsedSpecCm,
             unit: detected.unit, price,
             categoryType: getCol(['상세구분', '구분', '카테고리']) || null,
-            tone: getCol(['언더톤', '톤', '색조']) || null,
-            mood: getCol(['대표무드', '무드', '스타일']) || null,
+            tone: normalizeToneInput(getCol(['언더톤', '톤', '색조'])),
+            mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),
             imageUrl: imgUrlRaw || null,
             extra: Costing.deriveExtra(cost, labor, rules)
         };
+        fabObj.manual = { tone: !!fabObj.tone, mood: !!fabObj.mood };      // 엑셀에 직접 적힌 값인지 기록 (자동 추정 구분용)
         fabrics.push(autoTagFabricAttributes(fabObj));
         costs[uid] = { supplier, cost, labor };
     }
@@ -336,6 +450,7 @@ function applyImportedRows(dataRows, sourceName) {
         return 0;
     }
     FABRIC_DB = res.fabrics;
+    applyTagOverrides(FABRIC_DB);
     Costing.setPrivate({ rules: Costing.state.rules, costs: res.costs });
     savePrivateStore();
     saveFabricDb(true);
@@ -384,8 +499,10 @@ function applyPrivatePack(pack) {
     if (!pack || pack.type !== 'redam-private-pack' || !pack.rules) throw new Error('Re.dam 비공개 팩 형식이 아닙니다.');
     Costing.setPrivate({ rules: pack.rules, costs: pack.costs || {} });
     savePrivateStore();
+    if (pack.tags && typeof pack.tags === 'object') saveTagOverrides(pack.tags);
     if (Array.isArray(pack.fabrics) && pack.fabrics.length > 0) {
         FABRIC_DB = pack.fabrics.map(f => autoTagFabricAttributes(f));
+        applyTagOverrides(FABRIC_DB);
     }
     saveFabricDb(true);
     warnIfQuoteFabricsMissing();
@@ -411,7 +528,7 @@ function handlePrivatePackUpload(event) {
 function exportPrivatePack() {
     if (!Costing.hasData()) { showToast("내보낼 원가 데이터가 없습니다.", "info"); return; }
     const pack = { type: 'redam-private-pack', version: 1, savedAt: new Date().toISOString(),
-        rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB };
+        rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides() };
     const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
