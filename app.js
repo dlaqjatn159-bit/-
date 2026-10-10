@@ -1,0 +1,998 @@
+// ==============================================================
+// app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
+// ==============================================================
+
+// 오류 알림: 직원 모드에서는 자세한 내용을, 고객 모드에서는 조용히 기록만 합니다.
+window.onerror = function(msg, url, lineNo) {
+    console.error('[오류]', msg, url, lineNo);
+    if (typeof appMode !== 'undefined' && appMode === 'staff') {
+        const errorBox = document.createElement('div');
+        errorBox.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#b91c1c;color:#fff;padding:12px;border-radius:12px;font-size:12px;z-index:99999;word-break:break-all;';
+        errorBox.textContent = `[오류] ${msg} (${url ? url.split('/').pop() : 'script'}:${lineNo})`;
+        errorBox.onclick = () => errorBox.remove();
+        document.body.appendChild(errorBox);
+    }
+    return false;
+};
+
+// ==============================================================
+// 1. 시작 & 화면 전환
+// ==============================================================
+let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
+
+window.onload = function() {
+    loadFabricDb();
+    loadPrivateStore();
+    initDefaultRooms();
+    calculateAll();
+    document.body.dataset.mode = 'customer';
+    switchMainTrack('curation');
+
+    if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+    }
+};
+
+// 두 화면만 존재: 'curation'(고객) / 'express'(직원)
+function switchMainTrack(track) {
+    currentMainTrack = track;
+    const expressSec = document.getElementById('trackExpressSection');
+    const curationSec = document.getElementById('trackCurationSection');
+
+    if (expressSec) { expressSec.classList.add('hidden'); expressSec.style.display = 'none'; }
+    if (curationSec) { curationSec.classList.add('hidden'); curationSec.style.display = 'none'; }
+
+    if (track === 'express') {
+        if (expressSec) { expressSec.classList.remove('hidden'); expressSec.style.display = 'block'; }
+        const custVal = (document.getElementById('custName') ? document.getElementById('custName').value : "").trim();
+        const expressCust = document.getElementById('expressCustName');
+        if (expressCust) expressCust.value = custVal;
+        renderRooms();
+        renderDbTable();
+        updatePrivateStatus();
+    } else {
+        if (curationSec) { curationSec.classList.remove('hidden'); curationSec.style.setProperty('display', 'block', 'important'); }
+        if (window.concierge && typeof window.concierge.start === 'function' && !window.__conciergeStarted) {
+            window.__conciergeStarted = true;
+            window.concierge.start();
+        }
+    }
+    calculateAll();
+}
+
+function enterStaffMode() {
+    appMode = 'staff';
+    document.body.dataset.mode = 'staff';
+    if (window.concierge) window.concierge.syncToMaster();   // 고객이 구성한 내용을 직원 화면으로 가져옴
+    Costing.state.enabled = Costing.hasData();
+    switchMainTrack('express');
+    startIdleWatch();
+}
+
+function exitStaffMode(toastMsg) {
+    stopIdleWatch();
+    appMode = 'customer';
+    document.body.dataset.mode = 'customer';
+    Costing.state.enabled = false;
+    // 원가가 화면에 남지 않도록 정리
+    const margin = document.getElementById('marginCollapsibleContent');
+    if (margin) margin.classList.add('hidden');
+    const outDoc = document.getElementById('outputDoc');
+    if (outDoc) outDoc.value = '';
+    renderDbTable();
+    switchMainTrack('curation');
+    if (toastMsg) showToast(toastMsg, 'info');
+}
+
+// 직원 화면에서 만든 견적을 고객에게 그대로 보여주기
+function presentToCustomer() {
+    calculateAll();
+    const fee = globalInstallFee;
+    exitStaffMode();                       // 원가 없는 상태로 다시 계산됨
+    if (window.concierge) window.concierge.showProposalFromRooms(rooms, fee);
+}
+
+// 새 상담 시작: 이전 고객의 입력을 전부 비움
+function startNewConsultation() {
+    if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?')) return;
+    initDefaultRooms();
+    globalInstallFee = 30000;
+    globalVatOption = 'consumer';
+    const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
+    const vat = document.getElementById('expressVatOption'); if (vat) vat.value = globalVatOption;
+    if (window.concierge) window.concierge.resetAll();
+    const expressCust = document.getElementById('expressCustName'); if (expressCust) expressCust.value = '';
+    renderRooms();
+    calculateAll();
+    showToast('새 상담을 시작합니다.');
+}
+
+// ==============================================================
+// 2. 직원 PIN (로고 5번 연속 탭 → PIN 입력)
+// ==============================================================
+const RedamAuth = (function() {
+    let taps = 0, tapTimer = null;
+    let mode = 'verify';        // 'verify' | 'setup' | 'change'
+    let fails = 0, lockedUntil = 0;
+
+    function el(id) { return document.getElementById(id); }
+
+    async function hashPin(pin, salt) {
+        const text = `${salt}:${pin}`;
+        if (window.crypto && window.crypto.subtle) {
+            const buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        let h = 5381;                                 // 보안 컨텍스트가 아닐 때의 대체 방식
+        for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) >>> 0;
+        return 'f' + h.toString(16);
+    }
+    function loadStored() { try { return JSON.parse(localStorage.getItem(STORE_KEYS.pin)); } catch (e) { return null; } }
+
+    function openModal(m) {
+        mode = m;
+        el('pinInput').value = ''; el('pinInput2').value = ''; el('pinError').textContent = '';
+        const two = (m === 'setup' || m === 'change');
+        el('pinInput2').style.display = two ? 'block' : 'none';
+        el('pinTitle').textContent = m === 'verify' ? '직원 모드' : (m === 'setup' ? '직원 PIN 만들기' : 'PIN 변경');
+        el('pinDesc').textContent = m === 'verify' ? 'PIN을 입력해 주세요.'
+            : '숫자 4~8자리를 정하고 한 번 더 입력해 주세요. (분실하면 복구할 수 없으니 꼭 기억해 두세요)';
+        el('pinInput').placeholder = two ? '새 PIN' : '••••';
+        el('pinInput2').placeholder = '새 PIN 확인';
+        el('pinModal').classList.remove('hidden');
+        setTimeout(() => el('pinInput').focus(), 50);
+    }
+    function closeModal() { el('pinModal').classList.add('hidden'); el('pinInput').value = ''; el('pinInput2').value = ''; }
+
+    return {
+        // 로고를 2초 안에 5번 탭하면 PIN 창을 연다 (고객이 우연히 누르는 것을 방지)
+        tap: function() {
+            if (appMode === 'staff') return;
+            taps++;
+            clearTimeout(tapTimer);
+            tapTimer = setTimeout(() => { taps = 0; }, 2000);
+            if (taps >= 5) { taps = 0; this.requestStaff(); }
+        },
+        requestStaff: function() { openModal(loadStored() ? 'verify' : 'setup'); },
+        changePin: function() { openModal('change'); },
+        cancel: closeModal,
+        submit: async function() {
+            const pin = el('pinInput').value.trim();
+            const err = el('pinError');
+            if (mode === 'verify') {
+                if (Date.now() < lockedUntil) { err.textContent = `잠시 후 다시 시도해 주세요. (${Math.ceil((lockedUntil - Date.now()) / 1000)}초)`; return; }
+                const st = loadStored();
+                if (st && (await hashPin(pin, st.salt)) === st.hash) {
+                    fails = 0; closeModal(); enterStaffMode();
+                } else {
+                    fails++;
+                    el('pinInput').value = '';
+                    if (fails >= 5) { fails = 0; lockedUntil = Date.now() + 60000; err.textContent = '5회 틀렸습니다. 1분 뒤에 다시 시도해 주세요.'; }
+                    else err.textContent = 'PIN이 맞지 않습니다.';
+                }
+            } else {
+                const pin2 = el('pinInput2').value.trim();
+                if (!/^\d{4,8}$/.test(pin)) { err.textContent = '숫자 4~8자리로 입력해 주세요.'; return; }
+                if (pin !== pin2) { err.textContent = '두 번 입력한 PIN이 다릅니다.'; return; }
+                const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+                localStorage.setItem(STORE_KEYS.pin, JSON.stringify({ salt, hash: await hashPin(pin, salt) }));
+                const wasSetup = (mode === 'setup');
+                closeModal();
+                if (wasSetup) enterStaffMode(); else showToast('PIN을 변경했습니다.');
+            }
+        }
+    };
+})();
+window.RedamAuth = RedamAuth;
+
+// 일정 시간 조작이 없으면 자동으로 고객 화면으로 복귀
+const IDLE_LIMIT_MS = 5 * 60 * 1000;
+let idleTimer = null, lastActivity = Date.now();
+function markActivity() { lastActivity = Date.now(); }
+function startIdleWatch() {
+    lastActivity = Date.now();
+    ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, markActivity, true));
+    clearInterval(idleTimer);
+    idleTimer = setInterval(() => {
+        if (appMode === 'staff' && Date.now() - lastActivity > IDLE_LIMIT_MS) exitStaffMode('자동으로 고객 화면으로 돌아왔습니다.');
+    }, 10000);
+}
+function stopIdleWatch() {
+    clearInterval(idleTimer);
+    ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.removeEventListener(ev, markActivity, true));
+}
+
+// ==============================================================
+// 3. 직원 화면: 데이터 관리 표시
+// ==============================================================
+function updatePrivateStatus() {
+    const st = document.getElementById('privStatus');
+    if (st) {
+        st.textContent = Costing.hasData()
+            ? `원가 데이터: 있음 (${Object.keys(Costing.state.costs).length}개 품목)`
+            : '원가 데이터: 없음 → 아래 "비공개 팩 불러오기"를 먼저 해 주세요';
+        st.style.color = Costing.hasData() ? '' : '#b91c1c';
+    }
+    const legacyBtn = document.getElementById('legacyPurgeBtn');
+    if (legacyBtn) legacyBtn.style.display = hasLegacyData() ? '' : 'none';
+}
+function purgeLegacyDataConfirm() {
+    if (!confirm('구버전 앱이 남긴 데이터(원가 포함)를 이 기기에서 삭제합니다. 계속할까요?')) return;
+    purgeLegacyData();
+    updatePrivateStatus();
+    showToast('구버전 데이터를 삭제했습니다.');
+}
+
+function toggleMarginSection(forceOpen) {
+    const content = document.getElementById('marginCollapsibleContent');
+    const chevron = document.getElementById('marginAccordionChevron');
+    const statusText = document.getElementById('marginAccordionStatus');
+    const badge = document.getElementById('resMarginRateBadge');
+    if (!content) return;
+
+    const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
+    if (shouldOpen) {
+        content.classList.remove('hidden');
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+        if (statusText) statusText.textContent = '접기';
+        if (badge) badge.classList.remove('hidden');
+    } else {
+        content.classList.add('hidden');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+        if (statusText) statusText.textContent = '펼치기';
+        if (badge) badge.classList.add('hidden');
+    }
+}
+
+function syncCustomerData() {
+    calculateAll();
+    const custName = (document.getElementById('custName') ? document.getElementById('custName').value : "").trim();
+    const expressCust = document.getElementById('expressCustName');
+
+    if (expressCust && expressCust.value !== custName) expressCust.value = custName;
+}
+
+function updateGlobalInstallFee(val) {
+    globalInstallFee = parseFloat(val) || 0;
+    const expEl = document.getElementById('expressInstallFee');
+    if (expEl && expEl.value != globalInstallFee) expEl.value = globalInstallFee;
+    calculateAll();
+}
+
+function updateGlobalVatOption(val) {
+    globalVatOption = val;
+    const expEl = document.getElementById('expressVatOption');
+    if (expEl && expEl.value !== globalVatOption) expEl.value = globalVatOption;
+    calculateAll();
+}
+
+// ==============================================================
+// 2. ROOM & CURTAIN MANAGEMENT
+// ==============================================================
+const PRESET_LABEL_MAP = {
+    sheer: "속지",
+    drape: "겉지",
+    blind: "블라인드",
+    panel: "패널 커튼",
+    "": "품목 미지정"
+};
+
+function getNextCurtainLabel(room, presetType) {
+    const baseName = PRESET_LABEL_MAP[presetType] || "품목";
+    if (!presetType) return "품목 미지정";
+    
+    const sameItems = room.curtains.filter(c => c.label.startsWith(baseName));
+    if (sameItems.length === 0) {
+        return baseName;
+    }
+    return `${baseName} ${sameItems.length + 1}`;
+}
+
+function addRoom() {
+    const nextIdx = rooms.length + 1;
+    const defFab = FABRIC_DB[0] ? FABRIC_DB[0].id : "DAM_WIDE_01";
+    const newRoom = {
+        id: roomIdCounter++,
+        name: `작은방 ${rooms.length >= 2 ? rooms.length - 1 : nextIdx}`,
+        sunlight: "east",
+        lightLevel: "mid",
+        floorTone: "warm",
+        wallTone: "cool",
+        mood: "soft_warm",
+        curtains: [
+            { id: curtainIdCounter++, label: "속지", presetType: "sheer", width: 200, height: 200, pleat: "2.0", pleatType: "나비주름", bookFilter: "ALL", fabricId: defFab, installType: "rail", floorGap: 0, hwName: "기본 레일", hwPrice: 1000, shapeFee: 0, leadBand: true, hotelFit: false }
+        ]
+    };
+    rooms.push(newRoom);
+    renderRooms();
+    calculateAll();
+    showToast(`[${newRoom.name}] 공간이 추가되었습니다.`);
+}
+
+function removeRoom(roomId) {
+    if (rooms.length <= 1) {
+        showToast("최소 1개의 공간이 필요합니다.", "info");
+        return;
+    }
+    rooms = rooms.filter(r => r.id !== roomId);
+    renderRooms();
+    calculateAll();
+    showToast("공간이 삭제되었습니다.");
+}
+
+function toggleHotelFit(roomId, curtainId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    const c = room.curtains.find(item => item.id === curtainId);
+    if (!c) return;
+
+    const fab = FABRIC_DB.find(f => f.id === c.fabricId);
+    if (fab && fab.calcType === "hebe") {
+        c.hotelFit = false;
+        return;
+    }
+
+    c.hotelFit = !c.hotelFit;
+    renderRooms();
+    calculateAll();
+}
+
+function addCurtainToRoom(roomId, presetType = "") {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+
+    let targetFabId = FABRIC_DB[0] ? FABRIC_DB[0].id : "DAM_WIDE_01";
+    let shapeFee = 0;
+    let leadBand = false;
+    let pleat = "2.0";
+    let pleatType = "나비주름";
+    let installType = "rail";
+    let hwName = "기본 레일";
+    let hwPrice = 1000;
+    let appliedPreset = presetType;
+    let newLabel = getNextCurtainLabel(room, presetType);
+
+    if (presetType === "sheer") {
+        const sheerFab = FABRIC_DB.find(f => f.categoryType === "속지");
+        if (sheerFab) targetFabId = sheerFab.id;
+        leadBand = true;
+    } else if (presetType === "drape") {
+        const drapeFab = FABRIC_DB.find(f => f.categoryType === "겉지");
+        if (drapeFab) targetFabId = drapeFab.id;
+        shapeFee = 3000;
+    } else if (presetType === "blind") {
+        const blindFab = FABRIC_DB.find(f => f.categoryType === "블라인드");
+        if (blindFab) targetFabId = blindFab.id;
+    } else if (presetType === "panel") {
+        const panelFab = FABRIC_DB.find(f => f.categoryType === "겉지") || FABRIC_DB[0];
+        if (panelFab) targetFabId = panelFab.id;
+        pleat = "panel";
+        pleatType = "판넬";
+        c.installType = "rail_2line";
+        c.hwName = "2줄 판넬/커튼 레일";
+        c.hwPrice = 17000;
+    }
+
+    const refW = room.curtains[0] ? room.curtains[0].width : 250;
+    const refH = room.curtains[0] ? room.curtains[0].height : 230;
+
+    room.curtains.push({
+        id: curtainIdCounter++,
+        label: newLabel,
+        presetType: appliedPreset,
+        width: refW,
+        height: refH,
+        pleat: pleat,
+        pleatType: pleatType,
+        bookFilter: "ALL",
+        fabricId: targetFabId,
+        installType: installType,
+        floorGap: 0,
+        hwName: hwName,
+        hwPrice: hwPrice,
+        shapeFee: shapeFee,
+        leadBand: leadBand,
+        hotelFit: false
+    });
+
+    renderRooms();
+    calculateAll();
+    showToast(`[${room.name}]에 '${newLabel}' 품목이 추가되었습니다.`);
+}
+
+function removeCurtainFromRoom(roomId, curtainId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    if (room.curtains.length <= 1) {
+        showToast("공간 당 최소 1개 품목이 필요합니다.", "info");
+        return;
+    }
+    room.curtains = room.curtains.filter(c => c.id !== curtainId);
+    renderRooms();
+    calculateAll();
+}
+
+function updateRoomName(roomId, name) {
+    const room = rooms.find(r => r.id === roomId);
+    if (room) {
+        room.name = name;
+        calculateAll();
+    }
+}
+
+function updateCurtainData(roomId, curtainId, key, val) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    const c = room.curtains.find(item => item.id === curtainId);
+    if (!c) return;
+
+    c[key] = val;
+
+    if (key === 'bookFilter') {
+        if (val !== 'ALL') {
+            const match = FABRIC_DB.find(f => f.book === val && f.id === c.fabricId);
+            if (!match) {
+                const firstInBook = FABRIC_DB.find(f => f.book === val);
+                if (firstInBook) {
+                    c.fabricId = firstInBook.id;
+                    if (firstInBook.calcType === 'hebe') c.hotelFit = false;
+                }
+            }
+        }
+        renderRooms();
+    } else if (key === 'fabricId') {
+        const selFab = FABRIC_DB.find(f => f.id === val);
+        if (selFab) {
+            if (selFab.calcType === 'hebe') {
+                c.hotelFit = false;
+            }
+            if (c.bookFilter !== 'ALL' && selFab.book !== c.bookFilter) {
+                c.bookFilter = selFab.book;
+            }
+        }
+        renderRooms();
+    } else if (key === 'installType') {
+        if (val === 'rod35') {
+            c.hwName = "35파이 봉";
+            c.hwPrice = 2000;
+        } else if (val === 'rod25') {
+            c.hwName = "25파이 봉";
+            c.hwPrice = 1500;
+        } else if (val === 'rail_2line') {
+            c.hwName = "2줄 판넬/커튼 레일";
+            c.hwPrice = 17000;
+        } else if (val === 'rail_3line') {
+            c.hwName = "3줄 판넬/커튼 레일";
+            c.hwPrice = 20000;
+        } else {
+            c.hwName = "기본 레일";
+            c.hwPrice = 1000;
+        }
+        renderRooms();
+    }
+    calculateAll();
+}
+
+function changeCurtainCategoryPreset(roomId, curtainId, preset) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    const c = room.curtains.find(item => item.id === curtainId);
+    if (!c) return;
+
+    c.presetType = preset;
+    c.label = getNextCurtainLabel(room, preset);
+
+    if (preset === 'sheer') {
+        const f = FABRIC_DB.find(item => item.categoryType === '속지') || FABRIC_DB[0];
+        if (f) c.fabricId = f.id;
+        c.pleat = "2.0";
+        c.pleatType = "나비주름";
+        c.installType = "rail";
+        c.hwName = "기본 레일";
+        c.hwPrice = 1000;
+        c.leadBand = true;
+        c.shapeFee = 0;
+        c.hotelFit = false;
+    } else if (preset === 'drape') {
+        const f = FABRIC_DB.find(item => item.categoryType === '겉지') || FABRIC_DB[0];
+        if (f) c.fabricId = f.id;
+        c.pleat = "2.0";
+        c.pleatType = "나비주름";
+        c.installType = "rail";
+        c.hwName = "기본 레일";
+        c.hwPrice = 1000;
+        c.shapeFee = 3000;
+        c.leadBand = false;
+        c.hotelFit = false;
+    } else if (preset === 'blind') {
+        const f = FABRIC_DB.find(item => item.categoryType === '블라인드') || FABRIC_DB[0];
+        if (f) c.fabricId = f.id;
+        c.shapeFee = 0;
+        c.leadBand = false;
+        c.hotelFit = false;
+    } else if (preset === 'panel') {
+        const f = FABRIC_DB.find(item => item.categoryType === '겉지') || FABRIC_DB[0];
+        if (f) c.fabricId = f.id;
+        c.pleat = "panel";
+        c.pleatType = "판넬";
+        c.installType = "rail_2line";
+        c.hwName = "2줄 판넬/커튼 레일";
+        c.hwPrice = 17000;
+        c.shapeFee = 0;
+        c.leadBand = false;
+        c.hotelFit = false;
+    }
+
+    renderRooms();
+    calculateAll();
+}
+
+function renderRooms() {
+    const container = document.getElementById('roomsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const books = [...new Set(FABRIC_DB.map(f => f.book))];
+
+    rooms.forEach((room, roomIndex) => {
+        const roomCard = document.createElement('div');
+        roomCard.className = "bg-white rounded-2xl p-3.5 sm:p-5 md:p-6 shadow-sm border border-slate-200 space-y-3 sm:space-y-4 relative w-full min-w-0";
+
+        let curtainsHtml = "";
+        room.curtains.forEach((c, curtainIndex) => {
+            const filteredFabrics = c.bookFilter === "ALL" ? FABRIC_DB : FABRIC_DB.filter(f => f.book === c.bookFilter);
+            let fabricOptionsHtml = "";
+
+            if (filteredFabrics.length === 0) {
+                fabricOptionsHtml = `<option value="">제품 없음</option>`;
+            } else {
+                const groupBooks = [...new Set(filteredFabrics.map(f => f.book))];
+                groupBooks.forEach(b => {
+                    fabricOptionsHtml += `<optgroup label="${b}">`;
+                    filteredFabrics.filter(f => f.book === b).forEach(f => {
+                        const selected = (f.id === c.fabricId) ? "selected" : "";
+                        let badgeDesc = f.calcType === "hebe" ? "헤베" : (f.calcType === "width" ? `폭당 ${f.specCm}cm` : `Y당 ${f.specCm}cm`);
+                        fabricOptionsHtml += `<option value="${f.id}" ${selected}>[${badgeDesc}] ${f.name} - ${(f.price||0).toLocaleString()}원/${f.unit}</option>`;
+                    });
+                    fabricOptionsHtml += `</optgroup>`;
+                });
+            }
+
+            let curFab = FABRIC_DB.find(f => f.id === c.fabricId);
+            if (!curFab && FABRIC_DB.length > 0) {
+                curFab = FABRIC_DB[0];
+                c.fabricId = curFab.id;
+            }
+            const isBlind = curFab && curFab.calcType === "hebe";
+
+            let deduction = 3;
+            if (c.installType === 'rod35') deduction = 10;
+            else if (c.installType === 'rod25') deduction = 9;
+
+            const floorGapVal = parseFloat(c.floorGap) || 0;
+            const actualCurtainHeight = isBlind ? c.height : Math.max(0, (c.height || 0) - deduction + floorGapVal);
+
+            curtainsHtml += `
+                <div class="bg-slate-50/80 rounded-xl p-3 sm:p-4 border border-slate-200 space-y-2.5 sm:space-y-3 relative w-full min-w-0">
+                    <div class="flex justify-between items-center border-b border-slate-200/80 pb-2 gap-2">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <span class="w-5 h-5 rounded-full bg-indigo-900 text-amber-200 text-[10px] flex items-center justify-center font-bold flex-shrink-0">${curtainIndex + 1}</span>
+                            <input type="text" value="${c.label}" onchange="updateCurtainData(${room.id}, ${c.id}, 'label', this.value)" class="font-bold text-slate-800 text-xs outline-none bg-transparent hover:bg-white focus:bg-white border-b border-transparent focus:border-amber-400 px-1 w-full min-w-0">
+                        </div>
+                        ${room.curtains.length > 1 ? `
+                            <button onclick="removeCurtainFromRoom(${room.id},${c.id})" class="whitespace-nowrap flex-shrink-0 text-[11px] text-rose-500 hover:text-rose-700 font-bold px-1.5 py-0.5 rounded hover:bg-rose-50 transition flex items-center gap-1">
+                                삭제
+                            </button>
+                        ` : ''}
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-1.5 sm:gap-2 items-end">
+                        <div class="min-w-0 flex flex-col justify-end">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 truncate">실측 가로 (cm)</label>
+                            <input type="number" value="${c.width}" oninput="updateCurtainData(${room.id}, ${c.id}, 'width', parseFloat(this.value)||0)" class="w-full h-8 px-2 py-1 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none focus:ring-1 focus:ring-amber-500 min-w-0 box-border">
+                        </div>
+                        <div class="min-w-0 flex flex-col justify-end">
+                            <div class="flex justify-between items-center mb-1 gap-0.5">
+                                <label class="block text-[10px] font-bold text-slate-500 truncate">세로(cm)</label>
+                                ${!isBlind ? `<span class="text-[9px] text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 rounded flex-shrink-0 leading-tight">제작:${actualCurtainHeight}</span>` : ''}
+                            </div>
+                            <input type="number" value="${c.height}" oninput="updateCurtainData(${room.id}, ${c.id}, 'height', parseFloat(this.value)||0)" class="w-full h-8 px-2 py-1 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none focus:ring-1 focus:ring-amber-500 min-w-0 box-border">
+                        </div>
+                        <div class="min-w-0 flex flex-col justify-end">
+                            ${isBlind ? `
+                                <label class="block text-[10px] font-bold text-amber-800 mb-1 truncate">적용 면적</label>
+                                <div class="w-full h-8 px-1.5 py-1 border border-amber-300 rounded-lg text-[11px] font-bold bg-amber-100/80 text-amber-900 text-center flex items-center justify-center truncate box-border">
+                                    최저 2.0헤베
+                                </div>
+                            ` : `
+                                <label class="block text-[10px] font-bold text-slate-500 mb-1 truncate">주름 방식</label>
+                                <select onchange="updateCurtainData(${room.id},${c.id}, 'pleat', this.value)" class="w-full h-8 px-1 py-1 border rounded-lg text-xs font-semibold bg-white outline-none min-w-0 box-border">
+                                    <option value="2.0" ${c.pleat==="2.0"?"selected":""}>2.0배 나비</option>
+                                    <option value="1.5" ${c.pleat==="1.5"?"selected":""}>1.5배 평주름</option>
+                                    <option value="2.5" ${c.pleat==="2.5"?"selected":""}>2.5배 나비</option>
+                                    <option value="1.0" ${c.pleat==="1.0"?"selected":""}>1.0배 민자</option>
+                                    <option value="panel" ${c.pleat==="panel"?"selected":""}>판넬 제작</option>
+                                </select>
+                            `}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 bg-amber-50/40 p-2 rounded-lg border border-amber-100 ${isBlind ? 'hidden' : ''}">
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">가공 형태</label>
+                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'pleatType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
+                                <option value="나비주름" ${c.pleatType==="나비주름"||!c.pleatType?"selected":""}>나비주름</option>
+                                <option value="평주름" ${c.pleatType==="평주름"?"selected":""}>평주름</option>
+                                <option value="민자" ${c.pleatType==="민자"?"selected":""}>민자</option>
+                                <option value="판넬" ${c.pleatType==="판넬"||c.pleat==="panel"?"selected":""}>판넬 제작</option>
+                            </select>
+                        </div>
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">설치 기구</label>
+                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'installType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
+                                <option value="rail" ${c.installType==='rail'?'selected':''}>기본 레일</option>
+                                <option value="rail_2line" ${c.installType==='rail_2line'?'selected':''}>2줄 레일</option>
+                                <option value="rail_3line" ${c.installType==='rail_3line'?'selected':''}>3줄 레일</option>
+                                <option value="rod35" ${c.installType==='rod35'?'selected':''}>35파이 봉</option>
+                                <option value="rod25" ${c.installType==='rod25'?'selected':''}>25파이 봉</option>
+                            </select>
+                        </div>
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">바닥 간격 (cm)</label>
+                            <input type="number" step="0.5" value="${c.floorGap ?? 0}" oninput="updateCurtainData(${room.id}, ${c.id}, 'floorGap', parseFloat(this.value)||0)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-black text-indigo-900 bg-white outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2">
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">책자 필터</label>
+                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'bookFilter', this.value)" class="w-full px-2 py-1 border rounded-lg text-xs font-semibold bg-white outline-none min-w-0">
+                                <option value="ALL">전체 책자</option>
+                                ${books.map(b => `<option value="${b}" ${c.bookFilter===b?'selected':''}>${b}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2 min-w-0">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <label class="block text-[10px] font-bold text-slate-500">제품 / 원단 선택</label>
+                                <span class="text-[9px] text-amber-900 font-extrabold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 flex-shrink-0">
+                                    ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : ""}
+                                </span>
+                            </div>
+                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'fabricId', this.value)" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0">
+                                ${fabricOptionsHtml}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2 pt-1 border-t border-slate-200/60 ${isBlind ? 'opacity-50 pointer-events-none' : ''}">
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">부자재 품명</label>
+                            <input type="text" value="${isBlind ? '미사용' : c.hwName}" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwName', this.value)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs outline-none min-w-0 bg-white">
+                        </div>
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">자당 단가</label>
+                            <input type="number" value="${isBlind ? 0 : c.hwPrice}" step="100" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwPrice', parseFloat(this.value)||0)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs font-bold outline-none min-w-0 bg-white">
+                        </div>
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">형상기억 가공</label>
+                            <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'shapeFee', parseFloat(this.value))" class="w-full px-1 py-1 border rounded-lg text-xs font-semibold outline-none min-w-0 bg-white">
+                                <option value="3000" ${!isBlind && c.shapeFee===3000?"selected":""}>적용</option>
+                                <option value="0" ${isBlind || c.shapeFee===0?"selected":""}>미적용</option>
+                            </select>
+                        </div>
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-bold text-amber-800 mb-0.5 truncate">하단 리드밴드</label>
+                            <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'leadBand', this.value === 'true')" class="w-full px-1 py-1 border border-amber-300 rounded-lg text-xs font-semibold bg-amber-50/50 outline-none min-w-0">
+                                <option value="false" ${!c.leadBand ? 'selected' : ''}>미적용</option>
+                                <option value="true" ${c.leadBand ? 'selected' : ''}>적용</option>
+                            </select>
+                        </div>
+                        <div class="min-w-0 col-span-2 sm:col-span-1">
+                            <label class="block text-[10px] font-bold text-amber-800 mb-0.5 truncate">호텔 핏</label>
+                            <button type="button" ${isBlind ? 'disabled' : ''} onclick="toggleHotelFit(${room.id}, ${c.id})" class="w-full py-1 border rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 ${c.hotelFit ? 'bg-amber-700 text-white border-amber-800 shadow-sm' : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'}">
+                                <span class="w-3 text-center ${c.hotelFit ? 'font-black text-amber-200' : 'text-slate-400'}">${c.hotelFit ? '✓' : '+'}</span>
+                                <span>호텔핏</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs pt-2 text-slate-600 border-t border-slate-200/70 gap-2">
+                        <div class="text-[11px] sm:text-xs truncate flex-1 min-w-0 text-slate-600">
+                            산출수량: <strong class="text-indigo-950 font-bold" id="curtainQty_${c.id}">-</strong>
+                        </div>
+                        <div class="whitespace-nowrap flex-shrink-0 text-right">
+                            <span class="text-[11px] text-slate-500">판매가:</span>
+                            <strong class="text-amber-800 font-black text-xs sm:text-sm font-mono ml-0.5" id="curtainSub_${c.id}">0원</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        roomCard.innerHTML = `
+            <div class="flex items-center justify-between gap-2 border-b pb-3">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-900 text-xs flex items-center justify-center font-bold flex-shrink-0">${roomIndex + 1}</span>
+                    <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="font-bold text-slate-800 text-sm sm:text-base outline-none hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-amber-500 rounded px-1.5 py-0.5 w-full min-w-0">
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button onclick="addCurtainToRoom(${room.id})" class="whitespace-nowrap bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-amber-300 flex items-center gap-1">
+                        + 추가
+                    </button>
+                    <button onclick="removeRoom(${room.id})" class="whitespace-nowrap text-xs text-rose-500 hover:text-rose-700 font-bold px-2 py-1.5 rounded-xl hover:bg-rose-50 transition flex items-center gap-1">
+                        삭제
+                    </button>
+                </div>
+            </div>
+            <div class="space-y-2.5 sm:space-y-3">${curtainsHtml}</div>
+            <div class="bg-indigo-950 text-white p-3 rounded-xl flex justify-between items-center text-xs shadow-sm">
+                <span class="font-bold flex items-center gap-1 truncate mr-2">${room.name} 소계:</span>
+                <span class="font-black text-amber-300 text-base font-mono whitespace-nowrap flex-shrink-0" id="roomSubtotal_${room.id}">0원</span>
+            </div>
+        `;
+        container.appendChild(roomCard);
+    });
+}
+
+// ==============================================================
+// 직원 화면: 원단 DB 표 / 부가 기능
+// ==============================================================
+
+function toggleDbSection(forceOpen) {
+    const content = document.getElementById('dbCollapsibleContent');
+    const chevron = document.getElementById('dbAccordionChevron');
+    const statusText = document.getElementById('dbAccordionStatus');
+    if (!content) return;
+
+    const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
+    if (shouldOpen) {
+        content.classList.remove('hidden');
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+        if (statusText) statusText.textContent = '접기';
+    } else {
+        content.classList.add('hidden');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+        if (statusText) statusText.textContent = '펼치기';
+    }
+}
+
+
+function renderDbTable() {
+    const tbody = document.getElementById('dbTableBody');
+    if (!tbody) return;
+
+    const countEl = document.getElementById('dbCount');
+    if (countEl) countEl.textContent = FABRIC_DB.length;
+    tbody.innerHTML = '';
+
+    const selectedBook = document.getElementById('dbBookFilter') ? document.getElementById('dbBookFilter').value : "ALL";
+    const searchKeyword = document.getElementById('dbSearchInput') ? document.getElementById('dbSearchInput').value.trim().toLowerCase() : "";
+
+    let filtered = FABRIC_DB;
+    if (selectedBook !== "ALL") filtered = filtered.filter(f => f.book === selectedBook);
+    if (searchKeyword) {
+        filtered = filtered.filter(f => 
+            (f.name && f.name.toLowerCase().includes(searchKeyword)) ||
+            (f.book && f.book.toLowerCase().includes(searchKeyword)) ||
+            (f.id && f.id.toLowerCase().includes(searchKeyword))
+        );
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">등록된 품목이 없습니다.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach((f) => {
+        let badgeDesc = f.calcType === "hebe" ? "헤베" : (f.calcType === "width" ? `폭당 ${f.specCm}cm` : `Y당 ${f.specCm}cm`);
+        let badgeColor = f.calcType === "hebe" ? "bg-amber-100 text-amber-900" : (f.calcType === "width" ? "bg-stone-200 text-stone-800" : (f.specCm >= 200 ? "bg-amber-200 text-amber-950 font-bold" : "bg-stone-100 text-stone-700"));
+        let calcBadge = `<span class="${badgeColor} px-1.5 py-0.5 rounded font-bold">${badgeDesc}</span>`;
+        const pv = (appMode === 'staff') ? Costing.costOf(f.id) : null;
+        let laborText = pv ? `${(pv.labor||0).toLocaleString()}원/${f.unit||'마'}` : '—';
+        let costText = pv ? `${(pv.cost||0).toLocaleString()}원` : '—';
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 transition text-xs">
+                <td class="p-2.5 font-bold text-amber-900">
+                    <div class="text-[10px] text-slate-400 font-normal">${f.book} [${f.id}]</div>
+                    <div class="text-slate-800 font-semibold">${f.name}</div>
+                </td>
+                <td class="p-2.5 font-mono">${calcBadge}</td>
+                <td class="p-2.5 font-mono text-slate-500">${costText}</td>
+                <td class="p-2.5 font-mono text-amber-800">${laborText}</td>
+                <td class="p-2.5 font-mono font-bold text-indigo-950">${(f.price||0).toLocaleString()}원/${f.unit||'폭'}</td>
+            </tr>
+        `;
+    });
+}
+
+function updateBookFilterOptions() {
+    const books = [...new Set(FABRIC_DB.map(f => f.book))];
+    const filterSelect = document.getElementById('dbBookFilter');
+    const currentVal = filterSelect ? filterSelect.value : "ALL";
+
+    if (filterSelect) {
+        filterSelect.innerHTML = `<option value="ALL">전체 책자 보기 (${FABRIC_DB.length}개)</option>`;
+        books.forEach(b => {
+            const count = FABRIC_DB.filter(f => f.book === b).length;
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = `${b} (${count}개)`;
+            filterSelect.appendChild(opt);
+        });
+        if (books.includes(currentVal)) filterSelect.value = currentVal;
+    }
+}
+
+function copyToClipboard() {
+    const textarea = document.getElementById('outputDoc');
+    if (!textarea.value) return;
+    textarea.select();
+    document.execCommand('copy');
+    showToast("클립보드에 복사되었습니다!");
+}
+
+function openTicketModal() {
+    calculateAll();
+    const custName = (document.getElementById('custName').value || "").trim();
+    const grandTotal = document.getElementById('totalGrandPrice').textContent;
+
+    const nameEl = document.getElementById('ticketCustomerName');
+    const totalEl = document.getElementById('ticketGrandTotal');
+    const listEl = document.getElementById('ticketItemsList');
+    const dateEl = document.getElementById('ticketDateText');
+
+    if (nameEl) nameEl.textContent = custName ? `${custName} 고객님 맞춤 제안` : "고객님 맞춤 제안";
+    if (totalEl) totalEl.textContent = grandTotal;
+
+    const today = new Date();
+    if (dateEl) dateEl.textContent = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+
+    if (listEl) {
+        listEl.innerHTML = '';
+        rooms.forEach(r => {
+            const roomTotal = r.curtains.reduce((acc, curr) => acc + (curr.calc ? curr.calc.curtainSubtotal : 0), 0);
+            const curtainRows = r.curtains.map(c => {
+                const calc = c.calc || {};
+                const optionsList = [];
+                if (c.shapeFee > 0) optionsList.push("형상기억");
+                if (c.leadBand) optionsList.push("리드밴드");
+                if (c.hotelFit) optionsList.push("호텔핏");
+                const optBadge = optionsList.length > 0 
+                    ? `<span class="bg-stone-100 text-stone-600 text-[9px] px-1.5 py-0.5 rounded font-sans ml-1">${optionsList.join(', ')}</span>` 
+                    : '';
+
+                return `
+                    <div class="flex justify-between items-center text-[11px] py-1 border-b border-stone-100">
+                        <div class="truncate pr-1">
+                            <span class="font-bold text-stone-800">${c.label}</span>
+                            <span class="text-[10px] text-stone-500 font-sans ml-1">[${calc.fabBook}] ${calc.fabName}</span>
+                            ${optBadge}
+                        </div>
+                        <span class="font-bold text-stone-900 font-mono whitespace-nowrap text-[11px]">${(calc.curtainSubtotal || 0).toLocaleString()}원</span>
+                    </div>
+                `;
+            }).join('');
+
+            const roomCard = document.createElement('div');
+            roomCard.className = "bg-white/80 p-3 rounded-2xl border border-stone-200/70 space-y-1.5";
+            roomCard.innerHTML = `
+                <div class="flex justify-between items-center border-b border-stone-200/80 pb-1">
+                    <span class="font-bold text-stone-900 text-xs">${r.name}</span>
+                    <span class="font-bold text-amber-900 text-[11px] font-mono">${roomTotal.toLocaleString()}원</span>
+                </div>
+                ${curtainRows}
+            `;
+            listEl.appendChild(roomCard);
+        });
+
+        if (globalInstallFee > 0) {
+            const installCard = document.createElement('div');
+            installCard.className = "flex justify-between items-center bg-stone-100/70 px-3 py-2 rounded-xl text-xs font-sans text-stone-700";
+            installCard.innerHTML = `
+                <span class="font-bold text-[11px]">시공 및 설치비</span>
+                <span class="font-bold font-mono text-[11px]">${globalInstallFee.toLocaleString()}원</span>
+            `;
+            listEl.appendChild(installCard);
+        }
+    }
+    document.getElementById('ticketModal').classList.remove('hidden');
+}
+
+function closeTicketModal() {
+    document.getElementById('ticketModal').classList.add('hidden');
+}
+
+async function downloadTicketImage() {
+    const element = document.getElementById('ticketCaptureArea');
+    if (!element) return;
+    showToast("이미지 생성 중...", "info");
+
+    try {
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+        const canvas = await html2canvas(element, { scale: 3, useCORS: true, backgroundColor: null });
+        const custName = (document.getElementById('custName').value || "").trim();
+        const filePrefix = custName ? `${custName}_` : "";
+        const link = document.createElement('a');
+        link.download = `${filePrefix}맞춤견적서.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast("견적서 이미지가 저장되었습니다!");
+    } catch (err) {
+        console.error(err);
+        showToast("이미지 생성 중 오류 발생", "error");
+    }
+}
+
+function printTicket() {
+    window.print();
+}
+
+function showToast(msg, type = "success") {
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+    const toastIcon = document.getElementById('toastIcon');
+
+    if (toastMsg) toastMsg.textContent = msg;
+    if (toastIcon) {
+        if (type === "info") toastIcon.className = "fa-solid fa-circle-info text-amber-600";
+        else if (type === "error") toastIcon.className = "fa-solid fa-circle-xmark text-rose-500";
+        else toastIcon.className = "fa-solid fa-circle-check text-amber-700";
+    }
+    if (toast) {
+        toast.classList.remove('hidden');
+        setTimeout(() => { toast.classList.add('hidden'); }, 2500);
+    }
+}
+
+// ==============================================================
+// V2 -> V1 전역 동기화 정식 엔드포인트 (배열 참조 유지 및 완벽 계산)
+// ==============================================================
+window.syncFromExternalRooms = function(newRooms, newInstallFee) {
+    if (Array.isArray(newRooms) && newRooms.length > 0) {
+        rooms.length = 0;
+        newRooms.forEach((r, idx) => {
+            rooms.push({
+                id: idx + 1,
+                name: r.name,
+                sunlight: r.sunlight || "south",
+                lightLevel: r.lightLevel || "mid",
+                floorTone: r.floorTone || "warm",
+                wallTone: r.wallTone || "cool",
+                mood: r.mood || "soft_warm",
+                curtains: r.curtains.map((c, cIdx) => {
+                    const isBlind = c.presetType === "blind";
+                    return {
+                        id: (idx + 1) * 100 + (cIdx + 1),
+                        label: c.label,
+                        presetType: isBlind ? "blind" : (c.presetType || "drape"),
+                        width: Number(c.width) || 340,
+                        height: Number(c.height) || 235,
+                        pleat: isBlind ? "1.0" : (c.pleat || "2.0"),
+                        pleatType: isBlind ? "민자" : (c.pleatType || "나비주름"),
+                        bookFilter: c.bookFilter || "ALL",
+                        fabricId: c.fabricId,
+                        installType: isBlind ? "none" : (c.installType || "rail"),
+                        floorGap: isBlind ? 0 : (c.floorGap || 0),
+                        hwName: isBlind ? "블라인드 일체형" : (c.hwName || "기본 레일"),
+                        hwPrice: isBlind ? 0 : (c.hwPrice !== undefined ? c.hwPrice : 1000),
+                        shapeFee: isBlind ? 0 : (c.shapeFee || 0),
+                        leadBand: isBlind ? false : Boolean(c.leadBand),
+                        hotelFit: isBlind ? false : Boolean(c.hotelFit),
+                        calc: c.calc
+                    };
+                })
+            });
+        });
+    }
+
+    if (newInstallFee !== undefined) {
+        globalInstallFee = parseFloat(newInstallFee) || 0;
+        const expEl = document.getElementById('expressInstallFee');
+        if (expEl) expEl.value = globalInstallFee;
+    }
+
+    calculateAll();
+    renderRooms();
+};
+

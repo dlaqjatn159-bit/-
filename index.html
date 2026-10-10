@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Re.dam 커튼 & 블라인드 맞춤 견적 시스템</title>
+    <!-- Android & Galaxy PWA App Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#281c15">
+    <meta name="application-name" content="Re.dam 견적기">
+    <!-- Tailwind CSS & Custom Theme Config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        indigo: {
+                            50: '#faf6f0',
+                            100: '#f4ede2',
+                            200: '#e7dac7',
+                            300: '#d7c2a7',
+                            400: '#c5a786',
+                            500: '#af8a66',
+                            600: '#946f4e',
+                            700: '#75543c',
+                            800: '#5c412f',
+                            900: '#3e2c21',
+                            950: '#281c15',
+                        },
+                        slate: {
+                            50: '#fbf9f5',
+                            100: '#f3ede4',
+                            200: '#e5dcd0',
+                            300: '#d5c7b6',
+                            400: '#a89885',
+                            500: '#8c7b69',
+                            600: '#6d5e4f',
+                            700: '#544639',
+                            800: '#3c3127',
+                            900: '#2b221a',
+                            950: '#1b140f',
+                        },
+                        amber: {
+                            100: '#faeee3',
+                            200: '#f3d6c0',
+                            300: '#e8b28f',
+                            400: '#de9467',
+                            500: '#cb7140',
+                            600: '#b45728',
+                            700: '#91401a',
+                            800: '#733315',
+                            900: '#58240d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- PapaParse CSV Parser v5.4.1 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- 엑셀(.xlsx) 직접 읽기 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2canvas for High Quality Image Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Google Serif Font for Aesthetic Quote Ticket -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom Style Sheet (통합본) -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen min-h-dvh relative overflow-x-hidden" data-mode="customer">
+
+    <!-- 고객명/현장명 (고객 화면과 직원 화면이 함께 사용) -->
+    <input type="hidden" id="custName" value="">
+
+    <!-- ============================================================== -->
+    <!-- 직원 화면: 빠른 간편 견적 + 원가 관리 (PIN 필요)                -->
+    <!-- ============================================================== -->
+    <section id="trackExpressSection" class="hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 pt-6 sm:pt-8 pb-safe">
+
+        <div id="staffBanner">
+            <span><i class="fa-solid fa-lock-open"></i> 직원 모드 · 원가가 표시됩니다 (5분간 조작이 없으면 자동 종료)</span>
+            <button onclick="exitStaffMode()" style="text-decoration: underline;">고객 모드로 나가기</button>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-[240px]">
+                <span class="font-serif-kr font-bold text-sm sm:text-base text-slate-800 tracking-tight flex-shrink-0">Re.dam</span>
+                <input type="text" id="expressCustName" value="" placeholder="고객명/현장명 입력" class="w-full max-w-md px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/70" oninput="document.getElementById('custName').value=this.value; syncCustomerData()">
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="startNewConsultation()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold py-2 px-3 sm:px-3.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0">
+                    <i class="fa-solid fa-rotate-right text-[10px]"></i>
+                    <span>새 상담</span>
+                </button>
+                <button onclick="presentToCustomer()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 sm:px-3.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-wand-magic-sparkles text-[10px] text-amber-200"></i>
+                    <span>고객에게 보여주기</span>
+                </button>
+                <button onclick="addRoom()" class="bg-amber-800 hover:bg-amber-900 text-white font-bold py-2 px-3 sm:px-4 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0">
+                    <i class="fa-solid fa-plus text-[10px]"></i> 공간 추가
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 w-full min-w-0">
+            <div class="lg:col-span-7 space-y-5 sm:space-y-6 w-full min-w-0" id="roomsContainer"></div>
+
+            <div class="lg:col-span-5 space-y-5 sm:space-y-6 w-full min-w-0">
+                <div class="bg-gradient-to-br from-[#2b1f17] via-[#36271e] to-[#201711] text-white rounded-2xl p-6 shadow-md relative overflow-hidden border border-amber-900/30">
+                    <div class="relative z-10 space-y-4">
+                        <div class="flex justify-between items-center border-b border-amber-900/40 pb-3">
+                            <span class="text-xs uppercase tracking-wider text-amber-200 font-bold">견적 금액 요약</span>
+
+                                                        <span id="badgeVat"
+                                  class="bg-amber-500/20 text-amber-200 text-xs px-2.5 py-1 rounded-full border border-amber-400/30 font-bold select-none flex items-center gap-1">
+                                <span>일반 소비자 판매가</span>
+                            </span>
+                        </div>
+
+                        <div class="space-y-1.5 text-xs" id="summaryRoomList"></div>
+
+                        <div class="pt-3 border-t border-amber-900/40 space-y-2.5 text-xs font-mono">
+                            <div class="flex justify-between items-center text-amber-100/90">
+                                <span>공간별 제품 합산:</span>
+                                <span class="font-bold text-white"><span id="resRoomsSubtotal">0</span>원</span>
+                            </div>
+
+                            <div class="bg-[#241a13]/90 p-3 rounded-xl border border-amber-900/40 space-y-2 text-xs font-sans">
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-amber-100/80 whitespace-nowrap">전체 시공/출장비:</span>
+                                    <input type="number" id="expressInstallFee" value="30000" step="5000" class="w-28 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-right text-xs font-bold font-mono text-white outline-none focus:ring-1 focus:ring-amber-500" oninput="updateGlobalInstallFee(this.value)">
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-amber-100/80 whitespace-nowrap">부가세(VAT) 구분:</span>
+                                    <select id="expressVatOption" class="w-40 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500" onchange="updateGlobalVatOption(this.value)">
+                                        <option value="consumer" selected>일반 판매가</option>
+                                        <option value="business">세금계산서 (+10%)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between text-slate-200 border-t border-amber-900/30 pt-1.5">
+                                <span>판매가 (시공비 포함):</span>
+                                <span class="font-bold text-white"><span id="resGrandSubtotal">0</span>원</span>
+                            </div>
+                            <div class="flex justify-between text-amber-300">
+                                <span>부가세 (VAT):</span>
+                                <span class="font-bold text-amber-300"><span id="resGrandVat">0</span>원</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-amber-950/60 to-[#1e150f] rounded-xl p-4 border border-amber-500/40 shadow-inner mt-3 select-none">
+                            <div class="flex justify-between items-center mb-1">
+                                <p class="text-xs text-amber-200 font-bold">전체 공간 합산 최종 견적금액</p>
+                                <span class="text-[10px] bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded font-bold border border-amber-400/30" id="resSummaryFinal">0원</span>
+                            </div>
+                            <div class="flex items-baseline justify-between">
+                                <span class="text-3xl md:text-5xl font-black tracking-tight text-amber-300 font-mono" id="totalGrandPrice">0</span>
+                                <span class="text-xl font-bold text-amber-200">원</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="adminMarginCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 transition-all">
+                    <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleMarginSection()">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center text-sm font-bold shadow-inner flex-shrink-0">
+                                DB
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-2 truncate">
+                                    현장 원가 & 정산 관리
+                                    <span id="resMarginRateBadge" class="hidden bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                                        순마진 0%
+                                    </span>
+                                </h3>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400 truncate">터치하여 사입원가 및 예상 순이익 확인 (비공개)</p>
+                            </div>
+                        </div>
+                        <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
+                            <span id="marginAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
+                            <i id="marginAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300"></i>
+                        </button>
+                    </div>
+
+                    <div id="marginCollapsibleContent" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <span class="text-[10px] font-bold text-slate-500 block mb-0.5">총 매입원가 (시공포함)</span>
+                                <span class="text-sm sm:text-base font-black text-slate-800 font-mono" id="resTotalCost">0원</span>
+                            </div>
+                            <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200">
+                                <span class="text-[10px] font-bold text-amber-800 block mb-0.5">예상 순이익</span>
+                                <span class="text-sm sm:text-base font-black text-amber-900 font-mono" id="resNetProfit">0원</span>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-[11px] space-y-1 font-mono text-slate-600">
+                            <div class="flex justify-between">
+                                <span class="font-sans text-slate-500">원단 사입원가:</span>
+                                <span id="resCostFabric" class="font-bold text-slate-700">0원</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-sans text-slate-500">봉제/가공공임:</span>
+                                <span id="resCostLabor" class="font-bold text-slate-700">0원</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-sans text-slate-500">레일·부자재 원가:</span>
+                                <span id="resCostHardware" class="font-bold text-slate-700">0원</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 border-b pb-3">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">통합 서류 자동 생성 & 시트 내보내기</h2>
+                            <p class="text-[11px] text-slate-400">발주서, 카톡 안내문 및 엑셀/구글시트 연동 지원</p>
+                        </div>
+                        <button onclick="downloadCsvFile()" class="bg-amber-800 hover:bg-amber-900 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm mt-1 sm:mt-0">
+                            <i class="fa-solid fa-file-arrow-down text-[11px]"></i> 엑셀 CSV 다운로드
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        <button onclick="openTicketModal()" class="col-span-2 sm:col-span-1 bg-gradient-to-r from-amber-50 to-stone-100 hover:from-amber-100 hover:to-stone-200 text-stone-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300 shadow-sm">
+                            카드 견적서
+                        </button>
+                        <button onclick="generateDoc('factory')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-slate-300">
+                            공장 발주서
+                        </button>
+                        <button onclick="generateDoc('kakao')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300">
+                            카톡 안내문
+                        </button>
+                        <button onclick="generateDoc('sheet')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300">
+                            시트 상세(표)
+                        </button>
+                        <button onclick="generateDoc('ledger')" class="bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-stone-300">
+                            고객대장(1행)
+                        </button>
+                    </div>
+
+                    <div class="relative">
+                        <textarea id="outputDoc" rows="8" readonly placeholder="공장 통합 발주서, 고객 전달용 카톡 안내문, 시트 관리용 표 데이터를 버튼을 눌러 생성하세요." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-relaxed font-mono focus:outline-none resize-none"></textarea>
+                        <button onclick="copyToClipboard()" class="absolute top-3 right-3 bg-white hover:bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg border text-xs shadow-sm flex items-center gap-1 font-semibold">
+                            <i class="fa-regular fa-copy"></i> 복사
+                        </button>
+                    </div>
+                </div>
+
+                <div id="dbSectionCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 transition-all">
+                    <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleDbSection()">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center text-sm font-bold shadow-inner flex-shrink-0">
+                                DB
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5 truncate">
+                                    보관 중인 원단 & 블라인드 DB
+                                    <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0" id="dbCount">0</span>
+                                </h3>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400 truncate">터치하여 원단 품목 및 단가 목록 접기/펼치기 (원가 포함 · 직원 전용)</p>
+                            </div>
+                        </div>
+                        <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap">
+                            <span id="dbAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
+                            <i id="dbAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ml-1"></i>
+                        </button>
+                    </div>
+
+                    <div id="dbCollapsibleContent" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3 sm:space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <select id="dbBookFilter" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderDbTable()">
+                                    <option value="ALL">전체 책자 보기</option>
+                                </select>
+                            </div>
+                            <div>
+                                <input type="text" id="dbSearchInput" placeholder="품명/책자/ID 검색..." class="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-slate-50 outline-none focus:ring-1 focus:ring-amber-500" oninput="renderDbTable()">
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-64 overflow-y-auto custom-scrollbar border rounded-xl border-slate-100">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="sticky top-0 bg-slate-100 text-slate-600 font-bold border-b">
+                                    <tr>
+                                        <th class="p-2.5">책자 / 품명</th>
+                                        <th class="p-2.5">단위 / 규격</th>
+                                        <th class="p-2.5">원단원가</th>
+                                        <th class="p-2.5">기본가공비</th>
+                                        <th class="p-2.5">소비자판매단가</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dbTableBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <footer class="pt-4 border-t border-slate-200 space-y-3 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-600"></span>
+                <span class="text-[11px] font-semibold text-slate-600">Re.dam 단가 및 원단 데이터 관리</span>
+                <span id="privStatus" class="text-[11px] font-bold ml-2"></span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <label class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
+                    <i class="fa-solid fa-file-excel text-[11px] text-amber-700"></i> 단가표 갱신 (엑셀/CSV)
+                    <input type="file" id="fabricFileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFabricFileUpload(event)">
+                </label>
+                <label class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
+                    <i class="fa-solid fa-box-open text-[11px] text-amber-700"></i> 비공개 팩 불러오기
+                    <input type="file" id="packFileInput" accept=".json" class="hidden" onchange="handlePrivatePackUpload(event)">
+                </label>
+                <button onclick="exportPrivatePack()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-floppy-disk text-[11px] text-amber-700"></i> 백업 내려받기
+                </button>
+                <button onclick="RedamAuth.changePin()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">
+                    PIN 변경
+                </button>
+                <button id="legacyPurgeBtn" onclick="purgeLegacyDataConfirm()" style="display:none" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">
+                    구버전 데이터 삭제
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-400">백업 파일에는 원가가 들어 있습니다. 메신저·공개 저장소에 올리지 말고 본인만 보는 곳에 보관하세요.</p>
+        </footer>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TRACK C: v2 풀스크린 비스포크 큐레이션 모드                     -->
+    <!-- ============================================================== -->
+    <section id="trackCurationSection" class="hidden">
+        
+        <!-- v2 뒤로가기 버튼 -->
+        <button id="v2FloatingPrevBtn" onclick="concierge.prevStep()" title="이전 단계">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <!-- v2 풀스크린 뷰포트 -->
+        <main id="v2Viewport"></main>
+
+        <!-- v2 전용 가상 키패드 시트 -->
+        <div id="v2VirtualKeypadSheet" class="keypad-sheet">
+            <div style="width: 100%; max-width: 420px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span id="v2KeypadTargetLabel" style="font-size: 0.72rem; color: var(--brand-muted); font-weight: 700; text-transform: uppercase;">실측 치수</span>
+                    <div style="font-size: 2.1rem; font-weight: 700;" class="font-serif-kr">
+                        <span id="v2KeypadValueDisplay">0</span> <span style="font-size: 0.95rem; color: var(--brand-muted);">cm</span>
+                    </div>
+                </div>
+                <button onclick="concierge.closeKeypad()" style="background: var(--brand-accent); color: #fff; border: none; padding: 0.75rem 1.8rem; border-radius: 14px; font-weight: 700; font-size: 0.88rem; cursor: pointer;">
+                    입력 완료
+                </button>
+            </div>
+            <div class="keypad-grid font-serif-kr">
+                <button class="key-btn" onclick="concierge.pressKey('1')">1</button>
+                <button class="key-btn" onclick="concierge.pressKey('2')">2</button>
+                <button class="key-btn" onclick="concierge.pressKey('3')">3</button>
+                <button class="key-btn" onclick="concierge.pressKey('4')">4</button>
+                <button class="key-btn" onclick="concierge.pressKey('5')">5</button>
+                <button class="key-btn" onclick="concierge.pressKey('6')">6</button>
+                <button class="key-btn" onclick="concierge.pressKey('7')">7</button>
+                <button class="key-btn" onclick="concierge.pressKey('8')">8</button>
+                <button class="key-btn" onclick="concierge.pressKey('9')">9</button>
+                <button class="key-btn" style="font-size: 0.95rem; color: var(--brand-accent);" onclick="concierge.pressKey('C')">초기화</button>
+                <button class="key-btn" onclick="concierge.pressKey('0')">0</button>
+                <button class="key-btn" onclick="concierge.pressKey('DEL')"><i class="fa-solid fa-delete-left"></i></button>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- Ticket Modal -->
+    <div id="ticketModal" class="fixed inset-0 bg-stone-950/75 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 sm:p-6 overflow-y-auto">
+        <div class="bg-white/95 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 relative my-auto border border-stone-200">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-bold text-stone-900 text-sm sm:text-base">고객 발송용 감성 견적서</h3>
+                    <p class="text-[11px] text-stone-500">카카오톡 전송용 이미지(PNG) 또는 바로 출력 지원</p>
+                </div>
+                <button onclick="closeTicketModal()" class="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold flex items-center justify-center transition">✕</button>
+            </div>
+
+            <div class="flex justify-center items-center py-2">
+                <div id="ticketCaptureArea" class="bg-gradient-to-b from-[#fbf9f5] to-[#f4ede4] p-6 sm:p-7 rounded-3xl border border-stone-200/90 shadow-xl w-full max-w-[360px] text-stone-800 font-serif-kr space-y-4">
+                    <div class="flex justify-between items-start border-b border-stone-300/60 pb-3">
+                        <div>
+                            <span class="text-[10px] uppercase tracking-wider text-stone-500 font-sans font-bold">Fabric Styling Card</span>
+                            <h4 class="text-lg sm:text-xl font-bold text-stone-900 mt-0.5" id="ticketCustomerName">고객님 맞춤 제안</h4>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-stone-400 font-sans" id="ticketDateText">2026.10.10</span>
+                            <div class="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-full mt-0.5 font-sans">Re.dam</div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2.5 max-h-[380px] overflow-y-auto custom-scrollbar" id="ticketItemsList"></div>
+
+                    <div class="border-t border-stone-300/60 pt-3 flex justify-between items-baseline font-sans">
+                        <span class="text-xs font-bold text-stone-700">최종 견적 금액 (시공비 포함)</span>
+                        <div class="text-right">
+                            <span class="text-xl sm:text-2xl font-black text-stone-950 font-mono tracking-tight" id="ticketGrandTotal">0</span>
+                            <span class="text-xs font-bold text-stone-700">원</span>
+                        </div>
+                    </div>
+
+                    <p class="text-[9px] text-center text-stone-400 font-sans pt-1">• 전문 핏팅 시공 및 1년 무상 안심 A/S 지원</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200">
+                <button onclick="downloadTicketImage()" class="w-full bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-arrow-down-to-bracket text-xs"></i>
+                    <span>고화질 이미지 저장</span>
+                </button>
+                <button onclick="printTicket()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 px-4 rounded-xl text-xs transition border border-stone-300 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-print text-xs"></i>
+                    <span>견적서 인쇄</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold hidden transition-all z-50 flex items-center gap-2 border border-slate-700">
+        <i class="fa-solid fa-circle-check text-amber-400" id="toastIcon"></i>
+        <span id="toastMsg">처리되었습니다.</span>
+    </div>
+
+    <!-- 직원 PIN 창 -->
+    <div id="pinModal" class="pin-overlay hidden" role="dialog" aria-modal="true">
+        <div class="pin-card">
+            <h3 id="pinTitle">직원 모드</h3>
+            <p id="pinDesc"></p>
+            <input id="pinInput" class="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="8" onkeydown="if(event.key==='Enter'){RedamAuth.submit()}">
+            <input id="pinInput2" class="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="8" style="display:none" onkeydown="if(event.key==='Enter'){RedamAuth.submit()}">
+            <div id="pinError" class="pin-error"></div>
+            <div class="pin-actions">
+                <button onclick="RedamAuth.cancel()">취소</button>
+                <button class="primary" onclick="RedamAuth.submit()">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
+    <script src="pricing.js?v=20261011"></script>
+    <script src="costing.js?v=20261011"></script>
+    <script src="data.js?v=20261011"></script>
+    <script src="calculator.js?v=20261011"></script>
+    <script src="concierge.js?v=20261011"></script>
+    <script src="app.js?v=20261011"></script>
+</body>
+</html>
