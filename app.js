@@ -69,7 +69,7 @@ function enterStaffMode() {
     startIdleWatch();
 }
 
-function exitStaffMode(toastMsg) {
+function exitStaffMode(toastMsg, goToProposal) {
     stopIdleWatch();
     appMode = 'customer';
     document.body.dataset.mode = 'customer';
@@ -80,16 +80,18 @@ function exitStaffMode(toastMsg) {
     const outDoc = document.getElementById('outputDoc');
     if (outDoc) outDoc.value = '';
     renderDbTable();
-    switchMainTrack('curation');
+    switchMainTrack('curation');          // 이 안에서 원가 없는 상태로 다시 계산됨
+    // 직원 화면에서 바꾼 내용을 고객 화면에도 반영
+    if (window.concierge) {
+        if (goToProposal) window.concierge.showProposalFromRooms(rooms, globalInstallFee);
+        else window.concierge.loadFromMaster(rooms, globalInstallFee);
+    }
     if (toastMsg) showToast(toastMsg, 'info');
 }
 
 // 직원 화면에서 만든 견적을 고객에게 그대로 보여주기
 function presentToCustomer() {
-    calculateAll();
-    const fee = globalInstallFee;
-    exitStaffMode();                       // 원가 없는 상태로 다시 계산됨
-    if (window.concierge) window.concierge.showProposalFromRooms(rooms, fee);
+    exitStaffMode(null, true);
 }
 
 // 새 상담 시작: 이전 고객의 입력을 전부 비움
@@ -288,12 +290,20 @@ function getNextCurtainLabel(room, presetType) {
     return `${baseName} ${sameItems.length + 1}`;
 }
 
+function nextRoomName() {
+    const used = new Set(rooms.map(r => r.name));
+    if (!used.has('거실')) return '거실';
+    // 번호는 항상 "가장 큰 번호 + 1" (지운 번호를 다시 쓰지 않아 목록 순서가 뒤섞이지 않음)
+    let max = 0;
+    rooms.forEach(r => { const m = /^작은방 (\d+)$/.exec(r.name); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+    return `작은방 ${max + 1}`;
+}
+
 function addRoom() {
-    const nextIdx = rooms.length + 1;
     const defFab = FABRIC_DB[0] ? FABRIC_DB[0].id : "DAM_WIDE_01";
     const newRoom = {
         id: roomIdCounter++,
-        name: `작은방 ${rooms.length >= 2 ? rooms.length - 1 : nextIdx}`,
+        name: nextRoomName(),
         sunlight: "east",
         lightLevel: "mid",
         floorTone: "warm",
@@ -310,10 +320,6 @@ function addRoom() {
 }
 
 function removeRoom(roomId) {
-    if (rooms.length <= 1) {
-        showToast("최소 1개의 공간이 필요합니다.", "info");
-        return;
-    }
     rooms = rooms.filter(r => r.id !== roomId);
     renderRooms();
     calculateAll();
@@ -531,6 +537,13 @@ function renderRooms() {
     const container = document.getElementById('roomsContainer');
     if (!container) return;
     container.innerHTML = '';
+
+    if (rooms.length === 0) {
+        container.innerHTML = `<div class="bg-white rounded-2xl p-8 border border-dashed border-slate-300 text-center text-sm text-slate-500">
+            등록된 공간이 없습니다. 오른쪽 위 <strong class="text-amber-800">공간 추가</strong>를 눌러 시작하세요.
+        </div>`;
+        return;
+    }
 
     const books = [...new Set(FABRIC_DB.map(f => f.book))];
 
@@ -903,20 +916,190 @@ function closeTicketModal() {
     document.getElementById('ticketModal').classList.add('hidden');
 }
 
-async function downloadTicketImage() {
-    const element = document.getElementById('ticketCaptureArea');
-    if (!element) return;
-    showToast("이미지 생성 중...", "info");
+// ==============================================================
+// 견적서 이미지 — 화면 캡처 대신 직접 그립니다 (글자 잘림 방지, 외부 라이브러리 불필요)
+// ==============================================================
+function ticketData() {
+    calculateAll();
+    const custName = (document.getElementById('custName').value || '').trim();
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return {
+        title: custName ? `${custName} 고객님 맞춤 제안` : '고객님 맞춤 제안',
+        date: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`,
+        rooms: rooms.map(r => {
+            const items = r.curtains.map(c => {
+                const calc = c.calc || {};
+                const opts = [];
+                if (c.shapeFee > 0) opts.push('형상기억');
+                if (c.leadBand) opts.push('리드밴드');
+                if (c.hotelFit) opts.push('호텔핏');
+                return { label: c.label, fab: `[${calc.fabBook || ''}] ${calc.fabName || ''}`, opts, price: calc.curtainSubtotal || 0 };
+            });
+            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items };
+        }),
+        install: globalInstallFee,
+        total: document.getElementById('totalGrandPrice').textContent
+    };
+}
 
+function drawTicket(ctx, data, W) {
+    const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
+    const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    const MONO = 'ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace';
+    const DARK = '#2b221a', MUTED = '#6f5f4f', ACCENT = '#91401a', LINE = '#e5dcd0';
+    const PAD = 87, CX = PAD, CW = W - PAD * 2;
+    const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
+    const spacing = v => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
+    const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+    const hline = (x1, x2, y, color) => { ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke(); };
+    const wrap = (text, maxW) => {
+        const lines = []; let cur = '';
+        for (const word of String(text).split(' ')) {
+            const test = cur ? cur + ' ' + word : word;
+            if (ctx.measureText(test).width <= maxW) { cur = test; continue; }
+            if (cur) lines.push(cur);
+            cur = '';
+            if (ctx.measureText(word).width <= maxW) { cur = word; continue; }
+            let chunk = '';
+            for (const ch of word) { if (ctx.measureText(chunk + ch).width > maxW) { lines.push(chunk); chunk = ch; } else chunk += ch; }
+            cur = chunk;
+        }
+        if (cur) lines.push(cur);
+        return lines;
+    };
+    const text = (str, x, y, align, color) => { ctx.textAlign = align; ctx.fillStyle = color; ctx.fillText(str, x, y); };
+    const won = n => `${n.toLocaleString()}원`;
+
+    // --- 위에서부터 차례로 배치 (y는 현재 위치) ---
+    let y = 0;
+    const hdr = () => {
+        spacing('3px'); setFont(700, 27, SANS); text('FABRIC STYLING CARD', CX, 142, 'left', MUTED); spacing('0px');
+        setFont(400, 28, SANS); text(data.date, W - PAD, 142, 'right', MUTED);
+        setFont(700, 60, SERIF); text(data.title, CX, 238, 'left', DARK);
+        // Re.dam 표시
+        rr(W - PAD - 150, 166, 150, 50, 25); ctx.fillStyle = 'rgba(250,238,227,0.95)'; ctx.fill();
+        setFont(700, 26, SANS); text('Re.dam', W - PAD - 75, 201, 'center', ACCENT);
+        hline(CX, W - PAD, 282, LINE);
+    };
+    // 먼저 높이를 계산(drawing=false)하고, 다시 같은 순서로 실제 그림
+    function pass(drawing) {
+        y = 282 + 52;
+        const saveFill = ctx.fillStyle;
+        data.rooms.forEach(room => {
+            const px = CX + 40, iw = CW - 80;
+            // 방 카드 높이 계산
+            const blocks = room.items.map(it => {
+                setFont(400, 25, SANS);
+                const lines = wrap(it.fab, iw);
+                const optH = it.opts.length ? 56 : 0;
+                return { it, lines, h: 28 + 44 + lines.length * 36 + optH + 24 };
+            });
+            const headH = 98;
+            const cardH = headH + blocks.reduce((a, b) => a + b.h, 0) + 14;
+            if (drawing) {
+                rr(CX, y, CW, cardH, 48); ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+                ctx.strokeStyle = '#ece4d8'; ctx.lineWidth = 2; ctx.stroke();
+                setFont(700, 38, SERIF); text(room.name, px, y + 62, 'left', DARK);
+                setFont(700, 36, SANS); text(won(room.total), px + iw, y + 62, 'right', ACCENT);
+                hline(px, px + iw, y + 88, LINE);
+                let by = y + headH;
+                blocks.forEach((b, idx) => {
+                    const base = by + 28 + 34;
+                    setFont(700, 32, SERIF); text(b.it.label, px, base, 'left', DARK);
+                    setFont(700, 34, SANS); text(won(b.it.price), px + iw, base, 'right', '#1c1917');
+                    setFont(400, 25, SANS);
+                    b.lines.forEach((ln, li) => text(ln, px, base + 42 + li * 36, 'left', MUTED));
+                    let ty = base + 42 + (b.lines.length - 1) * 36 + 16;
+                    if (b.it.opts.length) {
+                        let ox = px; setFont(700, 22, SANS);
+                        b.it.opts.forEach(o => {
+                            const w = ctx.measureText(o).width + 32;
+                            rr(ox, ty, w, 38, 19); ctx.fillStyle = '#f1ebe1'; ctx.fill();
+                            text(o, ox + 16, ty + 27, 'left', MUTED);
+                            ox += w + 10;
+                        });
+                    }
+                    by += b.h;
+                    if (idx < blocks.length - 1) hline(px, px + iw, by - 4, '#f0e9de');
+                });
+            }
+            y += cardH + 34;
+        });
+        // 시공비
+        if (data.install > 0) {
+            if (drawing) {
+                rr(CX, y, CW, 92, 36); ctx.fillStyle = 'rgba(120,100,80,0.08)'; ctx.fill();
+                setFont(700, 30, SANS); text('시공 및 설치비', CX + 40, y + 58, 'left', '#44392f');
+                text(won(data.install), CX + CW - 40, y + 58, 'right', '#44392f');
+            }
+            y += 92 + 40;
+        }
+        if (drawing) hline(CX, W - PAD, y, LINE);
+        y += 64;
+        if (drawing) {
+            setFont(700, 30, SANS); text('최종 견적 금액 (시공비 포함)', CX, y, 'left', '#44392f');
+        }
+        y += 104;
+        if (drawing) {
+            setFont(700, 30, SANS);
+            const wonW = ctx.measureText('원').width;
+            text('원', W - PAD, y, 'right', DARK);
+            setFont(800, 92, MONO); text(data.total, W - PAD - wonW - 14, y, 'right', '#1c1917');
+        }
+        y += 78;
+        if (drawing) { setFont(400, 24, SANS); text('• 전문 핏팅 시공 및 1년 무상 안심 A/S 지원', W / 2, y, 'center', MUTED); }
+        y += 86;
+        ctx.fillStyle = saveFill;
+        return y;
+    }
+    return { pass, hdr };
+}
+
+function buildTicketCanvas() {
+    const data = ticketData();
+    const W = 1080;
+    const probe = document.createElement('canvas').getContext('2d');
+    const height = Math.ceil(drawTicket(probe, data, W).pass(false));
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    // 바탕 (둥근 모서리 카드)
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, '#fbf9f5'); grad.addColorStop(1, '#f4ede4');
+    ctx.beginPath();
+    const r = 72; ctx.moveTo(r, 0); ctx.arcTo(W, 0, W, height, r); ctx.arcTo(W, height, 0, height, r); ctx.arcTo(0, height, 0, 0, r); ctx.arcTo(0, 0, W, 0, r); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill(); ctx.strokeStyle = '#e8e0d4'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textBaseline = 'alphabetic';
+    const t = drawTicket(ctx, data, W);
+    t.hdr();
+    t.pass(true);
+    return canvas;
+}
+
+async function downloadTicketImage() {
+    showToast("이미지 생성 중...", "info");
     try {
-        if (document.fonts && document.fonts.ready) await document.fonts.ready;
-        const canvas = await html2canvas(element, { scale: 3, useCORS: true, backgroundColor: null });
+        try {
+            if (document.fonts && document.fonts.load) {
+                await Promise.all([
+                    document.fonts.load('700 38px "Noto Serif KR"'),
+                    document.fonts.load('700 28px Pretendard'),
+                    document.fonts.load('400 24px Pretendard')
+                ]);
+            }
+        } catch (e) {}
+        const canvas = buildTicketCanvas();
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
         const custName = (document.getElementById('custName').value || "").trim();
         const filePrefix = custName ? `${custName}_` : "";
         const link = document.createElement('a');
         link.download = `${filePrefix}맞춤견적서.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.href = URL.createObjectURL(blob);
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(link.href), 2000);
         showToast("견적서 이미지가 저장되었습니다!");
     } catch (err) {
         console.error(err);
@@ -949,7 +1132,7 @@ function showToast(msg, type = "success") {
 // V2 -> V1 전역 동기화 정식 엔드포인트 (배열 참조 유지 및 완벽 계산)
 // ==============================================================
 window.syncFromExternalRooms = function(newRooms, newInstallFee) {
-    if (Array.isArray(newRooms) && newRooms.length > 0) {
+    if (Array.isArray(newRooms)) {
         rooms.length = 0;
         newRooms.forEach((r, idx) => {
             rooms.push({

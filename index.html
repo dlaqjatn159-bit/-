@@ -65,8 +65,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- 엑셀(.xlsx) 직접 읽기 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- html2canvas for High Quality Image Generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Google Serif Font for Aesthetic Quote Ticket -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -352,6 +350,9 @@
         <!-- v2 풀스크린 뷰포트 -->
         <main id="v2Viewport"></main>
 
+        <!-- 모든 고객 화면에 항상 있는 브랜드 표시. 5번 연속 탭하면 직원 PIN 창이 열립니다. -->
+        <div id="brandMark" onclick="window.concierge.staffTap()">Re.dam</div>
+
         <!-- v2 전용 가상 키패드 시트 -->
         <div id="v2VirtualKeypadSheet" class="keypad-sheet">
             <div style="width: 100%; max-width: 420px; display: flex; justify-content: space-between; align-items: center;">
@@ -456,11 +457,11 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261011"></script>
-    <script src="costing.js?v=20261011"></script>
-    <script src="data.js?v=20261011"></script>
-    <script src="calculator.js?v=20261011"></script>
-    <script src="concierge.js?v=20261011"></script>
-    <script src="app.js?v=20261011"></script>
+    <script src="pricing.js?v=20261012"></script>
+    <script src="costing.js?v=20261012"></script>
+    <script src="data.js?v=20261012"></script>
+    <script src="calculator.js?v=20261012"></script>
+    <script src="concierge.js?v=20261012"></script>
+    <script src="app.js?v=20261012"></script>
 </body>
 </html>

@@ -434,24 +434,8 @@ function purgeLegacyData() {
 // 기본 공간 (새 상담 시작 시 직원 모드에 보이는 초기 상태)
 // ==============================================================
 function initDefaultRooms() {
-    const sheerFab = FABRIC_DB.find(f => f.categoryType === '속지') ? FABRIC_DB.find(f => f.categoryType === '속지').id : (FABRIC_DB[0] ? FABRIC_DB[0].id : '');
-    const drapeFab = FABRIC_DB.find(f => f.categoryType === '겉지') ? FABRIC_DB.find(f => f.categoryType === '겉지').id : (FABRIC_DB[0] ? FABRIC_DB[0].id : '');
-
+    // 새 상담은 빈 상태로 시작합니다. 공간은 고객 화면에서 구성하거나 직원 화면에서 "공간 추가"로 만듭니다.
     roomIdCounter = 1;
     curtainIdCounter = 100;
-    rooms = [
-        {
-            id: roomIdCounter++,
-            name: "거실",
-            sunlight: "south",
-            lightLevel: "mid",
-            floorTone: "warm",
-            wallTone: "cool",
-            mood: "soft_warm",
-            curtains: [
-                { id: curtainIdCounter++, label: "속지", presetType: "sheer", width: 340, height: 235, pleat: "2.0", pleatType: "나비주름", bookFilter: "ALL", fabricId: sheerFab, installType: "rail", floorGap: 0, hwName: "기본 레일", hwPrice: 1000, shapeFee: 0, leadBand: true, hotelFit: false },
-                { id: curtainIdCounter++, label: "겉지", presetType: "drape", width: 340, height: 235, pleat: "2.0", pleatType: "나비주름", bookFilter: "ALL", fabricId: drapeFab, installType: "rail", floorGap: 0, hwName: "기본 레일", hwPrice: 1000, shapeFee: 3000, leadBand: false, hotelFit: false }
-            ]
-        }
-    ];
+    rooms = [];
 }

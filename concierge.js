@@ -117,7 +117,6 @@
     // V1 전역 변수(rooms)에 100% 무결점 주입
     function syncToV1MasterRooms() {
         const configuredRooms = state.roomsCart.filter(r => r.isConfigured);
-        if (configuredRooms.length === 0) return;
 
         const liveDb = getLiveDb();
 
@@ -249,9 +248,10 @@
                     const tagDesc = room.isConfigured 
                         ? `${room.curtains.length}개 품목 · ${(room.subtotal || 0).toLocaleString()}원` 
                         : "터치하여 품목 구성";
-                    const statusPill = room.isConfigured ? "✓ 큐레이션 완료" : `SPACE 0${idx + 1}`;
+                    const statusPill = room.isConfigured ? "✓ 완료 · 탭하여 수정" : `SPACE 0${idx + 1}`;
 
-                    html += '<div style="flex: 1 1 0; min-width: 0; display: flex;">';
+                    html += '<div style="flex: 1 1 0; min-width: 0; display: flex; position: relative;">';
+                    html += `<button onclick="window.concierge.deleteRoom(${room.id})" aria-label="${room.name} 삭제" style="position: absolute; top: 14px; right: 14px; z-index: 30; background: rgba(255,255,255,0.92); color: #6f5f4f; border: 1px solid #e5dcd0; border-radius: 999px; padding: 0.5rem 0.95rem; font-size: 0.82rem; font-weight: 700; cursor: pointer;">삭제</button>`;
                     html += renderBookmarkCard(room.name, tagDesc, statusPill, texture, function() {
                         window.concierge.openRoomCart(room.id);
                     });
@@ -586,6 +586,14 @@
                 leadBand: true,
                 items: []
             };
+            if (target.isConfigured && target.curtains && target.curtains.length > 0) {
+                const first = target.curtains[0];
+                state.editingRoom.width = Number(first.width) || 340;
+                state.editingRoom.height = Number(first.height) || 235;
+                state.editingRoom.shapeFee = target.curtains.some(c => c.shapeFee > 0);
+                state.editingRoom.hotelFit = target.curtains.some(c => c.hotelFit);
+                state.editingRoom.leadBand = target.curtains.some(c => c.leadBand);
+            }
             goToStep("2-Base-Floor");
         },
         selectFloorTone: function(tone) {
@@ -705,9 +713,18 @@
             const el = document.getElementById('custName');
             if (el) el.value = v;
         },
-        // 직원 화면(B)에서 만든 견적을 고객용 제안서 화면으로 보여주기
-        showProposalFromRooms: function(masterRooms, installFee) {
-            state.roomsCart = masterRooms.map((r, i) => {
+        deleteRoom: function(roomId) {
+            const room = state.roomsCart.find(r => r.id === roomId);
+            if (!room) return;
+            if (!confirm(`'${room.name}' 공간을 삭제할까요?`)) return;
+            state.roomsCart = state.roomsCart.filter(r => r.id !== roomId);
+            syncToV1MasterRooms();
+            render();
+        },
+        // 직원 화면(B)에서 바꾼 공간·품목·시공비를 고객 화면에 반영 (B가 기준)
+        loadFromMaster: function(masterRooms, installFee) {
+            const inProgress = state.roomsCart.filter(r => !r.isConfigured);
+            const mapped = masterRooms.map((r, i) => {
                 const sub = r.curtains.reduce((acc, c) => acc + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
                 return {
                     id: Date.now() + i, name: r.name,
@@ -718,9 +735,16 @@
                     subtotal: sub
                 };
             });
+            state.roomsCart = mapped.concat(inProgress);
             state.installFee = installFee;
+            if (state.step === "7-Final-Dossier" && mapped.length === 0) goToStep("1-Space", false);
+            else if (state.step === "1-Space" || state.step === "7-Final-Dossier") render();
+        },
+        // 직원 화면(B)에서 만든 견적을 고객용 제안서 화면으로 보여주기
+        showProposalFromRooms: function(masterRooms, installFee) {
+            window.concierge.loadFromMaster(masterRooms, installFee);
             stepHistory.length = 0;
-            goToStep("7-Final-Dossier", false);
+            goToStep(state.roomsCart.some(r => r.isConfigured) ? "7-Final-Dossier" : "1-Space", false);
         },
         // 새 상담 시작: 고객 입력 내용을 모두 비움
         resetAll: function() {

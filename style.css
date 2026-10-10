@@ -578,3 +578,20 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     justify-content: space-between;
     align-items: center;
 }
+
+/* 항상 보이는 브랜드 표시 (직원 모드 진입용 숨은 버튼 겸용) */
+#brandMark {
+    position: fixed;
+    left: 1.2rem;
+    bottom: 0.9rem;
+    z-index: 55;
+    font-family: 'Noto Serif KR', Georgia, serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--brand-muted);
+    opacity: 0.6;
+    padding: 0.7rem 0.9rem;
+    user-select: none;
+    -webkit-user-select: none;
+}
