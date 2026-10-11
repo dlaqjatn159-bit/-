@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261019';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261020';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -268,6 +268,32 @@ function recommendReason(fabric, room, category) {
     return parts.slice(0, 2).join(' · ');
 }
 
+// 추천 3개 고르기: 점수 순서는 그대로 지키고, "점수가 같을 때만" 아직 안 나온 책자를 먼저 보여줌
+// (예전에는 동점이면 엑셀 순서대로 나와 포아 POA1·2·3처럼 같은 책자만 반복됨)
+function pickShowcase(ranked, n) {
+    const out = [], rest = ranked.slice();
+    while (out.length < n && rest.length) {
+        const top = rest[0].best.score;
+        const used = new Set(out.map(e => e.f.book));
+        let i = rest.findIndex(e => e.best.score === top && !used.has(e.f.book));
+        if (i < 0) i = 0;
+        out.push(rest.splice(i, 1)[0]);
+    }
+    return out;
+}
+
+// 고객 카드에 보여줄 원단 특징 (사실인 것만: 품명의 암막률, 사장님이 지정한 두께·분위기)
+// 예전 자동 태그(#완벽암막 #사생활보호 등)는 모든 원단에 똑같이 붙어 사실과 다를 수 있어 고객 화면에서 쓰지 않음
+function customerFacts(fabric) {
+    const f = fabric || {}, m = f.manual || {}, out = [];
+    const name = String(f.name || '');
+    const pct = /(\d{2,3})\s*%/.exec(name);
+    if (name.includes('암막')) out.push(pct ? `#암막 ${pct[1]}%` : '#암막');
+    if (m.density && DENSITY_LABELS[f.density]) out.push(`#${DENSITY_LABELS[f.density]} 두께`);
+    if (m.mood && MOOD_LABELS[f.mood]) out.push(`#${MOOD_LABELS[f.mood].replace(/\s+/g, '')}`);
+    return out.join(' ');
+}
+
 // ---- 원단 사진: photos/원단ID.jpg, 색상별은 photos/원단ID__번호.jpg (없으면 .webp, .png 순서로 찾고, 없으면 원단 대표 사진 → 색상 배경) ----
 function fabricPhotoUrls(id, color) {
     const base = 'photos/' + encodeURIComponent(id);
@@ -403,16 +429,27 @@ function applyTagOverrides(list) {
         if (t && t.tone && TONE_LABELS[t.tone]) { f.tone = t.tone; f.manual.tone = true; }
         if (t && t.mood && MOOD_LABELS[t.mood]) { f.mood = t.mood; f.manual.mood = true; }
         if (t && t.density && DENSITY_LABELS[t.density]) { f.density = t.density; f.manual.density = true; }
+        f.hideOverride = (t && (t.hide === 'yes' || t.hide === 'no')) ? t.hide : null;
     });
+}
+
+// 고객 추천에서 숨길 원단인지: 사장님이 직접 정한 값이 우선, 없으면 비고의 "원단만 시킬때"를 따름
+function isCustomerHidden(f) {
+    if (!f) return true;
+    if (f.hideOverride === 'yes') return true;
+    if (f.hideOverride === 'no') return false;
+    return !!f.fabricOnly;
 }
 function setFabricTag(id, key, val) {
     const o = loadTagOverrides();
     o[id] = o[id] || {};
     if (!val) delete o[id][key]; else o[id][key] = val;
-    if (!o[id].tone && !o[id].mood && !o[id].density) delete o[id];
+    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide) delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
-    if (f) {
+    if (f && key === 'hide') {
+        f.hideOverride = val || null;
+    } else if (f) {
         if (!val) { f[key] = null; f.manual = f.manual || {}; f.manual[key] = false; if (key !== 'density') f.tags = null; autoTagFabricAttributes(f); applyTagOverrides([f]); }
         else { f[key] = val; f.manual = f.manual || {}; f.manual[key] = true; }
     }
@@ -420,7 +457,10 @@ function setFabricTag(id, key, val) {
     if (typeof renderTagEditor === 'function') renderTagEditor();
 }
 function clearFabricTags(id) {
-    const o = loadTagOverrides(); delete o[id]; saveTagOverrides(o);
+    const o = loadTagOverrides();
+    const keepHide = o[id] && o[id].hide;                  // "고객 추천 숨김" 설정은 그대로 둠
+    if (keepHide) o[id] = { hide: keepHide }; else delete o[id];
+    saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
     if (f) { f.tone = null; f.mood = null; f.density = null; f.tags = null; f.manual = { tone: false, mood: false, density: false }; autoTagFabricAttributes(f); }
     saveFabricDb(false);
@@ -523,6 +563,7 @@ function buildFabricRecords(dataRows, rules) {
         const priceRaw = getCol(['소비자판매단가', '소비자판매가', '소비자가', '판매단가', '판매가']);
         const unitRaw = getCol(['계산단위', '단위', '계산방식']);
         const imgUrlRaw = getCol(['이미지url', '이미지', '사진', 'image', 'imgurl', '이미지링크']);
+        const noteRaw = getCol(['비고', '메모']);
 
         const detected = detectCalcTypeAndUnit(costRaw, specRaw, name, unitRaw, "", book, "");
         const parsedSpecCm = (detected.calcType === 'hebe') ? 0 : parseSpecToCm(specRaw, name);
@@ -543,6 +584,7 @@ function buildFabricRecords(dataRows, rules) {
             mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),
             density: normalizeDensityInput(getCol(['두께', '도톰함', '밀도'])),
             imageUrl: imgUrlRaw || null,
+            fabricOnly: /원단만/.test(noteRaw),      // 비고에 "원단만 시킬때" → 고객 추천에서 기본 숨김
             extra: Costing.deriveExtra(cost, labor, rules)
         };
         fabObj.manual = { tone: !!fabObj.tone, mood: !!fabObj.mood, density: !!fabObj.density };      // 엑셀에 직접 적힌 값인지 기록 (자동 추정 구분용)

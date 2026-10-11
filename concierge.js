@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261019';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261020';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -65,7 +65,9 @@
     }
 
     function getLiveCategoryPool(categoryType) {
-        const pool = getLiveDb();
+        // 고객 추천에서 숨긴 원단(예: 비고 "원단만 시킬때")은 빼고 고름. 직원 화면 빠른 견적에는 그대로 있음
+        const all = getLiveDb();
+        const pool = (typeof isCustomerHidden === 'function') ? all.filter(f => !isCustomerHidden(f)) : all;
 
         if (categoryType === "블라인드") {
             const blindPool = pool.filter(f => f.categoryType === "블라인드" || f.calcType === "hebe" || (f.name && (f.name.includes("블라인드") || f.name.includes("콤비") || f.name.includes("우드"))));
@@ -394,7 +396,7 @@
                 const ranked = pool.map(f => ({ f: f, best: bestColorFor(f, state.editingRoom, targetCategory) }));
                 ranked.sort((a, b) => (b.best.score - a.best.score)
                     || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
-                const showcaseList = ranked.slice(0, 3);
+                const showcaseList = (typeof pickShowcase === 'function') ? pickShowcase(ranked, 3) : ranked.slice(0, 3);
                 state.colorPick = state.colorPick || {};
 
                 html += '<div class="bookmark-stage" style="padding: 1.5rem 2rem; box-sizing: border-box;">';
@@ -406,7 +408,7 @@
                     const pickInfo = best.ranked.find(r => r.name === pick);
                     const view = pickInfo ? Object.assign({}, f, { tone: pickInfo.tone || f.tone, manual: Object.assign({}, f.manual, { tone: !!pickInfo.tone || !!(f.manual && f.manual.tone) }) }) : f;
                     const bgStyle = idx === 0 ? SOLID_TEXTURES.l1 : (idx === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
-                    const tagText = (f.tags && f.tags.length > 0) ? f.tags.join(' ') : (`#${f.unit || '폭'}`);
+                    const tagText = (typeof customerFacts === 'function') ? customerFacts(view) : '';
                     const reasonText = recommendReason(view, state.editingRoom, targetCategory);
                     const pillTag = `[${f.book || '샘플'}] ${queueItem.label}`;
                     const photoTag = `<img class="fabric-photo" alt="" loading="lazy" data-id="${f.id}" data-color="${pick}" data-i="0" src="${fabricPhotoUrls(f.id, pick)[0]}" onerror="window.concierge.imgFallback(this)">`;
@@ -445,7 +447,7 @@
                     html += `<span class="bookmark-tag">${pillTag}</span>`;
                     html += `<h3 class="bookmark-name font-serif-kr">${f.name}${colorSuffix(pick)}</h3>`;
                     if (reasonText) html += `<p class="bookmark-desc" style="font-weight: 600; color: #fff;">${reasonText}</p>`;
-                    html += `<p class="bookmark-desc">${tagText}</p>`;
+                    if (tagText) html += `<p class="bookmark-desc">${tagText}</p>`;
                     html += '</div></div>';
                 });
 
