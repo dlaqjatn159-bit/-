@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261021';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261022';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261021';
+const REDAM_BUILD = '20261022';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js'];
     const reg = window.REDAM_FILES || {};
@@ -45,6 +45,7 @@ window.onload = function() {
     document.body.dataset.mode = 'customer';
     switchMainTrack('curation');
     restoreDraftOnLoad();
+    initTicketNoteInput();
     setInterval(saveDraftTick, 3000);
     updateOfflineStatus();
     if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', updateOfflineStatus);
@@ -248,6 +249,7 @@ function collectConsultation() {
         name: ((document.getElementById('custName') || {}).value || '').trim(),
         rooms: src.map(r => ({
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
+            roomType: r.roomType || null, lightBlock: r.lightBlock || null, diagnosed: !!r.diagnosed,
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
         installFee: globalInstallFee,
@@ -1302,6 +1304,7 @@ function openTicketModal() {
         listEl.innerHTML = '';
         rooms.forEach(r => {
             const roomTotal = r.curtains.reduce((acc, curr) => acc + (curr.calc ? curr.calc.curtainSubtotal : 0), 0);
+            const summary = ticketRoomSummary(r);
             const curtainRows = r.curtains.map(c => {
                 const calc = c.calc || {};
                 const optionsList = [];
@@ -1312,14 +1315,22 @@ function openTicketModal() {
                     ? `<span class="bg-stone-100 text-stone-600 text-[9px] px-1.5 py-0.5 rounded font-sans ml-1">${optionsList.join(', ')}</span>` 
                     : '';
 
+                const reason = ticketItemReason(r, c);
+                const thumb = c.fabricId ? `<img class="w-9 h-9 rounded-lg object-cover bg-stone-100 flex-shrink-0" alt="" data-id="${c.fabricId}" data-color="${c.colorName || ''}" data-i="0" src="${fabricPhotoUrls(c.fabricId, c.colorName)[0]}" onerror="ticketThumbFallback(this)">` : '';
                 return `
-                    <div class="flex justify-between items-center text-[11px] py-1 border-b border-stone-100">
-                        <div class="truncate pr-1">
-                            <span class="font-bold text-stone-800">${c.label}</span>
-                            <span class="text-[10px] text-stone-500 font-sans ml-1">[${calc.fabBook}] ${calc.fabName}</span>
-                            ${optBadge}
+                    <div class="flex items-start gap-2 text-[11px] py-1.5 border-b border-stone-100">
+                        ${thumb}
+                        <div class="min-w-0 flex-1">
+                            <div class="flex justify-between items-center">
+                                <div class="truncate pr-1">
+                                    <span class="font-bold text-stone-800">${c.label}</span>
+                                    <span class="text-[10px] text-stone-500 font-sans ml-1">[${calc.fabBook}] ${calc.fabName}</span>
+                                    ${optBadge}
+                                </div>
+                                <span class="font-bold text-stone-900 font-mono whitespace-nowrap text-[11px]">${(calc.curtainSubtotal || 0).toLocaleString()}원</span>
+                            </div>
+                            ${reason ? `<div class="text-[10px] font-sans mt-0.5" style="color:#8a4b26">${reason}</div>` : ''}
                         </div>
-                        <span class="font-bold text-stone-900 font-mono whitespace-nowrap text-[11px]">${(calc.curtainSubtotal || 0).toLocaleString()}원</span>
                     </div>
                 `;
             }).join('');
@@ -1331,6 +1342,7 @@ function openTicketModal() {
                     <span class="font-bold text-stone-900 text-xs">${r.name}</span>
                     <span class="font-bold text-amber-900 text-[11px] font-mono">${roomTotal.toLocaleString()}원</span>
                 </div>
+                ${summary ? `<div class="text-[10px] text-stone-500 font-sans">${summary}</div>` : ''}
                 ${curtainRows}
             `;
             listEl.appendChild(roomCard);
@@ -1347,6 +1359,8 @@ function openTicketModal() {
             listEl.appendChild(installCard);
         }
     }
+    const noteEl = document.getElementById('ticketNoteText');
+    if (noteEl) { const n = loadTicketNote(); noteEl.textContent = n ? `• ${n}` : ''; noteEl.classList.toggle('hidden', !n); }
     document.getElementById('ticketModal').classList.remove('hidden');
 }
 
@@ -1357,6 +1371,71 @@ function closeTicketModal() {
 // ==============================================================
 // 견적서 이미지 — 화면 캡처 대신 직접 그립니다 (글자 잘림 방지, 외부 라이브러리 불필요)
 // ==============================================================
+// ---- 제안서에 들어가는 "왜 이렇게 골랐는지" ----
+const TICKET_LIGHT_LABELS = { high: '햇빛 풍부', mid: '햇빛 은은', low: '햇빛 차분' };
+const TICKET_BLOCK_LABELS = { light: '빛은 은은하게', soft: '빛은 적당히 가림', dark: '빛은 완전 차단' };
+// 공간 진단 요약 한 줄 (고객 화면에서 진단을 거친 공간만)
+function ticketRoomSummary(r) {
+    if (!r || !r.diagnosed) return '';
+    const parts = [];
+    if (TONE_LABELS[r.floorTone]) parts.push(`바닥 ${TONE_LABELS[r.floorTone]} 톤`);
+    if (TONE_LABELS[r.wallTone]) parts.push(`벽 ${TONE_LABELS[r.wallTone]} 톤`);
+    if (TICKET_LIGHT_LABELS[r.lightLevel]) parts.push(TICKET_LIGHT_LABELS[r.lightLevel]);
+    if (TICKET_BLOCK_LABELS[r.lightBlock]) parts.push(TICKET_BLOCK_LABELS[r.lightBlock]);
+    if (MOOD_LABELS[r.wantMood]) parts.push(`${MOOD_LABELS[r.wantMood]} 분위기`);
+    return parts.join(' · ');
+}
+// 품목별 추천 이유 (사장님이 분류한 원단 + 진단을 거친 공간만. 아니면 빈칸)
+function ticketItemReason(r, c) {
+    if (!r || !r.diagnosed || !c || !c.fabricId) return '';
+    const f = FABRIC_DB.find(x => x.id === c.fabricId);
+    if (!f) return '';
+    const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
+    const col = c.colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(c.colorName)) : null;
+    const view = (col && col.tone) ? Object.assign({}, f, { tone: col.tone, manual: Object.assign({}, f.manual, { tone: true }) }) : f;
+    try { return recommendReason(view, r, cat) || ''; } catch (e) { return ''; }
+}
+// 미리보기 사진: 못 찾으면 다음 확장자 → 모두 없으면 칸을 아예 없앰
+function ticketThumbFallback(el) {
+    const i = parseInt(el.getAttribute('data-i') || '0', 10) + 1;
+    const urls = fabricPhotoUrls(el.getAttribute('data-id'), el.getAttribute('data-color') || '');
+    if (i < urls.length) { el.setAttribute('data-i', i); el.src = urls[i]; } else { el.style.display = 'none'; }
+}
+
+// 견적서 하단 안내 문구 (예: 제작 약 7일 · 시공 약 2시간). 직원 화면에서 입력, 이 브라우저에 저장
+const TICKET_NOTE_KEY = 'redam_ticket_note_v1';
+function loadTicketNote() { try { return (localStorage.getItem(TICKET_NOTE_KEY) || '').trim(); } catch (e) { return ''; } }
+function saveTicketNote(v) { try { localStorage.setItem(TICKET_NOTE_KEY, String(v || '').trim()); } catch (e) {} }
+function initTicketNoteInput() { const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote(); }
+
+// 견적서 이미지에 넣을 원단 사진을 미리 불러옴 (없으면 사진 없이 그림)
+function loadImage(url, timeoutMs) {
+    return new Promise(resolve => {
+        const img = new Image();
+        let done = false;
+        const finish = ok => { if (done) return; done = true; resolve(ok ? img : null); };
+        img.onload = () => finish(img.naturalWidth > 0);
+        img.onerror = () => finish(false);
+        setTimeout(() => finish(false), timeoutMs || 3000);
+        img.src = url;
+    });
+}
+async function loadTicketPhotos(data) {
+    const jobs = [];
+    data.rooms.forEach(room => room.items.forEach(it => {
+        if (!it.fabricId || data.photos[it.photoKey] !== undefined) return;
+        data.photos[it.photoKey] = null;
+        jobs.push((async () => {
+            for (const u of fabricPhotoUrls(it.fabricId, it.colorName)) {
+                const img = await loadImage(u, 3000);
+                if (img) { data.photos[it.photoKey] = img; return; }
+            }
+        })());
+    }));
+    await Promise.all(jobs);
+    return data;
+}
+
 function ticketData() {
     calculateAll();
     const custName = (document.getElementById('custName').value || '').trim();
@@ -1372,12 +1451,18 @@ function ticketData() {
                 if (c.shapeFee > 0) opts.push('형상기억');
                 if (c.leadBand) opts.push('리드밴드');
                 if (c.hotelFit) opts.push('호텔핏');
-                return { label: c.label, fab: `[${calc.fabBook || ''}] ${calc.fabName || ''}`, opts, price: calc.curtainSubtotal || 0 };
+                return {
+                    label: c.label, fab: `[${calc.fabBook || ''}] ${calc.fabName || ''}`, opts, price: calc.curtainSubtotal || 0,
+                    reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
+                    photoKey: (c.fabricId || '') + '__' + (c.colorName || '')
+                };
             });
-            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items };
+            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: ticketRoomSummary(r) };
         }),
         install: globalInstallFee,
-        total: document.getElementById('totalGrandPrice').textContent
+        total: document.getElementById('totalGrandPrice').textContent,
+        note: loadTicketNote(),
+        photos: {}
     };
 }
 
@@ -1426,14 +1511,25 @@ function drawTicket(ctx, data, W) {
         const saveFill = ctx.fillStyle;
         data.rooms.forEach(room => {
             const px = CX + 40, iw = CW - 80;
+            const THUMB = 132;                     // 원단 사진 크기 (사진이 있을 때만)
             // 방 카드 높이 계산
             const blocks = room.items.map(it => {
+                const photo = (data.photos && data.photos[it.photoKey]) || null;
+                const tx = px + (photo ? THUMB + 28 : 0), tw = px + iw - tx;
                 setFont(400, 25, SANS);
-                const lines = wrap(it.fab, iw);
-                const optH = it.opts.length ? 56 : 0;
-                return { it, lines, h: 28 + 44 + lines.length * 36 + optH + 24 };
+                const lines = wrap(it.fab, tw);
+                setFont(500, 24, SANS);
+                const rlines = it.reason ? wrap(it.reason, tw) : [];
+                // 위치(카드 안 상대값): 품목명 62, 원단명 104~, 추천 이유, 옵션
+                const lastFab = 104 + (lines.length - 1) * 36;
+                const lastText = rlines.length ? lastFab + 40 + (rlines.length - 1) * 34 : lastFab;
+                let h = lastText + (it.opts.length ? 16 + 38 : 0) + 30;
+                if (photo) h = Math.max(h, 28 + THUMB + 28);
+                return { it, lines, rlines, photo, tx, h };
             });
-            const headH = 98;
+            setFont(400, 24, SANS);
+            const slines = room.summary ? wrap(room.summary, iw) : [];
+            const headH = slines.length ? 88 + 24 + slines.length * 34 + 6 : 98;
             const cardH = headH + blocks.reduce((a, b) => a + b.h, 0) + 14;
             if (drawing) {
                 rr(CX, y, CW, cardH, 48); ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
@@ -1441,16 +1537,30 @@ function drawTicket(ctx, data, W) {
                 setFont(700, 38, SERIF); text(room.name, px, y + 62, 'left', DARK);
                 setFont(700, 36, SANS); text(won(room.total), px + iw, y + 62, 'right', ACCENT);
                 hline(px, px + iw, y + 88, LINE);
+                if (slines.length) { setFont(400, 24, SANS); slines.forEach((ln, i) => text(ln, px, y + 88 + 34 + i * 34, 'left', MUTED)); }
                 let by = y + headH;
                 blocks.forEach((b, idx) => {
                     const base = by + 28 + 34;
-                    setFont(700, 32, SERIF); text(b.it.label, px, base, 'left', DARK);
+                    if (b.photo) {
+                        // 사진은 정사각형으로 가운데를 잘라 둥근 모서리 안에 그림
+                        const sw = b.photo.naturalWidth, sh = b.photo.naturalHeight, side = Math.min(sw, sh);
+                        ctx.save(); rr(px, by + 28, THUMB, THUMB, 22); ctx.clip();
+                        ctx.drawImage(b.photo, (sw - side) / 2, (sh - side) / 2, side, side, px, by + 28, THUMB, THUMB);
+                        ctx.restore();
+                    }
+                    setFont(700, 32, SERIF); text(b.it.label, b.tx, base, 'left', DARK);
                     setFont(700, 34, SANS); text(won(b.it.price), px + iw, base, 'right', '#1c1917');
                     setFont(400, 25, SANS);
-                    b.lines.forEach((ln, li) => text(ln, px, base + 42 + li * 36, 'left', MUTED));
+                    b.lines.forEach((ln, li) => text(ln, b.tx, base + 42 + li * 36, 'left', MUTED));
                     let ty = base + 42 + (b.lines.length - 1) * 36 + 16;
+                    if (b.rlines.length) {
+                        setFont(500, 24, SANS);
+                        const ry = base + 42 + (b.lines.length - 1) * 36 + 40;
+                        b.rlines.forEach((ln, li) => text(ln, b.tx, ry + li * 34, 'left', '#8a4b26'));
+                        ty = ry + (b.rlines.length - 1) * 34 + 16;
+                    }
                     if (b.it.opts.length) {
-                        let ox = px; setFont(700, 22, SANS);
+                        let ox = b.tx; setFont(700, 22, SANS);
                         b.it.opts.forEach(o => {
                             const w = ctx.measureText(o).width + 32;
                             rr(ox, ty, w, 38, 19); ctx.fillStyle = '#f1ebe1'; ctx.fill();
@@ -1487,6 +1597,12 @@ function drawTicket(ctx, data, W) {
             setFont(800, 92, MONO); text(data.total, W - PAD - wonW - 14, y, 'right', '#1c1917');
         }
         y += 78;
+        if (data.note) {
+            setFont(500, 26, SANS);
+            const nlines = wrap(data.note, CW);
+            if (drawing) nlines.forEach((ln, i) => text(ln, W / 2, y + i * 38, 'center', DARK));
+            y += nlines.length * 38 + 6;
+        }
         if (drawing) { setFont(400, 24, SANS); text('• 전문 핏팅 시공 및 1년 무상 안심 A/S 지원', W / 2, y, 'center', MUTED); }
         y += 86;
         ctx.fillStyle = saveFill;
@@ -1495,9 +1611,9 @@ function drawTicket(ctx, data, W) {
     return { pass, hdr };
 }
 
-function buildTicketCanvas(opts) {
+function buildTicketCanvas(opts, preparedData) {
     opts = opts || {};
-    const data = ticketData();
+    const data = preparedData || ticketData();
     const W = 1080;
     const probe = document.createElement('canvas').getContext('2d');
     const height = Math.ceil(drawTicket(probe, data, W).pass(false));
@@ -1518,29 +1634,41 @@ function buildTicketCanvas(opts) {
     return canvas;
 }
 
+// 글꼴·원단 사진을 준비한 뒤 견적서 이미지를 만듦
+async function makeTicketBlob(opts) {
+    try {
+        if (document.fonts && document.fonts.load) {
+            await Promise.all([
+                document.fonts.load('700 38px "Noto Serif KR"'),
+                document.fonts.load('700 28px Pretendard'),
+                document.fonts.load('500 24px Pretendard'),
+                document.fonts.load('400 24px Pretendard')
+            ]);
+        }
+    } catch (e) {}
+    const data = await loadTicketPhotos(ticketData());
+    const canvas = buildTicketCanvas(opts, data);
+    return { canvas, blob: await new Promise(res => canvas.toBlob(res, 'image/png')) };
+}
+function ticketFileName() {
+    const custName = (document.getElementById('custName').value || "").trim();
+    return `${custName ? custName + '_' : ''}맞춤견적서.png`;
+}
+function saveBlobAsFile(blob, name) {
+    const link = document.createElement('a');
+    link.download = name;
+    link.href = URL.createObjectURL(blob);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+}
+
 async function downloadTicketImage() {
     showToast("이미지 생성 중...", "info");
     try {
-        try {
-            if (document.fonts && document.fonts.load) {
-                await Promise.all([
-                    document.fonts.load('700 38px "Noto Serif KR"'),
-                    document.fonts.load('700 28px Pretendard'),
-                    document.fonts.load('400 24px Pretendard')
-                ]);
-            }
-        } catch (e) {}
-        const canvas = buildTicketCanvas();
-        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-        const custName = (document.getElementById('custName').value || "").trim();
-        const filePrefix = custName ? `${custName}_` : "";
-        const link = document.createElement('a');
-        link.download = `${filePrefix}맞춤견적서.png`;
-        link.href = URL.createObjectURL(blob);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+        const { blob } = await makeTicketBlob();
+        saveBlobAsFile(blob, ticketFileName());
         showToast("견적서 이미지가 저장되었습니다!");
     } catch (err) {
         console.error(err);
@@ -1548,18 +1676,33 @@ async function downloadTicketImage() {
     }
 }
 
-async function preparePrintSheet() {
+// 카카오톡 등으로 바로 보내기: 태블릿의 "공유" 창을 열어 견적서 이미지를 넘김 (지원하지 않으면 저장으로 대신)
+async function shareTicketImage() {
+    showToast("이미지 준비 중...", "info");
     try {
-        if (document.fonts && document.fonts.load) {
-            await Promise.all([
-                document.fonts.load('700 38px "Noto Serif KR"'),
-                document.fonts.load('700 28px Pretendard'),
-                document.fonts.load('400 24px Pretendard')
-            ]);
+        const { blob } = await makeTicketBlob();
+        const file = new File([blob], ticketFileName(), { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+            try {
+                await navigator.share({ files: [file], title: 'Re.dam 맞춤 제안서' });
+            } catch (e) {
+                if (e && e.name === 'AbortError') return;      // 고객이 공유 창을 닫은 경우
+                throw e;
+            }
+        } else {
+            saveBlobAsFile(blob, file.name);
+            showToast("이 기기는 바로 보내기를 지원하지 않아 이미지로 저장했습니다. 카카오톡에서 사진으로 보내 주세요.", "info");
         }
-    } catch (e) {}
+    } catch (err) {
+        console.error(err);
+        showToast("보내기 중 오류가 발생했습니다. '고화질 이미지 저장'을 이용해 주세요.", "error");
+    }
+}
+
+async function preparePrintSheet() {
+    const { canvas } = await makeTicketBlob({ solidBg: true });
     const img = document.getElementById('printImg');
-    img.src = buildTicketCanvas({ solidBg: true }).toDataURL('image/png');
+    img.src = canvas.toDataURL('image/png');
     if (img.decode) { try { await img.decode(); } catch (e) {} }
 }
 
@@ -1634,6 +1777,9 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 wallTone: r.wallTone || "cool",
                 mood: r.mood || "soft_warm",
                 wantMood: r.wantMood || null,
+                roomType: r.roomType || null,
+                lightBlock: r.lightBlock || null,
+                diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";
                     return {

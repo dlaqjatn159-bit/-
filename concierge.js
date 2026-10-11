@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261021';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261022';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -132,6 +132,9 @@
             wallTone: r.wallTone || "cool",
             mood: r.mood || "soft_warm",
             wantMood: r.wantMood || null,
+            roomType: r.roomType || null,
+            lightBlock: r.lightBlock || null,
+            diagnosed: !!r.diagnosed,
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
                 let realFab = liveDb.find(f => f.id === c.fabricId);
@@ -211,6 +214,8 @@
 
     function goToStep(nextStep, pushHistory) {
         hideKeypadDirectly();
+        const optOv = document.getElementById('optInfoOverlay');
+        if (optOv) optOv.style.display = 'none';
         if (pushHistory !== false && state.step !== nextStep) {
             stepHistory.push(state.step);
         }
@@ -251,6 +256,75 @@
         let dots = '';
         if (at >= 0) dots = '<div class="step-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
         return `<div class="step-head">${dots}<p class="step-q font-serif-kr">${question}</p></div>`;
+    }
+
+    // ---- 옵션 설명 그림 (적용 전 / 적용 후). 가격 대신 "무엇이 좋아지는지"를 보여줌 ----
+    // 커튼을 세로 띠(주름)로 그림. 위(레일)·아래 폭, 주름 수, 흔들림, 밑단 모양을 바꿔 차이를 표현
+    function curtainSvg(o) {
+        const W = 220, H = 150, top = 16, bot = 136;
+        const n = o.n, jit = o.jitter || [], wave = o.wave || 0;
+        const xs = (l, r, i) => l + (r - l) * i / n;
+        const by = i => bot + (wave ? Math.sin(i * 1.7) * wave + (i % 3 === 0 ? wave * 0.6 : 0) : 0);
+        let g = `<line x1="${o.topL - 12}" y1="${top}" x2="${o.topR + 12}" y2="${top}" stroke="#6f5f4f" stroke-width="3" stroke-linecap="round"/>`;
+        for (let i = 0; i < n; i++) {
+            const t1 = xs(o.topL, o.topR, i), t2 = xs(o.topL, o.topR, i + 1);
+            const b1 = xs(o.botL, o.botR, i) + (jit[i] || 0), b2 = xs(o.botL, o.botR, i + 1) + (jit[i + 1] || 0);
+            const fill = i % 2 === 0 ? o.c1 : o.c2;
+            g += `<path d="M${t1},${top + 2} L${t2},${top + 2} L${b2},${by(i + 1)} L${b1},${by(i)} Z" fill="${fill}" fill-opacity="${o.op || 1}"/>`;
+        }
+        if (o.band) g += `<path d="M${o.botL},${bot - 4} L${o.botR},${bot - 4} L${o.botR},${bot} L${o.botL},${bot} Z" fill="#8a6d52"/>`;
+        return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" aria-hidden="true">${g}</svg>`;
+    }
+    const OPTION_INFO = {
+        shapeFee: {
+            title: '형상기억 가공',
+            desc: '주름 모양을 열로 고정해, 커튼을 걷거나 내려도 반듯한 주름이 그대로 유지돼요.',
+            off: { topL: 55, topR: 165, botL: 22, botR: 198, n: 8, jitter: [0, 6, -5, 9, -7, 4, -8, 5, 0], wave: 5, c1: '#d9c7ae', c2: '#c4ad8e' },
+            on: { topL: 55, topR: 165, botL: 55, botR: 165, n: 8, c1: '#d9c7ae', c2: '#c4ad8e' }
+        },
+        hotelFit: {
+            title: '호텔핏 (+1폭 볼륨)',
+            desc: '원단을 한 폭 더 넣어 주름이 깊고 풍성해져요. 호텔처럼 꽉 차고 도톰한 느낌이에요.',
+            off: { topL: 40, topR: 180, botL: 40, botR: 180, n: 5, c1: '#d9c7ae', c2: '#cdb89b' },
+            on: { topL: 40, topR: 180, botL: 40, botR: 180, n: 11, c1: '#dccab1', c2: '#b89f7e' }
+        },
+        leadBand: {
+            title: '하단 리드밴드',
+            desc: '속지 밑단에 무게감 있는 끈을 넣어, 밑단이 일자로 반듯하게 떨어지고 바람에 덜 날려요.',
+            off: { topL: 40, topR: 180, botL: 34, botR: 192, n: 9, jitter: [0, 2, -2, 3, 0, -3, 4, 2, 6, 10], wave: 7, c1: '#efe6d8', c2: '#e2d5c1', op: 0.95 },
+            on: { topL: 40, topR: 180, botL: 40, botR: 180, n: 9, c1: '#efe6d8', c2: '#e2d5c1', op: 0.95, band: true }
+        }
+    };
+    function optionInfoHtml(keys) {
+        let h = '<div class="opt-info-sheet" onclick="event.stopPropagation()">';
+        h += '<div class="opt-info-head font-serif-kr">제작 옵션 미리보기</div>';
+        keys.forEach(k => {
+            const o = OPTION_INFO[k];
+            h += '<div class="opt-info-row">';
+            h += `<div class="opt-info-text"><strong class="font-serif-kr">${o.title}</strong><p>${o.desc}</p></div>`;
+            h += `<figure><div class="opt-info-pic">${curtainSvg(o.off)}</div><figcaption>기본</figcaption></figure>`;
+            h += `<figure><div class="opt-info-pic on">${curtainSvg(o.on)}</div><figcaption>적용</figcaption></figure>`;
+            h += '</div>';
+        });
+        h += '<button class="opt-info-close" onclick="window.concierge.closeOptionInfo()">닫기</button>';
+        return h + '</div>';
+    }
+
+    // ---- 두 번째 공간부터: 앞에서 진단한 공간과 바닥·벽이 같으면 바로 넘어가기 ----
+    // 이름 뒤 조사: 받침 있으면 "과", 없으면 "와" (예: 방과, 거실과, 방 2와)
+    function withGwa(name) {
+        const t = String(name || '').trim();
+        const ch = t.slice(-1);
+        if (/[0-9]/.test(ch)) return t + ('0136780'.includes(ch) ? '과' : '와');
+        const c = ch.charCodeAt(0);
+        if (c >= 0xAC00 && c <= 0xD7A3) return t + (((c - 0xAC00) % 28) ? '과' : '와');
+        return t + '와(과)';
+    }
+    function copySourceRoom() {
+        const cur = state.editingRoom;
+        if (!cur) return null;
+        const done = state.roomsCart.filter(r => r.isConfigured && r.diagnosed && r.id !== cur.id);
+        return done.length ? done[done.length - 1] : null;
     }
 
     function render() {
@@ -332,6 +406,18 @@
                 html += renderBookmarkCard("알파룸", "다목적 공간을 위한 감성 연출", "ZONE 05", SOLID_TEXTURES.neutral, function() { window.concierge.chooseRoomType("알파룸"); });
                 html += renderBookmarkCard("드레스룸", "옷감 보호와 단정한 차폐", "ZONE 06", SOLID_TEXTURES.l4, function() { window.concierge.chooseRoomType("드레스룸"); });
                 html += renderBookmarkCard("베란다", "외부 직사광 조절과 채광", "ZONE 07", SOLID_TEXTURES.oak, function() { window.concierge.chooseRoomType("베란다"); });
+                html += '</div></div>';
+                break;
+
+            // [Step 2-0: 앞 공간과 같은 바닥·벽인지 (두 번째 공간부터)]
+            case "2-Base-Copy":
+                const src = copySourceRoom();
+                const srcDesc = src ? `바닥 ${TONE_LABELS[src.floorTone] || ''} 톤 · 벽 ${TONE_LABELS[src.wallTone] || ''} 톤` : '';
+                html += '<div class="bookmark-stage">';
+                html += stepHead(src ? `${withGwa(src.name)} 바닥·벽이 같은가요?` : '바닥·벽을 골라 주세요');
+                html += '<div class="bookmark-canvas" style="--items-count: 2;">';
+                html += renderBookmarkCard(`네, ${withGwa(src ? src.name : '앞 공간')} 같아요`, srcDesc, "SAME AS BEFORE", SOLID_TEXTURES.l1, function() { window.concierge.copyBaseFromPrev(true); });
+                html += renderBookmarkCard("아니요, 새로 고를게요", "이 공간의 바닥·벽 톤을 직접 고릅니다", "NEW", SOLID_TEXTURES.l3, function() { window.concierge.copyBaseFromPrev(false); });
                 html += '</div></div>';
                 break;
 
@@ -534,7 +620,9 @@
                     if (hasSheer) {
                         html += `<div id="chip_leadBand" class="option-chip ${curRoom.leadBand ? 'active' : ''}" onclick="window.concierge.fastToggleOption('leadBand')"><i class="fa-solid fa-check"></i> 하단 리드밴드</div>`;
                     }
-                    html += '</div></div>';
+                    html += '</div>';
+                    html += `<button class="opt-info-link" onclick="window.concierge.showOptionInfo()">옵션을 적용하면 어떻게 달라지나요? <i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i></button>`;
+                    html += '</div>';
                 }
 
                 html += '<div style="display: flex; justify-content: center; margin-top: 1.2rem;">';
@@ -558,6 +646,8 @@
                     roomCardsHtml += `<span style="font-weight: 700; font-size: 1rem;" class="font-serif-kr">${r.name}</span>`;
                     roomCardsHtml += `<span style="font-weight: 800; font-size: 1.05rem; color: #91401a; font-family: monospace;">${(r.subtotal || 0).toLocaleString()}원</span>`;
                     roomCardsHtml += '</div>';
+                    const dSummary = (typeof ticketRoomSummary === 'function') ? ticketRoomSummary(r) : '';
+                    if (dSummary) roomCardsHtml += `<div style="font-size: 0.72rem; color: #6f5f4f; margin: -0.15rem 0 0.35rem; font-family: Pretendard, sans-serif;">${dSummary}</div>`;
 
                     r.curtains.forEach(c => {
                         const calcObj = c.calc || {};
@@ -705,7 +795,40 @@
                 state.editingRoom.hotelFit = target.curtains.some(c => c.hotelFit);
                 state.editingRoom.leadBand = target.curtains.some(c => c.leadBand);
             }
-            goToStep("2-Base-Floor");
+            // 새 공간이고, 앞에서 진단을 마친 공간이 있으면 "같은 바닥·벽" 바로가기부터
+            goToStep((!target.isConfigured && copySourceRoom()) ? "2-Base-Copy" : "2-Base-Floor");
+        },
+        copyBaseFromPrev: function(same) {
+            const src = copySourceRoom();
+            if (same && src) {
+                state.editingRoom.floorTone = src.floorTone;
+                state.editingRoom.wallTone = src.wallTone;
+                goToStep("2-Base-Light");
+            } else {
+                goToStep("2-Base-Floor");
+            }
+        },
+        showOptionInfo: function() {
+            const room = state.editingRoom;
+            if (!room) return;
+            const keys = [];
+            if (room.items.some(i => i.presetType === 'drape')) keys.push('shapeFee', 'hotelFit');
+            if (room.items.some(i => i.presetType === 'sheer')) keys.push('leadBand');
+            if (!keys.length) return;
+            let ov = document.getElementById('optInfoOverlay');
+            if (!ov) {
+                ov = document.createElement('div');
+                ov.id = 'optInfoOverlay';
+                ov.className = 'opt-info-overlay';
+                ov.onclick = () => window.concierge.closeOptionInfo();
+                document.body.appendChild(ov);
+            }
+            ov.innerHTML = optionInfoHtml(keys);
+            ov.style.display = 'flex';
+        },
+        closeOptionInfo: function() {
+            const ov = document.getElementById('optInfoOverlay');
+            if (ov) ov.style.display = 'none';
         },
         selectFloorTone: function(tone) {
             state.editingRoom.floorTone = tone;
@@ -841,6 +964,8 @@
                 roomTarget.mood = state.editingRoom.mood;
                 roomTarget.wantMood = state.editingRoom.wantMood || null;
                 roomTarget.lightBlock = state.editingRoom.lightBlock || null;
+                roomTarget.roomType = state.editingRoom.roomType || roomTarget.roomType || null;
+                roomTarget.diagnosed = true;          // 바닥·벽·채광 진단을 거침 → 제안서에 진단 요약·추천 이유 표시
                 roomTarget.curtains = finalizedCurtains;
                 roomTarget.subtotal = roomSubSum;
 
@@ -882,6 +1007,7 @@
                     id: Date.now() + i, name: r.name,
                     floorTone: r.floorTone || 'warm', wallTone: r.wallTone || 'cool',
                     lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
+                    roomType: r.roomType || null, lightBlock: r.lightBlock || null, diagnosed: !!r.diagnosed,
                     isConfigured: true,
                     curtains: r.curtains.map(c => ({ ...c })),
                     subtotal: sub
@@ -918,6 +1044,7 @@
         getRoomsForSave: function() {
             return state.roomsCart.filter(r => r.isConfigured).map(r => ({
                 name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
+                roomType: r.roomType || null, lightBlock: r.lightBlock || null, diagnosed: !!r.diagnosed,
                 curtains: r.curtains
             }));
         },
