@@ -284,7 +284,7 @@
                                 원단 분류 (고객 추천에 쓰입니다)
                                 <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="tagCount">0/0</span>
                             </h3>
-                            <p class="text-[10px] sm:text-[11px] text-slate-400">원단마다 어울리는 톤·분위기(속지는 두께도)를 지정하면 고객 화면의 추천이 달라집니다 (지정 전에는 이름으로 추측한 값)</p>
+                            <p class="text-[10px] sm:text-[11px] text-slate-400">원단마다 톤·질감(속지는 두께도)을 지정하면 분위기는 자동으로 정해집니다. 분위기를 직접 고르면 그 값이 우선 (지정 전에는 이름으로 추측한 값)</p>
                         </div>
                         <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex-shrink-0">
                             <span id="tagAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
@@ -538,8 +538,8 @@
             </div>
 
             <button onclick="shareTicketImage()" class="w-full bg-[#2b221a] hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-share-nodes text-xs"></i>
-                <span>카카오톡 등으로 바로 보내기</span>
+                <i class="fa-solid fa-comment text-xs"></i>
+                <span>카톡용 이미지 저장</span>
             </button>
             <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200">
                 <button onclick="downloadTicketImage()" class="w-full bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-1.5">

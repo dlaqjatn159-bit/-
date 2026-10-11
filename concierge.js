@@ -457,11 +457,12 @@
             // [Step 2-3b: 빛 차단 희망 (방에서만)]
             case "2-Base-Block":
                 html += '<div class="bookmark-stage">';
+                const forBlind = state.blockNext === '3.5-Bridge';      // 블라인드를 고른 뒤 묻는 경우
                 html += stepHead('빛을 얼마나 가리고 싶으세요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("들어와도 괜찮아요", "은은한 햇살이 스며드는 편이 좋아요", "BLOCK LOW", SOLID_TEXTURES.l1, function() { window.concierge.selectLightBlock('light'); });
+                html += renderBookmarkCard("들어와도 괜찮아요", forBlind ? "바깥이 비치고 햇빛만 걸러지게" : "은은한 햇살이 스며드는 편이 좋아요", "BLOCK LOW", SOLID_TEXTURES.l1, function() { window.concierge.selectLightBlock('light'); });
                 html += renderBookmarkCard("적당히 가려 주세요", "눈부심만 줄이고 아늑하게", "BLOCK MID", SOLID_TEXTURES.l2, function() { window.concierge.selectLightBlock('soft'); });
-                html += renderBookmarkCard("완전히 어둡게", "깊은 숙면을 위한 암막", "BLOCK FULL", SOLID_TEXTURES.l4, function() { window.concierge.selectLightBlock('dark'); });
+                html += renderBookmarkCard("완전히 어둡게", forBlind ? "빛을 거의 막는 암막" : "깊은 숙면을 위한 암막", "BLOCK FULL", SOLID_TEXTURES.l4, function() { window.concierge.selectLightBlock('dark'); });
                 html += '</div></div>';
                 break;
 
@@ -707,7 +708,7 @@
         const view = pickInfo ? Object.assign({}, f, { tone: pickInfo.tone || f.tone, manual: Object.assign({}, f.manual, { tone: !!pickInfo.tone || !!(f.manual && f.manual.tone) }) }) : f;
         const bgStyle = idx === 0 ? SOLID_TEXTURES.l1 : (idx === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
         const tagText = (typeof customerFacts === 'function') ? customerFacts(view) : '';
-        const reasonText = recommendReason(view, state.editingRoom, targetCategory);
+        const reasonText = recommendReason(view, state.editingRoom, targetCategory, 1);      // 칸에서는 1문장만
         let h = `<div class="bookmark-card color-top" data-fab="${f.id}" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
         h += `<div class="bookmark-bg" style="background: ${bgStyle};"></div>`;
         h += `<img class="fabric-photo" alt="" data-id="${f.id}" data-color="${pick}" data-i="0" src="${fabricPhotoUrls(f.id, pick)[0]}" onerror="window.concierge.imgFallback(this)">`;
@@ -904,12 +905,15 @@
         },
         selectLightLevel: function(level) {
             state.editingRoom.lightLevel = level;
+            state.blockNext = null;
             // 방은 "빛을 얼마나 가릴지"를 한 번 더 물어봄 (암막 정도 추천에 사용)
             goToStep(roomTypeOf(state.editingRoom) === '방' ? "2-Base-Block" : "2-Base-Mood");
         },
         selectLightBlock: function(level) {
             state.editingRoom.lightBlock = level;
-            goToStep("2-Base-Mood");
+            const next = state.blockNext || "2-Base-Mood";      // 블라인드를 고른 뒤 물었으면 바로 원단 제안으로
+            state.blockNext = null;
+            goToStep(next);
         },
         selectMood: function(mood) {
             state.editingRoom.wantMood = mood;
@@ -937,6 +941,13 @@
             }
             state.pendingItemQueue = state.editingRoom.items;
             state.currentItemIndex = 0;
+            state.blockNext = null;
+            // 블라인드인데 아직 "빛을 얼마나 가릴지"를 안 물었으면(방이 아닌 공간) 한 번 물어봄 → 암막·일반·투시 추천에 사용
+            if (type === 'blind_only' && !state.editingRoom.lightBlock) {
+                state.blockNext = "3.5-Bridge";
+                goToStep("2-Base-Block");
+                return;
+            }
             goToStep("3.5-Bridge");
         },
         proceedToFabricQueue: function() {

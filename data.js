@@ -172,18 +172,57 @@ const MOOD_LABELS = {
     textured_linen: '텍스처 린넨', deep_private: '딥 프라이빗', airy_bright: '에어리 브라이트'
 };
 const DENSITY_LABELS = { light: '얇음', medium: '보통', heavy: '도톰' };
-const BLACKOUT_LABELS = { none: '비암막', mid: '적당 암막', full: '완전 암막' };
+// 질감 (사장님이 만져 보고 고름). 분위기는 톤·두께·질감으로 앱이 자동으로 정함
+const TEXTURE_LABELS = { smooth: '매끈', natural: '결 있음', cozy: '포근' };
+const TEXTURE_HINTS = { smooth: '차르르·광택·평직', natural: '린넨·슬러브처럼 결·마디', cozy: '부클·기모·도톰한 짜임' };
+function normalizeTextureInput(v) {
+    const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (!s) return null;
+    if (TEXTURE_LABELS[s]) return s;
+    if (/^(매끈|매끄|차르|광택)/.test(s)) return 'smooth';
+    if (/^(결|린넨|슬러브|내추럴)/.test(s)) return 'natural';
+    if (/^(포근|부클|기모|도톰)/.test(s)) return 'cozy';
+    return null;
+}
+// 암막 4단계 (사장님 기준): 완전암막 = 빛에 예민한 분용 진짜 암막(95% 이상), 생활암막 = 70~94%(블랑·라온), 보통 = 그 아래(넥스 약 60%)
+const BLACKOUT_LABELS = { none: '비암막', mid: '보통', life: '생활암막', full: '완전암막' };
+const BLACKOUT_ORDER = ['none', 'mid', 'life', 'full'];
 // 고객이 고르는 "빛을 얼마나 가릴지" (방에서만 물어봄)
 const LIGHTBLOCK_LABELS = { light: '들어와도 괜찮아요', soft: '적당히 가려 주세요', dark: '완전히 어둡게' };
 
-// 겉지의 암막 정도: 사장님이 직접 정한 값이 우선, 없으면 품명의 암막률로 추정 (95% 이상 = 완전, 그 외 암막 = 적당)
+// 겉지의 암막 정도: 사장님이 직접 정한 값이 우선, 없으면 품명으로 추정 (95% 이상 = 완전, 70~94% = 생활, 70% 미만 = 보통)
 function blackoutLevel(f) {
     if (!f) return null;
     if (f.blackout && BLACKOUT_LABELS[f.blackout]) return f.blackout;
     const name = String(f.name || '');
     const pct = /(\d{2,3})\s*%/.exec(name);
-    if (name.includes('암막')) return (pct && parseInt(pct[1], 10) >= 95) ? 'full' : 'mid';
+    if (name.includes('생활암막')) return 'life';
+    if (name.includes('암막')) {
+        if (!pct) return null;            // 암막률이 안 적혀 있으면 모름 → 사장님이 지정
+        const p = parseInt(pct[1], 10);
+        return p >= 95 ? 'full' : (p >= 70 ? 'life' : 'mid');
+    }
     return null;   // 모름 (사장님이 분류 화면에서 지정하면 반영)
+}
+
+// ---- 블라인드 자동 분류 (엑셀 비고·품명으로 판단. 사장님은 톤·분위기만 지정) ----
+const BLIND_KIND_LABELS = { combi: '콤비', roll: '롤', print: '프린트' };
+const BLIND_LIGHT_LABELS = { full: '암막', none: '일반', see: '투시' };
+// 비고 칸: "TRIPLE & COMBI" → 콤비, "ROLL TYPE" → 롤, "PRINTED FABRIC BLINDS" → 프린트
+function detectBlindKind(note) {
+    const s = String(note || '').toUpperCase();
+    if (/COMBI|TRIPLE|콤비|트리플/.test(s)) return 'combi';
+    if (/ROLL|롤/.test(s)) return 'roll';
+    if (/PRINT|프린트/.test(s)) return 'print';
+    return null;
+}
+function blindKind(f) { return (f && f.blindKind && BLIND_KIND_LABELS[f.blindKind]) ? f.blindKind : null; }
+// 품명: "B/O" = 암막, "SUN SCREEN" = 바깥이 비치는 투시형, 나머지 = 일반
+function blindLight(f) {
+    const n = String((f && f.name) || '').toUpperCase();
+    if (/B\/O|BLACKOUT|암막/.test(n)) return 'full';
+    if (/SUN\s*SCREEN|선스크린/.test(n)) return 'see';
+    return 'none';
 }
 const MOOD_HINTS = {
     soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 도시적인 느낌', balanced_neutral: '어디에나 무난한 느낌',
@@ -225,7 +264,24 @@ function deriveRoomMood(room) {
     return 'balanced_neutral';
 }
 
-function isManualTagged(f) { return !!(f && f.manual && f.manual.mood && (f.manual.tone || hasColorTones(f.id))); }
+// 원단(또는 색)의 분위기: ① 사장님이 직접 고른 분위기 ② 질감이 있으면 톤·두께·질감으로 자동 ③ 둘 다 없으면 예전 이름 추측
+// 색상별 톤이 다르면 분위기도 색마다 달라짐 (예: 블랑 1번 웜 → 소프트 웜, 7번 쿨 → 어반 클린)
+function moodOf(f) {
+    if (!f) return null;
+    const m = f.manual || {};
+    if (m.mood && MOOD_LABELS[f.mood]) return f.mood;
+    if (!f.texture || !TEXTURE_LABELS[f.texture]) return f.mood || null;
+    const tone = f.tone || 'neutral';
+    const thin = f.categoryType === '속지' && (f.density === 'light' || (!m.density && /쉬폰|보일/.test(String(f.name || ''))));
+    if (thin && tone !== 'deep') return 'airy_bright';      // 얇은 속지 → 에어리 브라이트
+    if (f.texture === 'natural') return 'textured_linen';    // 결 있음 → 텍스처 린넨
+    if (tone === 'deep') return 'deep_private';              // 딥 톤 → 딥 프라이빗
+    if (f.texture === 'cozy' || tone === 'warm') return 'soft_warm';
+    if (tone === 'cool') return 'urban_clean';
+    return 'balanced_neutral';
+}
+function hasMoodInput(f) { const m = (f && f.manual) || {}; return !!(m.mood || (f && f.texture && TEXTURE_LABELS[f.texture])); }
+function isManualTagged(f) { return !!(f && f.manual && hasMoodInput(f) && (f.manual.tone || hasColorTones(f.id))); }
 
 function calculateFabricMatchScore(fabric, room, category) {
     let score = 0;
@@ -234,6 +290,7 @@ function calculateFabricMatchScore(fabric, room, category) {
     const wallT = room.wallTone || 'warm';
     const wantMood = room.wantMood || null;                    // 고객이 직접 고른 희망 분위기
     const targetMood = wantMood || deriveRoomMood(room);       // 고르지 않았으면 바닥·벽 톤으로 추정
+    const fMood = moodOf(fabric);
 
     // 톤: 바닥·벽과의 어울림
     if (floorT === wallT) {
@@ -244,17 +301,17 @@ function calculateFabricMatchScore(fabric, room, category) {
         else if (fTone === floorT || fTone === wallT) score += 2;
     }
 
-    if ((floorT === 'deep' || wallT === 'deep') && (fTone === 'deep' || fabric.mood === 'deep_private')) {
+    if ((floorT === 'deep' || wallT === 'deep') && (fTone === 'deep' || fMood === 'deep_private')) {
         score += 4;
     }
 
     // 분위기: 고객이 직접 고른 경우 더 크게 반영
-    if (fabric.mood === targetMood) {
+    if (fMood === targetMood) {
         score += wantMood ? 6 : 4;
     } else {
-        if (targetMood === 'soft_warm' && fabric.mood === 'textured_linen') score += 2;
-        if (targetMood === 'urban_clean' && fabric.mood === 'airy_bright') score += 2;
-        if (targetMood === 'balanced_neutral' && (fabric.mood === 'soft_warm' || fabric.mood === 'urban_clean')) score += 1;
+        if (targetMood === 'soft_warm' && fMood === 'textured_linen') score += 2;
+        if (targetMood === 'urban_clean' && fMood === 'airy_bright') score += 2;
+        if (targetMood === 'balanced_neutral' && (fMood === 'soft_warm' || fMood === 'urban_clean')) score += 1;
     }
 
     // 채광: 빛이 강하면 도톰한 속지로 빛을 부드럽게 걸러줌 (어두운 공간은 정해진 규칙 없음)
@@ -267,11 +324,23 @@ function calculateFabricMatchScore(fabric, room, category) {
     if (category === '겉지' && room.lightBlock) {
         const b = blackoutLevel(fabric);
         const table = {
-            dark: { full: 10, mid: 0, none: -3, unknown: -1 },
-            soft: { full: 2, mid: 4, none: 0, unknown: 0 },
-            light: { full: 0, mid: 2, none: 3, unknown: 1 }
+            dark: { full: 10, life: 2, mid: -2, none: -3, unknown: -1 },     // 완전히 어둡게 → 완전암막 최우선
+            soft: { full: 1, life: 4, mid: 3, none: 0, unknown: 0 },        // 적당히 → 생활암막·보통
+            light: { full: -1, life: 1, mid: 3, none: 3, unknown: 1 }       // 들어와도 → 비암막·보통
         }[room.lightBlock];
         if (table) score += table[b || 'unknown'];
+    }
+
+    // 블라인드 빛 가림: 완전히 어둡게 → 암막(롤 암막이 가장 확실), 적당히 → 일반·콤비, 들어와도 → 투시·콤비
+    if (category === '블라인드' && room.lightBlock) {
+        const bl = blindLight(fabric), kind = blindKind(fabric);
+        const table = {
+            dark: { full: kind === 'roll' ? 10 : 7, none: -3, see: -5 },
+            soft: { full: 2, none: 4, see: 1 },
+            light: { full: -1, none: 2, see: 4 }
+        }[room.lightBlock];
+        if (table) score += table[bl] || 0;
+        if (kind === 'combi' && room.lightBlock !== 'dark') score += 1;      // 각도 조절이 되어 빛 양을 맞추기 쉬움
     }
 
     if (fabric.categoryType === category) score += 2;
@@ -279,12 +348,12 @@ function calculateFabricMatchScore(fabric, room, category) {
 }
 
 // 추천 이유 한 줄 (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
-function recommendReason(fabric, room, category) {
+function recommendReason(fabric, room, category, maxParts) {
     if (!isManualTagged(fabric)) return '';
     const floorT = room.floorTone || 'warm', wallT = room.wallTone || 'warm';
     const targetMood = room.wantMood || deriveRoomMood(room);
     const parts = [];
-    if (fabric.mood === targetMood) parts.push(room.wantMood ? `원하신 ${MOOD_LABELS[targetMood]} 분위기에 맞아요` : `${MOOD_LABELS[targetMood]} · ${MOOD_HINTS[targetMood]}`);
+    if (moodOf(fabric) === targetMood) parts.push(room.wantMood ? `원하신 ${MOOD_LABELS[targetMood]} 분위기에 맞아요` : `${MOOD_LABELS[targetMood]} · ${MOOD_HINTS[targetMood]}`);
     if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽의 톤 차이를 부드럽게 이어줘요' : '어떤 공간에도 무난하게 어울려요');
     else if (fabric.tone === floorT) parts.push(`바닥의 ${TONE_LABELS[floorT]} 톤과 잘 어울려요`);
     else if (fabric.tone === wallT) parts.push(`벽의 ${TONE_LABELS[wallT]} 톤과 잘 어울려요`);
@@ -292,11 +361,20 @@ function recommendReason(fabric, room, category) {
     if (category === '겉지' && room.lightBlock) {
         const b = blackoutLevel(fabric);
         const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막아 주는 완전 암막이에요'
-            : room.lightBlock === 'soft' && b === 'mid' ? '눈부심은 줄이고 아늑하게 가려 줘요'
-            : room.lightBlock === 'light' && b === 'none' ? '햇빛이 은은하게 스며들어요' : '';
+            : room.lightBlock === 'soft' && b === 'life' ? '눈부심은 줄이고 아늑하게 가려 줘요'
+            : room.lightBlock === 'soft' && b === 'mid' ? '빛을 살짝 걸러 은은하게 가려 줘요'
+            : room.lightBlock === 'light' && (b === 'none' || b === 'mid') ? '햇빛이 은은하게 스며들어요' : '';
         if (msg) parts.unshift(msg);       // 고객이 직접 고른 조건이라 맨 앞에
     }
-    return parts.slice(0, 2).join(' · ');
+    if (category === '블라인드' && room.lightBlock) {
+        const bl = blindLight(fabric), kind = blindKind(fabric);
+        const msg = room.lightBlock === 'dark' && bl === 'full' ? '빛을 거의 막아 주는 암막 블라인드예요'
+            : room.lightBlock === 'light' && bl === 'see' ? '바깥 풍경은 살리고 햇빛만 걸러 줘요'
+            : room.lightBlock !== 'dark' && kind === 'combi' ? '각도를 조절해 들어오는 빛을 맞출 수 있어요' : '';
+        if (msg) parts.unshift(msg);
+    }
+    // 원단 고르는 칸은 1문장만(사진을 덜 가리게), 제안서는 2문장까지
+    return parts.slice(0, maxParts || 2).join(' · ');
 }
 
 // 공간 종류(+빛 차단 희망)로 창 구성 추천: 카드 순서는 그대로 두고 "추천" 표시만 붙임
@@ -331,11 +409,19 @@ function customerFacts(fabric) {
     const name = String(f.name || '');
     const pct = /(\d{2,3})\s*%/.exec(name);
     const bl = blackoutLevel(f);
-    if (pct && name.includes('암막')) out.push(`#암막 ${pct[1]}%`);
-    else if (bl === 'full') out.push('#완전암막');
-    else if (bl === 'mid') out.push('#암막');
+    if (f.categoryType === '블라인드') {
+        const kind = blindKind(f), light = blindLight(f);
+        if (kind) out.push(`#${BLIND_KIND_LABELS[kind]}`);
+        if (light !== 'none') out.push(`#${BLIND_LIGHT_LABELS[light]}`);
+        if (hasMoodInput(f) && MOOD_LABELS[moodOf(f)]) out.push(`#${MOOD_LABELS[moodOf(f)].replace(/\s+/g, '')}`);
+        return out.join(' ');
+    }
+    const pctTxt = (pct && name.includes('암막')) ? ` ${pct[1]}%` : '';
+    if (bl === 'full') out.push(`#완전암막${pctTxt}`);
+    else if (bl === 'life') out.push(`#생활암막${pctTxt}`);
+    else if (bl === 'mid' && pctTxt) out.push(`#빛가림${pctTxt}`);      // 보통 단계는 '암막'이라 부르지 않음
     if (m.density && DENSITY_LABELS[f.density]) out.push(`#${DENSITY_LABELS[f.density]} 두께`);
-    if (m.mood && MOOD_LABELS[f.mood]) out.push(`#${MOOD_LABELS[f.mood].replace(/\s+/g, '')}`);
+    if (hasMoodInput(f) && MOOD_LABELS[moodOf(f)]) out.push(`#${MOOD_LABELS[moodOf(f)].replace(/\s+/g, '')}`);
     return out.join(' ');
 }
 
@@ -495,6 +581,7 @@ function applyTagOverrides(list) {
         if (t && t.mood && MOOD_LABELS[t.mood]) { f.mood = t.mood; f.manual.mood = true; }
         if (t && t.density && DENSITY_LABELS[t.density]) { f.density = t.density; f.manual.density = true; }
         if (t && t.blackout && BLACKOUT_LABELS[t.blackout]) { f.blackout = t.blackout; f.manual.blackout = true; }
+        if (t && t.texture && TEXTURE_LABELS[t.texture]) { f.texture = t.texture; f.manual.texture = true; }
         f.hideOverride = (t && (t.hide === 'yes' || t.hide === 'no')) ? t.hide : null;
     });
 }
@@ -510,11 +597,13 @@ function setFabricTag(id, key, val) {
     const o = loadTagOverrides();
     o[id] = o[id] || {};
     if (!val) delete o[id][key]; else o[id][key] = val;
-    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide && !o[id].blackout) delete o[id];
+    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide && !o[id].blackout && !o[id].texture) delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
     if (f && key === 'hide') {
         f.hideOverride = val || null;
+    } else if (f && key === 'texture') {
+        f.texture = val || null; f.manual = f.manual || {}; f.manual.texture = !!val;
     } else if (f && key === 'blackout') {
         f.blackout = val || null; f.manual = f.manual || {}; f.manual.blackout = !!val;
     } else if (f) {
@@ -530,7 +619,7 @@ function clearFabricTags(id) {
     if (keepHide) o[id] = { hide: keepHide }; else delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
-    if (f) { f.tone = null; f.mood = null; f.density = null; f.blackout = null; f.tags = null; f.manual = { tone: false, mood: false, density: false, blackout: false }; autoTagFabricAttributes(f); }
+    if (f) { f.tone = null; f.mood = null; f.density = null; f.blackout = null; f.texture = null; f.tags = null; f.manual = { tone: false, mood: false, density: false, blackout: false, texture: false }; autoTagFabricAttributes(f); }
     saveFabricDb(false);
     if (typeof renderTagEditor === 'function') renderTagEditor();
 }
@@ -651,11 +740,13 @@ function buildFabricRecords(dataRows, rules) {
             tone: normalizeToneInput(getCol(['언더톤', '톤', '색조'])),
             mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),
             density: normalizeDensityInput(getCol(['두께', '도톰함', '밀도'])),
+            texture: normalizeTextureInput(getCol(['질감', '텍스처'])),
             imageUrl: imgUrlRaw || null,
             fabricOnly: /원단만/.test(noteRaw),      // 비고에 "원단만 시킬때" → 고객 추천에서 기본 숨김
+            blindKind: detectBlindKind(noteRaw),     // 블라인드 종류 (콤비/롤/프린트). 커튼은 비어 있음
             extra: Costing.deriveExtra(cost, labor, rules)
         };
-        fabObj.manual = { tone: !!fabObj.tone, mood: !!fabObj.mood, density: !!fabObj.density };      // 엑셀에 직접 적힌 값인지 기록 (자동 추정 구분용)
+        fabObj.manual = { tone: !!fabObj.tone, mood: !!fabObj.mood, density: !!fabObj.density, texture: !!fabObj.texture };      // 엑셀에 직접 적힌 값인지 기록 (자동 추정 구분용)
         fabrics.push(autoTagFabricAttributes(fabObj));
         costs[uid] = { supplier, cost, labor };
     }

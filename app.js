@@ -449,19 +449,26 @@ function renderTagEditor() {
             const cls = isManual ? 'bg-amber-800 text-white border-amber-900' : (isGuess ? 'bg-white text-slate-500 border-dashed border-slate-400' : 'bg-white text-slate-600 border-slate-300');
             return `<button onclick="setFabricTag('${f.id}','tone','${isManual ? '' : t}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TONE_LABELS[t]}</button>`;
         }).join('');
-        const guessLabel = m.mood ? '' : ` (자동: ${MOOD_LABELS[f.mood] || '-'})`;
-        const moodOpts = `<option value="">자동 추측${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]}</option>`).join('');
+        // 분위기는 질감·톤·두께로 자동. 직접 고르면 그 값이 우선
+        const autoMood = moodOf(Object.assign({}, f, { manual: Object.assign({}, m, { mood: false }) }));
+        const guessLabel = nColors ? ' (색상별로 자동)' : ` (${MOOD_LABELS[autoMood] || '-'})`;
+        const moodOpts = `<option value="">자동${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]}</option>`).join('');
         const done = isManualTagged(f);
-        const status = (nColors && !hasColorTones(f.id)) ? '<span class="text-[10px] font-bold text-amber-700">색상 톤 필요</span>' : done ? '<span class="text-[10px] font-bold text-emerald-700">✓ 분류 완료</span>' : ((m.tone || m.mood) ? '<span class="text-[10px] font-bold text-amber-700">일부만 지정</span>' : '<span class="text-[10px] text-slate-400">자동 추측</span>');
+        const status = (nColors && !hasColorTones(f.id)) ? '<span class="text-[10px] font-bold text-amber-700">색상 톤 필요</span>' : done ? '<span class="text-[10px] font-bold text-emerald-700">✓ 분류 완료</span>' : ((m.tone || hasMoodInput(f)) ? '<span class="text-[10px] font-bold text-amber-700">일부만 지정</span>' : '<span class="text-[10px] text-slate-400">자동 추측</span>');
         const dens = ['light', 'medium', 'heavy'].map(dv => {
             const on = m.density && f.density === dv;
             const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
             return `<button onclick="setFabricTag('${f.id}','density','${on ? '' : dv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${DENSITY_LABELS[dv]}</button>`;
         }).join('');
+        const texBtns = Object.keys(TEXTURE_LABELS).map(tv => {
+            const on = f.texture === tv;
+            const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
+            return `<button title="${TEXTURE_HINTS[tv]}" onclick="setFabricTag('${f.id}','texture','${on ? '' : tv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TEXTURE_LABELS[tv]}</button>`;
+        }).join('');
         const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">두께</span>${dens}` : '';
         // 겉지 암막 정도: 직접 지정하지 않으면 품명의 암막률로 추정(점선 표시). 방에서 "빛을 얼마나 가릴지" 추천에 사용
         const blGuess = blackoutLevel(Object.assign({}, f, { blackout: null }));
-        const bls = ['none', 'mid', 'full'].map(bv => {
+        const bls = BLACKOUT_ORDER.map(bv => {
             const on = m.blackout && f.blackout === bv;
             const guess = !m.blackout && blGuess === bv;
             const cls = on ? 'bg-amber-800 text-white border-amber-900' : (guess ? 'bg-white text-slate-500 border-dashed border-slate-400' : 'bg-white text-slate-600 border-slate-300');
@@ -476,7 +483,7 @@ function renderTagEditor() {
             <div class="flex items-center gap-2.5">
                 ${thumb}
                 <div class="min-w-0 flex-1">
-                    <div class="text-[10px] text-slate-400 truncate">[${f.book}] ${f.categoryType || ''}</div>
+                    <div class="text-[10px] text-slate-400 truncate">[${f.book}] ${f.categoryType || ''}${f.categoryType === '블라인드' ? ` · 자동: ${blindKind(f) ? BLIND_KIND_LABELS[blindKind(f)] : '종류 모름(엑셀 다시 불러오기)'} · ${BLIND_LIGHT_LABELS[blindLight(f)]}` : ''}</div>
                     <div class="text-xs font-bold text-slate-800 truncate">${f.name}</div>
                 </div>
                 ${hideBtn}
@@ -484,10 +491,11 @@ function renderTagEditor() {
             </div>
             <div class="flex flex-wrap items-center gap-1.5 mt-2">
                 ${nColors ? '' : '<span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>'}${toneBtns}
+                <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">질감</span>${texBtns}
                 <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">분위기</span>
                 <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
                 ${densBlock}${blackBlock}
-                ${(m.tone || m.mood || m.density || m.blackout) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
+                ${(m.tone || m.mood || m.density || m.blackout || f.texture) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -511,7 +519,7 @@ function renderColorEditor() {
     if (cnt) cnt.textContent = `${Object.keys(colorsStore()).filter(id => FABRIC_DB.some(f => f.id === id)).length}개 원단`;
     const bookSel = document.getElementById('colorBook'), fabSel = document.getElementById('colorFab'), box = document.getElementById('colorEditor');
     if (!bookSel || !fabSel || !box) return;
-    const curtains = FABRIC_DB.filter(f => f.categoryType !== '블라인드');
+    const curtains = FABRIC_DB;      // 블라인드도 커튼처럼 색상(번호)별 톤 지정
     const books = [...new Set(curtains.map(f => f.book))];
     if (bookSel.dataset.sig !== books.join('|')) { const cur = bookSel.value; bookSel.innerHTML = books.map(b => `<option value="${b}">${b}</option>`).join(''); bookSel.dataset.sig = books.join('|'); bookSel.value = books.includes(cur) ? cur : (books.includes('데미안') ? '데미안' : books[0]); }
     const list = curtains.filter(f => f.book === bookSel.value);
@@ -630,7 +638,7 @@ async function checkPhotos() {
     const found = Object.keys(__photoFound).length;
     if (statusEl) statusEl.textContent = `${found} / ${targets.length}장`;
     if (missEl) {
-        const miss = photoTargets().filter(t => !__photoFound[t.key] && t.fabric.categoryType !== '블라인드').map(t => `${t.fabric.book} ${t.fabric.name}${colorSuffix(t.color, t.fabric.id)}`);
+        const miss = photoTargets().filter(t => !__photoFound[t.key]).map(t => `${t.fabric.book} ${t.fabric.name}${colorSuffix(t.color, t.fabric.id)}`);
         missEl.textContent = miss.length ? `사진이 없는 커튼 원단 ${miss.length}개: ${miss.slice(0, 12).join(', ')}${miss.length > 12 ? ' …' : ''}` : '커튼 원단 사진이 모두 준비되었습니다.';
     }
 }
@@ -1746,34 +1754,24 @@ async function downloadTicketImage() {
     }
 }
 
-// 카카오톡 등으로 바로 보내기: 태블릿의 "공유" 창을 열어 견적서 이미지를 넘김 (지원하지 않으면 저장으로 대신)
-// 공유 창이 끝없이 로딩되는 기기가 있어, 가벼운 JPG + 영문 파일 이름으로 보냄
+// 카카오톡용 이미지 저장: 탭(삼성)에서 공유 창이 끝없이 로딩되는 문제가 계속돼 "공유" 대신 "저장"으로 바꿈
+// 가벼운 JPG로 갤러리에 저장 → 카카오톡에서 사진으로 보내면 됨
 let __shareBusy = false;
 async function shareTicketImage() {
-    if (__shareBusy) return;          // 연타해도 공유 창이 여러 번 뜨지 않게
+    if (__shareBusy) return;          // 연타해도 여러 번 저장되지 않게
     __shareBusy = true;
     showToast("이미지 준비 중...", "info");
     try {
         const { blobs } = await makeTicketBlobs({ solidBg: true, type: 'image/jpeg' });
-        const names = ticketFileNames(blobs.length, 'jpg', true);
-        const files = blobs.map((b, i) => new File([b], names[i], { type: 'image/jpeg' }));
-        if (navigator.canShare && navigator.canShare({ files }) && navigator.share) {
-            try {
-                await navigator.share({ files });
-            } catch (e) {
-                if (e && e.name === 'AbortError') return;      // 고객이 공유 창을 닫은 경우
-                throw e;
-            }
-        } else {
-            for (let i = 0; i < blobs.length; i++) {
-                saveBlobAsFile(blobs[i], names[i]);
-                if (i < blobs.length - 1) await new Promise(r => setTimeout(r, 400));
-            }
-            showToast("이 기기는 바로 보내기를 지원하지 않아 이미지로 저장했습니다. 카카오톡에서 사진으로 보내 주세요.", "info");
+        const names = ticketFileNames(blobs.length, 'jpg', false);
+        for (let i = 0; i < blobs.length; i++) {
+            saveBlobAsFile(blobs[i], names[i]);
+            if (i < blobs.length - 1) await new Promise(r => setTimeout(r, 400));   // 여러 장은 간격을 두고 저장
         }
+        showToast(`${blobs.length > 1 ? blobs.length + '장 ' : ''}저장했어요. 카카오톡 → 사진(갤러리)에서 골라 보내 주세요.`, "success");
     } catch (err) {
         console.error(err);
-        showToast("보내기 중 오류가 발생했습니다. '고화질 이미지 저장'을 이용해 주세요.", "error");
+        showToast("이미지 저장 중 오류가 발생했습니다. '고화질 이미지 저장'을 이용해 주세요.", "error");
     } finally {
         __shareBusy = false;
     }
