@@ -171,8 +171,10 @@ const MOOD_LABELS = {
     soft_warm: '소프트 웜', urban_clean: '어반 클린', balanced_neutral: '밸런스 뉴트럴',
     textured_linen: '텍스처 린넨', deep_private: '딥 프라이빗', airy_bright: '에어리 브라이트'
 };
-const DENSITY_LABELS = { light: '얇음', medium: '보통', heavy: '도톰' };
-// 질감 (사장님이 만져 보고 고름). 분위기는 톤·두께·질감으로 앱이 자동으로 정함
+// 속지 비침 정도 (예전 '두께'. 저장 값은 그대로: light=많이 비침, medium=중간, heavy=적게 비침)
+const DENSITY_LABELS = { light: '많이 비침', medium: '중간', heavy: '적게 비침' };
+const DENSITY_FACTS = { light: '#맑은비침', medium: '#은은한비침', heavy: '#비침적음' };
+// 질감 (사장님이 만져 보고 고름). 분위기는 톤·비침·질감으로 앱이 자동으로 정함
 const TEXTURE_LABELS = { smooth: '매끈', natural: '결 있음', cozy: '포근' };
 const TEXTURE_HINTS = { smooth: '차르르·광택·평직', natural: '린넨·슬러브처럼 결·마디', cozy: '부클·기모·도톰한 짜임' };
 function normalizeTextureInput(v) {
@@ -250,9 +252,9 @@ function normalizeDensityInput(v) {
     const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '');
     if (!s) return null;
     if (DENSITY_LABELS[s]) return s;
-    if (s.startsWith('얇') || s.startsWith('가벼')) return 'light';
-    if (s.startsWith('보통') || s.startsWith('중')) return 'medium';
-    if (s.startsWith('도톰') || s.startsWith('두꺼') || s.startsWith('두툼')) return 'heavy';
+    if (/^(많이|맑|얇|가벼)/.test(s)) return 'light';
+    if (/^(적|안|거의|도톰|두꺼|두툼)/.test(s)) return 'heavy';
+    if (/^(중|보통|은은)/.test(s)) return 'medium';
     return null;
 }
 
@@ -264,7 +266,7 @@ function deriveRoomMood(room) {
     return 'balanced_neutral';
 }
 
-// 원단(또는 색)의 분위기: ① 사장님이 직접 고른 분위기 ② 질감이 있으면 톤·두께·질감으로 자동 ③ 둘 다 없으면 예전 이름 추측
+// 원단(또는 색)의 분위기: ① 사장님이 직접 고른 분위기 ② 질감이 있으면 톤·비침·질감으로 자동 ③ 둘 다 없으면 예전 이름 추측
 // 색상별 톤이 다르면 분위기도 색마다 달라짐 (예: 블랑 1번 웜 → 소프트 웜, 7번 쿨 → 어반 클린)
 function moodOf(f) {
     if (!f) return null;
@@ -314,7 +316,7 @@ function calculateFabricMatchScore(fabric, room, category) {
         if (targetMood === 'balanced_neutral' && (fMood === 'soft_warm' || fMood === 'urban_clean')) score += 1;
     }
 
-    // 채광: 빛이 강하면 도톰한 속지로 빛을 부드럽게 걸러줌 (어두운 공간은 정해진 규칙 없음)
+    // 채광: 빛이 강하면 덜 비치는 속지로 빛을 부드럽게 걸러줌 (어두운 공간은 정해진 규칙 없음)
     if (category === '속지' && room.lightLevel === 'high') {
         if (fabric.density === 'heavy') score += 3;
         else if (fabric.density === 'medium') score += 1;
@@ -357,7 +359,7 @@ function recommendReason(fabric, room, category, maxParts) {
     if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽의 톤 차이를 부드럽게 이어줘요' : '어떤 공간에도 무난하게 어울려요');
     else if (fabric.tone === floorT) parts.push(`바닥의 ${TONE_LABELS[floorT]} 톤과 잘 어울려요`);
     else if (fabric.tone === wallT) parts.push(`벽의 ${TONE_LABELS[wallT]} 톤과 잘 어울려요`);
-    if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') parts.push('도톰한 원단이 강한 햇빛을 부드럽게 걸러줘요');
+    if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') parts.push('비침이 적어 강한 햇빛을 부드럽게 걸러줘요');
     if (category === '겉지' && room.lightBlock) {
         const b = blackoutLevel(fabric);
         const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막아 주는 완전 암막이에요'
@@ -402,7 +404,7 @@ function pickShowcase(ranked, n) {
     return out;
 }
 
-// 고객 카드에 보여줄 원단 특징 (사실인 것만: 품명의 암막률, 사장님이 지정한 두께·분위기)
+// 고객 카드에 보여줄 원단 특징 (사실인 것만: 품명의 암막률, 사장님이 지정한 비침·분위기)
 // 예전 자동 태그(#완벽암막 #사생활보호 등)는 모든 원단에 똑같이 붙어 사실과 다를 수 있어 고객 화면에서 쓰지 않음
 function customerFacts(fabric) {
     const f = fabric || {}, m = f.manual || {}, out = [];
@@ -420,7 +422,7 @@ function customerFacts(fabric) {
     if (bl === 'full') out.push(`#완전암막${pctTxt}`);
     else if (bl === 'life') out.push(`#생활암막${pctTxt}`);
     else if (bl === 'mid' && pctTxt) out.push(`#빛가림${pctTxt}`);      // 보통 단계는 '암막'이라 부르지 않음
-    if (m.density && DENSITY_LABELS[f.density]) out.push(`#${DENSITY_LABELS[f.density]} 두께`);
+    if (m.density && DENSITY_FACTS[f.density]) out.push(DENSITY_FACTS[f.density]);
     if (hasMoodInput(f) && MOOD_LABELS[moodOf(f)]) out.push(`#${MOOD_LABELS[moodOf(f)].replace(/\s+/g, '')}`);
     return out.join(' ');
 }
@@ -562,7 +564,8 @@ function bestColorFor(fabric, room, category) {
     if (colors.length === 0) return { color: null, score: calculateFabricMatchScore(fabric, room, category), ranked: [], classified: false };
     const ranked = rankColorsFor(fabric, room, category);
     const classified = colors.some(c => !!c.tone);
-    return { color: classified ? ranked[0].name : null, score: ranked[0].score, ranked, classified };
+    // 원단끼리 비교할 때는 색상 순서용 가산점(+0.5)을 빼서, 색상을 등록하지 않은 단색 원단과 공평하게 비교
+    return { color: classified ? ranked[0].name : null, score: ranked[0].score - (ranked[0].tone ? 0.5 : 0), ranked, classified };
 }
 
 // ---- 사장님이 직접 지정한 분류(덮어쓰기). 엑셀을 다시 불러와도 유지됩니다 ----
@@ -739,7 +742,7 @@ function buildFabricRecords(dataRows, rules) {
             categoryType: getCol(['상세구분', '구분', '카테고리']) || null,
             tone: normalizeToneInput(getCol(['언더톤', '톤', '색조'])),
             mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),
-            density: normalizeDensityInput(getCol(['두께', '도톰함', '밀도'])),
+            density: normalizeDensityInput(getCol(['비침', '두께', '도톰함', '밀도'])),
             texture: normalizeTextureInput(getCol(['질감', '텍스처'])),
             imageUrl: imgUrlRaw || null,
             fabricOnly: /원단만/.test(noteRaw),      // 비고에 "원단만 시킬때" → 고객 추천에서 기본 숨김

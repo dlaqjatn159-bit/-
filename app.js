@@ -449,7 +449,7 @@ function renderTagEditor() {
             const cls = isManual ? 'bg-amber-800 text-white border-amber-900' : (isGuess ? 'bg-white text-slate-500 border-dashed border-slate-400' : 'bg-white text-slate-600 border-slate-300');
             return `<button onclick="setFabricTag('${f.id}','tone','${isManual ? '' : t}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TONE_LABELS[t]}</button>`;
         }).join('');
-        // 분위기는 질감·톤·두께로 자동. 직접 고르면 그 값이 우선
+        // 분위기는 질감·톤·비침으로 자동. 직접 고르면 그 값이 우선
         const autoMood = moodOf(Object.assign({}, f, { manual: Object.assign({}, m, { mood: false }) }));
         const guessLabel = nColors ? ' (색상별로 자동)' : ` (${MOOD_LABELS[autoMood] || '-'})`;
         const moodOpts = `<option value="">자동${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]}</option>`).join('');
@@ -465,7 +465,7 @@ function renderTagEditor() {
             const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
             return `<button title="${TEXTURE_HINTS[tv]}" onclick="setFabricTag('${f.id}','texture','${on ? '' : tv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TEXTURE_LABELS[tv]}</button>`;
         }).join('');
-        const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">두께</span>${dens}` : '';
+        const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5" title="원단 한 겹을 글씨 위에: 읽힘=많이 비침, 모양만=중간, 거의 안 보임=적게 비침">비침</span>${dens}` : '';
         // 겉지 암막 정도: 직접 지정하지 않으면 품명의 암막률로 추정(점선 표시). 방에서 "빛을 얼마나 가릴지" 추천에 사용
         const blGuess = blackoutLevel(Object.assign({}, f, { blackout: null }));
         const bls = BLACKOUT_ORDER.map(bv => {
