@@ -161,7 +161,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     text-align: center;
     cursor: pointer;
     position: relative;
-    background: radial-gradient(circle at 50% 45%, #ffffff 0%, #fbf9f5 55%, #f4ede2 100%);
+    background: #fbf9f5;      /* 첫 화면(공간 화면)과 같은 바탕색 */
 }
 
 .ambient-light-glow {
@@ -368,7 +368,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     align-items: center;
     justify-content: center;
     padding: 2rem 3rem;
-    background: radial-gradient(circle at 50% 50%, #ffffff 0%, #fbf9f5 65%, #f4ede2 100%);
+    background: #fbf9f5;
 }
 
 .tailor-board {
@@ -821,6 +821,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 
 /* ===== 글 질문 화면 (사진 없이 묻는 질문: 공간 종류·같은 바닥벽·채광·빛 가림·바깥 시선) ===== */
 .ask-stage { cursor: default; }
+.ask-stage .ambient-light-glow { display: none; }   /* 질문 화면은 첫 화면과 똑같은 바탕 (빛 번짐은 "제안합니다" 화면에만) */
 .ask-dots { position: absolute; top: 2.2rem; left: 50%; transform: translateX(-50%); z-index: 10; }
 .ask-dots span { background: rgba(43, 34, 26, 0.18); }
 .ask-dots span.done { background: rgba(43, 34, 26, 0.4); }

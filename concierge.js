@@ -349,7 +349,7 @@
         if (!main) return;
 
         const currentCust = getClientName();
-        let html = '<div class="w-full h-full flex flex-col items-center justify-center stage-transition" style="min-height: 100vh; width: 100vw; background: radial-gradient(circle at 50% 45%, #ffffff 0%, #fbf9f5 55%, #f4ede2 100%);">';
+        let html = '<div class="w-full h-full flex flex-col items-center justify-center stage-transition" style="min-height: 100vh; width: 100vw; background: #fbf9f5;">';
 
         switch (state.step) {
             // [Step 1: 공간 장바구니 캔버스]
@@ -636,8 +636,6 @@
                     roomCardsHtml += `<span style="font-weight: 700; font-size: 1rem;" class="font-serif-kr">${r.name}</span>`;
                     roomCardsHtml += `<span style="font-weight: 800; font-size: 1.05rem; color: #91401a; font-family: monospace;">${(r.subtotal || 0).toLocaleString()}원</span>`;
                     roomCardsHtml += '</div>';
-                    const dSummary = (typeof ticketRoomSummary === 'function') ? ticketRoomSummary(r) : '';
-                    if (dSummary) roomCardsHtml += `<div style="font-size: 0.72rem; color: #6f5f4f; margin: -0.15rem 0 0.35rem; font-family: Pretendard, sans-serif;">${dSummary}</div>`;
 
                     r.curtains.forEach(c => {
                         const calcObj = c.calc || {};

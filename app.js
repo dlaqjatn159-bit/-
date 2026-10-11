@@ -1334,7 +1334,6 @@ function openTicketModal() {
         listEl.innerHTML = '';
         rooms.forEach(r => {
             const roomTotal = r.curtains.reduce((acc, curr) => acc + (curr.calc ? curr.calc.curtainSubtotal : 0), 0);
-            const summary = ticketRoomSummary(r);
             const curtainRows = r.curtains.map(c => {
                 const calc = c.calc || {};
                 const optionsList = [];
@@ -1372,7 +1371,6 @@ function openTicketModal() {
                     <span class="font-bold text-stone-900 text-xs">${r.name}</span>
                     <span class="font-bold text-amber-900 text-[11px] font-mono">${roomTotal.toLocaleString()}원</span>
                 </div>
-                ${summary ? `<div class="text-[10px] text-stone-500 font-sans">${summary}</div>` : ''}
                 ${curtainRows}
             `;
             listEl.appendChild(roomCard);
@@ -1491,7 +1489,7 @@ function ticketData() {
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || '')
                 };
             });
-            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: ticketRoomSummary(r) };
+            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '' };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
         }),
         install: globalInstallFee,
         total: document.getElementById('totalGrandPrice').textContent,
