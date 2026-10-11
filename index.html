@@ -469,14 +469,14 @@
 
         <!-- v2 전용 가상 키패드 시트 -->
         <div id="v2VirtualKeypadSheet" class="keypad-sheet">
-            <div style="width: 100%; max-width: 420px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="width: 100%; max-width: 420px; display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
-                    <span id="v2KeypadTargetLabel" style="font-size: 0.72rem; color: var(--brand-muted); font-weight: 700; text-transform: uppercase;">실측 치수</span>
+                    <span id="v2KeypadTargetLabel" style="font-size: 0.74rem; color: #8a7a6a; font-weight: 600; letter-spacing: 0.2em;">실측 치수</span>
                     <div style="font-size: 2.1rem; font-weight: 700;" class="font-serif-kr">
                         <span id="v2KeypadValueDisplay">0</span> <span style="font-size: 0.95rem; color: var(--brand-muted);">cm</span>
                     </div>
                 </div>
-                <button onclick="concierge.closeKeypad()" style="background: var(--brand-accent); color: #fff; border: none; padding: 0.75rem 1.8rem; border-radius: 14px; font-weight: 700; font-size: 0.88rem; cursor: pointer;">
+                <button class="keypad-done font-serif-kr" onclick="concierge.closeKeypad()">
                     입력 완료
                 </button>
             </div>
