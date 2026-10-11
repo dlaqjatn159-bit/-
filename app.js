@@ -1468,7 +1468,7 @@ function ticketData() {
     };
 }
 
-function drawTicket(ctx, data, W) {
+function drawTicket(ctx, data, W, extra) {
     const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
     const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
     const MONO = 'ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace';
@@ -1586,6 +1586,7 @@ function drawTicket(ctx, data, W) {
             }
             y += 92 + 40;
         }
+        y += (extra || 0);      // 세로 최소 비율을 맞추기 위한 여백 (합계 구역이 아래쪽에 자리잡음)
         if (drawing) hline(CX, W - PAD, y, LINE);
         y += 64;
         if (drawing) {
@@ -1618,7 +1619,10 @@ function buildTicketCanvas(opts, preparedData) {
     const data = preparedData || ticketData();
     const W = 1080;
     const probe = document.createElement('canvas').getContext('2d');
-    const height = Math.ceil(drawTicket(probe, data, W).pass(false));
+    const naturalH = Math.ceil(drawTicket(probe, data, W).pass(false));
+    const MIN_RATIO = 1.35;                       // 세로/가로 최소 비율 (항목이 적어도 너무 납작하지 않게)
+    const height = Math.max(naturalH, Math.round(W * MIN_RATIO));
+    const extraH = height - naturalH;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = height;
     const ctx = canvas.getContext('2d');
@@ -1630,7 +1634,7 @@ function buildTicketCanvas(opts, preparedData) {
     const r = 72; ctx.moveTo(r, 0); ctx.arcTo(W, 0, W, height, r); ctx.arcTo(W, height, 0, height, r); ctx.arcTo(0, height, 0, 0, r); ctx.arcTo(0, 0, W, 0, r); ctx.closePath();
     ctx.fillStyle = grad; ctx.fill(); ctx.strokeStyle = '#e8e0d4'; ctx.lineWidth = 2; ctx.stroke();
     ctx.textBaseline = 'alphabetic';
-    const t = drawTicket(ctx, data, W);
+    const t = drawTicket(ctx, data, W, extraH);
     t.hdr();
     t.pass(true);
     return canvas;
@@ -1679,14 +1683,17 @@ async function downloadTicketImage() {
 }
 
 // 카카오톡 등으로 바로 보내기: 태블릿의 "공유" 창을 열어 견적서 이미지를 넘김 (지원하지 않으면 저장으로 대신)
+let __shareBusy = false;
 async function shareTicketImage() {
+    if (__shareBusy) return;          // 연타해도 공유 창이 여러 번 뜨지 않게
+    __shareBusy = true;
     showToast("이미지 준비 중...", "info");
     try {
         const { blob } = await makeTicketBlob();
         const file = new File([blob], ticketFileName(), { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
             try {
-                await navigator.share({ files: [file], title: 'Re.dam 맞춤 제안서' });
+                await navigator.share({ files: [file] });
             } catch (e) {
                 if (e && e.name === 'AbortError') return;      // 고객이 공유 창을 닫은 경우
                 throw e;
@@ -1698,6 +1705,8 @@ async function shareTicketImage() {
     } catch (err) {
         console.error(err);
         showToast("보내기 중 오류가 발생했습니다. '고화질 이미지 저장'을 이용해 주세요.", "error");
+    } finally {
+        __shareBusy = false;
     }
 }
 

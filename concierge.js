@@ -291,8 +291,7 @@
         leadBand: {
             title: '하단 리드밴드',
             desc: '속지 밑단에 무게감 있는 끈을 넣어, 밑단이 일자로 반듯하게 떨어지고 바람에 덜 날려요.',
-            off: { topL: 40, topR: 180, botL: 34, botR: 192, n: 9, jitter: [0, 2, -2, 3, 0, -3, 4, 2, 6, 10], wave: 7, c1: '#efe6d8', c2: '#e2d5c1', op: 0.95 },
-            on: { topL: 40, topR: 180, botL: 40, botR: 180, n: 9, c1: '#efe6d8', c2: '#e2d5c1', op: 0.95, band: true }
+            textOnly: true      // 그림 없이 문구만 보여 줌
         }
     };
     function optionInfoHtml(keys) {
@@ -300,8 +299,9 @@
         h += '<div class="opt-info-head font-serif-kr">제작 옵션 미리보기</div>';
         keys.forEach(k => {
             const o = OPTION_INFO[k];
-            h += '<div class="opt-info-row">';
+            h += `<div class="opt-info-row${o.textOnly ? ' text-only' : ''}">`;
             h += `<div class="opt-info-text"><strong class="font-serif-kr">${o.title}</strong><p>${o.desc}</p></div>`;
+            if (o.textOnly) { h += '</div>'; return; }
             h += `<figure><div class="opt-info-pic">${curtainSvg(o.off)}</div><figcaption>기본</figcaption></figure>`;
             h += `<figure><div class="opt-info-pic on">${curtainSvg(o.on)}</div><figcaption>적용</figcaption></figure>`;
             h += '</div>';
@@ -485,14 +485,15 @@
             case "3-Config-Style":
                 // 공간 종류(방은 빛 차단 희망까지)에 맞는 구성에 "추천" 표시. 카드 순서는 그대로
                 const recComp = (typeof recommendComposition === 'function') ? recommendComposition(state.editingRoom) : null;
-                const compTag = (key, en) => recComp === key ? `★ 추천 · ${en}` : en;
+                const compTag = (key, en) => en;
+                const recCls = key => recComp === key ? 'is-recommended' : '';
                 html += '<div class="bookmark-stage">';
                 html += stepHead('창을 어떻게 구성할까요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("호텔식 이중창", "차르르 속지 + 아늑한 겉지 2중 레이어드", compTag('double', "DOUBLE LAYER"), SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); });
-                html += renderBookmarkCard("속지 단독", "화사하고 은은한 채광의 차르르 쉬어", compTag('sheer_only', "SHEER ONLY"), SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); });
-                html += renderBookmarkCard("겉지 단독", "아늑한 쉼과 빛 차단을 위한 드레이프", compTag('drape_only', "DRAPE ONLY"), SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); });
-                html += renderBookmarkCard("블라인드", "빛의 각도를 조율하는 모던 시스템", compTag('blind_only', "BLIND SHADE"), SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); });
+                html += renderBookmarkCard("호텔식 이중창", "차르르 속지 + 아늑한 겉지 2중 레이어드", compTag('double', "DOUBLE LAYER"), SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double'));
+                html += renderBookmarkCard("속지 단독", "화사하고 은은한 채광의 차르르 쉬어", compTag('sheer_only', "SHEER ONLY"), SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only'));
+                html += renderBookmarkCard("겉지 단독", "아늑한 쉼과 빛 차단을 위한 드레이프", compTag('drape_only', "DRAPE ONLY"), SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only'));
+                html += renderBookmarkCard("블라인드", "빛의 각도를 조율하는 모던 시스템", compTag('blind_only', "BLIND SHADE"), SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only'));
                 html += '</div></div>';
                 break;
 
@@ -559,8 +560,7 @@
                         html += `<span class="color-row-label">${expanded ? '번호를 눌러 선택하세요' : (best.classified ? '어울리는 색부터' : '색상 번호를 눌러 주세요')}</span>`;
                         html += `<div class="color-chips ${expanded ? 'expanded' : ''}">`;
                         shown.forEach(r => {
-                            const star = (r.name === bestName) ? '★' : '';
-                            html += `<button class="color-chip ${r.name === pick ? 'active' : ''}" onclick="event.stopPropagation(); window.concierge.pickColor('${f.id}','${r.name}')">${star}${r.name}</button>`;
+                            html += `<button class="color-chip ${r.name === pick ? 'active' : ''}" onclick="event.stopPropagation(); window.concierge.pickColor('${f.id}','${r.name}')">${r.name}</button>`;
                         });
                         if (best.ranked.length > MAX_CHIPS) {
                             html += `<button class="color-chip more" onclick="event.stopPropagation(); window.concierge.toggleColors('${f.id}')">${expanded ? '접기 ▲' : `전체 ${best.ranked.length}개 ▼`}</button>`;
@@ -718,14 +718,14 @@
         main.innerHTML = html;
     }
 
-    function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn) {
+    function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass) {
         const id = "bk_" + Math.random().toString(36).substr(2, 9);
         setTimeout(() => {
             const el = document.getElementById(id);
             if (el) el.onclick = onClickFn;
         }, 0);
 
-        return `<div id="${id}" class="bookmark-card" style="width: 100%; height: 100%; cursor: pointer;">` +
+        return `<div id="${id}" class="bookmark-card${extraClass ? ' ' + extraClass : ''}" style="width: 100%; height: 100%; cursor: pointer;">` +
             `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>` +
             '<div class="bookmark-gradient" style="pointer-events: none;"></div>' +
             '<div class="bookmark-content" style="pointer-events: none;">' +
