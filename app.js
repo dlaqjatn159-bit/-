@@ -268,7 +268,7 @@ function collectConsultation() {
         phone: ((document.getElementById('custPhone') || {}).value || '').trim(),
         rooms: src.map(r => ({
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
-            roomType: r.roomType || null, lightBlock: r.lightBlock || null, diagnosed: !!r.diagnosed,
+            roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
         installFee: globalInstallFee,
@@ -452,10 +452,10 @@ function renderTagEditor() {
         // 분위기는 질감·톤·비침으로 자동. 직접 고르면 그 값이 우선
         const autoMood = moodOf(Object.assign({}, f, { manual: Object.assign({}, m, { mood: false }) }));
         const guessLabel = nColors ? ' (색상별로 자동)' : ` (${MOOD_LABELS[autoMood] || '-'})`;
-        const moodOpts = `<option value="">자동${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]}</option>`).join('');
+        const moodOpts = `<option value="">자동${guessLabel}</option>` + Object.keys(MOOD_LABELS).map(k => `<option value="${k}" ${m.mood && f.mood === k ? 'selected' : ''}>${MOOD_LABELS[k]} · ${MOOD_GUIDE[k]}</option>`).join('');
         const done = isManualTagged(f);
         const status = (nColors && !hasColorTones(f.id)) ? '<span class="text-[10px] font-bold text-amber-700">색상 톤 필요</span>' : done ? '<span class="text-[10px] font-bold text-emerald-700">✓ 분류 완료</span>' : ((m.tone || hasMoodInput(f)) ? '<span class="text-[10px] font-bold text-amber-700">일부만 지정</span>' : '<span class="text-[10px] text-slate-400">자동 추측</span>');
-        const dens = ['light', 'medium', 'heavy'].map(dv => {
+        const dens = DENSITY_ORDER.map(dv => {
             const on = m.density && f.density === dv;
             const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
             return `<button onclick="setFabricTag('${f.id}','density','${on ? '' : dv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${DENSITY_LABELS[dv]}</button>`;
@@ -465,7 +465,7 @@ function renderTagEditor() {
             const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
             return `<button title="${TEXTURE_HINTS[tv]}" onclick="setFabricTag('${f.id}','texture','${on ? '' : tv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TEXTURE_LABELS[tv]}</button>`;
         }).join('');
-        const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5" title="원단 한 겹을 글씨 위에: 읽힘=많이 비침, 모양만=중간, 거의 안 보임=적게 비침">비침</span>${dens}` : '';
+        const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5" title="낮에 한 겹을 창에 대고 안에서 밖을 보기: 풍경 또렷=많이 비침, 형태만 흐릿=은은한 비침, 밝기만=낮 가림, 빛만 은은=거의 안 비침">비침</span>${dens}` : '';
         // 겉지 암막 정도: 직접 지정하지 않으면 품명의 암막률로 추정(점선 표시). 방에서 "빛을 얼마나 가릴지" 추천에 사용
         const blGuess = blackoutLevel(Object.assign({}, f, { blackout: null }));
         const bls = BLACKOUT_ORDER.map(bv => {
@@ -492,7 +492,7 @@ function renderTagEditor() {
             <div class="flex flex-wrap items-center gap-1.5 mt-2">
                 ${nColors ? '' : '<span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>'}${toneBtns}
                 <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">질감</span>${texBtns}
-                <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">분위기</span>
+                <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5" title="질감·톤·비침으로 자동으로 정해져요. 자동 결과가 원단 느낌과 다를 때만 직접 고르세요">분위기(선택)</span>
                 <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
                 ${densBlock}${blackBlock}
                 ${(m.tone || m.mood || m.density || m.blackout || f.texture) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
@@ -1404,6 +1404,8 @@ function closeTicketModal() {
 // ---- 제안서에 들어가는 "왜 이렇게 골랐는지" ----
 const TICKET_LIGHT_LABELS = { high: '햇빛 풍부', mid: '햇빛 은은', low: '햇빛 차분' };
 const TICKET_BLOCK_LABELS = { light: '빛은 은은하게', soft: '빛은 적당히 가림', dark: '빛은 완전 차단' };
+const TICKET_PRIVACY_LABELS = { open: '바깥 시선 괜찮음', some: '바깥 시선 조금 신경', high: '바깥 시선 많이 신경' };
+const TICKET_FEEL_LABELS = { smooth: '속지는 깔끔·매끈하게', textured: '속지는 결이 살아 있게' };
 // 공간 진단 요약 한 줄 (고객 화면에서 진단을 거친 공간만)
 function ticketRoomSummary(r) {
     if (!r || !r.diagnosed) return '';
@@ -1412,6 +1414,8 @@ function ticketRoomSummary(r) {
     if (TONE_LABELS[r.wallTone]) parts.push(`벽 ${TONE_LABELS[r.wallTone]} 톤`);
     if (TICKET_LIGHT_LABELS[r.lightLevel]) parts.push(TICKET_LIGHT_LABELS[r.lightLevel]);
     if (TICKET_BLOCK_LABELS[r.lightBlock]) parts.push(TICKET_BLOCK_LABELS[r.lightBlock]);
+    if (TICKET_PRIVACY_LABELS[r.privacy]) parts.push(TICKET_PRIVACY_LABELS[r.privacy]);
+    if (TICKET_FEEL_LABELS[r.sheerFeel]) parts.push(TICKET_FEEL_LABELS[r.sheerFeel]);
     if (MOOD_LABELS[r.wantMood]) parts.push(`${MOOD_LABELS[r.wantMood]} 분위기`);
     return parts.join(' · ');
 }
@@ -1880,7 +1884,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 mood: r.mood || "soft_warm",
                 wantMood: r.wantMood || null,
                 roomType: r.roomType || null,
-                lightBlock: r.lightBlock || null,
+                lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";

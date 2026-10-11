@@ -641,25 +641,76 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 /* 화면 크기 계산이 외부 도구(Tailwind) 없이도 같게 나오도록 */
 .bookmark-stage, .bookmark-canvas, .ambient-stage, .tailor-stage { box-sizing: border-box; }
 
-/* 원단 칸: 옆으로 밀어 색을 넘김 */
+/* 원단 칸: 앞 색 + 오른쪽에 겹쳐 보이는 다음 색들 (사전 옆면처럼) */
 .fab-panel { position: relative; overflow: hidden; background: #2b221a; }
 .fab-panel > .bookmark-card.color-top {
-    position: absolute; inset: 0;
-    touch-action: pan-y;                 /* 가로로 미는 동작은 칸이 받고, 세로 스크롤은 그대로 */
+    position: absolute; top: 0; bottom: 0; left: 0;          /* 오른쪽 끝은 뒤 색 띠 폭만큼 비움 (style에서 지정) */
     user-select: none; -webkit-user-select: none;
     display: flex; flex-direction: column; justify-content: flex-end;
+    box-shadow: 6px 0 14px rgba(0, 0, 0, 0.28); z-index: 2;  /* 앞장이 뒷장 위에 놓인 느낌 */
 }
 .fab-panel > .is-leaving { z-index: 15; transition: opacity 0.22s ease; }   /* 이전 색이 위에서 사라지며 새 색이 드러남 */
-.next-sliver {                                /* 오른쪽 끝에 가늘게 비치는 "다음 색" */
-    position: absolute; top: 0; bottom: 0; right: 0; width: 8px; z-index: 12;
+.deck-edges { position: absolute; top: 0; bottom: 0; right: 0; display: flex; z-index: 1; }
+.deck-edge {
+    position: relative; height: 100%; border: none; padding: 0; margin: 0; cursor: pointer;
     background-size: cover; background-position: center;
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.25);
-    pointer-events: none;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.22);                /* 한 장씩 겹친 그림자 */
+    border-left: 1px solid rgba(255, 255, 255, 0.35);
 }
+.deck-edge::after { content: ""; position: absolute; inset: 0; background: rgba(20, 14, 10, 0.08); transition: background 0.15s ease; }
+.deck-edge:nth-child(2)::after { background: rgba(20, 14, 10, 0.16); }   /* 뒤로 갈수록 살짝 어둡게 */
+.deck-edge:nth-child(3)::after { background: rgba(20, 14, 10, 0.24); }
+.deck-edge:active::after { background: rgba(255, 255, 255, 0.18); }
+/* 원단 칸 아래 띠 (ㄴ자): 세로 이름(아래 정렬) + 오른쪽 아래 가로 글(색 이름, 짧은 설명). 위계 = 이름 > 색 이름 > 설명 > 1/n */
+.fab-gradient { background: linear-gradient(180deg, rgba(40,28,21,0) 0%, rgba(40,28,21,0.1) 50%, rgba(40,28,21,0.7) 72%, rgba(40,28,21,0.94) 100%) !important; }
+.fab-band {
+    position: absolute; left: 0; right: 0; bottom: 2.4rem; z-index: 10;
+    display: flex; flex-direction: row; align-items: flex-end;
+    padding: 0 1.3rem 0 1.7rem; color: #fff; pointer-events: none;
+}
+.fab-band > * { margin: 0; }
+/* 이름: 다른 단계 카드 제목(1.65rem)보다 한 단계 크게. 너무 긴 이름만 줄임 */
+.fab-vname {
+    font-size: min(1.95rem, calc(34vh / var(--len, 3) / 1.14));
+    font-weight: 700; line-height: 1; flex-shrink: 0;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+.vstack { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.vstack > span { display: block; }
+.fab-vname.vstack > span { margin-top: 0.14em; }                /* 글자 사이 적당히 */
+.fab-vname.vstack > span:first-child { margin-top: 0; }
+.vstack > .vsp { display: block; height: 0.45em; }
+.fab-vname.is-latin { writing-mode: vertical-rl; text-orientation: mixed; white-space: nowrap; letter-spacing: 0.08em; }
+/* 이름 오른쪽 아래 가로 글: 이름 아래 끝에 붙임 */
+.fab-side {
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 0.25rem;
+    margin-left: 0.7rem !important; min-width: 0; padding-bottom: 0.05rem;
+    font-family: 'Noto Serif KR', Georgia, serif; word-break: keep-all;
+}
+.fab-hlabel { font-size: 0.98rem; font-weight: 600; color: rgba(255, 255, 255, 0.92); line-height: 1.2; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45); }
+.fab-hreason { font-size: 0.8rem; font-weight: 500; color: rgba(255, 255, 255, 0.78); line-height: 1.35; margin: 0; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45); }
+/* 1/n: 아래 정렬, 작게. 1은 왼쪽 위, n은 오른쪽 아래, 사이를 사선이 지나감 */
+.deck-count2 {
+    position: relative; margin-left: auto !important; flex-shrink: 0; align-self: flex-end;
+    width: 1.7rem; height: 1.85rem; color: rgba(255, 255, 255, 0.82); font-family: 'Noto Serif KR', Georgia, serif;
+}
+.deck-count2 b { position: absolute; left: 0.05rem; top: -0.05rem; font-size: 0.8rem; font-weight: 700; line-height: 1; }
+.deck-count2 em { position: absolute; right: 0; bottom: 0; font-style: normal; font-size: 0.64rem; font-weight: 500; line-height: 1; opacity: 0.8; }
+.deck-count2 i { position: absolute; left: 50%; top: 50%; width: 1.9rem; height: 1px; background: rgba(255, 255, 255, 0.6); transform: translate(-50%, -50%) rotate(-55deg); }
+.fab-band .deck-count2 { margin-left: auto !important; }
+.fab-side + .deck-count2, .fab-vname + .deck-count2 { margin-left: auto !important; }
+/* 원단 화면에서는 Re.dam 표시를 마지막 칸 앞장 오른쪽 아래(뒤 색 띠 왼쪽)에 세로로 */
+.card-brand {
+    position: absolute; right: 0.75rem; bottom: 2.4rem; z-index: 12; writing-mode: vertical-rl; line-height: 1;   /* 이름·1/n과 같은 아래선 */
+    font-family: 'Noto Serif KR', Georgia, serif; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.2em;
+    color: #fff; opacity: 0.7; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); cursor: pointer; user-select: none; padding: 0.4rem 0.4rem 0;
+}
+.fab-band.is-last { padding-right: 2.7rem; }      /* 마지막 칸: 1/n이 Re.dam 왼쪽에 오도록 */
+#trackCurationSection:has(.fab-panel) #brandMark { display: none; }
 .bookmark-name, .bookmark-desc { word-break: keep-all; overflow-wrap: anywhere; }   /* 한글이 글자 중간에서 끊기지 않게 */
 .name-label { font-size: 0.62em; font-weight: 500; opacity: 0.8; margin-left: 0.3em; }
 .deck-count {
-    position: absolute; right: 1.6rem; bottom: 3.5rem; z-index: 11;
+    position: absolute; right: 1.6rem; bottom: 4.2rem; z-index: 11;
     color: rgba(255, 255, 255, 0.9); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em;
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); pointer-events: none;
 }
@@ -719,6 +770,8 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 
 /* 꽉 찬 화면 위에서도 Re.dam 표시가 보이도록 */
 #trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { color: #fff; opacity: 0.75; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
+/* 꽉 찬 화면에서는 오른쪽 아래에 세로로 (흐름에 맞춰) */
+#trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { left: auto; right: 0.6rem; bottom: 0.8rem; writing-mode: vertical-rl; letter-spacing: 0.2em; font-size: 0.85rem; }
 
 /* 제작 옵션 미리보기 (기본 / 적용 그림) */
 .opt-info-link {

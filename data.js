@@ -171,9 +171,19 @@ const MOOD_LABELS = {
     soft_warm: '소프트 웜', urban_clean: '어반 클린', balanced_neutral: '밸런스 뉴트럴',
     textured_linen: '텍스처 린넨', deep_private: '딥 프라이빗', airy_bright: '에어리 브라이트'
 };
-// 속지 비침 정도 (예전 '두께'. 저장 값은 그대로: light=많이 비침, medium=중간, heavy=적게 비침)
-const DENSITY_LABELS = { light: '많이 비침', medium: '중간', heavy: '적게 비침' };
-const DENSITY_FACTS = { light: '#맑은비침', medium: '#은은한비침', heavy: '#비침적음' };
+// 속지 비침 4단계 (창문 테스트: 낮에 한 겹을 창에 대고 안에서 밖을 봄)
+//  light=많이 비침(풍경 또렷) / medium=은은한 비침(형태는 보이나 흐림) / day=낮 가림(밝기만, 낮에는 밖에서 안 보임) / heavy=거의 안 비침(저녁 조명에도 흐릿)
+const DENSITY_LABELS = { light: '많이 비침', medium: '은은한 비침', day: '낮 가림', heavy: '거의 안 비침' };
+const DENSITY_ORDER = ['light', 'medium', 'day', 'heavy'];
+const DENSITY_FACTS = { light: '#맑은비침', medium: '#은은한비침', day: '#낮시간가림', heavy: '#비침적음' };
+// 고객 사생활 질문 (속지가 들어가는 구성에서 한 번)
+const PRIVACY_LABELS = { open: '괜찮아요', some: '조금 신경 쓰여요', high: '많이 신경 쓰여요' };
+// 고객 속지 질감 취향 (속지가 들어가는 구성에서 한 번): 깔끔·매끈 / 결이 살아 있는 / 상관없음(질문 결과 null)
+const SHEER_FEEL_LABELS = { smooth: '깔끔하고 매끈하게', textured: '결이 살아 있게' };
+function roomIsDouble(room) {
+    const list = (room && (room.items || room.curtains)) || [];
+    return list.some(i => i.presetType === 'sheer') && list.some(i => i.presetType === 'drape');
+}
 // 질감 (사장님이 만져 보고 고름). 분위기는 톤·비침·질감으로 앱이 자동으로 정함
 const TEXTURE_LABELS = { smooth: '매끈', natural: '결 있음', cozy: '포근' };
 const TEXTURE_HINTS = { smooth: '차르르·광택·평직', natural: '린넨·슬러브처럼 결·마디', cozy: '부클·기모·도톰한 짜임' };
@@ -226,6 +236,15 @@ function blindLight(f) {
     if (/SUN\s*SCREEN|선스크린/.test(n)) return 'see';
     return 'none';
 }
+// 분류 화면용: 어떤 원단이 이 분위기인지 (원단 기준 설명). 분위기는 질감·톤·비침으로 자동이라 직접 고르는 건 선택
+const MOOD_GUIDE = {
+    soft_warm: '아이보리·베이지 계열, 포근하고 따뜻한 원단',
+    urban_clean: '화이트·그레이 계열, 매끈하고 깔끔한 원단',
+    balanced_neutral: '그레이지·샌드 계열, 튀지 않는 무난한 원단',
+    textured_linen: '린넨·슬러브처럼 결이 눈에 보이는 원단',
+    deep_private: '차콜·브라운·네이비처럼 진하고 무게감 있는 원단',
+    airy_bright: '많이 비치고 가벼운 속지 (쉬폰·보일)'
+};
 const MOOD_HINTS = {
     soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 도시적인 느낌', balanced_neutral: '어디에나 무난한 느낌',
     textured_linen: '결이 살아있는 자연스러운 느낌', deep_private: '차분하고 프라이빗한 느낌', airy_bright: '가볍고 환한 느낌'
@@ -253,6 +272,7 @@ function normalizeDensityInput(v) {
     if (!s) return null;
     if (DENSITY_LABELS[s]) return s;
     if (/^(많이|맑|얇|가벼)/.test(s)) return 'light';
+    if (/^낮/.test(s)) return 'day';
     if (/^(적|안|거의|도톰|두꺼|두툼)/.test(s)) return 'heavy';
     if (/^(중|보통|은은)/.test(s)) return 'medium';
     return null;
@@ -318,8 +338,24 @@ function calculateFabricMatchScore(fabric, room, category) {
 
     // 채광: 빛이 강하면 덜 비치는 속지로 빛을 부드럽게 걸러줌 (어두운 공간은 정해진 규칙 없음)
     if (category === '속지' && room.lightLevel === 'high') {
-        if (fabric.density === 'heavy') score += 3;
-        else if (fabric.density === 'medium') score += 1;
+        score += ({ heavy: 3, day: 2, medium: 1 })[fabric.density] || 0;
+    }
+
+    // 사생활(밖에서 안이 보이는 게 신경 쓰이는지): 많이 → 낮 가림·거의 안 비침을 크게 우선
+    if (category === '속지') {
+        const dbl = roomIsDouble(room);
+        const table = {
+            high: { heavy: 6, day: dbl ? 6 : 5, medium: 1, light: -3 },     // 이중커튼은 밤에 겉지가 가려 주니 낮 가림이면 충분
+            some: { heavy: 2, day: 3, medium: 3, light: 0 },
+            open: { heavy: 0, day: 1, medium: 2, light: 3 }
+        }[room.privacy];
+        if (table) score += table[fabric.density] || 0;
+        // 이중커튼: 낮에는 속지만 쳐 두고 지내므로 덜 비치는 속지를 우대 (겉지는 필요할 때만)
+        if (dbl && (fabric.density === 'day' || fabric.density === 'heavy')) score += 2;
+        // 질감 취향: 속지는 "깔끔파"와 "질감파"가 확연히 나뉨 → 맞으면 +4, 반대면 -2 (질감 미입력 원단은 0)
+        const tx = fabric.texture;
+        if (room.sheerFeel === 'smooth' && tx) score += tx === 'smooth' ? 4 : -2;
+        if (room.sheerFeel === 'textured' && tx) score += tx === 'natural' ? 4 : (tx === 'cozy' ? 3 : -2);
     }
 
     // 빛 차단 희망 (방): 완전히 어둡게 → 완전 암막을 사실상 최우선, 적당히 → 적당 암막, 들어와도 → 비암막·적당 암막
@@ -349,33 +385,45 @@ function calculateFabricMatchScore(fabric, room, category) {
     return score;
 }
 
-// 추천 이유 한 줄 (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
+// 추천 이유 한 줄 (짧은 말) (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
 function recommendReason(fabric, room, category, maxParts) {
     if (!isManualTagged(fabric)) return '';
     const floorT = room.floorTone || 'warm', wallT = room.wallTone || 'warm';
     const targetMood = room.wantMood || deriveRoomMood(room);
     const parts = [];
-    if (moodOf(fabric) === targetMood) parts.push(room.wantMood ? `원하신 ${MOOD_LABELS[targetMood]} 분위기에 맞아요` : `${MOOD_LABELS[targetMood]} · ${MOOD_HINTS[targetMood]}`);
-    if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽의 톤 차이를 부드럽게 이어줘요' : '어떤 공간에도 무난하게 어울려요');
-    else if (fabric.tone === floorT) parts.push(`바닥의 ${TONE_LABELS[floorT]} 톤과 잘 어울려요`);
-    else if (fabric.tone === wallT) parts.push(`벽의 ${TONE_LABELS[wallT]} 톤과 잘 어울려요`);
-    if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') parts.push('비침이 적어 강한 햇빛을 부드럽게 걸러줘요');
+    if (moodOf(fabric) === targetMood) parts.push(room.wantMood ? `${MOOD_LABELS[targetMood]} 분위기` : MOOD_HINTS[targetMood]);
+    if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽을 잇는 톤' : '어디에나 어울리는 톤');
+    else if (fabric.tone === floorT) parts.push(`바닥과 어울리는 ${TONE_LABELS[floorT]} 톤`);
+    else if (fabric.tone === wallT) parts.push(`벽과 어울리는 ${TONE_LABELS[wallT]} 톤`);
+    if (category === '속지' && room.lightLevel === 'high' && (fabric.density === 'heavy' || fabric.density === 'day')) parts.push('강한 햇빛을 거르는 비침');
+    if (category === '속지' && room.sheerFeel && fabric.texture) {
+        const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
+            : room.sheerFeel === 'textured' && fabric.texture !== 'smooth' ? '자연스럽게 살아 있는 결' : '';
+        if (msg) parts.unshift(msg);   // 고객이 고른 취향 → 앞쪽 (사생활 문장 다음)
+    }
+    if (category === '속지' && room.privacy) {
+        const d = fabric.density;
+        const msg = room.privacy === 'high' && (d === 'heavy' || d === 'day') ? '낮에도 안이 보이지 않는 비침'
+            : room.privacy === 'some' && (d === 'day' || d === 'medium') ? '적당히 가리는 은은한 비침'
+            : room.privacy === 'open' && d === 'light' ? '풍경과 햇살을 살리는 맑은 비침' : '';
+        if (msg) parts.unshift(msg);       // 고객이 직접 고른 조건이라 맨 앞에
+    }
     if (category === '겉지' && room.lightBlock) {
         const b = blackoutLevel(fabric);
-        const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막아 주는 완전 암막이에요'
-            : room.lightBlock === 'soft' && b === 'life' ? '눈부심은 줄이고 아늑하게 가려 줘요'
-            : room.lightBlock === 'soft' && b === 'mid' ? '빛을 살짝 걸러 은은하게 가려 줘요'
-            : room.lightBlock === 'light' && (b === 'none' || b === 'mid') ? '햇빛이 은은하게 스며들어요' : '';
+        const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막는 완전 암막'
+            : room.lightBlock === 'soft' && b === 'life' ? '눈부심만 줄이는 생활 암막'
+            : room.lightBlock === 'soft' && b === 'mid' ? '빛을 살짝 거르는 원단'
+            : room.lightBlock === 'light' && (b === 'none' || b === 'mid') ? '햇빛이 은은히 스미는 원단' : '';
         if (msg) parts.unshift(msg);       // 고객이 직접 고른 조건이라 맨 앞에
     }
     if (category === '블라인드' && room.lightBlock) {
         const bl = blindLight(fabric), kind = blindKind(fabric);
-        const msg = room.lightBlock === 'dark' && bl === 'full' ? '빛을 거의 막아 주는 암막 블라인드예요'
-            : room.lightBlock === 'light' && bl === 'see' ? '바깥 풍경은 살리고 햇빛만 걸러 줘요'
-            : room.lightBlock !== 'dark' && kind === 'combi' ? '각도를 조절해 들어오는 빛을 맞출 수 있어요' : '';
+        const msg = room.lightBlock === 'dark' && bl === 'full' ? '빛을 거의 막는 암막'
+            : room.lightBlock === 'light' && bl === 'see' ? '풍경은 살리고 햇빛만 거르는 투시'
+            : room.lightBlock !== 'dark' && kind === 'combi' ? '각도로 빛을 맞추는 콤비' : '';
         if (msg) parts.unshift(msg);
     }
-    // 원단 고르는 칸은 1문장만(사진을 덜 가리게), 제안서는 2문장까지
+    // 짧은 말로 끝냄(예: 깔끔하고 매끈한 결). 원단 고르는 칸은 1개만, 제안서는 2개까지
     return parts.slice(0, maxParts || 2).join(' · ');
 }
 
