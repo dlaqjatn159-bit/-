@@ -250,12 +250,12 @@
         steps.push("2-Base-Mood", "3-Config-Style");
         return steps;
     }
-    function stepHead(question) {
+    function stepHead(question, sub) {
         const steps = diagnosisSteps();
         const at = steps.indexOf(state.step);
         let dots = '';
         if (at >= 0) dots = '<div class="step-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
-        return `<div class="step-head">${dots}<p class="step-q font-serif-kr">${question}</p></div>`;
+        return `<div class="step-head">${dots}<p class="step-q font-serif-kr">${question}</p>${sub ? `<p class="step-sub">${sub}</p>` : ''}</div>`;
     }
 
     // ---- 옵션 설명 그림 (적용 전 / 적용 후). 가격 대신 "무엇이 좋아지는지"를 보여줌 ----
@@ -343,8 +343,9 @@
                 let grandSum = 0;
                 configuredRooms.forEach(r => grandSum += (r.subtotal || 0));
 
-                html += '<div class="bookmark-stage" style="position: relative; width: 100vw; height: 100vh; padding: 1.5rem 2rem; box-sizing: border-box;">';
-                html += '<div style="display: flex; gap: 1.25rem; width: 100%; height: 92vh; justify-content: flex-end; align-items: stretch;">';
+                html += '<div class="bookmark-stage">';
+                if (roomCount > 0) html += stepHead('공간을 눌러 커튼을 골라 주세요', '새 공간은 오른쪽 + 공간 추가');
+                html += '<div class="space-row">';
                 
                 if (roomCount === 0) {
                     html += '<div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 2rem;" class="font-serif-kr">';
@@ -356,13 +357,11 @@
 
                 state.roomsCart.forEach((room, idx) => {
                     const texture = idx % 3 === 0 ? SOLID_TEXTURES.l1 : (idx % 3 === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
-                    const tagDesc = room.isConfigured 
-                        ? `${room.curtains.length}개 품목 · ${(room.subtotal || 0).toLocaleString()}원` 
-                        : "터치하여 품목 구성";
-                    const statusPill = room.isConfigured ? "✓ 완료 · 탭하여 수정" : `SPACE 0${idx + 1}`;
+                    const tagDesc = room.isConfigured ? "터치해서 수정하기" : "터치해서 구성하기";
+                    const statusPill = '';
 
                     html += '<div style="flex: 1 1 0; min-width: 0; display: flex; position: relative;">';
-                    html += `<button onclick="window.concierge.deleteRoom(${room.id})" aria-label="${room.name} 삭제" style="position: absolute; top: 14px; right: 14px; z-index: 30; background: rgba(255,255,255,0.92); color: #6f5f4f; border: 1px solid #e5dcd0; border-radius: 999px; padding: 0.5rem 0.95rem; font-size: 0.82rem; font-weight: 700; cursor: pointer;">삭제</button>`;
+                    html += `<button onclick="window.concierge.deleteRoom(${room.id})" aria-label="${room.name} 삭제" class="space-del">삭제</button>`;
                     html += renderBookmarkCard(room.name, tagDesc, statusPill, texture, function() {
                         window.concierge.openRoomCart(room.id);
                     });
@@ -374,21 +373,19 @@
                     : 'flex: 0 0 19%; max-width: 20vw; min-width: 140px; display: flex;';
 
                 html += `<div style="${addCardStyle}">`;
-                html += renderBookmarkCard("+ 공간 추가", "새 공간 큐레이션 등록", "ADD SPACE", SOLID_TEXTURES.walnut, function() {
+                html += renderBookmarkCard("+ 공간 추가", "터치해서 추가하기", '', SOLID_TEXTURES.walnut, function() {
                     window.concierge.startNewRoomSelection();
                 });
                 html += '</div>';
 
                 html += '</div>';
 
-                // ★ [해결: 우측 카드를 가리지 않는 화면 중앙 하단 글래스모피즘 캡슐]
+                // 최종 제안 보기: 위쪽 오른쪽 (아래쪽은 공간 이름·설명이 있어 가리지 않게)
                 if (hasConfigured) {
-                    html += '<div style="position: absolute; bottom: 2.2rem; left: 50%; transform: translateX(-50%); z-index: 50;">';
-                    html += '<button onclick="window.concierge.goToCheckout()" style="background: rgba(255, 255, 255, 0.22) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; color: #2b221a !important; border: 1.5px solid rgba(255, 255, 255, 0.75) !important; padding: 1rem 2.8rem !important; border-radius: 999px !important; font-weight: 800 !important; font-size: 0.95rem !important; cursor: pointer !important; box-shadow: 0 14px 36px rgba(43, 34, 26, 0.16) !important; display: flex !important; align-items: center !important; gap: 0.6rem !important; white-space: nowrap !important;">';
+                    html += '<button class="checkout-btn" onclick="window.concierge.goToCheckout()">';
                     html += `<span>최종 제안 보기 (${grandSum.toLocaleString()}원)</span>`;
                     html += '<i class="fa-solid fa-arrow-right text-xs" style="color: #91401a;"></i>';
                     html += '</button>';
-                    html += '</div>';
                 }
 
                 html += '</div>';
@@ -471,7 +468,7 @@
             case "2-Base-Mood":
                 html += '<div class="bookmark-stage">';
                 html += stepHead('원하시는 분위기를 골라 주세요');
-                html += '<div class="bookmark-canvas" style="--items-count: 3; grid-template-rows: repeat(2, 1fr);">';
+                html += '<div class="bookmark-canvas" style="--items-count: 6;">';
                 html += renderBookmarkCard("소프트 웜", "포근하고 따뜻한 느낌", "MOOD 01", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); });
                 html += renderBookmarkCard("어반 클린", "깔끔하고 도시적인 느낌", "MOOD 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); });
                 html += renderBookmarkCard("밸런스 뉴트럴", "어디에나 무난하고 차분한 느낌", "MOOD 03", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); });
@@ -524,51 +521,17 @@
                 const showcaseList = (typeof pickShowcase === 'function') ? pickShowcase(ranked, 3) : ranked.slice(0, 3);
                 state.colorPick = state.colorPick || {};
 
-                html += '<div class="bookmark-stage" style="padding: 1.5rem 2rem; box-sizing: border-box;">';
-                html += `<div style="display: grid; grid-template-columns: repeat(${Math.max(1, showcaseList.length)}, 1fr); gap: 1.25rem; width: 100%; height: 92vh; align-items: stretch;">`;
-                
+                const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
+                html += '<div class="bookmark-stage">';
+                html += stepHead('마음에 드는 원단을 눌러 주세요', anyColors ? '옆으로 밀면 같은 원단의 다른 색을 볼 수 있어요' : '');
+                html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
                 showcaseList.forEach((entry, idx) => {
                     const f = entry.f, best = entry.best;
-                    // 색상 순서: 분류돼 있으면 "공간에 어울리는 색"부터, 아니면 번호순. 맨 앞 카드가 추천 색
                     const order = colorDeckOrder(best);
-                    const n = order.length;
                     const pick = state.colorPick[f.id] || order[0] || '';
-                    const curIdx = Math.max(0, order.indexOf(pick));
-                    const pickInfo = best.ranked.find(r => r.name === pick);
-                    const view = pickInfo ? Object.assign({}, f, { tone: pickInfo.tone || f.tone, manual: Object.assign({}, f.manual, { tone: !!pickInfo.tone || !!(f.manual && f.manual.tone) }) }) : f;
-                    const bgStyle = idx === 0 ? SOLID_TEXTURES.l1 : (idx === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
-                    const tagText = (typeof customerFacts === 'function') ? customerFacts(view) : '';
-                    const reasonText = recommendReason(view, state.editingRoom, targetCategory);
-                    const pillTag = `[${f.book || '샘플'}] ${queueItem.label}`;
-                    const photoTag = `<img class="fabric-photo" alt="" loading="lazy" data-id="${f.id}" data-color="${pick}" data-i="0" src="${fabricPhotoUrls(f.id, pick)[0]}" onerror="window.concierge.imgFallback(this)">`;
-                    const ghosts = n >= 3 ? 2 : (n === 2 ? 1 : 0);
-                    const enter = (state.deckEnter === f.id) ? ' deck-enter' : '';
-
-                    // 겹쳐진 카드 (뒤에 다른 색이 있다는 느낌). 다음 색의 사진이 있으면 뒤 카드에 비침
-                    html += `<div class="color-deck ghosts-${ghosts}" data-fab="${f.id}" data-n="${n}">`;
-                    for (let g = ghosts; g >= 1; g--) {
-                        const gName = order[(curIdx + g) % n];
-                        const gInfo = best.ranked.find(r => r.name === gName) || {};
-                        html += `<div class="deck-ghost g${g}" style="background-color: ${GHOST_TONE[gInfo.tone] || '#d9cdbb'}; background-image: url('${fabricPhotoUrls(f.id, gName)[0]}');"></div>`;
-                    }
-                    html += `<div class="bookmark-card color-top${enter}" data-fab="${f.id}" onclick="window.concierge.handleQueueFabricClick('${f.id}')" style="position: relative; width: 100%; cursor: pointer;">`;
-                    html += `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>`;
-                    html += photoTag;
-                    html += '<div class="bookmark-gradient" style="pointer-events: none;"></div>';
-                    if (n > 1) {
-                        // 위쪽: 몇 번째 색인지 + 밀어서 넘기라는 안내
-                        const dots = n <= 8 ? '<span class="deck-dots">' + order.map((_, i) => `<span class="${i === curIdx ? 'on' : ''}"></span>`).join('') + '</span>' : '';
-                        const lead = (best.classified && curIdx === 0) ? '<span class="deck-lead">가장 어울리는 색</span>' : '';
-                        html += `<div class="deck-meta">${lead}${dots}<span>${curIdx + 1} / ${n}</span><span class="deck-hint">‹ 밀어서 다른 색 ›</span></div>`;
-                    }
-                    html += '<div class="bookmark-content" style="pointer-events: none;">';
-                    html += `<span class="bookmark-tag">${pillTag}</span>`;
-                    html += `<h3 class="bookmark-name font-serif-kr">${f.name}${colorSuffix(pick, f.id)}</h3>`;
-                    if (reasonText) html += `<p class="bookmark-desc" style="font-weight: 600; color: #fff;">${reasonText}</p>`;
-                    if (tagText) html += `<p class="bookmark-desc">${tagText}</p>`;
-                    html += '</div></div></div>';
+                    html += `<div class="fab-panel" data-fab="${f.id}" data-idx="${idx}">${fabricCardHtml(f, best, idx, pick, queueItem, targetCategory)}</div>`;
                 });
-                state.deckEnter = null;
+                html += '</div>';
 
                 html += '</div></div>';
                 break;
@@ -721,49 +684,97 @@
         const list = best.classified ? best.ranked.slice() : best.ranked.slice().sort(numSort);
         return list.map(r => r.name);
     }
-    // 뒤 카드의 바탕색 (사진이 없을 때 톤으로 짐작한 색)
-    const GHOST_TONE = { warm: '#dcc3a4', cool: '#b9c4cb', neutral: '#d3cdc3', deep: '#7a695c' };
-    // 카드를 옆으로 밀면 다음/이전 색으로 넘어감 (손가락·마우스 모두). 살짝 누르면 기존처럼 "선택"
+    // 사진이 없을 때 톤으로 짐작한 바탕색 (오른쪽 끝에 비치는 "다음 색" 띠)
+    const TONE_FILL = { warm: '#dcc3a4', cool: '#b9c4cb', neutral: '#d3cdc3', deep: '#7a695c' };
+    // 고객에게 보여 줄 원단 이름: 괄호(암막률·가격 등), 가격, 앞의 책자 이름을 빼고 색 번호만 붙임. 예) 블랑 1, 라온암막 3
+    function fabricDisplayName(f, pick) {
+        let n = String(f.name || '');
+        n = n.replace(/\([^)]*\)/g, ' ').replace(/[0-9,]+\s*원/g, ' ');
+        const book = String(f.book || '').trim();
+        if (book && n.trim().startsWith(book + ' ')) n = n.trim().slice(book.length);
+        n = n.replace(/\s+/g, ' ').trim() || String(f.name || '');
+        const col = (typeof normalizeColorName === 'function') ? normalizeColorName(pick) : String(pick || '');
+        return col ? `${n} ${col}` : n;
+    }
+    // 원단 한 칸의 내용 (꽉 찬 사진 + 아래 이름·이유 + 오른쪽 아래 "1 / n" + 오른쪽 끝 다음 색 띠)
+    function fabricCardHtml(f, best, idx, pick, queueItem, targetCategory) {
+        const order = colorDeckOrder(best), n = order.length;
+        const curIdx = Math.max(0, order.indexOf(pick));
+        const pickInfo = best.ranked.find(r => r.name === pick);
+        const view = pickInfo ? Object.assign({}, f, { tone: pickInfo.tone || f.tone, manual: Object.assign({}, f.manual, { tone: !!pickInfo.tone || !!(f.manual && f.manual.tone) }) }) : f;
+        const bgStyle = idx === 0 ? SOLID_TEXTURES.l1 : (idx === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
+        const tagText = (typeof customerFacts === 'function') ? customerFacts(view) : '';
+        const reasonText = recommendReason(view, state.editingRoom, targetCategory);
+        let h = `<div class="bookmark-card color-top" data-fab="${f.id}" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
+        h += `<div class="bookmark-bg" style="background: ${bgStyle};"></div>`;
+        h += `<img class="fabric-photo" alt="" data-id="${f.id}" data-color="${pick}" data-i="0" src="${fabricPhotoUrls(f.id, pick)[0]}" onerror="window.concierge.imgFallback(this)">`;
+        h += '<div class="bookmark-gradient"></div>';
+        h += '<div class="bookmark-content">';
+        const label = (pick && typeof colorLabelOf === 'function') ? colorLabelOf(f.id, pick) : '';
+        h += `<h3 class="bookmark-name font-serif-kr">${fabricDisplayName(f, pick)}${label ? ` <span class="name-label">${label}</span>` : ''}</h3>`;
+        if (reasonText) h += `<p class="bookmark-desc" style="font-weight: 600; color: #fff;">${reasonText}</p>`;
+        if (tagText) h += `<p class="bookmark-desc">${tagText}</p>`;
+        h += '</div>';
+        if (n > 1) h += `<span class="deck-count">${curIdx + 1} / ${n}</span>`;
+        h += '</div>';
+        if (n > 1) {
+            const nx = order[(curIdx + 1) % n], ni = best.ranked.find(r => r.name === nx) || {};
+            h += `<div class="next-sliver" style="background-color: ${TONE_FILL[ni.tone] || '#d9cdbb'}; background-image: url('${fabricPhotoUrls(f.id, nx)[0]}');"></div>`;
+        }
+        return h;
+    }
+    // 옆으로 밀기: 손가락을 살짝만 따라오다가(최대 36px), 충분히 밀면 다음/이전 색으로 바뀜. 살짝 누르면 "선택"
+    function bindFabricPanel(panel) {
+        const card = panel.querySelector('.color-top');
+        if (!card || !panel.querySelector('.deck-count')) return;
+        const fabId = panel.getAttribute('data-fab');
+        let sx = 0, dx = 0, down = false, moved = false, pid = null;
+        card.addEventListener('pointerdown', e => {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            down = true; moved = false; sx = e.clientX; dx = 0; pid = e.pointerId;
+        });
+        card.addEventListener('pointermove', e => {
+            if (!down) return;
+            dx = e.clientX - sx;
+            if (!moved && Math.abs(dx) > 10) {
+                moved = true;
+                try { card.setPointerCapture(pid); } catch (err) {}
+                card.style.transition = 'none';
+            }
+            if (moved) card.style.transform = `translateX(${Math.max(-36, Math.min(36, dx * 0.3))}px)`;
+        });
+        const end = () => {
+            if (!down) return;
+            down = false;
+            if (!moved) return;
+            state.swipedAt = Date.now();              // 밀고 난 직후의 클릭은 "선택"으로 치지 않음
+            card.style.transition = 'transform .18s ease';
+            card.style.transform = '';
+            if (Math.abs(dx) > 60) window.concierge.stepColor(fabId, dx < 0 ? 1 : -1);   // 왼쪽으로 밀면 다음 색
+        };
+        card.addEventListener('pointerup', end);
+        card.addEventListener('pointercancel', end);
+    }
     function bindColorDecks() {
-        document.querySelectorAll('.color-deck').forEach(deck => {
-            const n = parseInt(deck.getAttribute('data-n') || '0', 10);
-            if (n < 2) return;
-            const fabId = deck.getAttribute('data-fab');
-            const card = deck.querySelector('.color-top');
-            if (!card) return;
-            let sx = 0, dx = 0, down = false, moved = false, pid = null;
-            card.addEventListener('pointerdown', e => {
-                if (e.pointerType === 'mouse' && e.button !== 0) return;
-                down = true; moved = false; sx = e.clientX; dx = 0; pid = e.pointerId;
-            });
-            card.addEventListener('pointermove', e => {
-                if (!down) return;
-                dx = e.clientX - sx;
-                if (!moved && Math.abs(dx) > 10) {
-                    moved = true;
-                    try { card.setPointerCapture(pid); } catch (err) {}
-                    card.style.transition = 'none';
-                }
-                if (moved) card.style.transform = `translateX(${dx}px) rotate(${dx / 55}deg)`;
-            });
-            const end = () => {
-                if (!down) return;
-                down = false;
-                if (!moved) return;
-                state.swipedAt = Date.now();              // 밀고 난 직후의 클릭은 "선택"으로 치지 않음
-                if (Math.abs(dx) > 70) {
-                    const dir = dx < 0 ? 1 : -1;          // 왼쪽으로 밀면 다음 색, 오른쪽이면 이전 색
-                    card.style.transition = 'transform .2s ease, opacity .2s ease';
-                    card.style.transform = `translateX(${dx < 0 ? -125 : 125}%) rotate(${dx < 0 ? -9 : 9}deg)`;
-                    card.style.opacity = '0';
-                    setTimeout(() => window.concierge.stepColor(fabId, dir), 190);
-                } else {
-                    card.style.transition = 'transform .2s ease';
-                    card.style.transform = '';
-                }
-            };
-            card.addEventListener('pointerup', end);
-            card.addEventListener('pointercancel', end);
+        document.querySelectorAll('.fab-panel').forEach(bindFabricPanel);
+    }
+    // 한 칸만 새 색으로 바꿈 (화면 전체를 다시 그리지 않아 깜빡이지 않음). 새 사진을 먼저 받아 두고 0.22초 겹쳐 바꿈
+    function swapFabricPanel(panel, html, photoUrl) {
+        const ready = new Promise(res => {
+            const im = new Image(); let done = false;
+            const fin = () => { if (!done) { done = true; res(); } };
+            im.onload = fin; im.onerror = fin; setTimeout(fin, 700);
+            im.src = photoUrl;
+        });
+        ready.then(() => {
+            const olds = Array.from(panel.children);
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            Array.from(tmp.children).forEach(el => panel.insertBefore(el, panel.firstChild));
+            olds.forEach(el => { el.classList.add('is-leaving'); el.style.pointerEvents = 'none'; });
+            requestAnimationFrame(() => olds.forEach(el => { el.style.opacity = '0'; }));
+            setTimeout(() => olds.forEach(el => el.remove()), 260);
+            bindFabricPanel(panel);
         });
     }
 
@@ -778,7 +789,8 @@
             `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>` +
             '<div class="bookmark-gradient" style="pointer-events: none;"></div>' +
             '<div class="bookmark-content" style="pointer-events: none;">' +
-            (tag ? `<span class="bookmark-tag">${tag}</span>` : '') +
+            // 위쪽 작은 영문·번호 표시(ZONE 01, FLOOR 01 등)는 깔끔함을 위해 표시하지 않음
+
             `<h3 class="bookmark-name font-serif-kr">${title}</h3>` +
             `<p class="bookmark-desc">${desc}</p>` +
             '</div></div>';
@@ -932,13 +944,17 @@
             const item = state.pendingItemQueue[state.currentItemIndex];
             const fabric = getLiveDb().find(f => f.id === fabId) || {};
             const cat = item.presetType === 'blind' ? '블라인드' : (item.presetType === 'sheer' ? '속지' : '겉지');
-            const order = colorDeckOrder(bestColorFor(fabric, state.editingRoom, cat));
+            const best = bestColorFor(fabric, state.editingRoom, cat);
+            const order = colorDeckOrder(best);
             if (order.length < 2) return;
             state.colorPick = state.colorPick || {};
             const cur = Math.max(0, order.indexOf(state.colorPick[fabId] || order[0]));
-            state.colorPick[fabId] = order[(cur + dir + order.length) % order.length];
-            state.deckEnter = fabId;
-            render();
+            const next = order[(cur + dir + order.length) % order.length];
+            state.colorPick[fabId] = next;
+            const panel = Array.from(document.querySelectorAll('.fab-panel')).find(p => p.getAttribute('data-fab') === fabId);
+            if (!panel) { render(); return; }
+            const idx = parseInt(panel.getAttribute('data-idx') || '0', 10);
+            swapFabricPanel(panel, fabricCardHtml(fabric, best, idx, next, item, cat), fabricPhotoUrls(fabric.id, next)[0]);
         },
         handleQueueFabricClick: function(fabId) {
             const item = state.pendingItemQueue[state.currentItemIndex];
