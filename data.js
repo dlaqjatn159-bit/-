@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261022';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261023';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -368,10 +368,26 @@ function normalizeColorName(v) {
     const m = /^(\d+)\s*번?$/.exec(s);
     return m ? String(parseInt(m[1], 10)) : s;
 }
-function colorSuffix(name) {
+// 견적서·카드에 붙는 색 표시. 번호는 그대로 두고(공급처 주문·사진 파일 이름 기준), 색 이름이 있으면 괄호로 덧붙임
+// 예) " 1번 (그레이지)"
+function colorSuffix(name, fabricId) {
     const n = normalizeColorName(name);
     if (!n) return '';
-    return /^\d+$/.test(n) ? ` ${n}번` : ` ${n}`;
+    const base = /^\d+$/.test(n) ? ` ${n}번` : ` ${n}`;
+    const label = fabricId ? colorLabelOf(fabricId, n) : '';
+    return label ? `${base} (${label})` : base;
+}
+// 색 이름(예: 그레이지). 고객에게 보여주는 이름일 뿐, 색을 구분하는 기준은 번호
+function colorLabelOf(fabricId, name) {
+    const c = getFabricColors(fabricId).find(x => x.name === normalizeColorName(name));
+    return (c && c.label) ? c.label : '';
+}
+function setColorLabel(id, name, label) {
+    const c = getFabricColors(id).find(x => x.name === normalizeColorName(name));
+    if (!c) return;
+    const v = String(label == null ? '' : label).trim().slice(0, 20);
+    if (v) c.label = v; else delete c.label;
+    saveColorsStore();
 }
 function colorsStore() {
     if (__colorsCache) return __colorsCache;
@@ -421,6 +437,7 @@ function importColorRows(rows) {
     const iId = head.findIndex(h => h.includes('원단') && h.includes('ID'));
     const iColor = head.findIndex(h => h.includes('색상') && !h.includes('톤') && !h.includes('파일'));
     const iTone = head.findIndex(h => h.includes('톤'));
+    const iLabel = head.findIndex(h => h.includes('이름') && !h.includes('ID'));     // 선택: "색 이름"·"가까운 이름" 열
     const known = new Set(FABRIC_DB.map(f => f.id));
     const next = {}; let colorCount = 0, unknown = 0;
     for (let i = hi + 1; i < rows.length; i++) {
@@ -431,7 +448,10 @@ function importColorRows(rows) {
         if (!known.has(id)) { unknown++; continue; }
         next[id] = next[id] || [];
         if (next[id].some(c => c.name === name)) continue;
-        next[id].push({ name, tone: iTone >= 0 ? normalizeToneInput(r[iTone]) : null });
+        const entry = { name, tone: iTone >= 0 ? normalizeToneInput(r[iTone]) : null };
+        const label = iLabel >= 0 ? String(r[iLabel] == null ? '' : r[iLabel]).trim().slice(0, 20) : '';
+        if (label) entry.label = label;
+        next[id].push(entry);
         colorCount++;
     }
     Object.keys(next).forEach(id => next[id].sort(colorSort));

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261022';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261023';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -112,7 +112,7 @@
             qtyText: p.qtyText,
             actualH: p.actualCurtainHeight,
             fabBook: fab.book || (isBlind ? "블라인드" : "샘플북"),
-            fabName: (fab.name || (isBlind ? "블라인드" : "원단")) + (typeof colorSuffix === "function" ? colorSuffix(c.colorName) : ""),
+            fabName: (fab.name || (isBlind ? "블라인드" : "원단")) + (typeof colorSuffix === "function" ? colorSuffix(c.colorName, fab.id) : ""),
             hwText: isBlind ? '블라인드 일체형' : `기본 레일 (${p.numJa}자)`
         };
     }
@@ -569,7 +569,7 @@
                     }
                     html += '<div class="bookmark-content" style="pointer-events: none;">';
                     html += `<span class="bookmark-tag">${pillTag}</span>`;
-                    html += `<h3 class="bookmark-name font-serif-kr">${f.name}${colorSuffix(pick)}</h3>`;
+                    html += `<h3 class="bookmark-name font-serif-kr">${f.name}${colorSuffix(pick, f.id)}</h3>`;
                     if (reasonText) html += `<p class="bookmark-desc" style="font-weight: 600; color: #fff;">${reasonText}</p>`;
                     if (tagText) html += `<p class="bookmark-desc">${tagText}</p>`;
                     html += '</div></div>';
