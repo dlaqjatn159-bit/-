@@ -817,3 +817,59 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     .opt-info-text { grid-column: 1 / -1; }
 }
 .opt-info-row.text-only { grid-template-columns: 1fr; }
+
+
+/* ===== 글 질문 화면 (사진 없이 묻는 질문: 공간 종류·같은 바닥벽·채광·빛 가림·바깥 시선) ===== */
+.ask-stage { cursor: default; }
+.ask-dots { position: absolute; top: 2.2rem; left: 50%; transform: translateX(-50%); z-index: 10; }
+.ask-dots span { background: rgba(43, 34, 26, 0.18); }
+.ask-dots span.done { background: rgba(43, 34, 26, 0.4); }
+.ask-dots span.on { background: #91401a; }
+.ask-stage .q-title { font-size: 2.3rem; }
+.ask-opts { position: relative; z-index: 10; display: flex; justify-content: center; flex-wrap: wrap; gap: 0.6rem 3.2rem; margin-top: 3rem; max-width: 1000px; }
+.ask-opts.is-many { gap: 1.4rem 2.4rem; max-width: 900px; }
+.ask-opt {
+    background: none; border: none; cursor: pointer; padding: 0.6rem 0.2rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.45rem; color: #2b221a;
+}
+.ask-label { font-size: 1.45rem; font-weight: 700; padding-bottom: 0.35rem; border-bottom: 1.5px solid rgba(43, 34, 26, 0.75); transition: color .15s ease, border-color .15s ease; }
+.ask-opts.is-many .ask-label { font-size: 1.3rem; }
+.ask-desc { font-size: 0.8rem; color: #8a7a6a; font-weight: 500; }
+.ask-opt:hover .ask-label, .ask-opt:active .ask-label { color: #91401a; border-color: #91401a; }
+.ask-opt.is-rec .ask-label { color: #91401a; border-color: #91401a; }
+
+/* ===== 공간 화면 (첫 화면과 합침): 왼쪽 고객 정보 + 오른쪽 기존 "+ 공간 추가" 세로 패널(안에 공간 카드가 위에서부터 가로로 쌓임) ===== */
+.space-stage { position: relative; width: 100vw; height: 100vh; height: 100dvh; display: flex; background: #fbf9f5; overflow: hidden; }
+.space-left { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 2rem; }
+.space-panel { position: relative; flex: 0 0 19%; max-width: 20vw; min-width: 140px; display: flex; }   /* 예전 공간 추가 칸과 같은 폭 */
+.space-panel > .bookmark-card { flex: 1; }
+.space-list {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 7rem; z-index: 2;
+    display: flex; flex-direction: column; gap: 2px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.space-item {
+    position: relative; flex: 0 0 15vh; min-height: 88px; cursor: pointer; overflow: hidden;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; padding: 0 1rem 0.95rem 1.2rem; box-sizing: border-box;
+}
+.si-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(40,28,21,0.05) 20%, rgba(40,28,21,0.7) 100%); pointer-events: none; }
+.space-item:active .si-shade { background: linear-gradient(180deg, rgba(255,255,255,0.08) 20%, rgba(40,28,21,0.6) 100%); }
+.si-name { position: relative; z-index: 1; font-size: 1.4rem; font-weight: 700; color: #fff; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.si-actions { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; flex-shrink: 0; }
+.si-edit { font-family: 'Noto Serif KR', Georgia, serif; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.95); border-bottom: 1px solid rgba(255,255,255,0.7); padding-bottom: 2px; line-height: 1.1; }
+.si-del { background: none; border: none; cursor: pointer; padding: 0.15rem 0; font-size: 0.68rem; font-weight: 600; color: rgba(255,255,255,0.6); }
+/* 공간이 생기면 "+ 공간 추가"는 가로쓰기 (아래선은 다른 카드와 같은 2.4rem) */
+.space-add-h { position: absolute; left: 1.4rem; right: 1rem; bottom: 2.4rem; z-index: 3; display: flex; flex-direction: column; gap: 0.3rem; color: #fff; pointer-events: none; }
+.sah-title { font-size: 1.4rem; font-weight: 700; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,0.45); }
+.sah-desc { font-family: 'Noto Serif KR', Georgia, serif; font-size: 0.8rem; color: rgba(255,255,255,0.78); }
+/* 합계: 화면 아래 가운데 */
+.space-total {
+    position: absolute; left: 50%; bottom: 2.2rem; transform: translateX(-50%); z-index: 20;
+    display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+    background: rgba(255, 253, 249, 0.92); border: 1px solid #e5dcd0; border-radius: 18px; padding: 0.85rem 2rem 0.8rem; cursor: pointer;
+    box-shadow: 0 12px 30px -14px rgba(43, 34, 26, 0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.st-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; color: #8a7a6a; }
+.st-amount { font-size: 1.75rem; font-weight: 700; color: #2b221a; letter-spacing: -0.01em; line-height: 1.15; }
+.st-amount small { font-size: 0.9rem; font-weight: 600; margin-left: 0.15rem; }
+.st-go { font-size: 0.8rem; font-weight: 600; color: #91401a; display: inline-flex; align-items: center; gap: 0.4rem; }
+.st-go i { font-size: 0.7rem; }

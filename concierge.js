@@ -244,11 +244,28 @@
     function roomTypeOf(room) {
         return String((room && (room.roomType || room.name)) || '').replace(/\s*\d+$/, '');
     }
+    // 흐름 B: 사실(바닥·벽·채광) → 필요(빛 가림·바깥 시선) → 구성 → 취향(분위기·속지 느낌) → 원단
     function diagnosisSteps() {
-        const steps = ["2-Base-Floor", "2-Base-Wall", "2-Base-Light"];
-        if (roomTypeOf(state.editingRoom) === '방') steps.push("2-Base-Block");
-        steps.push("2-Base-Mood", "3-Config-Style");
+        const steps = ["2-Base-Floor", "2-Base-Wall", "2-Base-Light", "2-Base-Block", "2-Base-Privacy", "3-Config-Style", "2-Base-Mood"];
+        const items = (state.editingRoom && state.editingRoom.items) || [];
+        if (state.step === "2-Base-SheerFeel" || items.some(i => i.presetType === 'sheer')) steps.push("2-Base-SheerFeel");
         return steps;
+    }
+    // 글 질문 화면 ("제안합니다" 화면과 같은 분위기): 큰 질문 + 글자 선택지. 사진이 필요 없는 질문에 사용
+    function askStage(question, sub, opts, o) {
+        o = o || {};
+        const steps = diagnosisSteps(), at = steps.indexOf(state.step);
+        let h = '<div class="ambient-stage ask-stage"><div class="ambient-light-glow"></div>';
+        if (at >= 0) h += '<div class="step-dots ask-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
+        if (!o.noRoom && state.editingRoom && state.editingRoom.name) h += `<span class="q-meta">${state.editingRoom.name}</span>`;
+        h += `<h2 class="q-title font-serif-kr">${question}</h2>`;
+        if (sub) h += `<p class="q-sub">${sub}</p>`;
+        h += `<div class="ask-opts${opts.length > 4 ? ' is-many' : ''}">`;
+        opts.forEach(op => {
+            h += `<button type="button" class="ask-opt${op.rec ? ' is-rec' : ''}" onclick="${op.on}"><span class="ask-label font-serif-kr">${op.label}</span>${op.desc ? `<span class="ask-desc">${op.desc}</span>` : ''}</button>`;
+        });
+        h += '</div></div>';
+        return h;
     }
     function stepHead(question, sub) {
         const steps = diagnosisSteps();
@@ -336,88 +353,85 @@
 
         switch (state.step) {
             // [Step 1: 공간 장바구니 캔버스]
-            case "1-Space":
-                const roomCount = state.roomsCart.length;
+            case "1-Space": {
                 const configuredRooms = state.roomsCart.filter(r => r.isConfigured);
                 const hasConfigured = configuredRooms.length > 0;
                 let grandSum = 0;
                 configuredRooms.forEach(r => grandSum += (r.subtotal || 0));
 
-                html += `<div class="bookmark-stage${roomCount === 0 ? ' is-empty' : ''}">`;
-                if (roomCount > 0) html += stepHead('공간을 눌러 커튼을 골라 주세요', '새 공간은 오른쪽 + 공간 추가');
-                html += '<div class="space-row">';
-                
-                if (roomCount === 0) {
-                    html += '<div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 2rem;" class="font-serif-kr">';
-                    html += '<h1 style="font-size: 2.8rem; font-weight: 700; color: #2b221a; letter-spacing: -0.02em; cursor: pointer;" onclick="window.concierge.staffTap()">Re.dam</h1>';
-                    html += '<p style="font-size: 0.95rem; color: #6f5f4f; margin-top: 0.6rem; line-height: 1.6;">공간별 빛과 결을 채워 넣는 비스포크 큐레이션입니다.<br>오른쪽 <strong style="color: #91401a;">+ 공간 추가</strong>를 탭하여 공간을 등록해 주세요.</p>';
-                    html += `<input type="text" id="cName_ui" value="${(document.getElementById('custName') ? document.getElementById('custName').value : '').replace(/"/g, '&quot;')}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)" style="margin-top: 1.4rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
-                    html += `<input type="tel" id="cPhone_ui" inputmode="numeric" autocomplete="off" value="${((document.getElementById('custPhone') || {}).value || '').replace(/"/g, '&quot;')}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)" style="margin-top: 0.6rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
-                    html += '</div>';
-                }
+                html += '<div class="space-stage">';
+                // 왼쪽: Re.dam · 고객명/현장명 · 연락처 · 설명 (지금 디자인 그대로)
+                html += '<div class="space-left font-serif-kr">';
+                html += '<h1 style="font-size: 2.8rem; font-weight: 700; color: #2b221a; letter-spacing: -0.02em; cursor: pointer;" onclick="window.concierge.staffTap()">Re.dam</h1>';
+                html += '<p style="font-size: 0.95rem; color: #6f5f4f; margin-top: 0.6rem; line-height: 1.6;">공간별 빛과 결을 채워 넣는 비스포크 큐레이션입니다.<br>오른쪽 <strong style="color: #91401a;">+ 공간 추가</strong>를 탭하여 공간을 등록해 주세요.</p>';
+                html += `<input type="text" id="cName_ui" value="${(document.getElementById('custName') ? document.getElementById('custName').value : '').replace(/"/g, '&quot;')}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)" style="margin-top: 1.4rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
+                html += `<input type="tel" id="cPhone_ui" inputmode="numeric" autocomplete="off" value="${((document.getElementById('custPhone') || {}).value || '').replace(/"/g, '&quot;')}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)" style="margin-top: 0.6rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
+                html += '</div>';
 
-                state.roomsCart.forEach((room, idx) => {
-                    const texture = idx % 3 === 0 ? SOLID_TEXTURES.l1 : (idx % 3 === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
-                    const tagDesc = room.isConfigured ? "터치해서 수정하기" : "터치해서 구성하기";
-                    const statusPill = '';
-
-                    html += '<div style="flex: 1 1 0; min-width: 0; display: flex; position: relative;">';
-                    html += `<button onclick="window.concierge.deleteRoom(${room.id})" aria-label="${room.name} 삭제" class="space-del">삭제</button>`;
-                    html += renderBookmarkCard(room.name, tagDesc, statusPill, texture, function() {
-                        window.concierge.openRoomCart(room.id);
+                // 오른쪽: 기존 "+ 공간 추가" 세로 패널 그대로. 공간이 생기면 패널 안 위쪽부터 가로 카드로 쌓이고,
+                // 자리가 모자라므로 "+ 공간 추가"는 가로쓰기로 바뀜. 패널 빈 곳을 눌러도 추가
+                const roomCount = state.roomsCart.length;
+                html += `<div class="space-panel${roomCount ? ' has-rooms' : ''}">`;
+                if (!roomCount) {
+                    html += renderBookmarkCard("+ 공간 추가", "터치해서 추가하기", '', SOLID_TEXTURES.walnut, function() {
+                        window.concierge.startNewRoomSelection();
+                    });
+                } else {
+                    html += `<div class="bookmark-card lcard" style="width: 100%; height: 100%; cursor: pointer;" onclick="window.concierge.startNewRoomSelection()">`;
+                    html += `<div class="bookmark-bg" style="background: ${SOLID_TEXTURES.walnut}; pointer-events: none;"></div>`;
+                    html += '<div class="bookmark-gradient fab-gradient" style="pointer-events: none;"></div>';
+                    html += '<div class="space-list">';
+                    state.roomsCart.forEach((room, idx) => {
+                        const texture = idx % 3 === 0 ? SOLID_TEXTURES.l1 : (idx % 3 === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
+                        html += `<div class="space-item" style="background: ${texture};" onclick="event.stopPropagation(); window.concierge.openRoomCart(${room.id})">`;
+                        html += '<div class="si-shade"></div>';
+                        html += `<span class="si-name font-serif-kr">${room.name}</span>`;
+                        html += '<span class="si-actions">';
+                        html += `<button type="button" class="si-del" aria-label="${room.name} 삭제" onclick="event.stopPropagation(); window.concierge.deleteRoom(${room.id})">삭제</button>`;
+                        html += `<span class="si-edit">${room.isConfigured ? '수정하기' : '구성하기'}</span>`;
+                        html += '</span></div>';
                     });
                     html += '</div>';
-                });
-
-                const addCardStyle = (roomCount >= 4)
-                    ? 'flex: 1 1 0; min-width: 0; display: flex;'
-                    : 'flex: 0 0 19%; max-width: 20vw; min-width: 140px; display: flex;';
-
-                html += `<div style="${addCardStyle}">`;
-                html += renderBookmarkCard("+ 공간 추가", "터치해서 추가하기", '', SOLID_TEXTURES.walnut, function() {
-                    window.concierge.startNewRoomSelection();
-                });
+                    html += '<div class="space-add-h"><span class="sah-title font-serif-kr">+ 공간 추가</span><span class="sah-desc">터치해서 추가하기</span></div>';
+                    html += '</div>';
+                }
                 html += '</div>';
 
-                html += '</div>';
-
-                // 최종 제안 보기: 위쪽 오른쪽 (아래쪽은 공간 이름·설명이 있어 가리지 않게)
+                // 합계: 화면 아래 가운데 (공간 카드에는 금액을 띄우지 않음)
                 if (hasConfigured) {
-                    html += '<button class="checkout-btn" onclick="window.concierge.goToCheckout()">';
-                    html += `<span>최종 제안 보기 (${grandSum.toLocaleString()}원)</span>`;
-                    html += '<i class="fa-solid fa-arrow-right text-xs" style="color: #91401a;"></i>';
+                    html += '<button type="button" class="space-total font-serif-kr" onclick="window.concierge.goToCheckout()">';
+                    html += '<span class="st-label">총 제안 금액</span>';
+                    html += `<span class="st-amount">${grandSum.toLocaleString()}<small>원</small></span>`;
+                    html += '<span class="st-go">최종 제안 보기 <i class="fa-solid fa-arrow-right"></i></span>';
                     html += '</button>';
                 }
-
                 html += '</div>';
                 break;
+            }
 
             // [Step 1.5: 7종 공간 선택]
             case "1.5-Room-Type":
-                html += '<div class="bookmark-stage">';
-                html += stepHead('어느 공간의 창인가요?');
-                html += '<div class="bookmark-canvas" style="--items-count: 7;">';
-                html += renderBookmarkCard("거실", "집의 중심을 완성하는 빛과 쉼", "ZONE 01", SOLID_TEXTURES.l1, function() { window.concierge.chooseRoomType("거실"); });
-                html += renderBookmarkCard("방", "온전한 숙면과 아늑한 프라이빗", "ZONE 02", SOLID_TEXTURES.l3, function() { window.concierge.chooseRoomType("방"); });
-                html += renderBookmarkCard("서재", "몰입과 사색을 위한 은은한 빛", "ZONE 03", SOLID_TEXTURES.l2, function() { window.concierge.chooseRoomType("서재"); });
-                html += renderBookmarkCard("주방", "단정하고 깨끗한 모던 윈도우", "ZONE 04", SOLID_TEXTURES.tile, function() { window.concierge.chooseRoomType("주방"); });
-                html += renderBookmarkCard("알파룸", "다목적 공간을 위한 감성 연출", "ZONE 05", SOLID_TEXTURES.neutral, function() { window.concierge.chooseRoomType("알파룸"); });
-                html += renderBookmarkCard("드레스룸", "옷감 보호와 단정한 차폐", "ZONE 06", SOLID_TEXTURES.l4, function() { window.concierge.chooseRoomType("드레스룸"); });
-                html += renderBookmarkCard("베란다", "외부 직사광 조절과 채광", "ZONE 07", SOLID_TEXTURES.oak, function() { window.concierge.chooseRoomType("베란다"); });
-                html += '</div></div>';
+                html += askStage('어느 공간의 창인가요?', '', [
+                    { label: '거실', desc: '빛과 쉼의 중심', on: "window.concierge.chooseRoomType('거실')" },
+                    { label: '방', desc: '숙면과 프라이빗', on: "window.concierge.chooseRoomType('방')" },
+                    { label: '서재', desc: '몰입을 위한 빛', on: "window.concierge.chooseRoomType('서재')" },
+                    { label: '주방', desc: '단정하고 깨끗하게', on: "window.concierge.chooseRoomType('주방')" },
+                    { label: '알파룸', desc: '다목적 공간', on: "window.concierge.chooseRoomType('알파룸')" },
+                    { label: '드레스룸', desc: '옷감 보호', on: "window.concierge.chooseRoomType('드레스룸')" },
+                    { label: '베란다', desc: '직사광 조절', on: "window.concierge.chooseRoomType('베란다')" }
+                ], { noRoom: true });
                 break;
 
             // [Step 2-0: 앞 공간과 같은 바닥·벽인지 (두 번째 공간부터)]
-            case "2-Base-Copy":
+            case "2-Base-Copy": {
                 const src = copySourceRoom();
                 const srcDesc = src ? `바닥 ${TONE_LABELS[src.floorTone] || ''} 톤 · 벽 ${TONE_LABELS[src.wallTone] || ''} 톤` : '';
-                html += '<div class="bookmark-stage">';
-                html += stepHead(src ? `${withGwa(src.name)} 바닥·벽이 같은가요?` : '바닥·벽을 골라 주세요');
-                html += '<div class="bookmark-canvas" style="--items-count: 2;">';
-                html += renderBookmarkCard(`네, ${withGwa(src ? src.name : '앞 공간')} 같아요`, srcDesc, "SAME AS BEFORE", SOLID_TEXTURES.l1, function() { window.concierge.copyBaseFromPrev(true); });
-                html += renderBookmarkCard("아니요, 새로 고를게요", "이 공간의 바닥·벽 톤을 직접 고릅니다", "NEW", SOLID_TEXTURES.l3, function() { window.concierge.copyBaseFromPrev(false); });
-                html += '</div></div>';
+                html += askStage(src ? `${withGwa(src.name)} 바닥·벽이 같은가요?` : '바닥·벽을 골라 주세요', srcDesc, [
+                    { label: '네, 같아요', desc: '바닥·벽 선택을 건너뛰어요', on: 'window.concierge.copyBaseFromPrev(true)' },
+                    { label: '아니요, 새로 고를게요', desc: '이 공간의 톤을 직접 골라요', on: 'window.concierge.copyBaseFromPrev(false)' }
+                ]);
                 break;
+            }
 
             // [Step 2-1: 바닥재 진단]
             case "2-Base-Floor":
@@ -445,36 +459,29 @@
 
             // [Step 2-3: 일조량 진단]
             case "2-Base-Light":
-                html += '<div class="bookmark-stage">';
-                html += stepHead('창으로 햇빛은 얼마나 들어오나요?');
-                html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("풍부한 채광", "남향/고층의 강하고 눈부신 직사광", "LIGHT HIGH", SOLID_TEXTURES.l1, function() { window.concierge.selectLightLevel('high'); });
-                html += renderBookmarkCard("은은한 채광", "동향/서향의 부드럽고 적당한 햇살", "LIGHT MID", SOLID_TEXTURES.l2, function() { window.concierge.selectLightLevel('mid'); });
-                html += renderBookmarkCard("차분한 채광", "북향/저층의 은은하고 낮은 채광량", "LIGHT LOW", SOLID_TEXTURES.l3, function() { window.concierge.selectLightLevel('low'); });
-                html += '</div></div>';
+                html += askStage('창으로 햇빛은 얼마나 들어오나요?', '', [
+                    { label: '풍부해요', desc: '남향·고층, 눈부신 직사광', on: "window.concierge.selectLightLevel('high')" },
+                    { label: '은은해요', desc: '동향·서향, 부드러운 햇살', on: "window.concierge.selectLightLevel('mid')" },
+                    { label: '차분해요', desc: '북향·저층, 낮은 채광', on: "window.concierge.selectLightLevel('low')" }
+                ]);
                 break;
 
-            // [Step 2-3b: 빛 차단 희망 (방에서만)]
+            // [빛 가림: 모든 공간에서 (구성 추천과 겉지 암막·블라인드 추천에 사용)]
             case "2-Base-Block":
-                html += '<div class="bookmark-stage">';
-                const forBlind = state.blockNext === '3.5-Bridge';      // 블라인드를 고른 뒤 묻는 경우
-                html += stepHead('빛을 얼마나 가리고 싶으세요?');
-                html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("들어와도 괜찮아요", forBlind ? "바깥이 비치고 햇빛만 걸러지게" : "은은한 햇살이 스며드는 편이 좋아요", "BLOCK LOW", SOLID_TEXTURES.l1, function() { window.concierge.selectLightBlock('light'); });
-                html += renderBookmarkCard("적당히 가려 주세요", "눈부심만 줄이고 아늑하게", "BLOCK MID", SOLID_TEXTURES.l2, function() { window.concierge.selectLightBlock('soft'); });
-                html += renderBookmarkCard("완전히 어둡게", forBlind ? "빛을 거의 막는 암막" : "깊은 숙면을 위한 암막", "BLOCK FULL", SOLID_TEXTURES.l4, function() { window.concierge.selectLightBlock('dark'); });
-                html += '</div></div>';
+                html += askStage('빛을 얼마나 가리고 싶으세요?', '', [
+                    { label: '들어와도 괜찮아요', desc: '햇살이 은은하게 스미도록', on: "window.concierge.selectLightBlock('light')" },
+                    { label: '적당히 가려 주세요', desc: '눈부심만 줄이고 아늑하게', on: "window.concierge.selectLightBlock('soft')" },
+                    { label: '완전히 어둡게', desc: '빛을 거의 막는 암막', on: "window.concierge.selectLightBlock('dark')" }
+                ]);
                 break;
 
-            // [사생활: 속지가 들어가는 구성을 고른 뒤 한 번]
+            // [바깥 시선: 모든 공간에서 (구성 추천과 속지 비침 추천에 사용)]
             case "2-Base-Privacy":
-                html += '<div class="bookmark-stage">';
-                html += stepHead('밖에서 안이 보이는 게 신경 쓰이세요?', '속지가 얼마나 가려 줄지 고르는 데 써요');
-                html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("괜찮아요", "높은 층이거나 앞이 트여 있어요", "", SOLID_TEXTURES.l1, function() { window.concierge.selectPrivacy('open'); });
-                html += renderBookmarkCard("조금 신경 쓰여요", "낮에 적당히 가려지면 좋겠어요", "", SOLID_TEXTURES.l2, function() { window.concierge.selectPrivacy('some'); });
-                html += renderBookmarkCard("많이 신경 쓰여요", "저층이거나 앞 건물이 가까워요", "", SOLID_TEXTURES.l4, function() { window.concierge.selectPrivacy('high'); });
-                html += '</div></div>';
+                html += askStage('밖에서 안이 보이는 게 신경 쓰이세요?', '', [
+                    { label: '괜찮아요', desc: '높은 층이거나 앞이 트여 있어요', on: "window.concierge.selectPrivacy('open')" },
+                    { label: '조금 신경 쓰여요', desc: '낮에 적당히 가려지면 좋겠어요', on: "window.concierge.selectPrivacy('some')" },
+                    { label: '많이 신경 쓰여요', desc: '저층이거나 앞 건물이 가까워요', on: "window.concierge.selectPrivacy('high')" }
+                ]);
                 break;
 
             // [속지 질감 취향: 속지가 들어가는 구성에서 한 번]
@@ -509,7 +516,7 @@
                 const compTag = (key, en) => en;
                 const recCls = key => recComp === key ? 'is-recommended' : '';
                 html += '<div class="bookmark-stage">';
-                html += stepHead('창을 어떻게 구성할까요?');
+                html += stepHead('창을 어떻게 구성할까요?', recComp ? '빛과 시선 답에 맞는 구성을 표시했어요' : '');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard("호텔식 이중창", "차르르 속지 + 아늑한 겉지 2중 레이어드", compTag('double', "DOUBLE LAYER"), SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double'));
                 html += renderBookmarkCard("속지 단독", "화사하고 은은한 채광의 차르르 쉬어", compTag('sheer_only', "SHEER ONLY"), SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only'));
@@ -930,19 +937,15 @@
         },
         selectLightLevel: function(level) {
             state.editingRoom.lightLevel = level;
-            state.blockNext = null;
-            // 방은 "빛을 얼마나 가릴지"를 한 번 더 물어봄 (암막 정도 추천에 사용)
-            goToStep(roomTypeOf(state.editingRoom) === '방' ? "2-Base-Block" : "2-Base-Mood");
+            goToStep("2-Base-Block");          // 모든 공간: 빛 가림 → 바깥 시선 → 구성
         },
         selectLightBlock: function(level) {
             state.editingRoom.lightBlock = level;
-            const next = state.blockNext || "2-Base-Mood";      // 블라인드를 고른 뒤 물었으면 바로 원단 제안으로
-            state.blockNext = null;
-            goToStep(next);
+            goToStep("2-Base-Privacy");
         },
         selectPrivacy: function(level) {
             state.editingRoom.privacy = level;
-            goToStep(state.editingRoom.sheerFeel ? "3.5-Bridge" : "2-Base-SheerFeel");
+            goToStep("3-Config-Style");        // 빛 가림·바깥 시선을 근거로 구성 추천
         },
         selectSheerFeel: function(feel) {
             state.editingRoom.sheerFeel = feel;
@@ -950,7 +953,9 @@
         },
         selectMood: function(mood) {
             state.editingRoom.wantMood = mood;
-            goToStep("3-Config-Style");
+            // 속지가 들어가는 구성이면 속지 느낌을 한 번 더 (공간마다 한 번)
+            const hasSheer = (state.editingRoom.items || []).some(i => i.presetType === 'sheer');
+            goToStep(hasSheer && !state.editingRoom.sheerFeel ? "2-Base-SheerFeel" : "3.5-Bridge");
         },
         chooseWindowComposition: function(type) {
             const rName = state.editingRoom.name;
@@ -974,24 +979,7 @@
             }
             state.pendingItemQueue = state.editingRoom.items;
             state.currentItemIndex = 0;
-            state.blockNext = null;
-            // 블라인드인데 아직 "빛을 얼마나 가릴지"를 안 물었으면(방이 아닌 공간) 한 번 물어봄 → 암막·일반·투시 추천에 사용
-            if (type === 'blind_only' && !state.editingRoom.lightBlock) {
-                state.blockNext = "3.5-Bridge";
-                goToStep("2-Base-Block");
-                return;
-            }
-            // 속지가 들어가면 사생활(밖에서 안이 보이는지)을 공간마다 한 번 물어봄 → 속지 비침 추천에 사용
-            if ((type === 'double' || type === 'sheer_only') && !state.editingRoom.privacy) {
-                goToStep("2-Base-Privacy");
-                return;
-            }
-            // 속지 질감 취향도 공간마다 한 번 ("상관없어요"는 'any'로 기록해 다시 묻지 않음)
-            if ((type === 'double' || type === 'sheer_only') && !state.editingRoom.sheerFeel) {
-                goToStep("2-Base-SheerFeel");
-                return;
-            }
-            goToStep("3.5-Bridge");
+            goToStep("2-Base-Mood");           // 구성 다음은 취향(분위기)
         },
         proceedToFabricQueue: function() {
             goToStep("4-Fabric-Queue");

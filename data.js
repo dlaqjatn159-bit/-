@@ -430,11 +430,10 @@ function recommendReason(fabric, room, category, maxParts) {
 // 공간 종류(+빛 차단 희망)로 창 구성 추천: 카드 순서는 그대로 두고 "추천" 표시만 붙임
 function recommendComposition(room) {
     const t = String((room && (room.roomType || room.name)) || '').replace(/\s*\d+$/, '');
-    if (t === '베란다' || t === '서재' || t === '알파룸') return 'blind_only';
-    if (t === '방') {
-        if (room.lightBlock === 'light') return 'sheer_only';
-        if (room.lightBlock === 'dark' || room.lightBlock === 'soft') return 'double';
-    }
+    if (t === '베란다' || t === '서재' || t === '알파룸' || t === '주방') return 'blind_only';
+    // 거실·방·드레스룸 등: 빛 가림·바깥 시선 답으로 (모든 공간에서 구성 전에 물음)
+    if (room.lightBlock === 'light' && room.privacy === 'open') return 'sheer_only';     // 빛도 시선도 괜찮으면 속지만
+    if (room.lightBlock || room.privacy) return 'double';                                 // 그 밖에는 낮엔 속지, 밤엔 겉지
     return null;
 }
 
