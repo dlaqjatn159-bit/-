@@ -79,6 +79,7 @@
 
     <!-- 고객명/현장명 (고객 화면과 직원 화면이 함께 사용) -->
     <input type="hidden" id="custName" value="">
+    <input type="hidden" id="custPhone" value="">
 
     <!-- ============================================================== -->
     <!-- 직원 화면: 빠른 간편 견적 + 원가 관리 (PIN 필요)                -->
@@ -94,6 +95,7 @@
             <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-[240px]">
                 <span class="font-serif-kr font-bold text-sm sm:text-base text-slate-800 tracking-tight flex-shrink-0">Re.dam</span>
                 <input type="text" id="expressCustName" value="" placeholder="고객명/현장명 입력" class="w-full max-w-md px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/70" oninput="document.getElementById('custName').value=this.value; syncCustomerData()">
+                <input type="tel" id="expressCustPhone" value="" inputmode="numeric" placeholder="연락처" class="w-36 flex-shrink-0 px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/70" oninput="this.value=formatPhone(this.value); document.getElementById('custPhone').value=this.value">
             </div>
             
             <div class="flex items-center gap-2">

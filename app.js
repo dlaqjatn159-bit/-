@@ -69,6 +69,8 @@ function switchMainTrack(track) {
         const custVal = (document.getElementById('custName') ? document.getElementById('custName').value : "").trim();
         const expressCust = document.getElementById('expressCustName');
         if (expressCust) expressCust.value = custVal;
+        const expressPhone = document.getElementById('expressCustPhone');
+        if (expressPhone) expressPhone.value = ((document.getElementById('custPhone') || {}).value || '');
         renderRooms();
         renderDbTable();
         updatePrivateStatus();
@@ -120,6 +122,21 @@ function presentToCustomer() {
     exitStaffMode(null, true);
 }
 
+// 전화번호를 입력하는 대로 010-1234-5678 모양으로 맞춤 (숫자만 남기고 하이픈)
+function formatPhone(v) {
+    const d = String(v || '').replace(/\D/g, '').slice(0, 11);
+    if (d.startsWith('02')) {                               // 서울 지역번호
+        if (d.length <= 2) return d;
+        if (d.length <= 5) return d.slice(0, 2) + '-' + d.slice(2);
+        if (d.length <= 9) return d.slice(0, 2) + '-' + d.slice(2, d.length - 4) + '-' + d.slice(-4);
+        return d.slice(0, 2) + '-' + d.slice(2, 6) + '-' + d.slice(6, 10);
+    }
+    if (d.length <= 3) return d;
+    if (d.length <= 7) return d.slice(0, 3) + '-' + d.slice(3);
+    if (d.length <= 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+    return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+}
+
 // 새 상담 시작: 이전 고객의 입력을 전부 비움
 function startNewConsultation() {
     if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
@@ -132,6 +149,7 @@ function startNewConsultation() {
     const vat = document.getElementById('expressVatOption'); if (vat) vat.value = globalVatOption;
     if (window.concierge) window.concierge.resetAll();
     const expressCust = document.getElementById('expressCustName'); if (expressCust) expressCust.value = '';
+    const expressPhone = document.getElementById('expressCustPhone'); if (expressPhone) expressPhone.value = '';
     renderRooms();
     calculateAll();
     renderHistory();
@@ -247,6 +265,7 @@ function collectConsultation() {
     const src = (appMode === 'staff' || !window.concierge) ? rooms : window.concierge.getRoomsForSave();
     return {
         name: ((document.getElementById('custName') || {}).value || '').trim(),
+        phone: ((document.getElementById('custPhone') || {}).value || '').trim(),
         rooms: src.map(r => ({
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
             roomType: r.roomType || null, lightBlock: r.lightBlock || null, diagnosed: !!r.diagnosed,
@@ -306,6 +325,7 @@ function applySnapshot(snap) {
     globalVatOption = snap.vat || 'consumer';
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set('custName', snap.name || ''); set('expressCustName', snap.name || '');
+    set('custPhone', snap.phone || ''); set('expressCustPhone', snap.phone || '');
     set('expressInstallFee', globalInstallFee); set('expressVatOption', globalVatOption);
     calculateAll();
     if (window.concierge) window.concierge.loadFromMaster(rooms, globalInstallFee);
@@ -336,7 +356,7 @@ function renderHistory() {
     box.innerHTML = list.map(h => {
         const d = new Date(h.updatedAt);
         const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        const nm = (h.name || '(이름 없음)').replace(/</g, '&lt;');
+        const nm = ((h.name || '(이름 없음)') + (h.snapshot && h.snapshot.phone ? ' · ' + h.snapshot.phone : '')).replace(/</g, '&lt;');
         const nRooms = h.snapshot.rooms.length;
         return `<div class="flex items-center justify-between gap-2 py-2 border-b border-slate-100 text-xs">
             <div class="min-w-0">

@@ -343,7 +343,7 @@
                 let grandSum = 0;
                 configuredRooms.forEach(r => grandSum += (r.subtotal || 0));
 
-                html += '<div class="bookmark-stage">';
+                html += `<div class="bookmark-stage${roomCount === 0 ? ' is-empty' : ''}">`;
                 if (roomCount > 0) html += stepHead('공간을 눌러 커튼을 골라 주세요', '새 공간은 오른쪽 + 공간 추가');
                 html += '<div class="space-row">';
                 
@@ -352,6 +352,7 @@
                     html += '<h1 style="font-size: 2.8rem; font-weight: 700; color: #2b221a; letter-spacing: -0.02em; cursor: pointer;" onclick="window.concierge.staffTap()">Re.dam</h1>';
                     html += '<p style="font-size: 0.95rem; color: #6f5f4f; margin-top: 0.6rem; line-height: 1.6;">공간별 빛과 결을 채워 넣는 비스포크 큐레이션입니다.<br>오른쪽 <strong style="color: #91401a;">+ 공간 추가</strong>를 탭하여 공간을 등록해 주세요.</p>';
                     html += `<input type="text" id="cName_ui" value="${(document.getElementById('custName') ? document.getElementById('custName').value : '').replace(/"/g, '&quot;')}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)" style="margin-top: 1.4rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
+                    html += `<input type="tel" id="cPhone_ui" inputmode="numeric" autocomplete="off" value="${((document.getElementById('custPhone') || {}).value || '').replace(/"/g, '&quot;')}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)" style="margin-top: 0.6rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
                     html += '</div>';
                 }
 
@@ -666,6 +667,8 @@
                 html += '<button onclick="window.concierge.goToSpaceCanvas()" style="background: #ffffff; border: 1.5px solid #e5dcd0; color: #2b221a; padding: 0.95rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">← 공간 추가하기</button>';
                 html += '<button onclick="window.concierge.openOfficialModal()" style="background: #91401a; border: none; color: #fff; padding: 0.95rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 6px 18px rgba(145,64,26,0.3);">견적서 발행</button>';
                 html += '</div>';
+                // 다음 고객 상담: 확인 창을 거쳐 지금 상담을 이력에 보관하고 비움 (직원 화면의 "새 상담"과 같음)
+                html += '<button class="next-consult" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button>';
 
                 html += '</div>';
                 html += '</div>';
@@ -1055,6 +1058,13 @@
             const el = document.getElementById('custName');
             if (el) el.value = v;
         },
+        // 연락처: 입력하는 대로 010-1234-5678 모양으로 맞춰 저장
+        setClientPhone: function(input) {
+            const v = (typeof formatPhone === 'function') ? formatPhone(input.value) : input.value;
+            input.value = v;
+            const el = document.getElementById('custPhone');
+            if (el) el.value = v;
+        },
         deleteRoom: function(roomId) {
             const room = state.roomsCart.find(r => r.id === roomId);
             if (!room) return;
@@ -1102,6 +1112,8 @@
             stepHistory.length = 0;
             const el = document.getElementById('custName');
             if (el) el.value = '';
+            const ph = document.getElementById('custPhone');
+            if (ph) ph.value = '';
             goToStep("1-Space", false);
         },
         syncToMaster: function() { syncToV1MasterRooms(); },

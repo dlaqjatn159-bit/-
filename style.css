@@ -664,6 +664,13 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); pointer-events: none;
 }
 
+/* 제안서 화면 아래: 다음 상담 시작 (눈에 덜 띄게, 실수로 누르지 않도록 글자 버튼) */
+.next-consult {
+    display: block; margin: 1.1rem auto 0; padding: 0.5rem 1rem; background: none; border: none; cursor: pointer;
+    font-family: Pretendard, sans-serif; font-size: 0.8rem; font-weight: 600; color: #8a7a6a;
+    text-decoration: underline; text-underline-offset: 3px;
+}
+
 /* 공간 목록 (첫 화면) */
 .checkout-btn {
     position: absolute; top: 1.4rem; right: 1.4rem; z-index: 45;
@@ -711,7 +718,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .step-dots span.on { background: #fff; width: 18px; border-radius: 3px; }
 
 /* 꽉 찬 화면 위에서도 Re.dam 표시가 보이도록 */
-#trackCurationSection:has(.bookmark-stage) #brandMark { color: #fff; opacity: 0.75; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
+#trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { color: #fff; opacity: 0.75; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
 
 /* 제작 옵션 미리보기 (기본 / 적용 그림) */
 .opt-info-link {
