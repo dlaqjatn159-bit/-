@@ -529,7 +529,11 @@
                 
                 showcaseList.forEach((entry, idx) => {
                     const f = entry.f, best = entry.best;
-                    const pick = state.colorPick[f.id] || best.color || '';
+                    // 색상 순서: 분류돼 있으면 "공간에 어울리는 색"부터, 아니면 번호순. 맨 앞 카드가 추천 색
+                    const order = colorDeckOrder(best);
+                    const n = order.length;
+                    const pick = state.colorPick[f.id] || order[0] || '';
+                    const curIdx = Math.max(0, order.indexOf(pick));
                     const pickInfo = best.ranked.find(r => r.name === pick);
                     const view = pickInfo ? Object.assign({}, f, { tone: pickInfo.tone || f.tone, manual: Object.assign({}, f.manual, { tone: !!pickInfo.tone || !!(f.manual && f.manual.tone) }) }) : f;
                     const bgStyle = idx === 0 ? SOLID_TEXTURES.l1 : (idx === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
@@ -537,43 +541,34 @@
                     const reasonText = recommendReason(view, state.editingRoom, targetCategory);
                     const pillTag = `[${f.book || '샘플'}] ${queueItem.label}`;
                     const photoTag = `<img class="fabric-photo" alt="" loading="lazy" data-id="${f.id}" data-color="${pick}" data-i="0" src="${fabricPhotoUrls(f.id, pick)[0]}" onerror="window.concierge.imgFallback(this)">`;
+                    const ghosts = n >= 3 ? 2 : (n === 2 ? 1 : 0);
+                    const enter = (state.deckEnter === f.id) ? ' deck-enter' : '';
 
-                    html += `<div class="bookmark-card" onclick="window.concierge.handleQueueFabricClick('${f.id}')" style="position: relative; width: 100%; height: 100%; cursor: pointer;">`;
+                    // 겹쳐진 카드 (뒤에 다른 색이 있다는 느낌). 다음 색의 사진이 있으면 뒤 카드에 비침
+                    html += `<div class="color-deck ghosts-${ghosts}" data-fab="${f.id}" data-n="${n}">`;
+                    for (let g = ghosts; g >= 1; g--) {
+                        const gName = order[(curIdx + g) % n];
+                        const gInfo = best.ranked.find(r => r.name === gName) || {};
+                        html += `<div class="deck-ghost g${g}" style="background-color: ${GHOST_TONE[gInfo.tone] || '#d9cdbb'}; background-image: url('${fabricPhotoUrls(f.id, gName)[0]}');"></div>`;
+                    }
+                    html += `<div class="bookmark-card color-top${enter}" data-fab="${f.id}" onclick="window.concierge.handleQueueFabricClick('${f.id}')" style="position: relative; width: 100%; cursor: pointer;">`;
                     html += `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>`;
                     html += photoTag;
                     html += '<div class="bookmark-gradient" style="pointer-events: none;"></div>';
-                    if (best.ranked.length > 0) {
-                        // 색상 번호 선택 (눌러서 바꿔 볼 수 있음). 추천 색은 별표로 표시
-                        // 색상 번호 선택. 색이 많은 원단(예: 36번까지)은 10개만 먼저 보여주고 "전체 보기"로 모두 펼침
-                        const MAX_CHIPS = 10;
-                        const expanded = !!(state.colorExpanded && state.colorExpanded[f.id]);
-                        const numSort = (x, y) => (/^\d+$/.test(x.name) && /^\d+$/.test(y.name)) ? parseInt(x.name, 10) - parseInt(y.name, 10) : x.name.localeCompare(y.name, 'ko');
-                        const base = best.classified ? best.ranked.slice() : best.ranked.slice().sort(numSort);
-                        let shown;
-                        if (expanded) shown = best.ranked.slice().sort(numSort);
-                        else {
-                            shown = base.slice(0, MAX_CHIPS);
-                            if (pick && !shown.some(r => r.name === pick)) { const pr = best.ranked.find(r => r.name === pick); if (pr) shown = [pr].concat(shown.slice(0, MAX_CHIPS - 1)); }
-                        }
-                        const bestName = best.classified ? best.ranked[0].name : '';
-                        html += '<div class="color-row" onclick="event.stopPropagation()">';
-                        html += `<span class="color-row-label">${expanded ? '번호를 눌러 선택하세요' : (best.classified ? '어울리는 색부터' : '색상 번호를 눌러 주세요')}</span>`;
-                        html += `<div class="color-chips ${expanded ? 'expanded' : ''}">`;
-                        shown.forEach(r => {
-                            html += `<button class="color-chip ${r.name === pick ? 'active' : ''}" onclick="event.stopPropagation(); window.concierge.pickColor('${f.id}','${r.name}')">${r.name}</button>`;
-                        });
-                        if (best.ranked.length > MAX_CHIPS) {
-                            html += `<button class="color-chip more" onclick="event.stopPropagation(); window.concierge.toggleColors('${f.id}')">${expanded ? '접기 ▲' : `전체 ${best.ranked.length}개 ▼`}</button>`;
-                        }
-                        html += '</div></div>';
+                    if (n > 1) {
+                        // 위쪽: 몇 번째 색인지 + 밀어서 넘기라는 안내
+                        const dots = n <= 8 ? '<span class="deck-dots">' + order.map((_, i) => `<span class="${i === curIdx ? 'on' : ''}"></span>`).join('') + '</span>' : '';
+                        const lead = (best.classified && curIdx === 0) ? '<span class="deck-lead">가장 어울리는 색</span>' : '';
+                        html += `<div class="deck-meta">${lead}${dots}<span>${curIdx + 1} / ${n}</span><span class="deck-hint">‹ 밀어서 다른 색 ›</span></div>`;
                     }
                     html += '<div class="bookmark-content" style="pointer-events: none;">';
                     html += `<span class="bookmark-tag">${pillTag}</span>`;
                     html += `<h3 class="bookmark-name font-serif-kr">${f.name}${colorSuffix(pick, f.id)}</h3>`;
                     if (reasonText) html += `<p class="bookmark-desc" style="font-weight: 600; color: #fff;">${reasonText}</p>`;
                     if (tagText) html += `<p class="bookmark-desc">${tagText}</p>`;
-                    html += '</div></div>';
+                    html += '</div></div></div>';
                 });
+                state.deckEnter = null;
 
                 html += '</div></div>';
                 break;
@@ -716,6 +711,60 @@
 
         html += '</div>';
         main.innerHTML = html;
+        if (state.step === "4-Fabric-Queue") bindColorDecks();     // 색상 카드 밀어 넘기기 연결
+    }
+
+    // ---- 원단 카드 안의 색상 덱 ----
+    // 색상 순서: 분류돼 있으면 어울리는 색부터(랭킹 순), 아니면 번호 순
+    function colorDeckOrder(best) {
+        const numSort = (x, y) => (/^\d+$/.test(x.name) && /^\d+$/.test(y.name)) ? parseInt(x.name, 10) - parseInt(y.name, 10) : x.name.localeCompare(y.name, 'ko');
+        const list = best.classified ? best.ranked.slice() : best.ranked.slice().sort(numSort);
+        return list.map(r => r.name);
+    }
+    // 뒤 카드의 바탕색 (사진이 없을 때 톤으로 짐작한 색)
+    const GHOST_TONE = { warm: '#dcc3a4', cool: '#b9c4cb', neutral: '#d3cdc3', deep: '#7a695c' };
+    // 카드를 옆으로 밀면 다음/이전 색으로 넘어감 (손가락·마우스 모두). 살짝 누르면 기존처럼 "선택"
+    function bindColorDecks() {
+        document.querySelectorAll('.color-deck').forEach(deck => {
+            const n = parseInt(deck.getAttribute('data-n') || '0', 10);
+            if (n < 2) return;
+            const fabId = deck.getAttribute('data-fab');
+            const card = deck.querySelector('.color-top');
+            if (!card) return;
+            let sx = 0, dx = 0, down = false, moved = false, pid = null;
+            card.addEventListener('pointerdown', e => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                down = true; moved = false; sx = e.clientX; dx = 0; pid = e.pointerId;
+            });
+            card.addEventListener('pointermove', e => {
+                if (!down) return;
+                dx = e.clientX - sx;
+                if (!moved && Math.abs(dx) > 10) {
+                    moved = true;
+                    try { card.setPointerCapture(pid); } catch (err) {}
+                    card.style.transition = 'none';
+                }
+                if (moved) card.style.transform = `translateX(${dx}px) rotate(${dx / 55}deg)`;
+            });
+            const end = () => {
+                if (!down) return;
+                down = false;
+                if (!moved) return;
+                state.swipedAt = Date.now();              // 밀고 난 직후의 클릭은 "선택"으로 치지 않음
+                if (Math.abs(dx) > 70) {
+                    const dir = dx < 0 ? 1 : -1;          // 왼쪽으로 밀면 다음 색, 오른쪽이면 이전 색
+                    card.style.transition = 'transform .2s ease, opacity .2s ease';
+                    card.style.transform = `translateX(${dx < 0 ? -125 : 125}%) rotate(${dx < 0 ? -9 : 9}deg)`;
+                    card.style.opacity = '0';
+                    setTimeout(() => window.concierge.stepColor(fabId, dir), 190);
+                } else {
+                    card.style.transition = 'transform .2s ease';
+                    card.style.transform = '';
+                }
+            };
+            card.addEventListener('pointerup', end);
+            card.addEventListener('pointercancel', end);
+        });
     }
 
     function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass) {
@@ -878,31 +927,31 @@
         proceedToFabricQueue: function() {
             goToStep("4-Fabric-Queue");
         },
-        toggleColors: function(fabId) {
-            state.colorExpanded = state.colorExpanded || {};
-            state.colorExpanded[fabId] = !state.colorExpanded[fabId];
-            render();
-        },
-        pickColor: function(fabId, colorName) {
+        // 색상 카드 넘기기: dir 1 = 다음 색, -1 = 이전 색 (끝에서 한 바퀴 돌아 처음으로)
+        stepColor: function(fabId, dir) {
+            const item = state.pendingItemQueue[state.currentItemIndex];
+            const fabric = getLiveDb().find(f => f.id === fabId) || {};
+            const cat = item.presetType === 'blind' ? '블라인드' : (item.presetType === 'sheer' ? '속지' : '겉지');
+            const order = colorDeckOrder(bestColorFor(fabric, state.editingRoom, cat));
+            if (order.length < 2) return;
             state.colorPick = state.colorPick || {};
-            state.colorPick[fabId] = colorName;
+            const cur = Math.max(0, order.indexOf(state.colorPick[fabId] || order[0]));
+            state.colorPick[fabId] = order[(cur + dir + order.length) % order.length];
+            state.deckEnter = fabId;
             render();
         },
         handleQueueFabricClick: function(fabId) {
             const item = state.pendingItemQueue[state.currentItemIndex];
             const fabric = getLiveDb().find(f => f.id === fabId) || {};
             const cat = item.presetType === 'blind' ? '블라인드' : (item.presetType === 'sheer' ? '속지' : '겉지');
+            if (Date.now() - (state.swipedAt || 0) < 450) return;      // 카드를 밀고 난 직후의 클릭은 무시
             const best = bestColorFor(fabric, state.editingRoom, cat);
             state.colorPick = state.colorPick || {};
-            const chosen = state.colorPick[fabId] || best.color || '';
-            if (best.ranked.length > 0 && !chosen) {
-                if (typeof showToast === 'function') showToast('색상 번호를 먼저 눌러 주세요.', 'info');
-                return;
-            }
+            const order = colorDeckOrder(best);
+            const chosen = state.colorPick[fabId] || order[0] || '';
             item.fabricId = fabId;
             item.colorName = chosen;
             state.colorPick = {};
-            state.colorExpanded = {};
 
             if (state.currentItemIndex + 1 < state.pendingItemQueue.length) {
                 state.currentItemIndex++;

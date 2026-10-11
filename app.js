@@ -1468,12 +1468,13 @@ function ticketData() {
     };
 }
 
-function drawTicket(ctx, data, W, extra) {
+function drawTicket(ctx, data, W) {
     const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
     const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
     const MONO = 'ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace';
     const DARK = '#2b221a', MUTED = '#6f5f4f', ACCENT = '#91401a', LINE = '#e5dcd0';
     const PAD = 87, CX = PAD, CW = W - PAD * 2;
+    const START_Y = 282 + 52;                       // 방 카드가 시작되는 높이 (머리글 아래)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
     const spacing = v => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
     const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
@@ -1496,152 +1497,187 @@ function drawTicket(ctx, data, W, extra) {
     const text = (str, x, y, align, color) => { ctx.textAlign = align; ctx.fillStyle = color; ctx.fillText(str, x, y); };
     const won = n => `${n.toLocaleString()}원`;
 
-    // --- 위에서부터 차례로 배치 (y는 현재 위치) ---
-    let y = 0;
-    const hdr = () => {
+    // 머리글 (페이지마다 같은 모양)
+    function hdr() {
         spacing('3px'); setFont(700, 27, SANS); text('FABRIC STYLING CARD', CX, 142, 'left', MUTED); spacing('0px');
         setFont(400, 28, SANS); text(data.date, W - PAD, 142, 'right', MUTED);
         setFont(700, 60, SERIF); text(data.title, CX, 238, 'left', DARK);
-        // Re.dam 표시
         rr(W - PAD - 150, 166, 150, 50, 25); ctx.fillStyle = 'rgba(250,238,227,0.95)'; ctx.fill();
         setFont(700, 26, SANS); text('Re.dam', W - PAD - 75, 201, 'center', ACCENT);
         hline(CX, W - PAD, 282, LINE);
-    };
-    // 먼저 높이를 계산(drawing=false)하고, 다시 같은 순서로 실제 그림
-    function pass(drawing) {
-        y = 282 + 52;
-        const saveFill = ctx.fillStyle;
-        data.rooms.forEach(room => {
-            const px = CX + 40, iw = CW - 80;
-            const THUMB = 132;                     // 원단 사진 크기 (사진이 있을 때만)
-            // 방 카드 높이 계산
-            const blocks = room.items.map(it => {
-                const photo = (data.photos && data.photos[it.photoKey]) || null;
-                const tx = px + (photo ? THUMB + 28 : 0), tw = px + iw - tx;
-                setFont(400, 25, SANS);
-                const lines = wrap(it.fab, tw);
+    }
+
+    // 방 카드 한 장의 크기를 미리 계산
+    function layoutRoom(room) {
+        const px = CX + 40, iw = CW - 80;
+        const THUMB = 132;                     // 원단 사진 크기 (사진이 있을 때만)
+        const blocks = room.items.map(it => {
+            const photo = (data.photos && data.photos[it.photoKey]) || null;
+            const tx = px + (photo ? THUMB + 28 : 0), tw = px + iw - tx;
+            setFont(400, 25, SANS);
+            const lines = wrap(it.fab, tw);
+            setFont(500, 24, SANS);
+            const rlines = it.reason ? wrap(it.reason, tw) : [];
+            // 위치(카드 안 상대값): 품목명 62, 원단명 104~, 추천 이유, 옵션
+            const lastFab = 104 + (lines.length - 1) * 36;
+            const lastText = rlines.length ? lastFab + 40 + (rlines.length - 1) * 34 : lastFab;
+            let h = lastText + (it.opts.length ? 16 + 38 : 0) + 30;
+            if (photo) h = Math.max(h, 28 + THUMB + 28);
+            return { it, lines, rlines, photo, tx, h };
+        });
+        setFont(400, 24, SANS);
+        const slines = room.summary ? wrap(room.summary, iw) : [];
+        const headH = slines.length ? 88 + 24 + slines.length * 34 + 6 : 98;
+        const cardH = headH + blocks.reduce((a, b) => a + b.h, 0) + 14;
+        return { room, px, iw, THUMB, blocks, slines, headH, cardH };
+    }
+    // 방 카드 한 장을 y 위치에 그림
+    function drawRoom(L, y) {
+        const { room, px, iw, THUMB, blocks, slines, headH, cardH } = L;
+        rr(CX, y, CW, cardH, 48); ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+        ctx.strokeStyle = '#ece4d8'; ctx.lineWidth = 2; ctx.stroke();
+        setFont(700, 38, SERIF); text(room.name, px, y + 62, 'left', DARK);
+        setFont(700, 36, SANS); text(won(room.total), px + iw, y + 62, 'right', ACCENT);
+        hline(px, px + iw, y + 88, LINE);
+        if (slines.length) { setFont(400, 24, SANS); slines.forEach((ln, i) => text(ln, px, y + 88 + 34 + i * 34, 'left', MUTED)); }
+        let by = y + headH;
+        blocks.forEach((b, idx) => {
+            const base = by + 28 + 34;
+            if (b.photo) {
+                // 사진은 정사각형으로 가운데를 잘라 둥근 모서리 안에 그림
+                const sw = b.photo.naturalWidth, sh = b.photo.naturalHeight, side = Math.min(sw, sh);
+                ctx.save(); rr(px, by + 28, THUMB, THUMB, 22); ctx.clip();
+                ctx.drawImage(b.photo, (sw - side) / 2, (sh - side) / 2, side, side, px, by + 28, THUMB, THUMB);
+                ctx.restore();
+            }
+            setFont(700, 32, SERIF); text(b.it.label, b.tx, base, 'left', DARK);
+            setFont(700, 34, SANS); text(won(b.it.price), px + iw, base, 'right', '#1c1917');
+            setFont(400, 25, SANS);
+            b.lines.forEach((ln, li) => text(ln, b.tx, base + 42 + li * 36, 'left', MUTED));
+            let ty = base + 42 + (b.lines.length - 1) * 36 + 16;
+            if (b.rlines.length) {
                 setFont(500, 24, SANS);
-                const rlines = it.reason ? wrap(it.reason, tw) : [];
-                // 위치(카드 안 상대값): 품목명 62, 원단명 104~, 추천 이유, 옵션
-                const lastFab = 104 + (lines.length - 1) * 36;
-                const lastText = rlines.length ? lastFab + 40 + (rlines.length - 1) * 34 : lastFab;
-                let h = lastText + (it.opts.length ? 16 + 38 : 0) + 30;
-                if (photo) h = Math.max(h, 28 + THUMB + 28);
-                return { it, lines, rlines, photo, tx, h };
-            });
-            setFont(400, 24, SANS);
-            const slines = room.summary ? wrap(room.summary, iw) : [];
-            const headH = slines.length ? 88 + 24 + slines.length * 34 + 6 : 98;
-            const cardH = headH + blocks.reduce((a, b) => a + b.h, 0) + 14;
-            if (drawing) {
-                rr(CX, y, CW, cardH, 48); ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
-                ctx.strokeStyle = '#ece4d8'; ctx.lineWidth = 2; ctx.stroke();
-                setFont(700, 38, SERIF); text(room.name, px, y + 62, 'left', DARK);
-                setFont(700, 36, SANS); text(won(room.total), px + iw, y + 62, 'right', ACCENT);
-                hline(px, px + iw, y + 88, LINE);
-                if (slines.length) { setFont(400, 24, SANS); slines.forEach((ln, i) => text(ln, px, y + 88 + 34 + i * 34, 'left', MUTED)); }
-                let by = y + headH;
-                blocks.forEach((b, idx) => {
-                    const base = by + 28 + 34;
-                    if (b.photo) {
-                        // 사진은 정사각형으로 가운데를 잘라 둥근 모서리 안에 그림
-                        const sw = b.photo.naturalWidth, sh = b.photo.naturalHeight, side = Math.min(sw, sh);
-                        ctx.save(); rr(px, by + 28, THUMB, THUMB, 22); ctx.clip();
-                        ctx.drawImage(b.photo, (sw - side) / 2, (sh - side) / 2, side, side, px, by + 28, THUMB, THUMB);
-                        ctx.restore();
-                    }
-                    setFont(700, 32, SERIF); text(b.it.label, b.tx, base, 'left', DARK);
-                    setFont(700, 34, SANS); text(won(b.it.price), px + iw, base, 'right', '#1c1917');
-                    setFont(400, 25, SANS);
-                    b.lines.forEach((ln, li) => text(ln, b.tx, base + 42 + li * 36, 'left', MUTED));
-                    let ty = base + 42 + (b.lines.length - 1) * 36 + 16;
-                    if (b.rlines.length) {
-                        setFont(500, 24, SANS);
-                        const ry = base + 42 + (b.lines.length - 1) * 36 + 40;
-                        b.rlines.forEach((ln, li) => text(ln, b.tx, ry + li * 34, 'left', '#8a4b26'));
-                        ty = ry + (b.rlines.length - 1) * 34 + 16;
-                    }
-                    if (b.it.opts.length) {
-                        let ox = b.tx; setFont(700, 22, SANS);
-                        b.it.opts.forEach(o => {
-                            const w = ctx.measureText(o).width + 32;
-                            rr(ox, ty, w, 38, 19); ctx.fillStyle = '#f1ebe1'; ctx.fill();
-                            text(o, ox + 16, ty + 27, 'left', MUTED);
-                            ox += w + 10;
-                        });
-                    }
-                    by += b.h;
-                    if (idx < blocks.length - 1) hline(px, px + iw, by - 4, '#f0e9de');
+                const ry = base + 42 + (b.lines.length - 1) * 36 + 40;
+                b.rlines.forEach((ln, li) => text(ln, b.tx, ry + li * 34, 'left', '#8a4b26'));
+                ty = ry + (b.rlines.length - 1) * 34 + 16;
+            }
+            if (b.it.opts.length) {
+                let ox = b.tx; setFont(700, 22, SANS);
+                b.it.opts.forEach(o => {
+                    const w = ctx.measureText(o).width + 32;
+                    rr(ox, ty, w, 38, 19); ctx.fillStyle = '#f1ebe1'; ctx.fill();
+                    text(o, ox + 16, ty + 27, 'left', MUTED);
+                    ox += w + 10;
                 });
             }
-            y += cardH + 34;
+            by += b.h;
+            if (idx < blocks.length - 1) hline(px, px + iw, by - 4, '#f0e9de');
         });
-        // 시공비
+    }
+    // 맨 아래 합계 구역(시공비·최종 금액·안내 문구): 크기 계산 / 그리기
+    function layoutFooter() {
+        setFont(500, 26, SANS);
+        const nlines = data.note ? wrap(data.note, CW) : [];
+        const h = (data.install > 0 ? 92 + 40 : 0) + 64 + 104 + 78 + (nlines.length ? nlines.length * 38 + 6 : 0) + 86;
+        return { nlines, h };
+    }
+    function drawFooter(F, y) {
         if (data.install > 0) {
-            if (drawing) {
-                rr(CX, y, CW, 92, 36); ctx.fillStyle = 'rgba(250,238,227,0.95)'; ctx.fill();
-                ctx.strokeStyle = '#efd9c3'; ctx.lineWidth = 2; ctx.stroke();
-                setFont(700, 30, SANS); text('시공 및 설치비', CX + 40, y + 58, 'left', DARK);
-                setFont(700, 32, SANS); text(won(data.install), CX + CW - 40, y + 58, 'right', ACCENT);
-            }
+            rr(CX, y, CW, 92, 36); ctx.fillStyle = 'rgba(250,238,227,0.95)'; ctx.fill();
+            ctx.strokeStyle = '#efd9c3'; ctx.lineWidth = 2; ctx.stroke();
+            setFont(700, 30, SANS); text('시공 및 설치비', CX + 40, y + 58, 'left', DARK);
+            setFont(700, 32, SANS); text(won(data.install), CX + CW - 40, y + 58, 'right', ACCENT);
             y += 92 + 40;
         }
-        y += (extra || 0);      // 세로 최소 비율을 맞추기 위한 여백 (합계 구역이 아래쪽에 자리잡음)
-        if (drawing) hline(CX, W - PAD, y, LINE);
+        hline(CX, W - PAD, y, LINE);
         y += 64;
-        if (drawing) {
-            setFont(700, 30, SANS); text('최종 견적 금액 (시공비 포함)', CX, y, 'left', '#44392f');
-        }
+        setFont(700, 30, SANS); text('최종 견적 금액 (시공비 포함)', CX, y, 'left', '#44392f');
         y += 104;
-        if (drawing) {
-            setFont(700, 30, SANS);
-            const wonW = ctx.measureText('원').width;
-            text('원', W - PAD, y, 'right', DARK);
-            setFont(800, 92, MONO); text(data.total, W - PAD - wonW - 14, y, 'right', '#1c1917');
-        }
+        setFont(700, 30, SANS);
+        const wonW = ctx.measureText('원').width;
+        text('원', W - PAD, y, 'right', DARK);
+        setFont(800, 92, MONO); text(data.total, W - PAD - wonW - 14, y, 'right', '#1c1917');
         y += 78;
-        if (data.note) {
+        if (F.nlines.length) {
             setFont(500, 26, SANS);
-            const nlines = wrap(data.note, CW);
-            if (drawing) nlines.forEach((ln, i) => text(ln, W / 2, y + i * 38, 'center', DARK));
-            y += nlines.length * 38 + 6;
+            F.nlines.forEach((ln, i) => text(ln, W / 2, y + i * 38, 'center', DARK));
+            y += F.nlines.length * 38 + 6;
         }
-        if (drawing) { setFont(400, 24, SANS); text('• 전문 핏팅 시공 및 1년 무상 안심 A/S 지원', W / 2, y, 'center', MUTED); }
-        y += 86;
-        ctx.fillStyle = saveFill;
-        return y;
+        setFont(400, 24, SANS); text('• 전문 핏팅 시공 및 1년 무상 안심 A/S 지원', W / 2, y, 'center', MUTED);
     }
-    return { pass, hdr };
+    function pageLabel(i, n, H) {
+        if (n < 2) return;
+        setFont(500, 22, SANS); text(`${i + 1} / ${n}`, W / 2, H - 34, 'center', MUTED);
+    }
+    return { START_Y, hdr, layoutRoom, drawRoom, layoutFooter, drawFooter, pageLabel };
 }
 
-function buildTicketCanvas(opts, preparedData) {
+// 견적서는 A4 세로 비율의 "고정 크기" 페이지(1080 x 1527)로 만듭니다.
+//  1) 내용이 한 장에 들어가면 그대로,
+//  2) 조금 넘치면 글자·간격을 살짝 줄여서(최대 80%까지) 한 장에 맞추고,
+//  3) 그래도 안 들어가면 방 카드 단위로 다음 장에 이어 그립니다 (최종 금액은 맨 마지막 장 아래쪽).
+const TICKET_W = 1080;
+const TICKET_PAGE_H = Math.round(TICKET_W * 1.414);
+const TICKET_SCALES = [1, 0.95, 0.9, 0.85, 0.8];
+function planTicket(data, s) {
+    const W = Math.round(TICKET_W / s), PAGE_H = Math.round(TICKET_PAGE_H / s), GAP = 34, BOTTOM = 80;
+    const probe = document.createElement('canvas').getContext('2d');
+    const T = drawTicket(probe, data, W);
+    const layouts = data.rooms.map(r => T.layoutRoom(r));
+    const F = T.layoutFooter();
+    const pages = [];
+    let cur = { items: [], y: T.START_Y };
+    layouts.forEach(L => {
+        if (cur.items.length && cur.y + L.cardH > PAGE_H - BOTTOM) { pages.push(cur); cur = { items: [], y: T.START_Y }; }
+        cur.items.push({ L, y: cur.y });
+        cur.y += L.cardH + GAP;
+    });
+    pages.push(cur);
+    // 마지막 장에 합계가 안 들어가면 마지막 방을 새 장으로 옮김
+    let last = pages[pages.length - 1];
+    if (last.y + F.h > PAGE_H && last.items.length > 1) {
+        const mv = last.items.pop();
+        last.y = mv.y;
+        pages.push({ items: [{ L: mv.L, y: T.START_Y }], y: T.START_Y + mv.L.cardH + GAP });
+        last = pages[pages.length - 1];
+    }
+    const fitsOnePage = pages.length === 1 && last.y + F.h <= PAGE_H;
+    return { s, W, PAGE_H, BOTTOM, F, pages, fitsOnePage };
+}
+function buildTicketCanvases(opts, preparedData) {
     opts = opts || {};
     const data = preparedData || ticketData();
-    const W = 1080;
-    const probe = document.createElement('canvas').getContext('2d');
-    const naturalH = Math.ceil(drawTicket(probe, data, W).pass(false));
-    const MIN_RATIO = 1.35;                       // 세로/가로 최소 비율 (항목이 적어도 너무 납작하지 않게)
-    const height = Math.max(naturalH, Math.round(W * MIN_RATIO));
-    const extraH = height - naturalH;
-    const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (opts.solidBg) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, height); }   // 인쇄/PDF는 흰 종이 위에
-    // 바탕 (둥근 모서리 카드)
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#fbf9f5'); grad.addColorStop(1, '#f4ede4');
-    ctx.beginPath();
-    const r = 72; ctx.moveTo(r, 0); ctx.arcTo(W, 0, W, height, r); ctx.arcTo(W, height, 0, height, r); ctx.arcTo(0, height, 0, 0, r); ctx.arcTo(0, 0, W, 0, r); ctx.closePath();
-    ctx.fillStyle = grad; ctx.fill(); ctx.strokeStyle = '#e8e0d4'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.textBaseline = 'alphabetic';
-    const t = drawTicket(ctx, data, W, extraH);
-    t.hdr();
-    t.pass(true);
-    return canvas;
+    let plan = null;
+    for (const s of TICKET_SCALES) { const p = planTicket(data, s); if (p.fitsOnePage) { plan = p; break; } }
+    if (!plan) plan = planTicket(data, 1);
+    const { s, W, PAGE_H, BOTTOM, F, pages } = plan;
+
+    return pages.map((p, pi) => {
+        const isLast = pi === pages.length - 1;
+        const H = Math.max(PAGE_H, Math.ceil(p.y + (isLast ? F.h : BOTTOM)));   // 아주 긴 방 하나일 때만 늘어남 (화면 좌표)
+        const canvas = document.createElement('canvas');
+        canvas.width = TICKET_W; canvas.height = Math.round(H * s);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(s, s);                                                        // 이후는 모두 "늘리거나 줄이기 전" 좌표
+        if (opts.solidBg) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); }   // 인쇄/PDF/공유는 흰 바탕 위에
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#fbf9f5'); grad.addColorStop(1, '#f4ede4');
+        ctx.beginPath();
+        const r = 72; ctx.moveTo(r, 0); ctx.arcTo(W, 0, W, H, r); ctx.arcTo(W, H, 0, H, r); ctx.arcTo(0, H, 0, 0, r); ctx.arcTo(0, 0, W, 0, r); ctx.closePath();
+        ctx.fillStyle = grad; ctx.fill(); ctx.strokeStyle = '#e8e0d4'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.textBaseline = 'alphabetic';
+        const t = drawTicket(ctx, data, W);
+        t.hdr();
+        p.items.forEach(it => t.drawRoom(it.L, it.y));
+        if (isLast) t.drawFooter(F, Math.max(p.y, H - F.h));
+        t.pageLabel(pi, pages.length, H);
+        return canvas;
+    });
 }
 
-// 글꼴·원단 사진을 준비한 뒤 견적서 이미지를 만듦
-async function makeTicketBlob(opts) {
+// 글꼴·원단 사진을 준비한 뒤 견적서 이미지(여러 장일 수 있음)를 만듦
+async function makeTicketBlobs(opts) {
+    opts = opts || {};
     try {
         if (document.fonts && document.fonts.load) {
             await Promise.all([
@@ -1653,12 +1689,16 @@ async function makeTicketBlob(opts) {
         }
     } catch (e) {}
     const data = await loadTicketPhotos(ticketData());
-    const canvas = buildTicketCanvas(opts, data);
-    return { canvas, blob: await new Promise(res => canvas.toBlob(res, 'image/png')) };
+    const canvases = buildTicketCanvases(opts, data);
+    const type = opts.type || 'image/png';
+    const blobs = await Promise.all(canvases.map(c => new Promise(res => c.toBlob(res, type, 0.92))));
+    return { canvases, blobs, type };
 }
-function ticketFileName() {
+// 파일 이름. asciiOnly는 휴대폰 공유 창이 한글 이름을 못 읽는 경우를 피하기 위한 영문 이름
+function ticketFileNames(count, ext, asciiOnly) {
     const custName = (document.getElementById('custName').value || "").trim();
-    return `${custName ? custName + '_' : ''}맞춤견적서.png`;
+    const base = asciiOnly ? 'redam_quote' : `${custName ? custName + '_' : ''}맞춤견적서`;
+    return Array.from({ length: count }, (_, i) => `${base}${count > 1 ? '_' + (i + 1) : ''}.${ext}`);
 }
 function saveBlobAsFile(blob, name) {
     const link = document.createElement('a');
@@ -1673,9 +1713,13 @@ function saveBlobAsFile(blob, name) {
 async function downloadTicketImage() {
     showToast("이미지 생성 중...", "info");
     try {
-        const { blob } = await makeTicketBlob();
-        saveBlobAsFile(blob, ticketFileName());
-        showToast("견적서 이미지가 저장되었습니다!");
+        const { blobs } = await makeTicketBlobs();
+        const names = ticketFileNames(blobs.length, 'png', false);
+        for (let i = 0; i < blobs.length; i++) {
+            saveBlobAsFile(blobs[i], names[i]);
+            if (i < blobs.length - 1) await new Promise(r => setTimeout(r, 400));   // 여러 장은 간격을 두고 저장
+        }
+        showToast(blobs.length > 1 ? `견적서 이미지 ${blobs.length}장이 저장되었습니다!` : "견적서 이미지가 저장되었습니다!");
     } catch (err) {
         console.error(err);
         showToast("이미지 생성 중 오류 발생", "error");
@@ -1683,23 +1727,28 @@ async function downloadTicketImage() {
 }
 
 // 카카오톡 등으로 바로 보내기: 태블릿의 "공유" 창을 열어 견적서 이미지를 넘김 (지원하지 않으면 저장으로 대신)
+// 공유 창이 끝없이 로딩되는 기기가 있어, 가벼운 JPG + 영문 파일 이름으로 보냄
 let __shareBusy = false;
 async function shareTicketImage() {
     if (__shareBusy) return;          // 연타해도 공유 창이 여러 번 뜨지 않게
     __shareBusy = true;
     showToast("이미지 준비 중...", "info");
     try {
-        const { blob } = await makeTicketBlob();
-        const file = new File([blob], ticketFileName(), { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+        const { blobs } = await makeTicketBlobs({ solidBg: true, type: 'image/jpeg' });
+        const names = ticketFileNames(blobs.length, 'jpg', true);
+        const files = blobs.map((b, i) => new File([b], names[i], { type: 'image/jpeg' }));
+        if (navigator.canShare && navigator.canShare({ files }) && navigator.share) {
             try {
-                await navigator.share({ files: [file] });
+                await navigator.share({ files });
             } catch (e) {
                 if (e && e.name === 'AbortError') return;      // 고객이 공유 창을 닫은 경우
                 throw e;
             }
         } else {
-            saveBlobAsFile(blob, file.name);
+            for (let i = 0; i < blobs.length; i++) {
+                saveBlobAsFile(blobs[i], names[i]);
+                if (i < blobs.length - 1) await new Promise(r => setTimeout(r, 400));
+            }
             showToast("이 기기는 바로 보내기를 지원하지 않아 이미지로 저장했습니다. 카카오톡에서 사진으로 보내 주세요.", "info");
         }
     } catch (err) {
@@ -1711,36 +1760,60 @@ async function shareTicketImage() {
 }
 
 async function preparePrintSheet() {
-    const { canvas } = await makeTicketBlob({ solidBg: true });
-    const img = document.getElementById('printImg');
-    img.src = canvas.toDataURL('image/png');
-    if (img.decode) { try { await img.decode(); } catch (e) {} }
+    const { canvases } = await makeTicketBlobs({ solidBg: true });
+    const sheet = document.getElementById('printSheet');
+    sheet.innerHTML = '';
+    for (const canvas of canvases) {
+        const page = document.createElement('div');
+        page.className = 'print-page';
+        const img = document.createElement('img');
+        img.alt = '견적서';
+        img.src = canvas.toDataURL('image/png');
+        page.appendChild(img);
+        sheet.appendChild(page);
+        if (img.decode) { try { await img.decode(); } catch (e) {} }
+    }
 }
 
 // 인쇄 중에는 견적서 이미지(#printSheet)만 남기고 나머지 화면을 숨깁니다.
 // (고객 화면은 "항상 표시"로 고정돼 있어서 스타일시트만으로는 숨겨지지 않기 때문에 직접 숨기고, 끝나면 되돌립니다.)
 let __printHidden = [];
 function isolatePrintSheet() {
-    restorePrintIsolation();
+    restorePrintIsolation(false);
     Array.from(document.body.children).forEach(el => {
         if (el.id === 'printSheet' || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return;
         __printHidden.push({ el, value: el.style.getPropertyValue('display'), priority: el.style.getPropertyPriority('display') });
         el.style.setProperty('display', 'none', 'important');
     });
     const sheet = document.getElementById('printSheet');
-    if (sheet) sheet.style.setProperty('display', 'flex', 'important');
-    const restoreOnce = () => { restorePrintIsolation(); };
-    window.addEventListener('afterprint', restoreOnce, { once: true });
-    ['pointerdown', 'touchstart', 'keydown'].forEach(ev => document.addEventListener(ev, restoreOnce, { once: true, capture: true }));
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') restoreOnce(); }, { once: true });
+    if (sheet) {
+        sheet.style.setProperty('display', 'block', 'important');
+        sheet.style.setProperty('background', '#ffffff', 'important');
+        // 화면에서만 보이는 "돌아가기" 버튼 (인쇄물에는 나오지 않음). 인쇄 창이 닫혔는데도 화면이 안 돌아올 때를 대비
+        const back = document.createElement('button');
+        back.id = 'printBackBtn';
+        back.type = 'button';
+        back.textContent = '← 돌아가기';
+        back.onclick = () => restorePrintIsolation(true);
+        sheet.appendChild(back);
+    }
+    // 인쇄 미리보기가 만들어지는 동안에는 화면을 되돌리지 않습니다 (되돌리면 뒤로가기 버튼·반투명 배경이 인쇄물에 섞임).
+    // 인쇄 창이 닫힌 뒤(afterprint)에만 되돌립니다.
+    window.addEventListener('afterprint', () => restorePrintIsolation(true), { once: true });
 }
-function restorePrintIsolation() {
+function restorePrintIsolation(clearSheet) {
     __printHidden.forEach(({ el, value, priority }) => {
         if (value) el.style.setProperty('display', value, priority); else el.style.removeProperty('display');
     });
     __printHidden = [];
     const sheet = document.getElementById('printSheet');
-    if (sheet) sheet.style.removeProperty('display');
+    if (sheet) {
+        sheet.style.removeProperty('display');
+        sheet.style.removeProperty('background');
+        const back = document.getElementById('printBackBtn');
+        if (back) back.remove();
+        if (clearSheet) sheet.innerHTML = '';
+    }
 }
 
 // 견적서 인쇄 / PDF 저장: 저장되는 이미지와 똑같은 모양을 한 장으로 출력
