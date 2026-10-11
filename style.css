@@ -652,3 +652,30 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 
 .color-chips.expanded { max-height: 52vh; overflow-y: auto; padding: 0.2rem 0.3rem 0.2rem 0; -webkit-overflow-scrolling: touch; }
 .color-chip.more { background: rgba(255,255,255,0.18); border-style: dashed; }
+
+/* 고객 화면: 위 가운데 짧은 질문 + 진행 점 */
+.step-head {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.7rem;
+    text-align: center;
+    pointer-events: none;
+}
+.step-q {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--brand-muted);
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+.step-dots { display: flex; gap: 6px; }
+.step-dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand-border);
+}
+.step-dots span.done { background: rgba(145, 64, 26, 0.35); }
+.step-dots span.on { background: var(--brand-accent); width: 18px; border-radius: 3px; }
+.step-head + .bookmark-canvas { height: calc(94vh - 3.6rem); }

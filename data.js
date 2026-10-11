@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261020';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261021';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -172,6 +172,19 @@ const MOOD_LABELS = {
     textured_linen: '텍스처 린넨', deep_private: '딥 프라이빗', airy_bright: '에어리 브라이트'
 };
 const DENSITY_LABELS = { light: '얇음', medium: '보통', heavy: '도톰' };
+const BLACKOUT_LABELS = { none: '비암막', mid: '적당 암막', full: '완전 암막' };
+// 고객이 고르는 "빛을 얼마나 가릴지" (방에서만 물어봄)
+const LIGHTBLOCK_LABELS = { light: '들어와도 괜찮아요', soft: '적당히 가려 주세요', dark: '완전히 어둡게' };
+
+// 겉지의 암막 정도: 사장님이 직접 정한 값이 우선, 없으면 품명의 암막률로 추정 (95% 이상 = 완전, 그 외 암막 = 적당)
+function blackoutLevel(f) {
+    if (!f) return null;
+    if (f.blackout && BLACKOUT_LABELS[f.blackout]) return f.blackout;
+    const name = String(f.name || '');
+    const pct = /(\d{2,3})\s*%/.exec(name);
+    if (name.includes('암막')) return (pct && parseInt(pct[1], 10) >= 95) ? 'full' : 'mid';
+    return null;   // 모름 (사장님이 분류 화면에서 지정하면 반영)
+}
 const MOOD_HINTS = {
     soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 도시적인 느낌', balanced_neutral: '어디에나 무난한 느낌',
     textured_linen: '결이 살아있는 자연스러운 느낌', deep_private: '차분하고 프라이빗한 느낌', airy_bright: '가볍고 환한 느낌'
@@ -250,6 +263,17 @@ function calculateFabricMatchScore(fabric, room, category) {
         else if (fabric.density === 'medium') score += 1;
     }
 
+    // 빛 차단 희망 (방): 완전히 어둡게 → 완전 암막을 사실상 최우선, 적당히 → 적당 암막, 들어와도 → 비암막·적당 암막
+    if (category === '겉지' && room.lightBlock) {
+        const b = blackoutLevel(fabric);
+        const table = {
+            dark: { full: 10, mid: 0, none: -3, unknown: -1 },
+            soft: { full: 2, mid: 4, none: 0, unknown: 0 },
+            light: { full: 0, mid: 2, none: 3, unknown: 1 }
+        }[room.lightBlock];
+        if (table) score += table[b || 'unknown'];
+    }
+
     if (fabric.categoryType === category) score += 2;
     return score;
 }
@@ -265,7 +289,25 @@ function recommendReason(fabric, room, category) {
     else if (fabric.tone === floorT) parts.push(`바닥의 ${TONE_LABELS[floorT]} 톤과 잘 어울려요`);
     else if (fabric.tone === wallT) parts.push(`벽의 ${TONE_LABELS[wallT]} 톤과 잘 어울려요`);
     if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') parts.push('도톰한 원단이 강한 햇빛을 부드럽게 걸러줘요');
+    if (category === '겉지' && room.lightBlock) {
+        const b = blackoutLevel(fabric);
+        const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막아 주는 완전 암막이에요'
+            : room.lightBlock === 'soft' && b === 'mid' ? '눈부심은 줄이고 아늑하게 가려 줘요'
+            : room.lightBlock === 'light' && b === 'none' ? '햇빛이 은은하게 스며들어요' : '';
+        if (msg) parts.unshift(msg);       // 고객이 직접 고른 조건이라 맨 앞에
+    }
     return parts.slice(0, 2).join(' · ');
+}
+
+// 공간 종류(+빛 차단 희망)로 창 구성 추천: 카드 순서는 그대로 두고 "추천" 표시만 붙임
+function recommendComposition(room) {
+    const t = String((room && (room.roomType || room.name)) || '').replace(/\s*\d+$/, '');
+    if (t === '베란다' || t === '서재' || t === '알파룸') return 'blind_only';
+    if (t === '방') {
+        if (room.lightBlock === 'light') return 'sheer_only';
+        if (room.lightBlock === 'dark' || room.lightBlock === 'soft') return 'double';
+    }
+    return null;
 }
 
 // 추천 3개 고르기: 점수 순서는 그대로 지키고, "점수가 같을 때만" 아직 안 나온 책자를 먼저 보여줌
@@ -288,7 +330,10 @@ function customerFacts(fabric) {
     const f = fabric || {}, m = f.manual || {}, out = [];
     const name = String(f.name || '');
     const pct = /(\d{2,3})\s*%/.exec(name);
-    if (name.includes('암막')) out.push(pct ? `#암막 ${pct[1]}%` : '#암막');
+    const bl = blackoutLevel(f);
+    if (pct && name.includes('암막')) out.push(`#암막 ${pct[1]}%`);
+    else if (bl === 'full') out.push('#완전암막');
+    else if (bl === 'mid') out.push('#암막');
     if (m.density && DENSITY_LABELS[f.density]) out.push(`#${DENSITY_LABELS[f.density]} 두께`);
     if (m.mood && MOOD_LABELS[f.mood]) out.push(`#${MOOD_LABELS[f.mood].replace(/\s+/g, '')}`);
     return out.join(' ');
@@ -429,6 +474,7 @@ function applyTagOverrides(list) {
         if (t && t.tone && TONE_LABELS[t.tone]) { f.tone = t.tone; f.manual.tone = true; }
         if (t && t.mood && MOOD_LABELS[t.mood]) { f.mood = t.mood; f.manual.mood = true; }
         if (t && t.density && DENSITY_LABELS[t.density]) { f.density = t.density; f.manual.density = true; }
+        if (t && t.blackout && BLACKOUT_LABELS[t.blackout]) { f.blackout = t.blackout; f.manual.blackout = true; }
         f.hideOverride = (t && (t.hide === 'yes' || t.hide === 'no')) ? t.hide : null;
     });
 }
@@ -444,11 +490,13 @@ function setFabricTag(id, key, val) {
     const o = loadTagOverrides();
     o[id] = o[id] || {};
     if (!val) delete o[id][key]; else o[id][key] = val;
-    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide) delete o[id];
+    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide && !o[id].blackout) delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
     if (f && key === 'hide') {
         f.hideOverride = val || null;
+    } else if (f && key === 'blackout') {
+        f.blackout = val || null; f.manual = f.manual || {}; f.manual.blackout = !!val;
     } else if (f) {
         if (!val) { f[key] = null; f.manual = f.manual || {}; f.manual[key] = false; if (key !== 'density') f.tags = null; autoTagFabricAttributes(f); applyTagOverrides([f]); }
         else { f[key] = val; f.manual = f.manual || {}; f.manual[key] = true; }
@@ -462,7 +510,7 @@ function clearFabricTags(id) {
     if (keepHide) o[id] = { hide: keepHide }; else delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
-    if (f) { f.tone = null; f.mood = null; f.density = null; f.tags = null; f.manual = { tone: false, mood: false, density: false }; autoTagFabricAttributes(f); }
+    if (f) { f.tone = null; f.mood = null; f.density = null; f.blackout = null; f.tags = null; f.manual = { tone: false, mood: false, density: false, blackout: false }; autoTagFabricAttributes(f); }
     saveFabricDb(false);
     if (typeof renderTagEditor === 'function') renderTagEditor();
 }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261020';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261021';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -235,6 +235,24 @@
         btn.style.pointerEvents = canGoBack ? "auto" : "none";
     }
 
+    // 화면 위 가운데: 지금 무엇을 고르는지 짧은 질문 + 진행 점
+    function roomTypeOf(room) {
+        return String((room && (room.roomType || room.name)) || '').replace(/\s*\d+$/, '');
+    }
+    function diagnosisSteps() {
+        const steps = ["2-Base-Floor", "2-Base-Wall", "2-Base-Light"];
+        if (roomTypeOf(state.editingRoom) === '방') steps.push("2-Base-Block");
+        steps.push("2-Base-Mood", "3-Config-Style");
+        return steps;
+    }
+    function stepHead(question) {
+        const steps = diagnosisSteps();
+        const at = steps.indexOf(state.step);
+        let dots = '';
+        if (at >= 0) dots = '<div class="step-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
+        return `<div class="step-head">${dots}<p class="step-q font-serif-kr">${question}</p></div>`;
+    }
+
     function render() {
         const main = document.getElementById("v2Viewport");
         if (!main) return;
@@ -305,6 +323,7 @@
             // [Step 1.5: 7종 공간 선택]
             case "1.5-Room-Type":
                 html += '<div class="bookmark-stage">';
+                html += stepHead('어느 공간의 창인가요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 7;">';
                 html += renderBookmarkCard("거실", "집의 중심을 완성하는 빛과 쉼", "ZONE 01", SOLID_TEXTURES.l1, function() { window.concierge.chooseRoomType("거실"); });
                 html += renderBookmarkCard("방", "온전한 숙면과 아늑한 프라이빗", "ZONE 02", SOLID_TEXTURES.l3, function() { window.concierge.chooseRoomType("방"); });
@@ -319,28 +338,31 @@
             // [Step 2-1: 바닥재 진단]
             case "2-Base-Floor":
                 html += '<div class="bookmark-stage">';
+                html += stepHead('커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("Warm Oak", "내추럴 오크 & 베이지 마루", "FLOOR 01", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); });
-                html += renderBookmarkCard("Cool Tile", "포세린 타일 & 대리석", "FLOOR 02", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); });
-                html += renderBookmarkCard("Neutral", "모던 그레이지 & 플랫", "FLOOR 03", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); });
-                html += renderBookmarkCard("Deep Walnut", "다크 우드 & 딥 브라운", "FLOOR 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); });
+                html += renderBookmarkCard("웜 톤", "오크·베이지 계열 밝은 마루", "FLOOR 01", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); });
+                html += renderBookmarkCard("쿨 톤", "포세린 타일·대리석·화이트 계열", "FLOOR 02", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); });
+                html += renderBookmarkCard("뉴트럴 톤", "그레이지·회색 계열 마루", "FLOOR 03", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); });
+                html += renderBookmarkCard("딥 톤", "월넛·다크 브라운 계열 마루", "FLOOR 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); });
                 html += '</div></div>';
                 break;
 
             // [Step 2-2: 벽지 진단]
             case "2-Base-Wall":
                 html += '<div class="bookmark-stage">';
+                html += stepHead('벽 톤도 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("크림 아이보리", "따뜻하고 부드러운 웜톤 베이스", "WALL 01", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); });
-                html += renderBookmarkCard("쿨 화이트", "깨끗하고 모던한 화이트·라이트그레이", "WALL 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); });
-                html += renderBookmarkCard("뉴트럴 그레이지", "단정하고 차분한 무채색 톤온톤", "WALL 03", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); });
-                html += renderBookmarkCard("딥/우드 포인트", "체리·다크우드 계열 포인트 마감", "WALL 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); });
+                html += renderBookmarkCard("웜 톤", "크림·아이보리 계열 벽지", "WALL 01", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); });
+                html += renderBookmarkCard("쿨 톤", "화이트·라이트 그레이 계열 벽지", "WALL 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); });
+                html += renderBookmarkCard("뉴트럴 톤", "그레이지·무채색 계열 벽지", "WALL 03", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); });
+                html += renderBookmarkCard("딥 톤", "체리·다크 우드 계열 포인트 마감", "WALL 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); });
                 html += '</div></div>';
                 break;
 
             // [Step 2-3: 일조량 진단]
             case "2-Base-Light":
                 html += '<div class="bookmark-stage">';
+                html += stepHead('창으로 햇빛은 얼마나 들어오나요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
                 html += renderBookmarkCard("풍부한 채광", "남향/고층의 강하고 눈부신 직사광", "LIGHT HIGH", SOLID_TEXTURES.l1, function() { window.concierge.selectLightLevel('high'); });
                 html += renderBookmarkCard("은은한 채광", "동향/서향의 부드럽고 적당한 햇살", "LIGHT MID", SOLID_TEXTURES.l2, function() { window.concierge.selectLightLevel('mid'); });
@@ -348,9 +370,21 @@
                 html += '</div></div>';
                 break;
 
+            // [Step 2-3b: 빛 차단 희망 (방에서만)]
+            case "2-Base-Block":
+                html += '<div class="bookmark-stage">';
+                html += stepHead('빛을 얼마나 가리고 싶으세요?');
+                html += '<div class="bookmark-canvas" style="--items-count: 3;">';
+                html += renderBookmarkCard("들어와도 괜찮아요", "은은한 햇살이 스며드는 편이 좋아요", "BLOCK LOW", SOLID_TEXTURES.l1, function() { window.concierge.selectLightBlock('light'); });
+                html += renderBookmarkCard("적당히 가려 주세요", "눈부심만 줄이고 아늑하게", "BLOCK MID", SOLID_TEXTURES.l2, function() { window.concierge.selectLightBlock('soft'); });
+                html += renderBookmarkCard("완전히 어둡게", "깊은 숙면을 위한 암막", "BLOCK FULL", SOLID_TEXTURES.l4, function() { window.concierge.selectLightBlock('dark'); });
+                html += '</div></div>';
+                break;
+
             // [Step 2-4: 희망 분위기 선택]
             case "2-Base-Mood":
                 html += '<div class="bookmark-stage">';
+                html += stepHead('원하시는 분위기를 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 3; grid-template-rows: repeat(2, 1fr);">';
                 html += renderBookmarkCard("소프트 웜", "포근하고 따뜻한 느낌", "MOOD 01", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); });
                 html += renderBookmarkCard("어반 클린", "깔끔하고 도시적인 느낌", "MOOD 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); });
@@ -363,12 +397,16 @@
 
             // [Step 3: 창호 구성 방식 선택]
             case "3-Config-Style":
+                // 공간 종류(방은 빛 차단 희망까지)에 맞는 구성에 "추천" 표시. 카드 순서는 그대로
+                const recComp = (typeof recommendComposition === 'function') ? recommendComposition(state.editingRoom) : null;
+                const compTag = (key, en) => recComp === key ? `★ 추천 · ${en}` : en;
                 html += '<div class="bookmark-stage">';
+                html += stepHead('창을 어떻게 구성할까요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("호텔식 이중창", "차르르 속지 + 아늑한 겉지 2중 레이어드", "DOUBLE LAYER", SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); });
-                html += renderBookmarkCard("속지 단독", "화사하고 은은한 채광의 차르르 쉬어", "SHEER ONLY", SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); });
-                html += renderBookmarkCard("겉지 단독", "아늑한 쉼과 빛 차단을 위한 드레이프", "DRAPE ONLY", SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); });
-                html += renderBookmarkCard("블라인드", "빛의 각도를 조율하는 모던 시스템", "BLIND SHADE", SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); });
+                html += renderBookmarkCard("호텔식 이중창", "차르르 속지 + 아늑한 겉지 2중 레이어드", compTag('double', "DOUBLE LAYER"), SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); });
+                html += renderBookmarkCard("속지 단독", "화사하고 은은한 채광의 차르르 쉬어", compTag('sheer_only', "SHEER ONLY"), SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); });
+                html += renderBookmarkCard("겉지 단독", "아늑한 쉼과 빛 차단을 위한 드레이프", compTag('drape_only', "DRAPE ONLY"), SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); });
+                html += renderBookmarkCard("블라인드", "빛의 각도를 조율하는 모던 시스템", compTag('blind_only', "BLIND SHADE"), SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); });
                 html += '</div></div>';
                 break;
 
@@ -627,6 +665,7 @@
             const newRoom = {
                 id: Date.now(),
                 name: displayName,
+                roomType: selectedName,
                 floorTone: "warm",
                 wallTone: "cool",
                 lightLevel: "mid",
@@ -649,6 +688,8 @@
                 lightLevel: target.lightLevel || 'mid',
                 mood: target.mood || 'soft_warm',
                 wantMood: target.wantMood || null,
+                roomType: target.roomType || roomTypeOf(target),
+                lightBlock: target.lightBlock || null,
                 width: 340,
                 height: 235,
                 shapeFee: true,
@@ -676,6 +717,11 @@
         },
         selectLightLevel: function(level) {
             state.editingRoom.lightLevel = level;
+            // 방은 "빛을 얼마나 가릴지"를 한 번 더 물어봄 (암막 정도 추천에 사용)
+            goToStep(roomTypeOf(state.editingRoom) === '방' ? "2-Base-Block" : "2-Base-Mood");
+        },
+        selectLightBlock: function(level) {
+            state.editingRoom.lightBlock = level;
             goToStep("2-Base-Mood");
         },
         selectMood: function(mood) {
@@ -794,6 +840,7 @@
                 roomTarget.lightLevel = state.editingRoom.lightLevel;
                 roomTarget.mood = state.editingRoom.mood;
                 roomTarget.wantMood = state.editingRoom.wantMood || null;
+                roomTarget.lightBlock = state.editingRoom.lightBlock || null;
                 roomTarget.curtains = finalizedCurtains;
                 roomTarget.subtotal = roomSubSum;
 

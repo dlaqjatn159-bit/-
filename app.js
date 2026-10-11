@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261020';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261021';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261020';
+const REDAM_BUILD = '20261021';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js'];
     const reg = window.REDAM_FILES || {};
@@ -437,6 +437,15 @@ function renderTagEditor() {
             return `<button onclick="setFabricTag('${f.id}','density','${on ? '' : dv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${DENSITY_LABELS[dv]}</button>`;
         }).join('');
         const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">두께</span>${dens}` : '';
+        // 겉지 암막 정도: 직접 지정하지 않으면 품명의 암막률로 추정(점선 표시). 방에서 "빛을 얼마나 가릴지" 추천에 사용
+        const blGuess = blackoutLevel(Object.assign({}, f, { blackout: null }));
+        const bls = ['none', 'mid', 'full'].map(bv => {
+            const on = m.blackout && f.blackout === bv;
+            const guess = !m.blackout && blGuess === bv;
+            const cls = on ? 'bg-amber-800 text-white border-amber-900' : (guess ? 'bg-white text-slate-500 border-dashed border-slate-400' : 'bg-white text-slate-600 border-slate-300');
+            return `<button onclick="setFabricTag('${f.id}','blackout','${on ? '' : bv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${BLACKOUT_LABELS[bv]}</button>`;
+        }).join('');
+        const blackBlock = f.categoryType === '겉지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">암막</span>${bls}` : '';
         const hidden = isCustomerHidden(f);
         const hideNext = hidden ? (f.fabricOnly ? 'no' : '') : (f.fabricOnly ? '' : 'yes');
         const hideBtn = `<button onclick="setFabricTag('${f.id}','hide','${hideNext}')" title="고객 화면 추천에 보일지 정합니다 (직원 견적에는 항상 보임)" class="${hidden ? 'bg-slate-700 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-300'} border rounded-lg px-2 py-1 text-[10px] font-bold whitespace-nowrap">${hidden ? '고객 추천 숨김' : '고객 추천 보임'}</button>`;
@@ -455,8 +464,8 @@ function renderTagEditor() {
                 ${nColors ? '' : '<span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>'}${toneBtns}
                 <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">분위기</span>
                 <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
-                ${densBlock}
-                ${(m.tone || m.mood || m.density) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
+                ${densBlock}${blackBlock}
+                ${(m.tone || m.mood || m.density || m.blackout) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
             </div>
         </div>`;
     }).join('');
