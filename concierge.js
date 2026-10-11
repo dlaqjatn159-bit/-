@@ -267,6 +267,19 @@
         h += '</div></div>';
         return h;
     }
+    // 고른 원단으로 칸을 채우는 스타일: 톤 색 위에 사진(있으면)을 덮음. 첫 화면 공간 칸·제안서 원단 칸이 함께 씀
+    function fabricFillStyle(fabricId, colorName) {
+        const color = (typeof fabricToneFill === 'function') ? fabricToneFill(fabricId, colorName) : '#d9cdbb';
+        const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabricId, colorName) : [];
+        const imgs = urls.map(u => `url('${u}')`).join(', ');
+        return `background-color: ${color};${imgs ? ` background-image: ${imgs};` : ''} background-size: cover; background-position: center;`;
+    }
+    // 치수 미세 조절 버튼 (숫자를 누르면 키패드, 버튼은 조금씩 더하고 빼기)
+    function nudgeRowHtml(target, steps) {
+        return '<div class="nudge-row">' + steps.map(s =>
+            `<button type="button" class="nudge-btn font-serif-kr" aria-label="${target === 'width' ? '넓이' : '높이'} ${s > 0 ? '+' : '−'}${Math.abs(s)}cm" onclick="event.stopPropagation(); window.concierge.nudge('${target}', ${s})">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`
+        ).join('') + '</div>';
+    }
     function stepHead(question, sub) {
         const steps = diagnosisSteps();
         const at = steps.indexOf(state.step);
@@ -382,8 +395,10 @@
                     html += '<div class="bookmark-gradient fab-gradient" style="pointer-events: none;"></div>';
                     html += '<div class="space-list">';
                     state.roomsCart.forEach((room, idx) => {
-                        const texture = idx % 3 === 0 ? SOLID_TEXTURES.l1 : (idx % 3 === 1 ? SOLID_TEXTURES.l2 : SOLID_TEXTURES.l3);
-                        html += `<div class="space-item" style="background: ${texture};" onclick="event.stopPropagation(); window.concierge.openRoomCart(${room.id})">`;
+                        // 구성을 마친 공간은 고른 원단(사진, 없으면 톤 색)으로 채움. 이중커튼은 속지·겉지 반씩. 아직인 공간은 비워 둠
+                        const picks = room.isConfigured ? (room.curtains || []).filter(c => c.fabricId).slice(0, 3) : [];
+                        html += `<div class="space-item${picks.length ? '' : ' is-empty'}" onclick="event.stopPropagation(); window.concierge.openRoomCart(${room.id})">`;
+                        if (picks.length) html += '<div class="si-fill">' + picks.map(c => `<span style="${fabricFillStyle(c.fabricId, c.colorName)}"></span>`).join('') + '</div>';
                         html += '<div class="si-shade"></div>';
                         html += `<span class="si-name font-serif-kr">${room.name}</span>`;
                         html += '<span class="si-actions">';
@@ -568,140 +583,117 @@
                 html += '</div></div>';
                 break;
 
-            // [Step 5: 공간 치수 입력]
-            case "6-Measure":
+            // [Step 5: 창 크기 입력] 질문 화면과 같은 분위기: 평평한 바탕 · 큰 명조 숫자 · 가는 선 · 밑줄 글자 버튼
+            case "6-Measure": {
                 const curRoom = state.editingRoom;
                 const hasSheer = curRoom.items.some(i => i.presetType === 'sheer');
                 const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
                 const hasCurtain = hasSheer || hasDrape;
+                const kinds = curRoom.items.map(i => i.presetType === 'blind' ? '블라인드' : (i.presetType === 'sheer' ? '속지' : (i.presetType === 'drape' ? '겉지' : '커튼'))).join(' + ');
+                const measureBox = (target, label, steps) =>
+                    `<div id="measureBox_${target}" class="measure-box msr-box" onclick="window.concierge.openKeypad('${target}')">` +
+                    `<span class="msr-label">${label}</span>` +
+                    `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${curRoom[target]}</span><small>cm</small></div>` +
+                    '<span class="msr-hint">숫자를 누르면 직접 입력</span>' +
+                    nudgeRowHtml(target, steps) + '</div>';
+                const optBtn = (key, label, on, fn) =>
+                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" onclick="${fn}">${label}</button>`;
 
-                html += '<div class="tailor-stage">';
-                html += '<div class="tailor-board font-serif-kr" style="max-width: 820px;">';
-                html += '<div class="tailor-header">';
-                html += '<div>';
-                html += '<span style="font-size: 0.75rem; font-weight: 700; color: #91401a; letter-spacing: 0.18em; text-transform: uppercase;">Bespoke Dimensions</span>';
-                html += '<h2 style="font-size: 1.8rem; font-weight: 700; color: #2b221a; margin-top: 0.2rem;">공간 치수 입력</h2>';
-                html += '</div>';
-                html += '<div style="text-align: right;">';
-                html += '<span style="font-size: 0.78rem; color: #6f5f4f;">선택 구성</span>';
-                html += `<div style="font-size: 1rem; font-weight: 800; color: #91401a;">${curRoom.items.map(i => i.label).join(' + ')}</div>`;
-                html += '</div></div>';
+                html += '<div class="msr-stage">';
+                html += `<span class="q-meta">${curRoom.name} · ${kinds}</span>`;
+                html += '<h2 class="msr-title font-serif-kr">창의 크기를 적어 주세요</h2>';
 
-                html += '<div class="tailor-inputs-grid">';
-                html += '<div id="measureBox_width" class="measure-box" onclick="window.concierge.openKeypad(\'width\')">';
-                html += '<span style="font-size: 0.75rem; font-weight: 700; color: #6f5f4f; text-transform: uppercase;">넓이</span>';
-                html += `<div style="font-size: 2.8rem; font-weight: 700; color: #2b221a; margin-top: 0.2rem;"><span id="displayVal_width">${curRoom.width}</span> <span style="font-size: 1rem; color: #6f5f4f;">cm</span></div>`;
-                html += '<span style="font-size: 0.7rem; color: #6f5f4f;">터치하여 넓이 변경</span>';
+                html += '<div class="msr-grid">';
+                html += measureBox('width', '넓이', [-10, -1, 1, 10]);
+                html += measureBox('height', '높이', [-5, -1, 1, 5]);
                 html += '</div>';
-                html += '<div id="measureBox_height" class="measure-box" onclick="window.concierge.openKeypad(\'height\')">';
-                html += '<span style="font-size: 0.75rem; font-weight: 700; color: #6f5f4f; text-transform: uppercase;">높이</span>';
-                html += `<div style="font-size: 2.8rem; font-weight: 700; color: #2b221a; margin-top: 0.2rem;"><span id="displayVal_height">${curRoom.height}</span> <span style="font-size: 1rem; color: #6f5f4f;">cm</span></div>`;
-                html += '<span style="font-size: 0.7rem; color: #6f5f4f;">터치하여 높이 변경</span>';
-                html += '</div></div>';
 
                 if (hasCurtain) {
-                    html += '<div style="text-align: center; font-family: Pretendard, sans-serif; margin-top: 1rem;">';
-                    html += '<span style="font-size: 0.72rem; font-weight: 700; color: #6f5f4f; text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 0.75rem;">제작 가공 디테일 옵션</span>';
-                    html += '<div class="options-chip-row">';
+                    html += '<div class="msr-opts">';
                     if (hasDrape) {
-                        html += `<div id="chip_shapeFee" class="option-chip ${curRoom.shapeFee ? 'active' : ''}" onclick="window.concierge.toggleNudgeShapeFee()"><i class="fa-solid fa-check"></i> 형상기억 가공</div>`;
-                        html += `<div id="chip_hotelFit" class="option-chip ${curRoom.hotelFit ? 'active' : ''}" onclick="window.concierge.toggleNudgeHotelFit()"><i class="fa-solid fa-check"></i> 호텔핏 (+1폭 볼륨)</div>`;
+                        html += optBtn('shapeFee', '형상기억 가공', curRoom.shapeFee, 'window.concierge.toggleNudgeShapeFee()');
+                        html += optBtn('hotelFit', '호텔핏', curRoom.hotelFit, 'window.concierge.toggleNudgeHotelFit()');
                     }
-                    if (hasSheer) {
-                        html += `<div id="chip_leadBand" class="option-chip ${curRoom.leadBand ? 'active' : ''}" onclick="window.concierge.fastToggleOption('leadBand')"><i class="fa-solid fa-check"></i> 하단 리드밴드</div>`;
-                    }
+                    if (hasSheer) html += optBtn('leadBand', '하단 리드밴드', curRoom.leadBand, "window.concierge.fastToggleOption('leadBand')");
                     html += '</div>';
-                    html += `<button class="opt-info-link" onclick="window.concierge.showOptionInfo()">옵션을 적용하면 어떻게 달라지나요? <i class="fa-solid fa-chevron-right" style="font-size:0.6rem"></i></button>`;
-                    html += '</div>';
+                    html += '<button class="opt-info-link" onclick="window.concierge.showOptionInfo()">옵션을 적용하면 어떻게 달라지나요?</button>';
                 }
 
-                html += '<div style="display: flex; justify-content: center; margin-top: 1.2rem;">';
-                html += '<button onclick="window.concierge.commitRoomCart()" style="background: #91401a; color: #fff; border: none; padding: 1.15rem 3.5rem; border-radius: 18px; font-weight: 700; font-size: 0.95rem; cursor: pointer; box-shadow: 0 10px 24px rgba(145,64,26,0.3);">';
-                html += `<span>${curRoom.name}에 추가 ✓</span>`;
-                html += '</button></div>';
-
-                html += '</div></div>';
+                html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name}에 추가</button>`;
+                html += '</div>';
                 break;
+            }
 
-            // [Step 7: Re.dam 순수 명품 스테이셔너리 제안서 뷰]
-            case "7-Final-Dossier":
+            // [Step 7: 제안서 = 견적서. 저장·인쇄되는 견적서 이미지(app.js drawTicket)와 같은 디자인]
+            // 평평한 바탕 · 가는 선 · 명조 글자 · 각진 원단 칸 · 밑줄 글자 버튼 (둥근 카드·그림자·색 버튼 없음)
+            case "7-Final-Dossier": {
                 const configuredList = state.roomsCart.filter(r => r.isConfigured);
                 let roomsProductSum = 0;
-                let roomCardsHtml = '';
+                let roomsHtml = '';
 
-                configuredList.forEach((r, idx) => {
+                configuredList.forEach(r => {
                     roomsProductSum += (r.subtotal || 0);
-                    roomCardsHtml += '<div style="background: rgba(255,255,255,0.9); border: 1px solid #e5dcd0; border-radius: 20px; padding: 1.1rem 1.3rem; margin-bottom: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">';
-                    roomCardsHtml += '<div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e5dcd0; padding-bottom: 0.45rem; margin-bottom: 0.5rem;">';
-                    roomCardsHtml += `<span style="font-weight: 700; font-size: 1rem;" class="font-serif-kr">${r.name}</span>`;
-                    roomCardsHtml += `<span style="font-weight: 800; font-size: 1.05rem; color: #91401a; font-family: monospace;">${(r.subtotal || 0).toLocaleString()}원</span>`;
-                    roomCardsHtml += '</div>';
-
+                    roomsHtml += '<section class="dos-room">';
+                    roomsHtml += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${r.name}</span><span class="dos-rsum">${(r.subtotal || 0).toLocaleString()}원</span></div>`;
                     r.curtains.forEach(c => {
                         const calcObj = c.calc || {};
                         const itemPrice = calcObj.curtainSubtotal || calcObj.sellingPrice || 0;
-                        const bookName = calcObj.fabBook || '샘플북';
-                        const fabricName = calcObj.fabName || '원단';
-
-                        const optionBadges = [];
-                        if (c.shapeFee > 0) optionBadges.push('형상기억');
-                        if (c.hotelFit) optionBadges.push('호텔핏');
-                        if (c.leadBand) optionBadges.push('리드밴드');
-                        const optText = optionBadges.length > 0 ? ` <span style="color:#6f5f4f; font-size:0.7rem;">(${optionBadges.join(', ')})</span>` : '';
-
-                        roomCardsHtml += '<div style="font-size: 0.8rem; color: #2b221a; display: flex; justify-content: space-between; align-items: center; font-weight: 600; padding: 0.25rem 0;">';
-                        roomCardsHtml += `<div><span>• ${c.label}</span> <span style="font-size: 0.74rem; color: #6f5f4f;">[${bookName}] ${fabricName}</span>${optText}</div>`;
-                        roomCardsHtml += `<span style="font-family: monospace; color: #91401a; font-weight: 700;">${itemPrice.toLocaleString()}원</span>`;
-                        roomCardsHtml += '</div>';
+                        const kind = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : (c.presetType === 'drape' ? '겉지' : '커튼'));
+                        const meta = [calcObj.fabBook || ''];
+                        if (c.shapeFee > 0) meta.push('형상기억');
+                        if (c.leadBand) meta.push('리드밴드');
+                        if (c.hotelFit) meta.push('호텔핏');
+                        const reason = (typeof ticketItemReason === 'function') ? ticketItemReason(r, c) : '';
+                        roomsHtml += '<div class="dos-item">';
+                        roomsHtml += `<div class="dos-sw" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
+                        roomsHtml += '<div class="dos-txt">';
+                        roomsHtml += `<div class="dos-kind">${kind}</div>`;
+                        roomsHtml += `<div class="dos-fab font-serif-kr">${(typeof ticketFabricName === 'function') ? ticketFabricName(c, calcObj) : (calcObj.fabName || c.label || '원단')}<em>${meta.filter(Boolean).join(' · ')}</em></div>`;
+                        if (reason) roomsHtml += `<div class="dos-why">${reason}</div>`;
+                        roomsHtml += '</div>';
+                        roomsHtml += `<div class="dos-price font-serif-kr">${itemPrice.toLocaleString()}원</div>`;
+                        roomsHtml += '</div>';
                     });
-
-                    roomCardsHtml += '</div>';
+                    roomsHtml += '</section>';
                 });
 
                 const finalGrandTotal = roomsProductSum + (state.installFee || 0);
+                const d = new Date(), pad2 = n => String(n).padStart(2, '0');
+                const noteText = (typeof loadTicketNote === 'function') ? loadTicketNote() : '';
 
-                html += '<div class="tailor-stage" style="width: 100vw; height: 100vh; padding: 1.5rem; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">';
-                
-                html += '<div style="background: #ffffff; border: 1.5px solid #e5dcd0; border-radius: 32px; padding: 2.4rem; max-width: 580px; width: 100%; box-shadow: 0 24px 60px rgba(43,34,26,0.12); display: flex; flex-direction: column; gap: 1.2rem;" class="font-serif-kr">';
-                
-                html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #e5dcd0; padding-bottom: 1rem;">';
-                html += '<div>';
-                html += '<span style="font-size: 1.65rem; font-weight: 700; color: #2b221a; cursor: pointer;" onclick="window.concierge.staffTap()">Re.dam</span>';
-                html += `<span style="display: block; font-size: 0.72rem; text-transform: uppercase; color: #6f5f4f; letter-spacing: 0.15em; margin-top: 0.2rem;">${currentCust ? `${currentCust} 님 맞춤 스타일링 제안서` : 'Bespoke Styling Dossier'}</span>`;
+                html += '<div class="dos-stage"><div class="dos-sheet">';
+                html += '<div class="dos-top font-serif-kr">';
+                html += '<h1 onclick="window.concierge.staffTap()">Re.dam</h1>';
+                html += `<span class="dos-date">${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}</span>`;
                 html += '</div>';
-                html += '<div style="text-align: right;">';
-                html += `<span style="font-size: 0.78rem; color: #6f5f4f; font-family: monospace;">${new Date().toISOString().slice(0, 10)}</span>`;
-                html += '</div></div>';
+                html += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${currentCust} 고객님 맞춤 제안` : '고객님 맞춤 제안'}</p>`;
 
-                html += `<div style="max-height: 42vh; overflow-y: auto; padding-right: 0.3rem;">${roomCardsHtml}</div>`;
+                html += roomsHtml;
 
-                html += '<div style="background: rgba(251,249,245,0.9); border: 1px solid #e5dcd0; border-radius: 18px; padding: 0.8rem 1.1rem; display: flex; justify-content: space-between; align-items: center; font-family: Pretendard, sans-serif;">';
-                html += '<div>';
-                html += `<span style="font-size: 0.75rem; color: #6f5f4f; font-weight: 700; display: block;">공간 제품 소계: <strong style="color: #2b221a;">${roomsProductSum.toLocaleString()}원</strong></span>`;
-                html += '<span style="font-size: 0.7rem; color: #6f5f4f;">전문 피팅 시공 및 1년 무상 A/S</span>';
+                html += '<div class="dos-fee"><span>시공 및 설치비</span>';
+                html += `<span><input type="number" step="5000" inputmode="numeric" value="${state.installFee}" oninput="window.concierge.updateInstallFee(this.value, ${roomsProductSum})" class="font-serif-kr">원</span></div>`;
+
+                html += '<div class="dos-sum font-serif-kr">';
+                html += '<span class="dos-sumlabel">총 제안 금액 (시공비 포함)</span>';
+                html += `<span class="dos-amount"><span id="finalGrandTotalDisplay">${finalGrandTotal.toLocaleString()}</span><small>원</small></span>`;
                 html += '</div>';
-                html += '<div style="display: flex; align-items: center; gap: 0.4rem;">';
-                html += '<span style="font-size: 0.75rem; font-weight: 700; color: #91401a;">시공비:</span>';
-                html += `<input type="number" step="5000" value="${state.installFee}" oninput="window.concierge.updateInstallFee(this.value, ${roomsProductSum})" style="width: 90px; padding: 0.35rem 0.5rem; border: 1.5px solid #e5dcd0; border-radius: 10px; font-size: 0.82rem; font-weight: 700; text-align: right; font-family: monospace; outline: none; background: #ffffff;">`;
-                html += '<span style="font-size: 0.75rem; font-weight: 700; color: #2b221a;">원</span>';
-                html += '</div></div>';
+                html += `<p class="dos-note">${noteText ? noteText + '<br>' : ''}전문 피팅 시공 및 1년 무상 A/S</p>`;
 
-                html += '<div style="border-top: 1.5px solid #e5dcd0; padding-top: 0.9rem; display: flex; justify-content: space-between; align-items: baseline;">';
-                html += '<span style="font-size: 0.85rem; font-weight: 700; color: #6f5f4f; text-transform: uppercase;">Total Investment</span>';
-                html += '<div style="font-size: 2.1rem; font-weight: 800; color: #91401a; font-family: monospace;">';
-                html += `<span id="finalGrandTotalDisplay">${finalGrandTotal.toLocaleString()}</span> <span style="font-size: 1rem; color: #2b221a; font-family: Noto Serif KR; font-weight: 600;">원</span>`;
-                html += '</div></div>';
-
-                html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; font-family: Pretendard, sans-serif; margin-top: 0.5rem;">';
-                html += '<button onclick="window.concierge.goToSpaceCanvas()" style="background: #ffffff; border: 1.5px solid #e5dcd0; color: #2b221a; padding: 0.95rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">← 공간 추가하기</button>';
-                html += '<button onclick="window.concierge.openOfficialModal()" style="background: #91401a; border: none; color: #fff; padding: 0.95rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 6px 18px rgba(145,64,26,0.3);">견적서 발행</button>';
+                // 버튼: 질문 화면과 같은 밑줄 글자. 화면 아래에 붙어 있어 내용이 길어도 바로 누를 수 있음
+                html += '<div class="dos-acts">';
+                html += '<div class="dos-main font-serif-kr">';
+                html += '<button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button>';
+                html += '<button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button>';
                 html += '</div>';
+                html += '<div class="dos-subacts">';
+                html += '<button type="button" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가하기</button>';
                 // 다음 고객 상담: 확인 창을 거쳐 지금 상담을 이력에 보관하고 비움 (직원 화면의 "새 상담"과 같음)
-                html += '<button class="next-consult" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button>';
+                html += '<button type="button" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button>';
+                html += '</div></div>';
 
-                html += '</div>';
-                html += '</div>';
+                html += '</div></div>';
                 break;
+            }
         }
 
         html += '</div>';
@@ -1182,11 +1174,23 @@
                 curtains: r.curtains
             }));
         },
-        openOfficialModal: function() {
+        // 제안서 화면의 "견적서 저장" / "인쇄": 화면과 같은 디자인의 이미지를 만듦 (app.js)
+        saveQuote: function() {
             syncToV1MasterRooms();
-            if (typeof window.openTicketModal === 'function') {
-                window.openTicketModal();
-            }
+            if (typeof window.saveTicketImage === 'function') window.saveTicketImage();
+        },
+        printQuote: function() {
+            syncToV1MasterRooms();
+            if (typeof window.printTicket === 'function') window.printTicket();
+        },
+        // 치수 조금씩 바꾸기 (+1, −5 등). 키패드가 열려 있으면 그 숫자도 함께 바뀜
+        nudge: function(target, delta) {
+            if (!state.editingRoom) return;
+            const v = Math.min(99999, Math.max(1, (parseInt(state.editingRoom[target], 10) || 0) + delta));
+            state.editingRoom[target] = v;
+            const boxVal = document.getElementById(`displayVal_${target}`);
+            if (boxVal) boxVal.textContent = v;
+            if (state.keypadTarget === target) document.getElementById("v2KeypadValueDisplay").textContent = v;
         },
         openKeypad: function(target) {
             state.keypadTarget = target;

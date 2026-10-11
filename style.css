@@ -874,3 +874,76 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .st-amount small { font-size: 0.9rem; font-weight: 600; margin-left: 0.15rem; }
 .st-go { font-size: 0.8rem; font-weight: 600; color: #91401a; display: inline-flex; align-items: center; gap: 0.4rem; }
 .st-go i { font-size: 0.7rem; }
+
+/* 공간 칸: 구성을 마친 공간은 고른 원단(사진 또는 톤 색)으로 채움. 아직인 공간은 패널 색 그대로 비워 둠 */
+.si-fill { position: absolute; inset: 0; display: flex; pointer-events: none; }
+.si-fill span { flex: 1; }
+.space-item.is-empty { box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.22); }
+.space-item.is-empty .si-shade { display: none; }
+
+/* 치수 미세 조절 버튼 (넓이 ±1·±10, 높이 ±1·±5) */
+.nudge-row { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.9rem; }
+.nudge-btn {
+    min-width: 3.4rem; padding: 0.6rem 0.4rem; background: none; cursor: pointer;
+    border: none; border-bottom: 1.5px solid rgba(43, 34, 26, 0.55);
+    font-size: 1.05rem; font-weight: 700; color: #2b221a;
+}
+.nudge-btn:active { color: #91401a; border-color: #91401a; }
+
+/* ===== 제안서 화면 (= 견적서). 저장·인쇄되는 이미지와 같은 디자인 ===== */
+.dos-stage { width: 100vw; height: 100vh; height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fbf9f5; box-sizing: border-box; }
+.dos-sheet { width: 100%; max-width: 680px; margin: 0 auto; padding: 4.2rem 1.5rem 0; min-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; color: #2b221a; }
+.dos-top { display: flex; justify-content: space-between; align-items: flex-end; }
+.dos-top h1 { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; cursor: pointer; }
+.dos-date { font-size: 0.85rem; color: #8a7a6a; letter-spacing: 0.08em; font-family: Pretendard, sans-serif; }
+.dos-who { margin: 0.9rem 0 2.6rem; font-size: 1.1rem; color: #6f5f4f; }
+.dos-room { border-top: 2px solid #2b221a; padding-top: 1.1rem; margin-bottom: 1.6rem; }
+.dos-rhead { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 1rem; }
+.dos-rname { font-size: 1.5rem; font-weight: 700; }
+.dos-rsum { font-size: 1.2rem; font-weight: 700; }
+.dos-item { display: flex; align-items: center; gap: 1.1rem; padding: 0.95rem 0; border-top: 1px solid #e5dcd0; }
+.dos-sw { flex: 0 0 46px; height: 58px; }
+.dos-txt { flex: 1; min-width: 0; }
+.dos-kind { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; color: #8a7a6a; }
+.dos-fab { font-size: 1.15rem; font-weight: 700; margin-top: 0.15rem; line-height: 1.35; }
+.dos-fab em { font-style: normal; font-family: Pretendard, sans-serif; font-weight: 400; font-size: 0.88rem; color: #6f5f4f; margin-left: 0.6rem; }
+.dos-why { font-size: 0.84rem; color: #6f5f4f; margin-top: 0.2rem; }
+.dos-price { font-size: 1.08rem; font-weight: 600; white-space: nowrap; }
+.dos-fee { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5dcd0; padding: 1rem 0; font-size: 0.95rem; color: #6f5f4f; }
+.dos-fee input { width: 7rem; padding: 0.2rem 0.3rem; margin-right: 0.15rem; border: none !important; border-bottom: 1px dashed #8a7a6a !important; background: transparent !important; box-shadow: none !important; border-radius: 0; outline: none; text-align: right; font-size: 1.08rem; font-weight: 600; color: #2b221a; }
+.dos-fee > span:last-child { color: #2b221a; font-family: 'Noto Serif KR', Georgia, serif; font-weight: 600; }
+.dos-sum { display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #2b221a; padding-top: 1.6rem; }
+.dos-sumlabel { font-family: Pretendard, sans-serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em; color: #8a7a6a; padding-bottom: 0.5rem; }
+.dos-amount { font-size: 2.9rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
+.dos-amount small { font-size: 1.1rem; font-weight: 600; margin-left: 0.25rem; }
+.dos-note { margin-top: 1.4rem; font-size: 0.84rem; line-height: 1.8; color: #8a7a6a; }
+.dos-acts { position: sticky; bottom: 0; margin-top: auto; padding: 1.6rem 0 1.5rem; background: linear-gradient(180deg, rgba(251, 249, 245, 0) 0, #fbf9f5 1.2rem); display: flex; justify-content: space-between; align-items: flex-end; }
+.dos-main { display: flex; gap: 2.2rem; }
+.dos-act { background: none; border: none; cursor: pointer; padding: 0.4rem 0.1rem 0.35rem; font-size: 1.3rem; font-weight: 700; color: #2b221a; border-bottom: 1.5px solid rgba(43, 34, 26, 0.75); }
+.dos-act.is-main { color: #91401a; border-color: #91401a; }
+.dos-subacts { display: flex; gap: 1.4rem; }
+.dos-subacts button { background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
+.dos-fee input::-webkit-outer-spin-button, .dos-fee input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+#trackCurationSection:has(.dos-stage) #brandMark { display: none; }   /* 제안서에는 위에 Re.dam이 있음 */
+
+/* ===== 창 크기 입력 화면 (질문 화면과 같은 분위기) ===== */
+.msr-stage { width: 100vw; height: 100vh; height: 100dvh; box-sizing: border-box; padding: 3rem; background: #fbf9f5; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.msr-stage .q-meta { margin-bottom: 1rem; }
+.msr-title { font-size: 2.1rem; font-weight: 600; letter-spacing: -0.025em; color: #2b221a; }
+.msr-grid { display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 760px; margin-top: 2.6rem; border-top: 2px solid #2b221a; border-bottom: 1px solid #e5dcd0; }
+.msr-stage .measure-box.msr-box { background: none; border: none; border-radius: 0; padding: 1.8rem 1rem 2rem; outline: none; transform: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+.msr-stage .measure-box.msr-box + .msr-box { border-left: 1px solid #e5dcd0; }
+.msr-label { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.2em; color: #8a7a6a; }
+.msr-num { font-size: 4.6rem; font-weight: 700; line-height: 1.15; color: #2b221a; letter-spacing: -0.02em; transition: color .15s ease; }
+.msr-num small { font-size: 1.1rem; font-weight: 600; color: #6f5f4f; margin-left: 0.4rem; letter-spacing: 0; }
+.msr-hint { font-size: 0.74rem; color: #8a7a6a; }
+.msr-stage .measure-box.is-active .msr-num { color: #91401a; }
+.msr-stage .nudge-row { margin-top: 1.3rem; gap: 0.9rem; }
+.msr-opts { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.4rem 2.6rem; margin-top: 2rem; }
+.msr-opt { background: none; border: none; cursor: pointer; padding: 0.5rem 0.1rem 0.35rem; font-size: 1.1rem; font-weight: 700; color: #a89a8b; border-bottom: 1.5px solid rgba(43, 34, 26, 0.2); transition: color .15s ease, border-color .15s ease; }
+.msr-opt::before { content: '+ '; font-weight: 400; }
+.msr-opt.active { color: #2b221a; border-color: rgba(43, 34, 26, 0.75); }
+.msr-opt.active::before { content: '✓ '; color: #91401a; }
+.msr-stage .opt-info-link { margin-top: 1rem; }
+.msr-add { margin-top: 2.4rem; background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem 0.4rem; font-size: 1.45rem; font-weight: 700; color: #91401a; border-bottom: 1.5px solid #91401a; }

@@ -240,7 +240,7 @@
 
                     <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         <button onclick="openTicketModal()" class="col-span-2 sm:col-span-1 bg-gradient-to-r from-amber-50 to-stone-100 hover:from-amber-100 hover:to-stone-200 text-stone-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300 shadow-sm">
-                            카드 견적서
+                            견적서
                         </button>
                         <button onclick="generateDoc('factory')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-slate-300">
                             공장 발주서
@@ -503,53 +503,18 @@
         <div class="bg-white/95 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 relative my-auto border border-stone-200">
             <div class="flex justify-between items-center border-b pb-3">
                 <div>
-                    <h3 class="font-bold text-stone-900 text-sm sm:text-base">고객 발송용 감성 견적서</h3>
-                    <p class="text-[11px] text-stone-500">카카오톡 전송용 이미지(PNG) 또는 바로 출력 지원</p>
+                    <h3 class="font-bold text-stone-900 text-sm sm:text-base">견적서</h3>
+                    <p class="text-[11px] text-stone-500">고객 화면 제안서와 같은 모양입니다 · 저장한 이미지를 카카오톡으로 보내거나 인쇄</p>
                 </div>
                 <button onclick="closeTicketModal()" class="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold flex items-center justify-center transition">✕</button>
             </div>
 
-            <div class="flex justify-center items-center py-2">
-                <div id="ticketCaptureArea" class="bg-gradient-to-b from-[#fbf9f5] to-[#f4ede4] p-6 sm:p-7 rounded-3xl border border-stone-200/90 shadow-xl w-full max-w-[360px] text-stone-800 font-serif-kr space-y-4">
-                    <div class="flex justify-between items-start border-b border-stone-300/60 pb-3">
-                        <div>
-                            <span class="text-[10px] uppercase tracking-wider text-stone-500 font-sans font-bold">Fabric Styling Card</span>
-                            <h4 class="text-lg sm:text-xl font-bold text-stone-900 mt-0.5" id="ticketCustomerName">고객님 맞춤 제안</h4>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-[10px] text-stone-400 font-sans" id="ticketDateText">2026.10.10</span>
-                            <div class="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-full mt-0.5 font-sans">Re.dam</div>
-                        </div>
-                    </div>
+            <!-- 저장·인쇄되는 이미지를 그대로 보여 줌 (app.js openTicketModal이 채움) -->
+            <div id="ticketPreview" class="max-h-[60vh] overflow-y-auto custom-scrollbar"></div>
 
-                    <div class="space-y-2.5 max-h-[380px] overflow-y-auto custom-scrollbar" id="ticketItemsList"></div>
-
-                    <div class="border-t border-stone-300/60 pt-3 flex justify-between items-baseline font-sans">
-                        <span class="text-xs font-bold text-stone-700">최종 견적 금액 (시공비 포함)</span>
-                        <div class="text-right">
-                            <span class="text-xl sm:text-2xl font-black text-stone-950 font-mono tracking-tight" id="ticketGrandTotal">0</span>
-                            <span class="text-xs font-bold text-stone-700">원</span>
-                        </div>
-                    </div>
-
-                    <p id="ticketNoteText" class="text-[10px] text-center text-stone-700 font-sans font-semibold pt-1 hidden"></p>
-                    <p class="text-[9px] text-center text-stone-400 font-sans pt-1">• 전문 핏팅 시공 및 1년 무상 안심 A/S 지원</p>
-                </div>
-            </div>
-
-            <button onclick="shareTicketImage()" class="w-full bg-[#2b221a] hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-comment text-xs"></i>
-                <span>카톡용 이미지 저장</span>
-            </button>
             <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200">
-                <button onclick="downloadTicketImage()" class="w-full bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-arrow-down-to-bracket text-xs"></i>
-                    <span>고화질 이미지 저장</span>
-                </button>
-                <button onclick="printTicket()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 px-4 rounded-xl text-xs transition border border-stone-300 flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-print text-xs"></i>
-                    <span>견적서 인쇄</span>
-                </button>
+                <button onclick="saveTicketImage()" class="w-full bg-[#2b221a] hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-sm shadow-sm transition">견적서 저장</button>
+                <button onclick="printTicket()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-3 px-4 rounded-xl text-sm transition border border-stone-300">인쇄</button>
             </div>
         </div>
     </div>
