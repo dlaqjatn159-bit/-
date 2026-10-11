@@ -699,6 +699,12 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .deck-count2 i { position: absolute; left: 50%; top: 50%; width: 1.9rem; height: 1px; background: rgba(255, 255, 255, 0.6); transform: translate(-50%, -50%) rotate(-55deg); }
 .fab-band .deck-count2 { margin-left: auto !important; }
 .fab-side + .deck-count2, .fab-vname + .deck-count2 { margin-left: auto !important; }
+/* 다른 단계 카드도 원단 칸과 같은 ㄴ자 배치 (공간·공간 종류·바닥·벽·채광·분위기·구성 등) */
+.lcard .fab-band { padding-right: 1.1rem; }
+.lcard .fab-hreason { font-size: 0.84rem; }
+.bookmark-canvas > :last-child .fab-band, .space-row > :last-child .fab-band { padding-right: 2.6rem; }   /* 화면 오른쪽 아래 Re.dam과 겹치지 않게 */
+.space-row > div:has(.space-del) .fab-band { padding-right: 5.2rem; }   /* 공간 칸: 오른쪽 아래 "삭제" 버튼 자리를 비움 */
+.space-row .space-del { bottom: 2.1rem; }                                  /* 삭제 버튼도 글자 아래선에 맞춤 */
 /* 원단 화면에서는 Re.dam 표시를 마지막 칸 앞장 오른쪽 아래(뒤 색 띠 왼쪽)에 세로로 */
 .card-brand {
     position: absolute; right: 0.75rem; bottom: 2.4rem; z-index: 12; writing-mode: vertical-rl; line-height: 1;   /* 이름·1/n과 같은 아래선 */
@@ -771,7 +777,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 /* 꽉 찬 화면 위에서도 Re.dam 표시가 보이도록 */
 #trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { color: #fff; opacity: 0.75; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
 /* 꽉 찬 화면에서는 오른쪽 아래에 세로로 (흐름에 맞춰) */
-#trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { left: auto; right: 0.6rem; bottom: 0.8rem; writing-mode: vertical-rl; letter-spacing: 0.2em; font-size: 0.85rem; }
+#trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { left: auto; right: 0.35rem; bottom: 1.7rem; padding-bottom: 0.7rem; writing-mode: vertical-rl; letter-spacing: 0.2em; font-size: 0.85rem; line-height: 1; }   /* 카드 글자 아래선(2.4rem)과 맞춤 */
 
 /* 제작 옵션 미리보기 (기본 / 적용 그림) */
 .opt-info-link {

@@ -811,14 +811,17 @@
             if (el) el.onclick = onClickFn;
         }, 0);
 
-        return `<div id="${id}" class="bookmark-card${extraClass ? ' ' + extraClass : ''}" style="width: 100%; height: 100%; cursor: pointer;">` +
+        // 원단 칸과 같은 ㄴ자 배치: 왼쪽 아래 세로 제목(아래 정렬) + 그 오른쪽 아래 가로 설명
+        const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&,+-]/.test(ch) ? 0.6 : 1)), 0) || 1;
+        const latin = /[A-Za-z]/.test(title);
+        const stack = s => Array.from(String(s)).map(ch => ch === ' ' ? '<i class="vsp"></i>' : `<span>${ch}</span>`).join('');
+        const nameHtml = latin ? `<h3 class="fab-vname is-latin font-serif-kr" style="--len: ${vlen(title).toFixed(2)};">${title}</h3>`
+                               : `<h3 class="fab-vname vstack font-serif-kr" style="--len: ${vlen(title).toFixed(2)};">${stack(title)}</h3>`;
+        return `<div id="${id}" class="bookmark-card lcard${extraClass ? ' ' + extraClass : ''}" style="width: 100%; height: 100%; cursor: pointer;">` +
             `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>` +
-            '<div class="bookmark-gradient" style="pointer-events: none;"></div>' +
-            '<div class="bookmark-content" style="pointer-events: none;">' +
-            // 위쪽 작은 영문·번호 표시(ZONE 01, FLOOR 01 등)는 깔끔함을 위해 표시하지 않음
-
-            `<h3 class="bookmark-name font-serif-kr">${title}</h3>` +
-            `<p class="bookmark-desc">${desc}</p>` +
+            '<div class="bookmark-gradient fab-gradient" style="pointer-events: none;"></div>' +
+            '<div class="fab-band">' + nameHtml +
+            (desc ? `<div class="fab-side"><p class="fab-hreason">${desc}</p></div>` : '') +
             '</div></div>';
     }
 
