@@ -168,8 +168,13 @@ function autoTagFabricAttributes(fabric) {
 // ---- 분류 이름표 (화면 표시용) ----
 const TONE_LABELS = { warm: '웜', cool: '쿨', neutral: '뉴트럴', deep: '딥' };
 const MOOD_LABELS = {
-    soft_warm: '소프트 웜', urban_clean: '어반 클린', balanced_neutral: '밸런스 뉴트럴',
-    textured_linen: '텍스처 린넨', deep_private: '딥 프라이빗', airy_bright: '에어리 브라이트'
+    soft_warm: '포근한', urban_clean: '깔끔한', balanced_neutral: '은은한',
+    textured_linen: '자연스러운', deep_private: '아늑한', airy_bright: '화사한'
+};
+// 엑셀에 예전 이름(소프트 웜 등)이나 '한'을 뺀 이름(포근 등)으로 적어도 읽음
+const MOOD_ALIASES = {
+    soft_warm: ['포근', '소프트웜'], urban_clean: ['깔끔', '어반클린'], balanced_neutral: ['은은', '밸런스뉴트럴'],
+    textured_linen: ['자연', '텍스처린넨'], deep_private: ['아늑', '딥프라이빗'], airy_bright: ['화사', '에어리브라이트']
 };
 // 속지 비침 4단계 (창문 테스트: 낮에 한 겹을 창에 대고 안에서 밖을 봄)
 //  light=많이 비침(풍경 또렷) / medium=은은한 비침(형태는 보이나 흐림) / day=낮 가림(밝기만, 낮에는 밖에서 안 보임) / heavy=거의 안 비침(저녁 조명에도 흐릿)
@@ -243,14 +248,14 @@ const MOOD_GUIDE = {
     balanced_neutral: '그레이지·샌드 계열, 튀지 않는 무난한 원단',
     textured_linen: '린넨·슬러브처럼 결이 눈에 보이는 원단',
     deep_private: '차콜·브라운·네이비처럼 진하고 무게감 있는 원단',
-    airy_bright: '많이 비치고 가벼운 속지 (쉬폰·보일)'
+    airy_bright: '많이 비치는 속지, 아주 밝은 겉지(오프 화이트·아이보리)'
 };
 const MOOD_HINTS = {
-    soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 도시적인 느낌', balanced_neutral: '어디에나 무난한 느낌',
-    textured_linen: '결이 살아있는 자연스러운 느낌', deep_private: '차분하고 프라이빗한 느낌', airy_bright: '가볍고 환한 느낌'
+    soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 정돈된 느낌', balanced_neutral: '은은하고 편안한 느낌',
+    textured_linen: '결이 살아 있는 자연스러운 느낌', deep_private: '빛과 시선을 감싸는 아늑한 느낌', airy_bright: '가볍고 화사한 느낌'
 };
 
-// 엑셀에 한글로 적어도(웜/쿨/…, 소프트 웜/…) 코드로 바꿔 읽음
+// 엑셀에 한글로 적어도(웜/쿨/…, 포근한/깔끔한/…) 코드로 바꿔 읽음
 function normalizeToneInput(v) {
     const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '');
     if (!s) return null;
@@ -263,8 +268,17 @@ function normalizeMoodInput(v) {
     const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '');
     if (!s) return null;
     if (MOOD_LABELS[s]) return s;
-    for (const code in MOOD_LABELS) if (MOOD_LABELS[code].replace(/\s+/g, '') === s) return code;
+    for (const code in MOOD_ALIASES) if (MOOD_ALIASES[code].some(a => s.startsWith(a))) return code;
     return null;
+}
+
+// 밝기(L값, 0 = 검정 ~ 100 = 흰색): 색상 입력표·단가표의 "밝기" 열. 이 값 이상인 겉지는 '화사한'
+const BRIGHT_L = 85;
+function normalizeLightInput(v) {
+    const s = String(v == null ? '' : v).trim().replace(',', '.');
+    if (!s) return null;
+    const n = parseFloat(s);
+    return (isFinite(n) && n >= 0 && n <= 100) ? n : null;
 }
 
 function normalizeDensityInput(v) {
@@ -278,7 +292,7 @@ function normalizeDensityInput(v) {
     return null;
 }
 
-// 바닥·벽 톤으로 공간의 분위기를 정함 (고객이 희망 분위기를 고르지 않은 경우에만 사용) (예전에는 항상 '소프트 웜'으로 고정돼 있어 선택이 추천에 반영되지 않았음)
+// 바닥·벽 톤으로 공간의 분위기를 정함 (고객이 희망 분위기를 고르지 않은 경우에만 사용) (예전에는 항상 '포근한'으로 고정돼 있어 선택이 추천에 반영되지 않았음)
 function deriveRoomMood(room) {
     const f = room.floorTone || 'warm', w = room.wallTone || 'warm';
     if (f === 'deep' || w === 'deep') return 'deep_private';
@@ -287,7 +301,7 @@ function deriveRoomMood(room) {
 }
 
 // 원단(또는 색)의 분위기: ① 사장님이 직접 고른 분위기 ② 질감이 있으면 톤·비침·질감으로 자동 ③ 둘 다 없으면 예전 이름 추측
-// 색상별 톤이 다르면 분위기도 색마다 달라짐 (예: 블랑 1번 웜 → 소프트 웜, 7번 쿨 → 어반 클린)
+// 색상별 톤이 다르면 분위기도 색마다 달라짐 (예: 블랑 1번 웜 → 포근한, 7번 쿨 → 깔끔한)
 function moodOf(f) {
     if (!f) return null;
     const m = f.manual || {};
@@ -295,9 +309,11 @@ function moodOf(f) {
     if (!f.texture || !TEXTURE_LABELS[f.texture]) return f.mood || null;
     const tone = f.tone || 'neutral';
     const thin = f.categoryType === '속지' && (f.density === 'light' || (!m.density && /쉬폰|보일/.test(String(f.name || ''))));
-    if (thin && tone !== 'deep') return 'airy_bright';      // 얇은 속지 → 에어리 브라이트
-    if (f.texture === 'natural') return 'textured_linen';    // 결 있음 → 텍스처 린넨
-    if (tone === 'deep') return 'deep_private';              // 딥 톤 → 딥 프라이빗
+    if (thin && tone !== 'deep') return 'airy_bright';      // 얇은 속지 → 화사한
+    // 아주 밝은 겉지(엑셀 "밝기" 열 85 이상, 결 있음·딥 제외) → 화사한
+    if (f.categoryType === '겉지' && typeof f.light === 'number' && f.light >= BRIGHT_L && f.texture !== 'natural' && tone !== 'deep') return 'airy_bright';
+    if (f.texture === 'natural') return 'textured_linen';    // 결 있음 → 자연스러운
+    if (tone === 'deep') return 'deep_private';              // 딥 톤 → 아늑한
     if (f.texture === 'cozy' || tone === 'warm') return 'soft_warm';
     if (tone === 'cool') return 'urban_clean';
     return 'balanced_neutral';
@@ -560,7 +576,7 @@ function removeFabricColor(id, name) {
     if (store[id].length === 0) delete store[id];
     saveColorsStore();
 }
-// 색상 입력표(엑셀/CSV) 행을 읽어 반영: 열 이름에 "원단 ID", "색상", "톤"이 들어 있으면 됩니다.
+// 색상 입력표(엑셀/CSV) 행을 읽어 반영: 열 이름에 "원단 ID", "색상", "톤"이 들어 있으면 됩니다. ("색 이름", "밝기" 열은 있으면 읽음)
 function importColorRows(rows) {
     let hi = -1;
     for (let i = 0; i < Math.min(rows.length, 15); i++) {
@@ -573,6 +589,7 @@ function importColorRows(rows) {
     const iColor = head.findIndex(h => h.includes('색상') && !h.includes('톤') && !h.includes('파일'));
     const iTone = head.findIndex(h => h.includes('톤'));
     const iLabel = head.findIndex(h => h.includes('이름') && !h.includes('ID'));     // 선택: "색 이름"·"가까운 이름" 열
+    const iLight = head.findIndex(h => h.includes('밝기'));                          // 선택: "밝기" 열 (L값 0~100)
     const known = new Set(FABRIC_DB.map(f => f.id));
     const next = {}; let colorCount = 0, unknown = 0;
     for (let i = hi + 1; i < rows.length; i++) {
@@ -586,6 +603,8 @@ function importColorRows(rows) {
         const entry = { name, tone: iTone >= 0 ? normalizeToneInput(r[iTone]) : null };
         const label = iLabel >= 0 ? String(r[iLabel] == null ? '' : r[iLabel]).trim().slice(0, 20) : '';
         if (label) entry.label = label;
+        const light = iLight >= 0 ? normalizeLightInput(r[iLight]) : null;
+        if (light != null) entry.light = light;
         next[id].push(entry);
         colorCount++;
     }
@@ -600,7 +619,7 @@ function importColorRows(rows) {
 function rankColorsFor(fabric, room, category) {
     const colors = getFabricColors(fabric.id);
     const ranked = colors.map(c => {
-        const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
+        const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
         return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + (c.tone ? 0.5 : 0) };
     });
     ranked.sort((a, b) => (b.score - a.score) || colorSort(a, b));
@@ -791,6 +810,7 @@ function buildFabricRecords(dataRows, rules) {
             mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),
             density: normalizeDensityInput(getCol(['비침', '두께', '도톰함', '밀도'])),
             texture: normalizeTextureInput(getCol(['질감', '텍스처'])),
+            light: normalizeLightInput(getCol(['밝기'])),      // 색이 하나뿐인 원단용 (색이 여러 개면 색상 입력표의 밝기)
             imageUrl: imgUrlRaw || null,
             fabricOnly: /원단만/.test(noteRaw),      // 비고에 "원단만 시킬때" → 고객 추천에서 기본 숨김
             blindKind: detectBlindKind(noteRaw),     // 블라인드 종류 (콤비/롤/프린트). 커튼은 비어 있음

@@ -687,6 +687,14 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     margin-left: 0.7rem !important; min-width: 0; padding-bottom: 0.05rem;
     font-family: 'Noto Serif KR', Georgia, serif; word-break: keep-all;
 }
+/* 분위기 화면: 설명도 이름 오른쪽에 작게 세로로 (아래선 맞춤) */
+.fab-vdesc {
+    margin-left: 0.6rem !important; flex-shrink: 0; padding-bottom: 0.05rem;
+    font-family: 'Noto Serif KR', Georgia, serif; font-size: 0.9rem; font-weight: 500;
+    color: rgba(255, 255, 255, 0.82); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+.fab-vdesc.vstack > span { margin-top: 0.16em; }
+.fab-vdesc.vstack > span:first-child { margin-top: 0; }
 .fab-hlabel { font-size: 0.98rem; font-weight: 600; color: rgba(255, 255, 255, 0.92); line-height: 1.2; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45); }
 .fab-hreason { font-size: 0.8rem; font-weight: 500; color: rgba(255, 255, 255, 0.78); line-height: 1.35; margin: 0; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45); }
 /* 1/n: 아래 정렬, 작게. 1은 왼쪽 위, n은 오른쪽 아래, 사이를 사선이 지나감 */

@@ -515,12 +515,12 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('원하시는 분위기를 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("소프트 웜", "포근하고 따뜻한 느낌", "MOOD 01", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); });
-                html += renderBookmarkCard("어반 클린", "깔끔하고 도시적인 느낌", "MOOD 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); });
-                html += renderBookmarkCard("밸런스 뉴트럴", "어디에나 무난하고 차분한 느낌", "MOOD 03", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); });
-                html += renderBookmarkCard("텍스처 린넨", "결이 살아있는 자연스러운 느낌", "MOOD 04", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); });
-                html += renderBookmarkCard("딥 프라이빗", "차분하고 아늑한 프라이빗한 느낌", "MOOD 05", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); });
-                html += renderBookmarkCard("에어리 브라이트", "가볍고 환한 느낌", "MOOD 06", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); });
+                html += renderBookmarkCard("포근한", "아이보리·베이지", "MOOD 01", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); }, 'vdesc');
+                html += renderBookmarkCard("깔끔한", "화이트·그레이", "MOOD 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); }, 'vdesc');
+                html += renderBookmarkCard("은은한", "그레이지", "MOOD 03", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc');
+                html += renderBookmarkCard("자연스러운", "린넨의 결", "MOOD 04", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); }, 'vdesc');
+                html += renderBookmarkCard("아늑한", "차콜·브라운", "MOOD 05", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); }, 'vdesc');
+                html += renderBookmarkCard("화사한", "밝고 가벼운", "MOOD 06", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); }, 'vdesc');
                 html += '</div></div>';
                 break;
 
@@ -808,7 +808,8 @@
             if (el) el.onclick = onClickFn;
         }, 0);
 
-        // 원단 칸과 같은 ㄴ자 배치: 왼쪽 아래 세로 제목(아래 정렬) + 그 오른쪽 아래 가로 설명
+        // 원단 칸과 같은 ㄴ자 배치: 왼쪽 아래 세로 제목(아래 정렬) + 그 오른쪽 아래 가로 설명 (extraClass에 'vdesc'가 있으면 설명도 제목 옆에 작게 세로로)
+        const vdesc = /\bvdesc\b/.test(extraClass || '');
         const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&,+-]/.test(ch) ? 0.6 : 1)), 0) || 1;
         const latin = /[A-Za-z]/.test(title);
         const stack = s => Array.from(String(s)).map(ch => ch === ' ' ? '<i class="vsp"></i>' : `<span>${ch}</span>`).join('');
@@ -818,7 +819,7 @@
             `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>` +
             '<div class="bookmark-gradient fab-gradient" style="pointer-events: none;"></div>' +
             '<div class="fab-band">' + nameHtml +
-            (desc ? `<div class="fab-side"><p class="fab-hreason">${desc}</p></div>` : '') +
+            (desc ? (vdesc ? `<p class="fab-vdesc vstack">${stack(desc)}</p>` : `<div class="fab-side"><p class="fab-hreason">${desc}</p></div>`) : '') +
             '</div></div>';
     }
 
