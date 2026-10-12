@@ -423,10 +423,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("웜 톤", "오크·베이지 계열 밝은 마루", "FLOOR 01", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); });
-                html += renderBookmarkCard("쿨 톤", "포세린 타일·대리석·화이트 계열", "FLOOR 02", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); });
-                html += renderBookmarkCard("뉴트럴 톤", "그레이지·회색 계열 마루", "FLOOR 03", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); });
-                html += renderBookmarkCard("딥 톤", "월넛·다크 브라운 계열 마루", "FLOOR 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); });
+                html += renderBookmarkCard("웜 톤", "오크·베이지", "FLOOR 01", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc');
+                html += renderBookmarkCard("쿨 톤", "타일·대리석", "FLOOR 02", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc');
+                html += renderBookmarkCard("뉴트럴 톤", "그레이지·회색", "FLOOR 03", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); }, 'vdesc');
+                html += renderBookmarkCard("딥 톤", "월넛·브라운", "FLOOR 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); }, 'vdesc');
                 html += '</div></div>';
                 break;
 
@@ -435,10 +435,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('벽 톤도 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("웜 톤", "크림·아이보리 계열 벽지", "WALL 01", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); });
-                html += renderBookmarkCard("쿨 톤", "화이트·라이트 그레이 계열 벽지", "WALL 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); });
-                html += renderBookmarkCard("뉴트럴 톤", "그레이지·무채색 계열 벽지", "WALL 03", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); });
-                html += renderBookmarkCard("딥 톤", "체리·다크 우드 계열 포인트 마감", "WALL 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); });
+                html += renderBookmarkCard("웜 톤", "크림·아이보리", "WALL 01", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc');
+                html += renderBookmarkCard("쿨 톤", "화이트·그레이", "WALL 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc');
+                html += renderBookmarkCard("뉴트럴 톤", "그레이지", "WALL 03", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); }, 'vdesc');
+                html += renderBookmarkCard("딥 톤", "체리·우드", "WALL 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); }, 'vdesc');
                 html += '</div></div>';
                 break;
 
@@ -474,9 +474,9 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('속지는 어떤 느낌이 좋으세요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("깔끔하고 매끈하게", "결이 거의 없는 차르르한 원단", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectSheerFeel('smooth'); });
-                html += renderBookmarkCard("결이 살아 있게", "린넨처럼 자연스러운 결과 마디", "", SOLID_TEXTURES.oak, function() { window.concierge.selectSheerFeel('textured'); });
-                html += renderBookmarkCard("상관없어요", "공간에 어울리는 쪽으로 추천해 주세요", "", SOLID_TEXTURES.l2, function() { window.concierge.selectSheerFeel('any'); });
+                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc');
+                html += renderBookmarkCard("결 있는", "린넨처럼", "", SOLID_TEXTURES.oak, function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc');
+                html += renderBookmarkCard("추천대로", "", "", SOLID_TEXTURES.l2, function() { window.concierge.selectSheerFeel('any'); }, 'vdesc');
                 html += '</div></div>';
                 break;
 
@@ -503,10 +503,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('창을 어떻게 구성할까요?', recComp ? '빛과 시선 답에 맞는 구성을 표시했어요' : '');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("호텔식 이중창", "차르르 속지 + 아늑한 겉지 2중 레이어드", compTag('double', "DOUBLE LAYER"), SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double'));
-                html += renderBookmarkCard("속지 단독", "화사하고 은은한 채광의 차르르 쉬어", compTag('sheer_only', "SHEER ONLY"), SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only'));
-                html += renderBookmarkCard("겉지 단독", "아늑한 쉼과 빛 차단을 위한 드레이프", compTag('drape_only', "DRAPE ONLY"), SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only'));
-                html += renderBookmarkCard("블라인드", "빛의 각도를 조율하는 모던 시스템", compTag('blind_only', "BLIND SHADE"), SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only'));
+                html += renderBookmarkCard("이중 커튼", "호텔처럼", compTag('double', "DOUBLE LAYER"), SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc');
+                html += renderBookmarkCard("속지 커튼", "은은한 채광", compTag('sheer_only', "SHEER ONLY"), SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc');
+                html += renderBookmarkCard("겉지 커튼", "빛 차단", compTag('drape_only', "DRAPE ONLY"), SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc');
+                html += renderBookmarkCard("블라인드", "빛 각도 조절", compTag('blind_only', "BLIND SHADE"), SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc');
                 html += '</div></div>';
                 break;
 
@@ -749,7 +749,7 @@
         h += '<div class="bookmark-gradient fab-gradient"></div>';
         // 아래 띠 (ㄴ자): 왼쪽에 세로 이름(아래 정렬), 그 오른쪽 아래에 가로로 색 이름·짧은 설명. 오른쪽 끝 아래에 1/n
         h += `<div class="fab-band${isLast ? ' is-last' : ''}">`;
-        const latin = /[A-Za-z]/.test(name);
+        const latin = /[A-Za-z]{3,}/.test(name);      // 영어 낱말(3글자 이상)이 있을 때만 눕혀 씀. "울피치 A"처럼 한두 글자는 한글처럼 세워 씀
         const stack = s => Array.from(String(s)).map(ch => ch === ' ' ? '<i class="vsp"></i>' : `<span>${ch}</span>`).join('');
         h += latin ? `<h3 class="fab-vname is-latin font-serif-kr" style="--len: ${vlen(name).toFixed(2)};">${name}</h3>`
                    : `<h3 class="fab-vname vstack font-serif-kr" style="--len: ${vlen(name).toFixed(2)};">${stack(name)}</h3>`;
@@ -810,7 +810,7 @@
         // 원단 칸과 같은 ㄴ자 배치: 왼쪽 아래 세로 제목(아래 정렬) + 그 오른쪽 아래 가로 설명 (extraClass에 'vdesc'가 있으면 설명도 제목 옆에 작게 세로로)
         const vdesc = /\bvdesc\b/.test(extraClass || '');
         const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&,+-]/.test(ch) ? 0.6 : 1)), 0) || 1;
-        const latin = /[A-Za-z]/.test(title);
+        const latin = /[A-Za-z]{3,}/.test(title);     // 영어 낱말(3글자 이상)이 있을 때만 눕혀 씀. 한두 글자는 세워 씀
         const stack = s => Array.from(String(s)).map(ch => ch === ' ' ? '<i class="vsp"></i>' : `<span>${ch}</span>`).join('');
         const nameHtml = latin ? `<h3 class="fab-vname is-latin font-serif-kr" style="--len: ${vlen(title).toFixed(2)};">${title}</h3>`
                                : `<h3 class="fab-vname vstack font-serif-kr" style="--len: ${vlen(title).toFixed(2)};">${stack(title)}</h3>`;
