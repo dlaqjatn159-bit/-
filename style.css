@@ -846,6 +846,12 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .ask-desc { font-size: 0.8rem; color: #8a7a6a; font-weight: 500; }
 .ask-opt:hover .ask-label, .ask-opt:active .ask-label { color: #91401a; border-color: #91401a; }
 .ask-opt.is-rec .ask-label { color: #91401a; border-color: #91401a; }
+/* 지난번 답 표시(공간을 "수정"할 때만): 색을 뺀 회색 = 비활성처럼 보이지만 누를 수는 있음. 사진 칸은 칸 전체 흑백 + 흐린 글자, 글 질문은 회색 글자·밑줄 */
+.bookmark-card.was-picked .bookmark-bg { filter: grayscale(1) brightness(0.92); }
+.bookmark-card.was-picked .fab-vname, .bookmark-card.was-picked .fab-vdesc { color: rgba(255, 255, 255, 0.6); }
+.ask-opt.was-picked .ask-label { color: #a9a39b; border-color: #cfc9c1; }
+.ask-opt.was-picked .ask-desc { color: #b9b3ab; }
+.ask-opt.was-picked:hover .ask-label, .ask-opt.was-picked:active .ask-label { color: #91401a; border-color: #91401a; }
 
 /* ===== 첫 화면(고객 정보만) + 공간 화면. 둘 다 글 질문 화면과 같은 모양 (사진 칸 없음) ===== */
 .wel-brand { position: relative; z-index: 10; font-size: 3.2rem; font-weight: 700; color: #2b221a; letter-spacing: -0.02em; line-height: 1; cursor: pointer; }
