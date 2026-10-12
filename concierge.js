@@ -951,9 +951,9 @@
         },
         selectMood: function(mood) {
             state.editingRoom.wantMood = mood;
-            // 속지가 들어가는 구성이면 속지 느낌을 한 번 더 (공간마다 한 번)
+            // 속지가 들어가는 구성이면 속지 느낌을 물음 (공간마다. "수정"으로 다시 들어와도 다른 질문처럼 다시 물음 — 마음이 바뀔 수 있어서)
             const hasSheer = (state.editingRoom.items || []).some(i => i.presetType === 'sheer');
-            goToStep(hasSheer && !state.editingRoom.sheerFeel ? "2-Base-SheerFeel" : "3.5-Bridge");
+            goToStep(hasSheer ? "2-Base-SheerFeel" : "3.5-Bridge");
         },
         chooseWindowComposition: function(type) {
             const rName = state.editingRoom.name;
