@@ -348,6 +348,8 @@ function calculateFabricMatchScore(fabric, room, category) {
         score += wantMood ? 6 : 4;
     } else {
         if (targetMood === 'soft_warm' && fMood === 'textured_linen') score += 2;
+        // 밝은 웜 톤 겉지(아이보리 등)는 '화사한'으로 분류되지만 색이 주는 포근함도 있음 → 딱 맞는 포근한(+6/+4)보다 조금 낮게
+        if (targetMood === 'soft_warm' && fMood === 'airy_bright' && fabric.categoryType === '겉지' && fTone === 'warm') score += wantMood ? 4 : 3;
         if (targetMood === 'urban_clean' && fMood === 'airy_bright') score += 2;
         if (targetMood === 'balanced_neutral' && (fMood === 'soft_warm' || fMood === 'urban_clean')) score += 1;
     }
