@@ -19,7 +19,7 @@
     };
 
     const state = {
-        step: "1-Space",
+        step: "0-Welcome",
         roomsCart: [],
         editingRoomId: null,
         editingRoom: null,
@@ -238,6 +238,14 @@
         const canGoBack = stepHistory.length > 0;
         btn.style.opacity = canGoBack ? "1" : "0";
         btn.style.pointerEvents = canGoBack ? "auto" : "none";
+        // 홈 버튼: 공간 화면·최종 제안에서만 보임. 뒤로가기가 없으면 그 자리로 당김
+        const home = document.getElementById("v2HomeBtn");
+        if (home) {
+            const show = state.step === "1-Space" || state.step === "7-Final-Dossier";
+            home.style.opacity = show ? "1" : "0";
+            home.style.pointerEvents = show ? "auto" : "none";
+            home.style.left = canGoBack ? "calc(2rem + 46px + 0.6rem)" : "2rem";
+        }
     }
 
     // 화면 위 가운데: 지금 무엇을 고르는지 짧은 질문 + 진행 점
@@ -360,69 +368,31 @@
     function render() {
         const main = document.getElementById("v2Viewport");
         if (!main) return;
+        // 공간이 하나도 없으면(모두 삭제 등) 첫 화면으로, 구성을 마친 공간이 없으면 최종 제안 대신 공간 화면으로
+        if (state.step === "7-Final-Dossier" && !state.roomsCart.some(r => r.isConfigured)) state.step = "1-Space";
+        if (state.step === "1-Space" && state.roomsCart.length === 0) {
+            state.step = "0-Welcome";
+            stepHistory.length = 0;
+            updatePrevButtonVisibility();
+        }
 
         const currentCust = getClientName();
         let html = '<div class="w-full h-full flex flex-col items-center justify-center stage-transition" style="min-height: 100vh; width: 100vw; background: #fbf9f5;">';
 
         switch (state.step) {
-            // [Step 1: 공간 장바구니 캔버스]
-            case "1-Space": {
-                const configuredRooms = state.roomsCart.filter(r => r.isConfigured);
-                const hasConfigured = configuredRooms.length > 0;
-                let grandSum = 0;
-                configuredRooms.forEach(r => grandSum += (r.subtotal || 0));
-
-                html += '<div class="space-stage">';
-                // 왼쪽: Re.dam · 고객명/현장명 · 연락처 · 설명 (지금 디자인 그대로)
-                html += '<div class="space-left font-serif-kr">';
-                html += '<h1 style="font-size: 2.8rem; font-weight: 700; color: #2b221a; letter-spacing: -0.02em; cursor: pointer;" onclick="window.concierge.staffTap()">Re.dam</h1>';
-                html += '<p style="font-size: 0.95rem; color: #6f5f4f; margin-top: 0.6rem; line-height: 1.6;">공간별 빛과 결을 채워 넣는 비스포크 큐레이션입니다.<br>오른쪽 <strong style="color: #91401a;">+ 공간 추가</strong>를 탭하여 공간을 등록해 주세요.</p>';
-                html += `<input type="text" id="cName_ui" value="${(document.getElementById('custName') ? document.getElementById('custName').value : '').replace(/"/g, '&quot;')}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)" style="margin-top: 1.4rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
-                html += `<input type="tel" id="cPhone_ui" inputmode="numeric" autocomplete="off" value="${((document.getElementById('custPhone') || {}).value || '').replace(/"/g, '&quot;')}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)" style="margin-top: 0.6rem; width: 100%; max-width: 320px; padding: 0.9rem 1.1rem; border: 1.5px solid #e5dcd0; border-radius: 16px; font-size: 1rem; font-weight: 600; background: #fff; color: #2b221a; outline: none;">`;
-                html += '</div>';
-
-                // 오른쪽: 기존 "+ 공간 추가" 세로 패널 그대로. 공간이 생기면 패널 안 위쪽부터 가로 카드로 쌓이고,
-                // 자리가 모자라므로 "+ 공간 추가"는 가로쓰기로 바뀜. 패널 빈 곳을 눌러도 추가
-                const roomCount = state.roomsCart.length;
-                html += `<div class="space-panel${roomCount ? ' has-rooms' : ''}">`;
-                if (!roomCount) {
-                    html += renderBookmarkCard("+ 공간 추가", "터치해서 추가하기", '', SOLID_TEXTURES.walnut, function() {
-                        window.concierge.startNewRoomSelection();
-                    });
-                } else {
-                    html += `<div class="bookmark-card lcard" style="width: 100%; height: 100%; cursor: pointer;" onclick="window.concierge.startNewRoomSelection()">`;
-                    html += `<div class="bookmark-bg" style="background: ${SOLID_TEXTURES.walnut}; pointer-events: none;"></div>`;
-                    html += '<div class="bookmark-gradient fab-gradient" style="pointer-events: none;"></div>';
-                    html += '<div class="space-list">';
-                    state.roomsCart.forEach((room, idx) => {
-                        // 구성을 마친 공간은 고른 원단(사진, 없으면 톤 색)으로 채움. 이중커튼은 속지·겉지 반씩. 아직인 공간은 비워 둠
-                        const picks = room.isConfigured ? (room.curtains || []).filter(c => c.fabricId).slice(0, 3) : [];
-                        html += `<div class="space-item${picks.length ? '' : ' is-empty'}" onclick="event.stopPropagation(); window.concierge.openRoomCart(${room.id})">`;
-                        if (picks.length) html += '<div class="si-fill">' + picks.map(c => `<span style="${fabricFillStyle(c.fabricId, c.colorName)}"></span>`).join('') + '</div>';
-                        html += '<div class="si-shade"></div>';
-                        html += `<span class="si-name font-serif-kr">${room.name}</span>`;
-                        html += '<span class="si-actions">';
-                        html += `<button type="button" class="si-del" aria-label="${room.name} 삭제" onclick="event.stopPropagation(); window.concierge.deleteRoom(${room.id})">삭제</button>`;
-                        html += `<span class="si-edit">${room.isConfigured ? '수정하기' : '구성하기'}</span>`;
-                        html += '</span></div>';
-                    });
-                    html += '</div>';
-                    html += '<div class="space-add-h"><span class="sah-title font-serif-kr">+ 공간 추가</span><span class="sah-desc">터치해서 추가하기</span></div>';
-                    html += '</div>';
-                }
-                html += '</div>';
-
-                // 합계: 화면 아래 가운데 (공간 카드에는 금액을 띄우지 않음)
-                if (hasConfigured) {
-                    html += '<button type="button" class="space-total font-serif-kr" onclick="window.concierge.goToCheckout()">';
-                    html += '<span class="st-label">총 제안 금액</span>';
-                    html += `<span class="st-amount">${grandSum.toLocaleString()}<small>원</small></span>`;
-                    html += '<span class="st-go">최종 제안 보기 <i class="fa-solid fa-arrow-right"></i></span>';
-                    html += '</button>';
-                }
+            // [Step 0: 첫 화면] 고객명·연락처만 받음. 공간이 없으면 "상담 시작"이 바로 공간 종류 질문으로 넘어감
+            case "0-Welcome": {
+                const esc = v => String(v || '').replace(/"/g, '&quot;');
+                html += '<div class="ambient-stage ask-stage wel-stage">';
+                html += '<h1 class="wel-brand font-serif-kr" onclick="window.concierge.staffTap()">Re.dam</h1>';
+                html += '<p class="wel-sub font-serif-kr">빛과 결을 채워 넣는 비스포크 큐레이션</p>';
+                html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)">`;
+                html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)">`;
+                html += `<button type="button" class="txt-cta wel-go font-serif-kr" onclick="window.concierge.beginConsult()">${state.roomsCart.length ? '상담 이어가기' : '상담 시작'}</button>`;
                 html += '</div>';
                 break;
             }
+
 
             // [Step 1.5: 7종 공간 선택]
             case "1.5-Room-Type":
@@ -624,69 +594,53 @@
                 break;
             }
 
-            // [Step 7: 제안서 = 견적서. 저장·인쇄되는 견적서 이미지(app.js drawTicket)와 같은 디자인]
+            // [Step 1: 공간 화면] 고른 항목만 보여 주는 작업 화면 (금액·시공비 없음). 공간마다 수정·삭제, "+ 공간 추가", 아래 "최종 제안 보기"
             // 평평한 바탕 · 가는 선 · 명조 글자 · 각진 원단 칸 · 밑줄 글자 버튼 (둥근 카드·그림자·색 버튼 없음)
-            case "7-Final-Dossier": {
-                const configuredList = state.roomsCart.filter(r => r.isConfigured);
-                let roomsProductSum = 0;
+            case "1-Space": {
                 let roomsHtml = '';
-
-                configuredList.forEach(r => {
-                    roomsProductSum += (r.subtotal || 0);
+                state.roomsCart.forEach(r => {
+                    const delBtn = `<button type="button" aria-label="${r.name} 삭제" onclick="window.concierge.deleteRoom(${r.id})">삭제</button>`;
                     roomsHtml += '<section class="dos-room">';
-                    roomsHtml += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${r.name}</span><span class="dos-rsum">${(r.subtotal || 0).toLocaleString()}원</span></div>`;
+                    if (!r.isConfigured) {
+                        // 아직 구성 전인 공간
+                        roomsHtml += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${r.name}<span class="dos-racts">${delBtn}</span></span><button type="button" class="dos-todo" onclick="window.concierge.openRoomCart(${r.id})">구성하기</button></div>`;
+                        roomsHtml += '</section>';
+                        return;
+                    }
+                    roomsHtml += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${r.name}<span class="dos-racts"><button type="button" aria-label="${r.name} 수정" onclick="window.concierge.openRoomCart(${r.id})">수정</button>${delBtn}</span></span></div>`;
                     r.curtains.forEach(c => {
                         const calcObj = c.calc || {};
-                        const itemPrice = calcObj.curtainSubtotal || calcObj.sellingPrice || 0;
                         const kind = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : (c.presetType === 'drape' ? '겉지' : '커튼'));
-                        const meta = [calcObj.fabBook || ''];
-                        if (c.shapeFee > 0) meta.push('형상기억');
-                        if (c.leadBand) meta.push('리드밴드');
-                        if (c.hotelFit) meta.push('호텔핏');
+                        // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
+                        const opts = [];
+                        if (c.shapeFee > 0) opts.push('형상기억');
+                        if (c.leadBand) opts.push('리드밴드');
+                        if (c.hotelFit) opts.push('호텔핏');
                         const reason = (typeof ticketItemReason === 'function') ? ticketItemReason(r, c) : '';
                         roomsHtml += '<div class="dos-item">';
                         roomsHtml += `<div class="dos-sw" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
                         roomsHtml += '<div class="dos-txt">';
                         roomsHtml += `<div class="dos-kind">${kind}</div>`;
-                        roomsHtml += `<div class="dos-fab font-serif-kr">${(typeof ticketFabricName === 'function') ? ticketFabricName(c, calcObj) : (calcObj.fabName || c.label || '원단')}<em>${meta.filter(Boolean).join(' · ')}</em></div>`;
+                        roomsHtml += `<div class="dos-fab font-serif-kr">${(typeof ticketFabricName === 'function') ? ticketFabricName(c, calcObj) : (calcObj.fabName || c.label || '원단')}${opts.length ? `<em>${opts.join(' · ')}</em>` : ''}</div>`;
                         if (reason) roomsHtml += `<div class="dos-why">${reason}</div>`;
-                        roomsHtml += '</div>';
-                        roomsHtml += `<div class="dos-price font-serif-kr">${itemPrice.toLocaleString()}원</div>`;
-                        roomsHtml += '</div>';
+                        roomsHtml += '</div></div>';
                     });
                     roomsHtml += '</section>';
                 });
 
-                const finalGrandTotal = roomsProductSum + (state.installFee || 0);
-                const d = new Date(), pad2 = n => String(n).padStart(2, '0');
-                const noteText = (typeof loadTicketNote === 'function') ? loadTicketNote() : '';
-
                 html += '<div class="dos-stage"><div class="dos-sheet">';
-                html += '<div class="dos-top font-serif-kr">';
-                html += '<h1 onclick="window.concierge.staffTap()">Re.dam</h1>';
-                html += `<span class="dos-date">${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}</span>`;
-                html += '</div>';
-                html += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${currentCust} 고객님 맞춤 제안` : '고객님 맞춤 제안'}</p>`;
-
+                html += '<div class="dos-top font-serif-kr"><h1 onclick="window.concierge.staffTap()">Re.dam</h1></div>';
+                html += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${currentCust} 고객님` : '고객님'}의 공간</p>`;
                 html += roomsHtml;
-
-                html += '<div class="dos-fee"><span>시공 및 설치비</span>';
-                html += `<span><input type="number" step="5000" inputmode="numeric" value="${state.installFee}" oninput="window.concierge.updateInstallFee(this.value, ${roomsProductSum})" class="font-serif-kr">원</span></div>`;
-
-                html += '<div class="dos-sum font-serif-kr">';
-                html += '<span class="dos-sumlabel">총 제안 금액 (시공비 포함)</span>';
-                html += `<span class="dos-amount"><span id="finalGrandTotalDisplay">${finalGrandTotal.toLocaleString()}</span><small>원</small></span>`;
-                html += '</div>';
-                html += `<p class="dos-note">${noteText ? noteText + '<br>' : ''}전문 피팅 시공 및 1년 무상 A/S</p>`;
+                // 다음 공간 자리: 공간 이름과 같은 자리·크기의 주황 밑줄 글자
+                html += '<section class="dos-room dos-add"><button type="button" class="dos-addbtn font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button></section>';
 
                 // 버튼: 질문 화면과 같은 밑줄 글자. 화면 아래에 붙어 있어 내용이 길어도 바로 누를 수 있음
                 html += '<div class="dos-acts">';
                 html += '<div class="dos-main font-serif-kr">';
-                html += '<button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button>';
-                html += '<button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button>';
+                if (state.roomsCart.some(r => r.isConfigured)) html += '<button type="button" class="dos-act is-main" onclick="window.concierge.goToCheckout()">최종 제안 보기 →</button>';
                 html += '</div>';
                 html += '<div class="dos-subacts">';
-                html += '<button type="button" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가하기</button>';
                 // 다음 고객 상담: 확인 창을 거쳐 지금 상담을 이력에 보관하고 비움 (직원 화면의 "새 상담"과 같음)
                 html += '<button type="button" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button>';
                 html += '</div></div>';
@@ -694,11 +648,56 @@
                 html += '</div></div>';
                 break;
             }
+
+            // [Step 7: 최종 제안 = 견적서] 저장·인쇄되는 견적서 이미지(app.js drawTicket)를 종이 한 장처럼 가운데에 그대로 보여 줌
+            // 공간 화면(고치고 더하는 화면)과 일부러 다른 모양: 여기는 "발행된 문서". 버튼과 시공비 입력은 종이 밖 오른쪽
+            case "7-Final-Dossier": {
+                html += '<div class="fin-stage">';
+                html += '<div class="fin-paper" id="finPaper"><p class="fin-wait font-serif-kr">견적서를 준비하고 있어요</p></div>';
+                html += '<aside class="fin-side">';
+                html += `<p class="fin-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${currentCust} 고객님` : '고객님'}<br>맞춤 제안</p>`;
+                html += '<div class="fin-main font-serif-kr">';
+                html += '<button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button>';
+                html += '<button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button>';
+                html += '</div>';
+                html += '<label class="fin-fee"><span>시공 및 설치비</span>';
+                html += `<span><input type="number" step="5000" inputmode="numeric" value="${state.installFee}" oninput="window.concierge.updateInstallFee(this.value)" class="font-serif-kr">원</span></label>`;
+                html += '<div class="fin-sub">';
+                html += '<button type="button" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button>';
+                // 다음 고객 상담: 확인 창을 거쳐 지금 상담을 이력에 보관하고 비움 (직원 화면의 "새 상담"과 같음)
+                html += '<button type="button" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button>';
+                html += '</div></aside></div>';
+                break;
+            }
         }
 
         html += '</div>';
         main.innerHTML = html;
         if (state.step === "4-Fabric-Queue") bindColorDecks();     // 색상 카드 밀어 넘기기 연결
+        if (state.step === "7-Final-Dossier") renderFinalPaper();
+    }
+
+    // ---- 최종 제안의 종이: 저장·인쇄되는 견적서 이미지를 그대로 그려 넣음 (app.js makeTicketBlobs). 여러 장이면 아래로 이어짐 ----
+    let finalPaperSeq = 0, finalPaperTimer = null;
+    async function renderFinalPaper() {
+        const seq = ++finalPaperSeq;
+        if (typeof window.makeTicketBlobs !== 'function') return;
+        try {
+            const { canvases } = await window.makeTicketBlobs({ canvasOnly: true, pixelRatio: 1.5 });
+            const box = document.getElementById('finPaper');
+            if (seq !== finalPaperSeq || !box || state.step !== "7-Final-Dossier") return;      // 그리는 사이 화면이 바뀌었으면 버림
+            box.innerHTML = '';
+            canvases.forEach(c => {
+                const img = document.createElement('img');
+                img.alt = '견적서';
+                img.src = c.toDataURL('image/png');
+                box.appendChild(img);
+            });
+        } catch (e) {
+            console.error(e);
+            const box = document.getElementById('finPaper');
+            if (box) box.innerHTML = '<p class="fin-wait font-serif-kr">견적서를 그리지 못했어요. 다시 열어 주세요</p>';
+        }
     }
 
     // ---- 원단 카드 안의 색상 덱 ----
@@ -825,13 +824,21 @@
 
     window.concierge = {
         start: function() {
-            goToStep("1-Space", false);
+            goToStep(state.roomsCart.length ? "1-Space" : "0-Welcome", false);
         },
         prevStep: function() {
             prevStep();
         },
         goToSpaceCanvas: function() {
             goToStep("1-Space");
+        },
+        // 첫 화면 "상담 시작": 공간이 없으면 바로 첫 공간 종류를 묻고, 있으면 공간 화면으로
+        beginConsult: function() {
+            goToStep(state.roomsCart.length ? "1-Space" : "1.5-Room-Type");
+        },
+        // 공간 화면·최종 제안의 홈 버튼: 첫 화면으로 가서 고객 정보를 고침 ("상담 이어가기"로 돌아옴)
+        goHome: function() {
+            goToStep("0-Welcome");
         },
         startNewRoomSelection: function() {
             goToStep("1.5-Room-Type");
@@ -1140,14 +1147,13 @@
             });
             state.roomsCart = mapped.concat(inProgress);
             state.installFee = installFee;
-            if (state.step === "7-Final-Dossier" && mapped.length === 0) goToStep("1-Space", false);
-            else if (state.step === "1-Space" || state.step === "7-Final-Dossier") render();
+            if (state.step === "0-Welcome" || state.step === "1-Space" || state.step === "7-Final-Dossier") render();
         },
         // 직원 화면(B)에서 만든 견적을 고객용 제안서 화면으로 보여주기
         showProposalFromRooms: function(masterRooms, installFee) {
             window.concierge.loadFromMaster(masterRooms, installFee);
             stepHistory.length = 0;
-            goToStep(state.roomsCart.some(r => r.isConfigured) ? "7-Final-Dossier" : "1-Space", false);
+            goToStep("7-Final-Dossier", false);
         },
         // 새 상담 시작: 고객 입력 내용을 모두 비움
         resetAll: function() {
@@ -1164,7 +1170,7 @@
             if (el) el.value = '';
             const ph = document.getElementById('custPhone');
             if (ph) ph.value = '';
-            goToStep("1-Space", false);
+            goToStep("0-Welcome", false);
         },
         syncToMaster: function() { syncToV1MasterRooms(); },
         // 자동 저장용: 고객이 완료한 공간만 (계산 결과는 제외)
@@ -1220,14 +1226,12 @@
             const boxVal = document.getElementById(`displayVal_${state.keypadTarget}`);
             if (boxVal) boxVal.textContent = state.editingRoom[state.keypadTarget];
         },
-        updateInstallFee: function(val, roomsProductSum) {
+        // 최종 제안의 시공비 입력: 직원 화면과 맞춘 뒤 종이를 다시 그림 (입력 중에는 잠깐 기다렸다가)
+        updateInstallFee: function(val) {
             state.installFee = parseFloat(val) || 0;
-            const finalTotal = roomsProductSum + state.installFee;
-            const display = document.getElementById("finalGrandTotalDisplay");
-            if (display) {
-                display.textContent = finalTotal.toLocaleString();
-            }
             syncToV1MasterRooms();
+            clearTimeout(finalPaperTimer);
+            finalPaperTimer = setTimeout(renderFinalPaper, 350);
         }
     };
 })();

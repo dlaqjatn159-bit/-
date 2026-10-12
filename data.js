@@ -898,6 +898,7 @@ function applyPrivatePack(pack) {
     savePrivateStore();
     if (pack.tags && typeof pack.tags === 'object') saveTagOverrides(pack.tags);
     if (pack.colors && typeof pack.colors === 'object') replaceColorsStore(pack.colors);
+    if (pack.ticket && typeof applyTicketTextsFromPack === 'function') applyTicketTextsFromPack(pack.ticket);
     if (Array.isArray(pack.fabrics) && pack.fabrics.length > 0) {
         FABRIC_DB = pack.fabrics.map(f => autoTagFabricAttributes(f));
         applyTagOverrides(FABRIC_DB);
@@ -926,7 +927,8 @@ function handlePrivatePackUpload(event) {
 function exportPrivatePack() {
     if (!Costing.hasData()) { showToast("내보낼 원가 데이터가 없습니다.", "info"); return; }
     const pack = { type: 'redam-private-pack', version: 1, savedAt: new Date().toISOString(),
-        rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides(), colors: colorsStore() };
+        rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides(), colors: colorsStore(),
+        ticket: (typeof ticketTextsForPack === 'function') ? ticketTextsForPack() : undefined };      // 견적서 글(안내 문구·결제 조건·맞춤 제작 안내·공급자 정보)
     const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;

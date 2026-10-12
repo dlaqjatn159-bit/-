@@ -101,7 +101,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     overflow: hidden;
 }
 
-#v2FloatingPrevBtn {
+#v2FloatingPrevBtn, #v2HomeBtn {
     position: fixed;
     top: 2rem;
     left: 2rem;
@@ -123,7 +123,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     opacity: 0;
     pointer-events: none;
 }
-#v2FloatingPrevBtn:hover {
+#v2FloatingPrevBtn:hover, #v2HomeBtn:hover {
     background: #ffffff;
     transform: scale(1.04);
 }
@@ -847,47 +847,19 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .ask-opt:hover .ask-label, .ask-opt:active .ask-label { color: #91401a; border-color: #91401a; }
 .ask-opt.is-rec .ask-label { color: #91401a; border-color: #91401a; }
 
-/* ===== 공간 화면 (첫 화면과 합침): 왼쪽 고객 정보 + 오른쪽 기존 "+ 공간 추가" 세로 패널(안에 공간 카드가 위에서부터 가로로 쌓임) ===== */
-.space-stage { position: relative; width: 100vw; height: 100vh; height: 100dvh; display: flex; background: #fbf9f5; overflow: hidden; }
-.space-left { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 2rem; }
-.space-panel { position: relative; flex: 0 0 19%; max-width: 20vw; min-width: 140px; display: flex; }   /* 예전 공간 추가 칸과 같은 폭 */
-.space-panel > .bookmark-card { flex: 1; }
-.space-list {
-    position: absolute; top: 0; left: 0; right: 0; bottom: 7rem; z-index: 2;
-    display: flex; flex-direction: column; gap: 2px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+/* ===== 첫 화면(고객 정보만) + 공간 화면. 둘 다 글 질문 화면과 같은 모양 (사진 칸 없음) ===== */
+.wel-brand { position: relative; z-index: 10; font-size: 3.2rem; font-weight: 700; color: #2b221a; letter-spacing: -0.02em; line-height: 1; cursor: pointer; }
+.wel-sub { position: relative; z-index: 10; font-size: 0.95rem; color: #6f5f4f; margin: 0.9rem 0 2rem; }
+.wel-stage input.wel-input {
+    position: relative; z-index: 10; display: block; width: 100%; max-width: 320px; margin-top: 0.5rem; padding: 0.75rem 0.2rem;
+    border: none !important; border-bottom: 1.5px solid rgba(43, 34, 26, 0.3) !important; border-radius: 0; background: transparent !important; box-shadow: none !important; outline: none;   /* 공통 입력창 스타일(흰 바탕·테두리)을 덮어씀 */
+    font-size: 1.1rem; font-weight: 600; color: #2b221a; text-align: center;
 }
-.space-item {
-    position: relative; flex: 0 0 15vh; min-height: 88px; cursor: pointer; overflow: hidden;
-    display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; padding: 0 1rem 0.95rem 1.2rem; box-sizing: border-box;
-}
-.si-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(40,28,21,0.05) 20%, rgba(40,28,21,0.7) 100%); pointer-events: none; }
-.space-item:active .si-shade { background: linear-gradient(180deg, rgba(255,255,255,0.08) 20%, rgba(40,28,21,0.6) 100%); }
-.si-name { position: relative; z-index: 1; font-size: 1.4rem; font-weight: 700; color: #fff; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.si-actions { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; flex-shrink: 0; }
-.si-edit { font-family: 'Noto Serif KR', Georgia, serif; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.95); border-bottom: 1px solid rgba(255,255,255,0.7); padding-bottom: 2px; line-height: 1.1; }
-.si-del { background: none; border: none; cursor: pointer; padding: 0.15rem 0; font-size: 0.68rem; font-weight: 600; color: rgba(255,255,255,0.6); }
-/* 공간이 생기면 "+ 공간 추가"는 가로쓰기 (아래선은 다른 카드와 같은 2.4rem) */
-.space-add-h { position: absolute; left: 1.4rem; right: 1rem; bottom: 2.4rem; z-index: 3; display: flex; flex-direction: column; gap: 0.3rem; color: #fff; pointer-events: none; }
-.sah-title { font-size: 1.4rem; font-weight: 700; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,0.45); }
-.sah-desc { font-family: 'Noto Serif KR', Georgia, serif; font-size: 0.8rem; color: rgba(255,255,255,0.78); }
-/* 합계: 화면 아래 가운데 */
-.space-total {
-    position: absolute; left: 50%; bottom: 2.2rem; transform: translateX(-50%); z-index: 20;
-    display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
-    background: rgba(255, 253, 249, 0.92); border: 1px solid #e5dcd0; border-radius: 18px; padding: 0.85rem 2rem 0.8rem; cursor: pointer;
-    box-shadow: 0 12px 30px -14px rgba(43, 34, 26, 0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-}
-.st-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; color: #8a7a6a; }
-.st-amount { font-size: 1.75rem; font-weight: 700; color: #2b221a; letter-spacing: -0.01em; line-height: 1.15; }
-.st-amount small { font-size: 0.9rem; font-weight: 600; margin-left: 0.15rem; }
-.st-go { font-size: 0.8rem; font-weight: 600; color: #91401a; display: inline-flex; align-items: center; gap: 0.4rem; }
-.st-go i { font-size: 0.7rem; }
-
-/* 공간 칸: 구성을 마친 공간은 고른 원단(사진 또는 톤 색)으로 채움. 아직인 공간은 패널 색 그대로 비워 둠 */
-.si-fill { position: absolute; inset: 0; display: flex; pointer-events: none; }
-.si-fill span { flex: 1; }
-.space-item.is-empty { box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.22); }
-.space-item.is-empty .si-shade { display: none; }
+.wel-stage input.wel-input::placeholder { color: #b3a696; font-weight: 500; }
+.wel-stage input.wel-input:focus { border-bottom-color: #91401a !important; }
+/* 주황 밑줄 글자 버튼 (실측 화면 "○○에 추가"와 같은 모양) */
+.txt-cta { position: relative; z-index: 10; background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem 0.4rem; font-size: 1.45rem; font-weight: 700; color: #91401a; border-bottom: 1.5px solid #91401a; }
+.wel-go { margin-top: 2.6rem; }
 
 /* 치수 미세 조절 버튼 (넓이 ±1·±10, 높이 ±1·±5) */
 .nudge-row { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.9rem; }
@@ -898,17 +870,22 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 }
 .nudge-btn:active { color: #91401a; border-color: #91401a; }
 
-/* ===== 제안서 화면 (= 견적서). 저장·인쇄되는 이미지와 같은 디자인 ===== */
+/* ===== 공간 화면: 고른 항목만 보여 주는 작업 화면 (금액 없음). 굵은 선 = 공간, 가는 선 = 품목 ===== */
 .dos-stage { width: 100vw; height: 100vh; height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fbf9f5; box-sizing: border-box; }
 .dos-sheet { width: 100%; max-width: 680px; margin: 0 auto; padding: 4.2rem 1.5rem 0; min-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; color: #2b221a; }
 .dos-top { display: flex; justify-content: space-between; align-items: flex-end; }
 .dos-top h1 { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; cursor: pointer; }
-.dos-date { font-size: 0.85rem; color: #8a7a6a; letter-spacing: 0.08em; font-family: Pretendard, sans-serif; }
 .dos-who { margin: 0.9rem 0 2.6rem; font-size: 1.1rem; color: #6f5f4f; }
 .dos-room { border-top: 2px solid #2b221a; padding-top: 1.1rem; margin-bottom: 1.6rem; }
 .dos-rhead { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 1rem; }
 .dos-rname { font-size: 1.5rem; font-weight: 700; }
-.dos-rsum { font-size: 1.2rem; font-weight: 700; }
+/* 공간 이름 옆 작은 "수정·삭제", 아직인 공간은 주황 "구성하기", 공간들 아래 "+ 공간 추가" */
+.dos-racts { margin-left: 0.8rem; white-space: nowrap; }
+.dos-racts button { background: none; border: none; cursor: pointer; padding: 0.4rem 0.35rem; font-family: Pretendard, sans-serif; font-size: 0.8rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
+.dos-todo, .dos-addbtn { background: none; border: none; cursor: pointer; padding: 0 0.1rem 0.3rem; font-weight: 700; color: #91401a; border-bottom: 1.5px solid #91401a; }
+.dos-todo { font-size: 1.15rem; }
+.dos-addbtn { font-size: 1.5rem; }
+.dos-add { padding-bottom: 0.6rem; }
 .dos-item { display: flex; align-items: center; gap: 1.1rem; padding: 0.95rem 0; border-top: 1px solid #e5dcd0; }
 .dos-sw { flex: 0 0 46px; height: 58px; }
 .dos-txt { flex: 1; min-width: 0; }
@@ -916,24 +893,36 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .dos-fab { font-size: 1.15rem; font-weight: 700; margin-top: 0.15rem; line-height: 1.35; }
 .dos-fab em { font-style: normal; font-family: Pretendard, sans-serif; font-weight: 400; font-size: 0.88rem; color: #6f5f4f; margin-left: 0.6rem; }
 .dos-why { font-size: 0.84rem; color: #6f5f4f; margin-top: 0.2rem; }
-.dos-price { font-size: 1.08rem; font-weight: 600; white-space: nowrap; }
-.dos-fee { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5dcd0; padding: 1rem 0; font-size: 0.95rem; color: #6f5f4f; }
-.dos-fee input { width: 7rem; padding: 0.2rem 0.3rem; margin-right: 0.15rem; border: none !important; border-bottom: 1px dashed #8a7a6a !important; background: transparent !important; box-shadow: none !important; border-radius: 0; outline: none; text-align: right; font-size: 1.08rem; font-weight: 600; color: #2b221a; }
-.dos-fee > span:last-child { color: #2b221a; font-family: 'Noto Serif KR', Georgia, serif; font-weight: 600; }
-.dos-sum { display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #2b221a; padding-top: 1.6rem; }
-.dos-sumlabel { font-family: Pretendard, sans-serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em; color: #8a7a6a; padding-bottom: 0.5rem; }
-.dos-amount { font-size: 2.9rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
-.dos-amount small { font-size: 1.1rem; font-weight: 600; margin-left: 0.25rem; }
-.dos-note { margin-top: 1.4rem; font-size: 0.84rem; line-height: 1.8; color: #8a7a6a; }
 .dos-acts { position: sticky; bottom: 0; margin-top: auto; padding: 1.6rem 0 1.5rem; background: linear-gradient(180deg, rgba(251, 249, 245, 0) 0, #fbf9f5 1.2rem); display: flex; justify-content: space-between; align-items: flex-end; }
 .dos-main { display: flex; gap: 2.2rem; }
 .dos-act { background: none; border: none; cursor: pointer; padding: 0.4rem 0.1rem 0.35rem; font-size: 1.3rem; font-weight: 700; color: #2b221a; border-bottom: 1.5px solid rgba(43, 34, 26, 0.75); }
 .dos-act.is-main { color: #91401a; border-color: #91401a; }
 .dos-subacts { display: flex; gap: 1.4rem; }
-.dos-subacts button { background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
-.dos-fee input::-webkit-outer-spin-button, .dos-fee input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.dos-subacts button, .fin-sub button { background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
 
-#trackCurationSection:has(.dos-stage) #brandMark { display: none; }   /* 제안서에는 위에 Re.dam이 있음 */
+/* ===== 최종 제안 (= 견적서): 가운데에 견적서 종이 한 장(저장·인쇄되는 이미지 그대로), 버튼·시공비 입력은 종이 밖 오른쪽 ===== */
+.fin-stage { width: 100vw; height: 100vh; height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fbf9f5; box-sizing: border-box; display: flex; justify-content: center; align-items: flex-start; gap: 3.2rem; padding: 2rem 2rem 2rem 6rem; color: #2b221a; }
+.fin-paper { flex: 0 1 auto; display: flex; flex-direction: column; gap: 1.2rem; }
+/* 종이: A4 세로 한 장이 화면 높이에 꼭 맞게. 그림자 없이 가는 테두리만 */
+.fin-paper img { display: block; height: calc(100vh - 4rem); height: calc(100dvh - 4rem); width: auto; max-width: 100%; border: 1px solid #ddd3c6; box-sizing: border-box; }
+.fin-wait { width: calc((100vh - 4rem) / 1.414); max-width: 100%; height: calc(100vh - 4rem); display: flex; align-items: center; justify-content: center; border: 1px solid #ddd3c6; background: #fffdf9; box-sizing: border-box; font-size: 1rem; color: #8a7a6a; }
+.fin-side { position: sticky; top: 0; flex: 0 0 13.5rem; min-height: calc(100vh - 4rem); min-height: calc(100dvh - 4rem); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.fin-who { font-size: 1.05rem; line-height: 1.6; color: #6f5f4f; margin-bottom: 2.2rem; }
+.fin-main { display: flex; flex-direction: column; align-items: flex-start; gap: 1.3rem; }
+.fin-fee { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 2.6rem; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; color: #8a7a6a; }
+.fin-fee > span:last-child { font-family: 'Noto Serif KR', Georgia, serif; font-size: 1.05rem; font-weight: 600; letter-spacing: 0; color: #2b221a; }
+.fin-fee input { width: 6.5rem; padding: 0.2rem 0.2rem; margin-right: 0.15rem; border: none !important; border-bottom: 1px dashed #8a7a6a !important; background: transparent !important; box-shadow: none !important; border-radius: 0; outline: none; text-align: right; font-size: 1.08rem; font-weight: 600; color: #2b221a; }
+.fin-fee input::-webkit-outer-spin-button, .fin-fee input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fin-sub { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; margin-top: 2.6rem; }
+/* 세로로 긴 화면(탭 세로·휴대폰): 종이를 폭에 맞추고 버튼은 아래로 */
+@media (max-aspect-ratio: 1/1) {
+    .fin-stage { flex-direction: column; align-items: center; gap: 1.6rem; padding: 5rem 1.2rem 2rem; }
+    .fin-paper img { height: auto; width: 100%; }
+    .fin-wait { width: 100%; height: 60vh; }
+    .fin-side { position: static; flex: 0 0 auto; min-height: 0; width: 100%; max-width: 680px; }
+}
+
+#trackCurationSection:has(.dos-stage) #brandMark, #trackCurationSection:has(.fin-stage) #brandMark { display: none; }   /* 공간 화면·최종 제안에는 Re.dam이 따로 있음 */
 
 /* ===== 창 크기 입력 화면 (질문 화면과 같은 분위기) ===== */
 .msr-stage { width: 100vw; height: 100vh; height: 100dvh; box-sizing: border-box; padding: 3rem; background: #fbf9f5; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }

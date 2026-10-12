@@ -1398,7 +1398,23 @@ function fabricToneFill(fabricId, colorName) {
 const TICKET_NOTE_KEY = 'redam_ticket_note_v1';
 function loadTicketNote() { try { return (localStorage.getItem(TICKET_NOTE_KEY) || '').trim(); } catch (e) { return ''; } }
 function saveTicketNote(v) { try { localStorage.setItem(TICKET_NOTE_KEY, String(v || '').trim()); } catch (e) {} }
-function initTicketNoteInput() { const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote(); }
+// 견적서 아래쪽 글: 결제 조건 / 맞춤 제작 안내 / 공급자 정보 (여러 줄). 사업자 정보가 들어가므로 코드에 적지 않고 이 기기에만 저장 (비공개 팩으로 옮김)
+const TICKET_TEXT_KEYS = { pay: 'redam_ticket_pay_v1', custom: 'redam_ticket_custom_v1', supplier: 'redam_ticket_supplier_v1' };
+const TICKET_TEXT_INPUTS = { pay: 'ticketPayInput', custom: 'ticketCustomInput', supplier: 'ticketSupplierInput' };
+function loadTicketText(k) { try { return (localStorage.getItem(TICKET_TEXT_KEYS[k]) || '').trim(); } catch (e) { return ''; } }
+function saveTicketText(k, v) { if (!TICKET_TEXT_KEYS[k]) return; try { localStorage.setItem(TICKET_TEXT_KEYS[k], String(v || '').trim()); } catch (e) {} }
+function initTicketNoteInput() {
+    const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote();
+    Object.keys(TICKET_TEXT_INPUTS).forEach(k => { const t = document.getElementById(TICKET_TEXT_INPUTS[k]); if (t) t.value = loadTicketText(k); });
+}
+// 비공개 팩에 함께 담는 견적서 글 (불러올 때는 팩에 적힌 것만 덮어씀 — 비어 있으면 이 기기 것을 그대로 둠)
+function ticketTextsForPack() { return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier') }; }
+function applyTicketTextsFromPack(t) {
+    if (!t || typeof t !== 'object') return;
+    if (typeof t.note === 'string' && t.note.trim()) saveTicketNote(t.note);
+    Object.keys(TICKET_TEXT_KEYS).forEach(k => { if (typeof t[k] === 'string' && t[k].trim()) saveTicketText(k, t[k]); });
+    initTicketNoteInput();
+}
 
 // 견적서 이미지에 넣을 원단 사진을 미리 불러옴 (없으면 사진 없이 그림)
 function loadImage(url, timeoutMs) {
@@ -1434,7 +1450,7 @@ function ticketData() {
     const d = new Date();
     const pad = n => String(n).padStart(2, '0');
     return {
-        title: custName ? `${custName} 고객님 맞춤 제안` : '고객님 맞춤 제안',
+        recipient: custName ? `${custName} 고객님 귀하` : '고객님 귀하',
         date: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`,
         rooms: rooms.map(r => {
             const items = r.curtains.map(c => {
@@ -1444,9 +1460,10 @@ function ticketData() {
                 if (c.leadBand) opts.push('리드밴드');
                 if (c.hotelFit) opts.push('호텔핏');
                 return {
-                    label: c.label, kind: ticketKindLabel(c), name: ticketFabricName(c, calc), meta: [calc.fabBook || ''].concat(opts).filter(Boolean).join(' · '),
+                    label: c.label, kind: ticketKindLabel(c), name: ticketFabricName(c, calc), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
                     fill: fabricToneFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0,
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
+                    size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || '')
                 };
             });
@@ -1455,20 +1472,25 @@ function ticketData() {
         install: globalInstallFee,
         total: document.getElementById('totalGrandPrice').textContent,
         note: loadTicketNote(),
+        pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'),
         photos: {}
     };
 }
 
-// 견적서 디자인 = 고객 화면 제안서와 같은 모양: 평평한 바탕, 가는 선, 명조 글자, 각진 원단 칸 (둥근 카드·알약 태그 없음)
+// 견적서 디자인 = 문서 한 장: Re.dam · "견적서" 제목 · 받는 분 · 날짜 → 품목 표(품목 / 크기 / 금액, 공간별 묶음) → 시공비 → 합계 → 안내 문구
+// 고객 화면 "최종 제안"이 이 이미지를 종이 한 장처럼 그대로 보여 줌. 톤은 고객 화면과 같음(명조 글자, 굵은 선·가는 선, 각진 원단 칸. 둥근 카드·알약 태그 없음)
 function drawTicket(ctx, data, W) {
     const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
     const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
     const DARK = '#2b221a', MUTED = '#6f5f4f', SOFT = '#8a7a6a', LINE = '#e5dcd0';
-    const PAD = 96, CX = PAD, CW = W - PAD * 2;
-    const START_Y = 288;                            // 첫 공간이 시작되는 높이 (머리글 아래)
-    const SW_W = 74, SW_H = 94;                     // 원단 칸 (세로로 긴 네모)
+    const PAD = 96, CX = PAD, CW = W - PAD * 2, RX = W - PAD;
+    const HEAD_Y = 262;                             // 표 머리(굵은 선) 높이
+    const START_Y = HEAD_Y + 62;                    // 첫 공간이 시작되는 높이 (표 머리 아래)
+    const SW_W = 56, SW_H = 70;                     // 원단 칸 (세로로 긴 네모)
+    const SIZE_R = RX - 190, SIZE_W = 170;          // "크기" 칸: 오른쪽 끝 위치와 폭 (그 오른쪽 190은 "금액" 칸)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
-    const spacing = v => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
+    const canSpace = 'letterSpacing' in ctx;
+    const spacing = v => { if (canSpace) ctx.letterSpacing = v; };
     const hline = (x1, x2, y, color, lw) => { ctx.strokeStyle = color; ctx.lineWidth = lw || 2; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke(); };
     const wrap = (text, maxW) => {
         const lines = []; let cur = '';
@@ -1486,97 +1508,129 @@ function drawTicket(ctx, data, W) {
         return lines;
     };
     const text = (str, x, y, align, color) => { ctx.textAlign = align; ctx.fillStyle = color; ctx.fillText(str, x, y); };
+    // 글자 사이를 띄운 작은 이름표. 오른쪽 맞춤이면 마지막 글자 뒤 간격만큼 밀려 보이므로 그만큼 당겨 줌
+    const label = (str, x, y, align, gap) => {
+        spacing(gap + 'px');
+        text(str, x + ((align === 'right' && canSpace) ? gap : 0), y, align, SOFT);
+        spacing('0px');
+    };
     const won = n => `${n.toLocaleString()}원`;
 
-    // 머리글 (페이지마다 같은 모양)
+    // 머리글 + 표 머리 (페이지마다 같은 모양)
     function hdr() {
         setFont(700, 66, SERIF); text('Re.dam', CX, 158, 'left', DARK);
-        spacing('2px'); setFont(400, 25, SANS); text(data.date, W - PAD, 158, 'right', SOFT); spacing('0px');
-        setFont(400, 30, SERIF); text(data.title, CX, 214, 'left', MUTED);
+        setFont(600, 32, SERIF);
+        if (canSpace) { spacing('18px'); text('견적서', RX + 18, 152, 'right', DARK); spacing('0px'); }
+        else text('견 적 서', RX, 152, 'right', DARK);
+        setFont(400, 30, SERIF); text(data.recipient, CX, 214, 'left', MUTED);
+        setFont(400, 24, SANS); label(data.date, RX, 214, 'right', 2);
+        hline(CX, RX, HEAD_Y, DARK, 3);
+        setFont(600, 20, SANS);
+        label('품목', CX, HEAD_Y + 40, 'left', 3);
+        label('크기', SIZE_R, HEAD_Y + 40, 'right', 3);
+        label('금액', RX, HEAD_Y + 40, 'right', 3);
     }
 
     // 공간 한 묶음의 크기를 미리 계산
     function layoutRoom(room) {
         const px = CX, iw = CW;
-        const tx = px + SW_W + 28;
+        const tx = px + SW_W + 24;
+        const tw = SIZE_R - SIZE_W - 16 - tx;          // 원단 이름·옵션·추천 이유가 쓸 수 있는 폭
         const blocks = room.items.map(it => {
             const photo = (data.photos && data.photos[it.photoKey]) || null;
-            setFont(600, 28, SERIF);
-            const priceW = ctx.measureText(won(it.price)).width;
-            const tw = px + iw - tx - priceW - 28;
-            setFont(700, 30, SERIF);
+            setFont(700, 28, SERIF);
             const lines = wrap(it.name, tw);
             const lastW = ctx.measureText(lines[lines.length - 1] || '').width;
-            setFont(400, 24, SANS);
-            // 책자·옵션은 이름 옆에 작게. 자리가 모자라면 다음 줄로
-            const metaInline = !!it.meta && lastW + 16 + ctx.measureText(it.meta).width <= tw;
+            setFont(400, 22, SANS);
+            // 옵션은 이름 옆에 작게. 자리가 모자라면 다음 줄로
+            const metaInline = !!it.meta && lastW + 14 + ctx.measureText(it.meta).width <= tw;
             const metaLines = (it.meta && !metaInline) ? wrap(it.meta, tw) : [];
-            setFont(400, 23, SANS);
             const rlines = it.reason ? wrap(it.reason, tw) : [];
-            const nameEnd = 86 + (lines.length - 1) * 40;
-            const textEnd = nameEnd + metaLines.length * 34 + rlines.length * 34;
-            const h = Math.max(textEnd + 30, 20 + SW_H + 20);
+            const nameEnd = 74 + (lines.length - 1) * 38;
+            const textEnd = nameEnd + metaLines.length * 32 + rlines.length * 32;
+            const h = Math.max(textEnd + 24, 12 + SW_H + 14);
             return { it, photo, lines, lastW, metaInline, metaLines, rlines, h };
         });
-        const headH = 88;
-        const cardH = headH + blocks.reduce((a, b) => a + b.h, 0) + 6;
+        const headH = 78;
+        const cardH = headH + blocks.reduce((a, b) => a + b.h, 0) + 10;
         return { room, px, iw, tx, blocks, headH, cardH };
     }
-    // 공간 한 묶음을 y 위치에 그림: 위 굵은 선 → 공간 이름·소계 → 품목(가는 선으로 구분)
+    // 공간 한 묶음을 y 위치에 그림: 위 가는 선 → 공간 이름·소계 → 품목(원단 칸 · 종류 · 이름·옵션 · 크기 · 금액)
     function drawRoom(L, y) {
         const { room, px, iw, tx, blocks, headH } = L;
-        hline(px, px + iw, y, DARK, 3);
-        setFont(700, 38, SERIF); text(room.name, px, y + 58, 'left', DARK);
-        setFont(700, 31, SERIF); text(won(room.total), px + iw, y + 58, 'right', DARK);
+        hline(px, px + iw, y, LINE, 2);
+        setFont(700, 34, SERIF); text(room.name, px, y + 54, 'left', DARK);
+        setFont(700, 28, SERIF); text(won(room.total), px + iw, y + 54, 'right', DARK);
         let by = y + headH;
         blocks.forEach(b => {
-            hline(px, px + iw, by, LINE, 2);
             // 원단 칸: 사진이 있으면 가운데를 잘라 넣고, 없으면 톤 색으로 채움
-            ctx.fillStyle = b.it.fill || '#d9cdbb'; ctx.fillRect(px, by + 20, SW_W, SW_H);
+            ctx.fillStyle = b.it.fill || '#d9cdbb'; ctx.fillRect(px, by + 12, SW_W, SW_H);
             if (b.photo) {
                 const sw = b.photo.naturalWidth, sh = b.photo.naturalHeight;
                 const k = Math.max(SW_W / sw, SW_H / sh), cw = SW_W / k, ch = SW_H / k;
-                ctx.drawImage(b.photo, (sw - cw) / 2, (sh - ch) / 2, cw, ch, px, by + 20, SW_W, SW_H);
+                ctx.drawImage(b.photo, (sw - cw) / 2, (sh - ch) / 2, cw, ch, px, by + 12, SW_W, SW_H);
             }
-            spacing('3px'); setFont(600, 20, SANS); text(b.it.kind, tx, by + 44, 'left', SOFT); spacing('0px');
-            setFont(700, 30, SERIF);
-            b.lines.forEach((ln, li) => text(ln, tx, by + 86 + li * 40, 'left', DARK));
-            let ty = by + 86 + (b.lines.length - 1) * 40;
-            setFont(600, 28, SERIF); text(won(b.it.price), px + iw, by + 86, 'right', DARK);
-            setFont(400, 24, SANS);
-            if (b.metaInline) text(b.it.meta, tx + b.lastW + 16, ty, 'left', MUTED);
-            b.metaLines.forEach(ln => { ty += 34; text(ln, tx, ty, 'left', MUTED); });
-            setFont(400, 23, SANS);
-            b.rlines.forEach(ln => { ty += 34; text(ln, tx, ty, 'left', MUTED); });
+            setFont(600, 19, SANS); label(b.it.kind, tx, by + 36, 'left', 3);
+            setFont(700, 28, SERIF);
+            b.lines.forEach((ln, li) => text(ln, tx, by + 74 + li * 38, 'left', DARK));
+            let ty = by + 74 + (b.lines.length - 1) * 38;
+            if (b.it.size) { setFont(400, 23, SANS); text(b.it.size, SIZE_R, by + 74, 'right', MUTED); }
+            setFont(600, 26, SERIF); text(won(b.it.price), px + iw, by + 74, 'right', DARK);
+            setFont(400, 22, SANS);
+            if (b.metaInline) text(b.it.meta, tx + b.lastW + 14, ty, 'left', MUTED);
+            b.metaLines.forEach(ln => { ty += 32; text(ln, tx, ty, 'left', MUTED); });
+            b.rlines.forEach(ln => { ty += 32; text(ln, tx, ty, 'left', SOFT); });
             by += b.h;
         });
     }
-    // 맨 아래 합계 구역(시공비·총 제안 금액·안내 문구): 크기 계산 / 그리기
+    // 맨 아래 구역: 시공비 → 합계 금액 → 안내 줄들(왼쪽 작은 이름표 + 오른쪽 글: 안내 / 결제 조건 / 맞춤 제작 안내) → 가는 선 → 공급자 정보
+    // 결제 조건·맞춤 제작 안내·공급자 정보는 직원 화면에서 적은 글(여러 줄). 비어 있으면 그 줄은 그리지 않음
+    const INFO_X = CX + 190, INFO_W = RX - INFO_X, INFO_LH = 34, INFO_GAP = 14;
+    const paras = (str, maxW) => {
+        const out = [];
+        String(str || '').split(/\r?\n/).forEach(p => { const t = p.trim(); if (t) wrap(t, maxW).forEach(l => out.push(l)); });
+        return out;
+    };
     function layoutFooter() {
-        setFont(400, 23, SANS);
-        const nlines = data.note ? wrap(data.note, CW) : [];
-        const h = (data.install > 0 ? 84 : 0) + 112 + 60 + (nlines.length + 1) * 36 + 70;
-        return { nlines, h };
+        setFont(400, 22, SANS);
+        const rows = [
+            { label: '안내', lines: paras(data.note, INFO_W).concat(['전문 피팅 시공 및 1년 무상 A/S']) },
+            { label: '결제 조건', lines: paras(data.pay, INFO_W) },
+            { label: '맞춤 제작 안내', lines: paras(data.custom, INFO_W) }
+        ].filter(r => r.lines.length);
+        const sup = paras(data.supplier, INFO_W);
+        const rowH = n => n * INFO_LH + INFO_GAP;
+        const h = (data.install > 0 ? 80 : 0) + 118 + 62 + rows.reduce((a, r) => a + rowH(r.lines.length), 0)
+            + (sup.length ? 30 + rowH(sup.length) : 0) + 56;
+        return { rows, sup, h };
     }
     function drawFooter(F, y) {
         if (data.install > 0) {
-            hline(CX, W - PAD, y, LINE, 2);
-            setFont(400, 25, SANS); text('시공 및 설치비', CX, y + 52, 'left', MUTED);
-            setFont(600, 28, SERIF); text(won(data.install), W - PAD, y + 52, 'right', DARK);
-            y += 84;
+            hline(CX, RX, y, LINE, 2);
+            setFont(400, 25, SANS); text('시공 및 설치비', CX, y + 50, 'left', MUTED);
+            setFont(600, 26, SERIF); text(won(data.install), RX, y + 50, 'right', DARK);
+            y += 80;
         }
-        hline(CX, W - PAD, y, DARK, 3);
-        y += 112;
-        spacing('3px'); setFont(600, 22, SANS); text('총 제안 금액 (시공비 포함)', CX, y - 8, 'left', SOFT); spacing('0px');
+        hline(CX, RX, y, DARK, 3);
+        y += 118;
+        setFont(600, 22, SANS); label('합계 금액 (시공비 포함)', CX, y - 8, 'left', 3);
         setFont(600, 30, SERIF);
         const wonW = ctx.measureText('원').width;
-        text('원', W - PAD, y, 'right', DARK);
-        setFont(700, 78, SERIF); text(data.total, W - PAD - wonW - 10, y, 'right', DARK);
-        y += 60;
-        setFont(400, 23, SANS);
-        F.nlines.forEach((ln, i) => text(ln, CX, y + i * 36, 'left', SOFT));
-        y += F.nlines.length * 36;
-        text('전문 피팅 시공 및 1년 무상 A/S', CX, y, 'left', SOFT);
+        text('원', RX, y, 'right', DARK);
+        setFont(700, 78, SERIF); text(data.total, RX - wonW - 10, y, 'right', DARK);
+        y += 62;
+        const infoRow = (name, lines, color) => {
+            setFont(600, 19, SANS); label(name, CX, y, 'left', 3);
+            setFont(400, 22, SANS);
+            lines.forEach((ln, i) => text(ln, INFO_X, y + i * INFO_LH, 'left', color));
+            y += lines.length * INFO_LH + INFO_GAP;
+        };
+        F.rows.forEach(r => infoRow(r.label, r.lines, MUTED));
+        if (F.sup.length) {
+            hline(CX, RX, y - 18, LINE, 2);
+            y += 30;
+            infoRow('공급자', F.sup, MUTED);
+        }
     }
     function pageLabel(i, n, H) {
         if (n < 2) return;
@@ -1624,15 +1678,16 @@ function buildTicketCanvases(opts, preparedData) {
     for (const s of TICKET_SCALES) { const p = planTicket(data, s); if (p.fitsOnePage) { plan = p; break; } }
     if (!plan) plan = planTicket(data, 1);
     const { s, W, PAGE_H, BOTTOM, F, pages } = plan;
+    const pr = opts.pixelRatio || 1;      // 화면에 띄울 때는 더 선명하게(저장·인쇄는 1 = 1080px)
 
     return pages.map((p, pi) => {
         const isLast = pi === pages.length - 1;
         const H = Math.max(PAGE_H, Math.ceil(p.y + (isLast ? F.h : BOTTOM)));   // 아주 긴 방 하나일 때만 늘어남 (화면 좌표)
         const canvas = document.createElement('canvas');
-        canvas.width = TICKET_W; canvas.height = Math.round(H * s);
+        canvas.width = TICKET_W * pr; canvas.height = Math.round(H * s * pr);
         const ctx = canvas.getContext('2d');
-        ctx.scale(s, s);                                                        // 이후는 모두 "늘리거나 줄이기 전" 좌표
-        ctx.fillStyle = '#fbf9f5'; ctx.fillRect(0, 0, W, H);                    // 고객 화면과 같은 바탕색 (평평하게)
+        ctx.scale(s * pr, s * pr);                                                        // 이후는 모두 "늘리거나 줄이기 전" 좌표
+        ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, W, H);                    // 종이 색 (고객 화면 바탕 #fbf9f5보다 조금 밝게 → 화면에서 종이 한 장으로 보임)
         ctx.textBaseline = 'alphabetic';
         const t = drawTicket(ctx, data, W);
         t.hdr();
@@ -1661,6 +1716,7 @@ async function makeTicketBlobs(opts) {
     } catch (e) {}
     const data = await loadTicketPhotos(ticketData());
     const canvases = buildTicketCanvases(opts, data);
+    if (opts.canvasOnly) return { canvases, blobs: [], type: null };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
     const type = opts.type || 'image/png';
     const blobs = await Promise.all(canvases.map(c => new Promise(res => c.toBlob(res, type, 0.95))));
     return { canvases, blobs, type };

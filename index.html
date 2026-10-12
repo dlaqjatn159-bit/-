@@ -152,6 +152,19 @@
                                     <span class="text-amber-100/80 whitespace-nowrap">견적서 안내 문구:</span>
                                     <input type="text" id="ticketNoteInput" maxlength="60" placeholder="예: 제작 약 7일 · 시공 약 2시간" class="flex-1 min-w-0 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-amber-100/30" oninput="saveTicketNote(this.value)">
                                 </div>
+                                <!-- 견적서 아래쪽에 들어가는 글 (이 기기에만 저장, 비공개 팩으로 옮겨짐). 비워 두면 그 줄은 견적서에 안 나옴 -->
+                                <div class="space-y-1">
+                                    <span class="text-amber-100/80">견적서 결제 조건:</span>
+                                    <textarea id="ticketPayInput" rows="2" maxlength="300" placeholder="예: 계약금 ○○% 입금 후 제작 시작, 잔금은 시공 당일&#10;○○은행 000-000-000000 (예금주)" class="w-full px-2 py-1 border rounded-lg text-xs font-semibold outline-none" oninput="saveTicketText('pay', this.value)"></textarea>
+                                </div>
+                                <div class="space-y-1">
+                                    <span class="text-amber-100/80">견적서 맞춤 제작 안내:</span>
+                                    <textarea id="ticketCustomInput" rows="2" maxlength="300" placeholder="예: 맞춤 제작 상품으로, 제작을 시작한 뒤에는 변경·취소가 어렵습니다." class="w-full px-2 py-1 border rounded-lg text-xs font-semibold outline-none" oninput="saveTicketText('custom', this.value)"></textarea>
+                                </div>
+                                <div class="space-y-1">
+                                    <span class="text-amber-100/80">견적서 공급자 정보:</span>
+                                    <textarea id="ticketSupplierInput" rows="2" maxlength="300" placeholder="예: Re.dam · 대표 ○○○ · 사업자등록번호 000-00-00000&#10;주소 · 연락처 010-0000-0000" class="w-full px-2 py-1 border rounded-lg text-xs font-semibold outline-none" oninput="saveTicketText('supplier', this.value)"></textarea>
+                                </div>
                             </div>
 
                             <div class="flex justify-between text-slate-200 border-t border-amber-900/30 pt-1.5">
@@ -459,6 +472,10 @@
         <!-- v2 뒤로가기 버튼 -->
         <button id="v2FloatingPrevBtn" onclick="concierge.prevStep()" title="이전 단계">
             <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <!-- v2 홈 버튼: 제안서(공간 화면)에서만 보임 → 첫 화면(고객 정보) -->
+        <button id="v2HomeBtn" onclick="concierge.goHome()" title="처음 화면" aria-label="처음 화면">
+            <i class="fa-solid fa-house"></i>
         </button>
 
         <!-- v2 풀스크린 뷰포트 -->
