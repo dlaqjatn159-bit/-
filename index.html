@@ -88,8 +88,11 @@
     <section id="trackExpressSection" class="hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 pt-6 sm:pt-8 pb-safe">
 
         <div id="staffBanner">
-            <span><i class="fa-solid fa-lock-open"></i> 직원 모드 · 원가가 표시됩니다 (5분간 조작이 없으면 자동 종료)</span>
-            <button onclick="exitStaffMode()" style="text-decoration: underline;">고객 모드로 나가기</button>
+            <span><i class="fa-solid fa-lock-open"></i> 직원 모드 · 원가가 표시됩니다 (<span id="lockHint">15분 동안 손대지 않으면 잠깁니다</span>)</span>
+            <span class="staff-banner-acts">
+                <button onclick="lockStaff()" style="text-decoration: underline;">지금 잠그기</button>
+                <button onclick="exitStaffMode()" style="text-decoration: underline;">고객 모드로 나가기</button>
+            </span>
         </div>
         
         <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
@@ -461,6 +464,16 @@
                     구버전 데이터 삭제
                 </button>
             </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[11px] font-semibold text-slate-600">자동 잠금 (이 기기만)</span>
+                <div id="lockSeg" class="lock-seg">
+                    <button type="button" data-min="5" onclick="setLockMin(5)">5분</button>
+                    <button type="button" data-min="15" onclick="setLockMin(15)">15분</button>
+                    <button type="button" data-min="30" onclick="setLockMin(30)">30분</button>
+                    <button type="button" data-min="0" onclick="setLockMin(0)">끄기</button>
+                </div>
+                <span class="text-[10px] text-slate-400">손대지 않고 이 시간이 지나면 하던 화면 위에 잠금 화면이 덮입니다. PIN을 넣으면 그 자리에서 이어서 할 수 있어요.</span>
+            </div>
             <p class="text-[10px] text-slate-400">백업 파일에는 원가와 상담 기록이 들어 있습니다. 고객 이름·연락처도 들어 있어요. 메신저·공개 저장소에 올리지 말고 본인만 보는 곳에 보관하세요.</p>
         </footer>
 
@@ -544,6 +557,12 @@
         <span id="toastMsg">처리되었습니다.</span>
     </div>
 
+    <!-- 자동 잠금 30초 전 알림 (직원 화면) -->
+    <div id="lockWarn" class="hidden" role="status">
+        <span><b id="lockWarnSec">30</b>초 뒤 잠깁니다</span>
+        <button type="button" onclick="markActivity(); idleTick();">계속 쓰기</button>
+    </div>
+
     <!-- 인쇄/PDF 전용: 견적서 이미지를 여기에 담아 인쇄합니다 -->
     <div id="printSheet"><img id="printImg" alt="견적서"></div>
 
@@ -556,7 +575,7 @@
             <input id="pinInput2" class="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="8" style="display:none" onkeydown="if(event.key==='Enter'){RedamAuth.submit()}">
             <div id="pinError" class="pin-error"></div>
             <div class="pin-actions">
-                <button onclick="RedamAuth.cancel()">취소</button>
+                <button id="pinCancelBtn" onclick="RedamAuth.cancel()">취소</button>
                 <button class="primary" onclick="RedamAuth.submit()">확인</button>
             </div>
         </div>

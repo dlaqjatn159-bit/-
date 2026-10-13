@@ -594,6 +594,24 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     border: 1.5px solid var(--brand-border); background: #fff; color: var(--brand-dark);
 }
 .pin-actions button.primary { background: var(--brand-accent); border-color: var(--brand-accent); color: #fff; }
+/* 잠금 화면: 하던 화면 위에 덮기만 함. 뒤 화면(원가)이 읽히지 않게 더 흐리게, 흐림을 못 쓰는 브라우저에서는 불투명하게 */
+.pin-overlay.is-lock { background: rgba(27, 20, 15, 0.6); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .pin-overlay.is-lock { background: rgba(27, 20, 15, 0.97); } }
+
+/* 자동 잠금 30초 전 알림 */
+#lockWarn {
+    position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 250;
+    display: flex; align-items: center; gap: 0.8rem; white-space: nowrap;
+    background: var(--brand-dark); color: var(--brand-bg); padding: 0.65rem 1rem; border-radius: 12px;
+    font-size: 0.85rem; font-weight: 600; box-shadow: 0 8px 24px rgba(43, 34, 26, 0.25);
+}
+#lockWarn.hidden { display: none; }
+#lockWarn button { border: 1px solid currentColor; border-radius: 8px; padding: 0.2rem 0.7rem; font-size: 0.8rem; font-weight: 700; }
+/* 자동 잠금 시간 고르기 (5분 / 15분 / 30분 / 끄기) */
+.lock-seg { display: inline-flex; border: 1px solid var(--brand-border); border-radius: 10px; overflow: hidden; background: #fff; }
+.lock-seg button { padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 700; color: var(--brand-dark); border-right: 1px solid var(--brand-border); }
+.lock-seg button:last-child { border-right: 0; }
+.lock-seg button[aria-pressed="true"] { background: var(--brand-dark); color: var(--brand-bg); }
 
 /* 직원 모드 표시 띠 */
 #staffBanner {
@@ -609,7 +627,9 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.8rem;
 }
+.staff-banner-acts { display: flex; gap: 1rem; flex-shrink: 0; white-space: nowrap; }
 
 /* 로고 Re.dam: 명조 보통 굵기, 색은 점에만 (밝은 바탕 흙빛 / 어두운 바탕·사진 위는 밝은 흙빛). 그러데이션·굵게·늘이기 금지 */
 .logo-dot { font-style: normal; color: #8a4a22; }

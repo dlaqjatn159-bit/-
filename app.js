@@ -100,6 +100,7 @@ function enterStaffMode() {
 
 function exitStaffMode(toastMsg, goToProposal) {
     stopIdleWatch();
+    if (staffLocked) { staffLocked = false; RedamAuth.dismiss(); }      // 잠긴 채로 나갈 때는 잠금 창도 닫음
     appMode = 'customer';
     document.body.dataset.mode = 'customer';
     Costing.state.enabled = false;
@@ -162,7 +163,7 @@ function startNewConsultation() {
 // ==============================================================
 const RedamAuth = (function() {
     let taps = 0, tapTimer = null;
-    let mode = 'verify';        // 'verify' | 'setup' | 'change'
+    let mode = 'verify';        // 'verify' | 'setup' | 'change' | 'unlock'(잠금 화면)
     let fails = 0, lockedUntil = 0;
 
     function el(id) { return document.getElementById(id); }
@@ -184,15 +185,18 @@ const RedamAuth = (function() {
         el('pinInput').value = ''; el('pinInput2').value = ''; el('pinError').textContent = '';
         const two = (m === 'setup' || m === 'change');
         el('pinInput2').style.display = two ? 'block' : 'none';
-        el('pinTitle').textContent = m === 'verify' ? '직원 모드' : (m === 'setup' ? '직원 PIN 만들기' : 'PIN 변경');
-        el('pinDesc').textContent = m === 'verify' ? 'PIN을 입력해 주세요.'
-            : '숫자 4~8자리를 정하고 한 번 더 입력해 주세요. (분실하면 복구할 수 없으니 꼭 기억해 두세요)';
+        const lock = (m === 'unlock');
+        el('pinTitle').textContent = lock ? '잠겨 있어요' : (m === 'verify' ? '직원 모드' : (m === 'setup' ? '직원 PIN 만들기' : 'PIN 변경'));
+        el('pinDesc').textContent = lock ? 'PIN을 넣으면 하던 화면으로 돌아갑니다.' : (m === 'verify' ? 'PIN을 입력해 주세요.'
+            : '숫자 4~8자리를 정하고 한 번 더 입력해 주세요. (분실하면 복구할 수 없으니 꼭 기억해 두세요)');
         el('pinInput').placeholder = two ? '새 PIN' : '••••';
         el('pinInput2').placeholder = '새 PIN 확인';
+        el('pinCancelBtn').textContent = lock ? '고객 화면으로' : '취소';
+        el('pinModal').classList.toggle('is-lock', lock);          // 잠금 화면일 때는 뒤 화면(원가)이 읽히지 않게 더 흐리게
         el('pinModal').classList.remove('hidden');
         setTimeout(() => el('pinInput').focus(), 50);
     }
-    function closeModal() { el('pinModal').classList.add('hidden'); el('pinInput').value = ''; el('pinInput2').value = ''; }
+    function closeModal() { mode = 'verify'; el('pinModal').classList.add('hidden'); el('pinModal').classList.remove('is-lock'); el('pinInput').value = ''; el('pinInput2').value = ''; }
 
     return {
         // 로고를 2초 안에 5번 탭하면 PIN 창을 연다 (고객이 우연히 누르는 것을 방지)
@@ -205,15 +209,20 @@ const RedamAuth = (function() {
         },
         requestStaff: function() { openModal(loadStored() ? 'verify' : 'setup'); },
         changePin: function() { openModal('change'); },
-        cancel: closeModal,
+        requestUnlock: function() { openModal('unlock'); },
+        dismiss: closeModal,
+        // 잠금 화면의 "고객 화면으로"는 창만 닫지 않고 고객 화면으로 나감
+        cancel: function() { const wasLock = (mode === 'unlock'); closeModal(); if (wasLock) exitStaffMode(); },
         submit: async function() {
             const pin = el('pinInput').value.trim();
             const err = el('pinError');
-            if (mode === 'verify') {
+            if (mode === 'verify' || mode === 'unlock') {
                 if (Date.now() < lockedUntil) { err.textContent = `잠시 후 다시 시도해 주세요. (${Math.ceil((lockedUntil - Date.now()) / 1000)}초)`; return; }
                 const st = loadStored();
                 if (st && (await hashPin(pin, st.salt)) === st.hash) {
-                    fails = 0; closeModal(); enterStaffMode();
+                    const wasLock = (mode === 'unlock');
+                    fails = 0; closeModal();
+                    if (wasLock) unlockStaff(); else enterStaffMode();      // 잠금 해제는 화면을 다시 그리지 않음 → 하던 화면 그대로
                 } else {
                     fails++;
                     el('pinInput').value = '';
@@ -235,21 +244,62 @@ const RedamAuth = (function() {
 })();
 window.RedamAuth = RedamAuth;
 
-// 일정 시간 조작이 없으면 자동으로 고객 화면으로 복귀
-const IDLE_LIMIT_MS = 5 * 60 * 1000;
-let idleTimer = null, lastActivity = Date.now();
+// 자동 잠금: 일정 시간 손대지 않으면 고객 화면으로 나가지 않고, 하던 화면 위에 잠금 화면(PIN)을 덮음. PIN을 넣으면 그 자리에서 이어서 씀
+//  - 잠금 시간은 기기마다 따로 (5분 / 15분 / 30분 / 끄기, 처음 값 15분). 이 브라우저에만 저장하고 비공개 팩에는 넣지 않음
+//  - 잠기기 30초 전에 "곧 잠깁니다 · 계속 쓰기" 알림
+const LOCK_MIN_KEY = 'redam_lock_min_v1';
+const LOCK_MIN_CHOICES = [5, 15, 30, 0];        // 0 = 끄기
+const LOCK_WARN_MS = 30 * 1000;
+let idleTimer = null, lastActivity = Date.now(), staffLocked = false;
+function loadLockMin() {
+    try { const v = localStorage.getItem(LOCK_MIN_KEY), n = (v === null) ? 15 : parseInt(v, 10); return LOCK_MIN_CHOICES.includes(n) ? n : 15; } catch (e) { return 15; }
+}
+function setLockMin(n) {
+    try { localStorage.setItem(LOCK_MIN_KEY, String(n)); } catch (e) {}
+    renderLockSetting();
+}
+function renderLockSetting() {
+    const min = loadLockMin();
+    document.querySelectorAll('#lockSeg button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.min) === min)));
+    const hint = document.getElementById('lockHint');
+    if (hint) hint.textContent = min ? `${min}분 동안 손대지 않으면 잠깁니다` : '이 기기는 자동으로 잠기지 않습니다';
+}
 function markActivity() { lastActivity = Date.now(); }
+function idleTick() {
+    if (appMode !== 'staff' || staffLocked) return;
+    const warn = document.getElementById('lockWarn');
+    const limit = loadLockMin() * 60 * 1000, left = limit - (Date.now() - lastActivity);
+    if (!limit || left > LOCK_WARN_MS) { if (warn) warn.classList.add('hidden'); return; }
+    if (left <= 0) { lockStaff(); return; }
+    if (warn) { document.getElementById('lockWarnSec').textContent = Math.ceil(left / 1000); warn.classList.remove('hidden'); }
+}
 function startIdleWatch() {
     lastActivity = Date.now();
     ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, markActivity, true));
     clearInterval(idleTimer);
-    idleTimer = setInterval(() => {
-        if (appMode === 'staff' && Date.now() - lastActivity > IDLE_LIMIT_MS) exitStaffMode('자동으로 고객 화면으로 돌아왔습니다.');
-    }, 10000);
+    idleTimer = setInterval(idleTick, 1000);
+    renderLockSetting();
 }
 function stopIdleWatch() {
     clearInterval(idleTimer);
     ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.removeEventListener(ev, markActivity, true));
+    setStaffLockedUi(false);
+}
+// 잠금 중에는 뒤의 직원 화면을 누르거나 키보드로 고칠 수 없게 함 (화면은 PIN 창이 흐리게 덮음)
+function setStaffLockedUi(on) {
+    const sec = document.getElementById('trackExpressSection'); if (sec) sec.inert = on;
+    const warn = document.getElementById('lockWarn'); if (warn) warn.classList.add('hidden');
+}
+function lockStaff() {
+    if (appMode !== 'staff' || staffLocked) return;
+    staffLocked = true;
+    setStaffLockedUi(true);
+    RedamAuth.requestUnlock();
+}
+function unlockStaff() {
+    staffLocked = false;
+    setStaffLockedUi(false);
+    lastActivity = Date.now();
 }
 
 // ==============================================================
