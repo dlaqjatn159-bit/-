@@ -1547,7 +1547,11 @@ function drawTicket(ctx, data, W) {
 
     // 머리글 + 표 머리 (페이지마다 같은 모양)
     function hdr() {
-        setFont(700, 66, SERIF); text('Re.dam', CX, 158, 'left', DARK);
+        // 로고: 명조 보통 굵기, 점만 흙빛 (세 조각으로 나눠 그림)
+        setFont(400, 66, SERIF); spacing('2.3px');
+        const wRe = ctx.measureText('Re').width, wDot = ctx.measureText('Re.').width;
+        text('Re', CX, 158, 'left', DARK); text('.', CX + wRe, 158, 'left', '#8a4a22'); text('dam', CX + wDot, 158, 'left', DARK);
+        spacing('0px');
         setFont(600, 32, SERIF);
         if (canSpace) { spacing('18px'); text('견적서', RX + 18, 152, 'right', DARK); spacing('0px'); }
         else text('견 적 서', RX, 152, 'right', DARK);

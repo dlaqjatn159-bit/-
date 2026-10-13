@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#281c15">
     <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="favicon-32.png">
     <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="application-name" content="Re.dam 견적기">
     <!-- Tailwind CSS & Custom Theme Config -->
@@ -93,7 +94,7 @@
         
         <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-[240px]">
-                <span class="font-serif-kr font-bold text-sm sm:text-base text-slate-800 tracking-tight flex-shrink-0">Re.dam</span>
+                <span class="font-serif-kr font-normal text-sm sm:text-base text-slate-900 flex-shrink-0">Re<i class="logo-dot">.</i>dam</span>
                 <input type="text" id="expressCustName" value="" placeholder="고객명/현장명 입력" class="w-full max-w-md px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/70" oninput="document.getElementById('custName').value=this.value; syncCustomerData()">
                 <input type="tel" id="expressCustPhone" value="" inputmode="numeric" placeholder="연락처" class="w-36 flex-shrink-0 px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/70" oninput="this.value=formatPhone(this.value); document.getElementById('custPhone').value=this.value">
             </div>
@@ -483,7 +484,7 @@
         <main id="v2Viewport"></main>
 
         <!-- 모든 고객 화면에 항상 있는 브랜드 표시. 5번 연속 탭하면 직원 PIN 창이 열립니다. -->
-        <div id="brandMark" onclick="window.concierge.staffTap()">Re.dam</div>
+        <div id="brandMark" onclick="window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</div>
 
         <!-- v2 전용 가상 키패드 시트 -->
         <div id="v2VirtualKeypadSheet" class="keypad-sheet">

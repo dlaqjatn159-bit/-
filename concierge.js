@@ -387,7 +387,7 @@
             case "0-Welcome": {
                 const esc = v => String(v || '').replace(/"/g, '&quot;');
                 html += '<div class="ambient-stage ask-stage wel-stage">';
-                html += '<h1 class="wel-brand font-serif-kr" onclick="window.concierge.staffTap()">Re.dam</h1>';
+                html += '<h1 class="wel-brand font-serif-kr" onclick="window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</h1>';
                 html += '<p class="wel-sub font-serif-kr">빛과 결을 채워 넣는 비스포크 큐레이션</p>';
                 html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)">`;
                 html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)">`;
@@ -632,7 +632,7 @@
                 });
 
                 html += '<div class="dos-stage"><div class="dos-sheet">';
-                html += '<div class="dos-top font-serif-kr"><h1 onclick="window.concierge.staffTap()">Re.dam</h1></div>';
+                html += '<div class="dos-top font-serif-kr"><h1 onclick="window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</h1></div>';
                 html += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${currentCust} 고객님` : '고객님'}의 공간</p>`;
                 html += roomsHtml;
                 // 다음 공간 자리: 공간 이름과 같은 자리·크기의 주황 밑줄 글자
@@ -765,7 +765,7 @@
         if (n > 1) h += `<span class="deck-count2" aria-label="${n}개 색 중 ${curIdx + 1}번째"><b>${curIdx + 1}</b><i></i><em>${n}</em></span>`;
         h += '</div>';
         // 마지막 칸에만 Re.dam 표시 (오른쪽 아래, 뒤 색 띠와 겹치지 않게 앞장 안에). 5번 누르면 직원 화면
-        if (isLast) h += '<div class="card-brand" onclick="event.stopPropagation(); window.concierge.staffTap()">Re.dam</div>';
+        if (isLast) h += '<div class="card-brand" onclick="event.stopPropagation(); window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</div>';
         h += '</div>';
         if (n > 1) {
             // 뒤 색 띠: 누르면 그 색이 앞으로 나옴 (앞 색을 한 번 더 누르면 선택)
