@@ -71,6 +71,9 @@ function switchMainTrack(track) {
         if (expressCust) expressCust.value = custVal;
         const expressPhone = document.getElementById('expressCustPhone');
         if (expressPhone) expressPhone.value = ((document.getElementById('custPhone') || {}).value || '');
+        const expressFee = document.getElementById('expressInstallFee');
+        if (expressFee) expressFee.value = globalInstallFee;
+        renderSideCust();
         renderRooms();
         renderDbTable();
         updatePrivateStatus();
@@ -94,6 +97,7 @@ function enterStaffMode() {
     document.body.dataset.mode = 'staff';
     if (window.concierge) window.concierge.syncToMaster();   // 고객이 구성한 내용을 직원 화면으로 가져옴
     Costing.state.enabled = Costing.hasData();
+    showStaffView('consult');
     switchMainTrack('express');
     startIdleWatch();
 }
@@ -124,6 +128,25 @@ function presentToCustomer() {
     exitStaffMode(null, true);
 }
 
+// 직원 화면 메뉴(왼쪽 사이드바 · 좁은 화면은 아래 탭바): 상담 / 서류 / 상담 기록 / 원단 / 설정. 내용은 모두 그려 두고 보이는 묶음만 바꿈
+function showStaffView(view) {
+    document.querySelectorAll('.staff-nav button').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    document.querySelectorAll('.staff-view').forEach(s => s.classList.toggle('on', s.id === 'view-' + view));
+    window.scrollTo(0, 0);
+}
+// 원단 메뉴의 탭 4개: 원단 목록(list) · 분류(tag) · 색상(color) · 사진(photo)
+function showFabricTab(tab) {
+    document.querySelectorAll('.staff-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+    document.querySelectorAll('.staff-pane').forEach(p => p.classList.toggle('on', p.id === 'fabricTab-' + tab));
+}
+// 사이드바 머리의 "지금 고객 이름"
+function renderSideCust() {
+    const el = document.getElementById('sideCustName');
+    if (!el) return;
+    const name = ((document.getElementById('custName') || {}).value || '').trim();
+    el.textContent = name ? `${name} 고객님` : '이름 없는 상담';
+}
+
 // 전화번호를 입력하는 대로 010-1234-5678 모양으로 맞춤 (숫자만 남기고 하이픈)
 function formatPhone(v) {
     const d = String(v || '').replace(/\D/g, '').slice(0, 11);
@@ -145,13 +168,15 @@ function startNewConsultation() {
     archiveConsultation(collectConsultation(), Date.now());
     clearDraft();
     initDefaultRooms();
-    globalInstallFee = 30000;
+    collapsedRooms.clear(); openCurtainDetails.clear();
+    globalInstallFee = loadDefaultInstallFee();
     globalVatOption = 'consumer';
     const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
     const vat = document.getElementById('expressVatOption'); if (vat) vat.value = globalVatOption;
     if (window.concierge) window.concierge.resetAll();
     const expressCust = document.getElementById('expressCustName'); if (expressCust) expressCust.value = '';
     const expressPhone = document.getElementById('expressCustPhone'); if (expressPhone) expressPhone.value = '';
+    renderSideCust();
     renderRooms();
     calculateAll();
     renderHistory();
@@ -395,6 +420,7 @@ function archiveConsultation(snap, updatedAt) {
 
 function applySnapshot(snap) {
     roomIdCounter = 1; curtainIdCounter = 100;
+    collapsedRooms.clear(); openCurtainDetails.clear();
     rooms = snap.rooms.map(r => Object.assign({}, r, {
         id: roomIdCounter++,
         curtains: r.curtains.map(c => Object.assign({}, c, { id: curtainIdCounter++ }))
@@ -405,6 +431,7 @@ function applySnapshot(snap) {
     set('custName', snap.name || ''); set('expressCustName', snap.name || '');
     set('custPhone', snap.phone || ''); set('expressCustPhone', snap.phone || '');
     set('expressInstallFee', globalInstallFee); set('expressVatOption', globalVatOption);
+    renderSideCust();
     calculateAll();
     if (window.concierge) window.concierge.loadFromMaster(rooms, globalInstallFee);
 }
@@ -429,6 +456,7 @@ function renderHistory() {
     if (!box) return;
     const list = loadHistory();
     const cnt = document.getElementById('historyCount'); if (cnt) cnt.textContent = list.length;
+    const nav = document.getElementById('historyNavCount'); if (nav) nav.textContent = list.length || '';
     const full = document.getElementById('historyFullNotice'); if (full) full.classList.toggle('hidden', !__historyUnsaved);
     if (list.length === 0) { box.innerHTML = '<div class="text-xs text-slate-400 py-3 text-center">저장된 상담이 없습니다.</div>'; return; }
     const pad = n => String(n).padStart(2, '0');
@@ -488,18 +516,6 @@ async function updateOfflineStatus() {
 // ==============================================================
 // 원단 분류(톤·분위기) 편집 / 원단 사진 확인
 // ==============================================================
-function toggleTagSection(forceOpen) {
-    const content = document.getElementById('tagCollapsible');
-    const chevron = document.getElementById('tagAccordionChevron');
-    const statusText = document.getElementById('tagAccordionStatus');
-    if (!content) return;
-    const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
-    content.classList.toggle('hidden', !shouldOpen);
-    if (chevron) chevron.style.transform = shouldOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-    if (statusText) statusText.textContent = shouldOpen ? '접기' : '펼치기';
-    if (shouldOpen) renderTagEditor();
-}
-
 function renderTagEditor() {
     const box = document.getElementById('tagRows');
     if (!box) return;
@@ -582,17 +598,6 @@ function renderTagEditor() {
 
 // ---- 원단 색상 관리 ----
 let __colorSel = '';
-function toggleColorSection(forceOpen) {
-    const content = document.getElementById('colorCollapsible');
-    const chevron = document.getElementById('colorAccordionChevron');
-    const statusText = document.getElementById('colorAccordionStatus');
-    if (!content) return;
-    const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
-    content.classList.toggle('hidden', !shouldOpen);
-    if (chevron) chevron.style.transform = shouldOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-    if (statusText) statusText.textContent = shouldOpen ? '접기' : '펼치기';
-    if (shouldOpen) renderColorEditor();
-}
 function renderColorEditor() {
     const cnt = document.getElementById('colorCount');
     if (cnt) cnt.textContent = `${Object.keys(colorsStore()).filter(id => FABRIC_DB.some(f => f.id === id)).length}개 원단`;
@@ -779,12 +784,12 @@ function toggleMarginSection(forceOpen) {
     if (shouldOpen) {
         content.classList.remove('hidden');
         if (chevron) chevron.style.transform = 'rotate(180deg)';
-        if (statusText) statusText.textContent = '접기';
+        if (statusText) statusText.textContent = '가리기';
         if (badge) badge.classList.remove('hidden');
     } else {
         content.classList.add('hidden');
         if (chevron) chevron.style.transform = 'rotate(0deg)';
-        if (statusText) statusText.textContent = '펼치기';
+        if (statusText) statusText.textContent = '보기';
         if (badge) badge.classList.add('hidden');
     }
 }
@@ -795,6 +800,7 @@ function syncCustomerData() {
     const expressCust = document.getElementById('expressCustName');
 
     if (expressCust && expressCust.value !== custName) expressCust.value = custName;
+    renderSideCust();
 }
 
 function updateGlobalInstallFee(val) {
@@ -863,7 +869,10 @@ function addRoom() {
 }
 
 function removeRoom(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room || !confirm(`'${room.name}' 공간을 삭제할까요?`)) return;
     rooms = rooms.filter(r => r.id !== roomId);
+    collapsedRooms.delete(roomId);
     renderRooms();
     calculateAll();
     showToast("공간이 삭제되었습니다.");
@@ -1021,6 +1030,8 @@ function updateCurtainData(roomId, curtainId, key, val) {
         renderRooms();
     }
     if (c.fabricId !== prevFabricId) c.colorName = '';
+    const optEl = document.getElementById(`curtainOpt_${c.id}`);
+    if (optEl) optEl.textContent = curtainOptionSummary(c);
     calculateAll();
 }
 
@@ -1078,6 +1089,28 @@ function changeCurtainCategoryPreset(roomId, curtainId, preset) {
     calculateAll();
 }
 
+// 상담 화면의 공간 카드 접기: 접으면 공간 이름 · 종류 · 소계만 보임 (공간이 많을 때 전체를 한눈에). 화면에서만 쓰는 상태라 저장하지 않음
+const collapsedRooms = new Set();
+function toggleRoomCollapse(roomId) {
+    if (collapsedRooms.has(roomId)) collapsedRooms.delete(roomId); else collapsedRooms.add(roomId);
+    renderRooms();
+    calculateAll();
+}
+function setAllRoomsCollapsed(on) {
+    collapsedRooms.clear(); openCurtainDetails.clear();
+    if (on) rooms.forEach(r => collapsedRooms.add(r.id));
+    renderRooms();
+    calculateAll();
+}
+// 커튼 카드의 "세부 옵션"(가공 형태·설치 기구·바닥 간격·부자재 품명·자당 단가·형상기억·리드밴드·호텔핏): 자주 안 바꾸는 칸이라 접어 둠
+// 펼쳐 둔 커튼은 화면을 다시 그려도 펼쳐진 채로 두고, 접힌 줄에는 지금 값(설치 기구 + 추가한 옵션)을 짧게 보여 줌
+const openCurtainDetails = new Set();
+function setCurtainDetailsOpen(curtainId, open) { if (open) openCurtainDetails.add(curtainId); else openCurtainDetails.delete(curtainId); }
+const INSTALL_TYPE_LABELS = { rail: '기본 레일', rail_2line: '패널 레일 (2줄)', rail_3line: '패널 레일 (3줄)', rod35: '35파이 봉', rod25: '25파이 봉' };
+function curtainOptionSummary(c) {
+    return '· ' + [INSTALL_TYPE_LABELS[c.installType] || c.hwName || '', c.shapeFee > 0 ? '형상기억' : '', c.leadBand ? '리드밴드' : '', c.hotelFit ? '호텔핏' : ''].filter(Boolean).join(', ');
+}
+
 function renderRooms() {
     const container = document.getElementById('roomsContainer');
     if (!container) return;
@@ -1091,9 +1124,35 @@ function renderRooms() {
     }
 
     const books = [...new Set(FABRIC_DB.map(f => f.book))];
+    const escText = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+    if (rooms.length > 1) {
+        const allCollapsed = rooms.every(r => collapsedRooms.has(r.id));
+        const bar = document.createElement('div');
+        bar.className = "flex justify-end";
+        bar.innerHTML = `<button type="button" onclick="setAllRoomsCollapsed(${!allCollapsed})" class="text-xs font-bold text-slate-500 hover:text-slate-800 underline underline-offset-4 px-1">${allCollapsed ? '모두 펼치기' : '모두 접기'}</button>`;
+        container.appendChild(bar);
+    }
 
     rooms.forEach((room, roomIndex) => {
         const roomCard = document.createElement('div');
+
+        if (collapsedRooms.has(room.id)) {
+            // 접힌 공간: 한 줄 전체가 "펼치기" 버튼
+            roomCard.className = "bg-white rounded-2xl shadow-sm border border-slate-200 w-full min-w-0";
+            roomCard.innerHTML = `
+                <button type="button" onclick="toggleRoomCollapse(${room.id})" aria-expanded="false" class="w-full flex items-center gap-2.5 p-3.5 sm:px-5 sm:py-4 text-left rounded-2xl hover:bg-slate-50 transition">
+                    <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-900 text-xs flex items-center justify-center font-bold flex-shrink-0">${roomIndex + 1}</span>
+                    <span class="font-bold text-slate-800 text-sm sm:text-base truncate flex-shrink-0 max-w-[40%]">${escText(room.name)}</span>
+                    <span class="text-[11px] sm:text-xs text-slate-500 truncate flex-1 min-w-0">${escText(room.curtains.map(c => c.label).join(' + '))}</span>
+                    <span class="font-black text-amber-800 text-sm sm:text-base font-mono whitespace-nowrap flex-shrink-0" id="roomSubtotal_${room.id}">0원</span>
+                    <span class="whitespace-nowrap flex-shrink-0 text-xs font-bold text-slate-500 flex items-center gap-1">펼치기 <i class="fa-solid fa-chevron-down text-[10px]"></i></span>
+                </button>
+            `;
+            container.appendChild(roomCard);
+            return;
+        }
+
         roomCard.className = "bg-white rounded-2xl p-3.5 sm:p-5 md:p-6 shadow-sm border border-slate-200 space-y-3 sm:space-y-4 relative w-full min-w-0";
 
         let curtainsHtml = "";
@@ -1177,32 +1236,6 @@ function renderRooms() {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 bg-amber-50/40 p-2 rounded-lg border border-amber-100 ${isBlind ? 'hidden' : ''}">
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">가공 형태</label>
-                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'pleatType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
-                                <option value="나비주름" ${c.pleatType==="나비주름"||!c.pleatType?"selected":""}>나비주름</option>
-                                <option value="평주름" ${c.pleatType==="평주름"?"selected":""}>평주름</option>
-                                <option value="민자" ${c.pleatType==="민자"?"selected":""}>민자</option>
-                                <option value="패널" ${c.pleatType==="패널"||c.pleatType==="판넬"||c.pleat==="panel"?"selected":""}>패널 제작</option>
-                            </select>
-                        </div>
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">설치 기구</label>
-                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'installType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
-                                <option value="rail" ${c.installType==='rail'?'selected':''}>기본 레일</option>
-                                <option value="rail_2line" ${c.installType==='rail_2line'?'selected':''}>패널 레일 (2줄)</option>
-                                <option value="rail_3line" ${c.installType==='rail_3line'?'selected':''}>패널 레일 (3줄)</option>
-                                <option value="rod35" ${c.installType==='rod35'?'selected':''}>35파이 봉</option>
-                                <option value="rod25" ${c.installType==='rod25'?'selected':''}>25파이 봉</option>
-                            </select>
-                        </div>
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">바닥 간격 (cm)</label>
-                            <input type="number" step="0.5" value="${c.floorGap ?? 0}" oninput="updateCurtainData(${room.id}, ${c.id}, 'floorGap', parseFloat(this.value)||0)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-black text-indigo-900 bg-white outline-none">
-                        </div>
-                    </div>
-
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2">
                         <div class="min-w-0">
                             <label class="block text-[10px] font-bold text-slate-500 mb-0.5">책자 필터</label>
@@ -1225,37 +1258,70 @@ function renderRooms() {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2 pt-1 border-t border-slate-200/60 ${isBlind ? 'opacity-50 pointer-events-none' : ''}">
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">부자재 품명</label>
-                            <input type="text" value="${isBlind ? '미사용' : c.hwName}" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwName', this.value)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs outline-none min-w-0 bg-white">
+                    ${isBlind ? '' : `
+                    <details class="curtain-more" ${openCurtainDetails.has(c.id) ? 'open' : ''} ontoggle="setCurtainDetailsOpen(${c.id}, this.open)">
+                        <summary>세부 옵션 <span id="curtainOpt_${c.id}">${escText(curtainOptionSummary(c))}</span></summary>
+                        <div class="space-y-2.5 sm:space-y-3 pt-2.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 bg-amber-50/40 p-2 rounded-lg border border-amber-100 ${isBlind ? 'hidden' : ''}">
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">가공 형태</label>
+                                    <select onchange="updateCurtainData(${room.id}, ${c.id}, 'pleatType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
+                                        <option value="나비주름" ${c.pleatType==="나비주름"||!c.pleatType?"selected":""}>나비주름</option>
+                                        <option value="평주름" ${c.pleatType==="평주름"?"selected":""}>평주름</option>
+                                        <option value="민자" ${c.pleatType==="민자"?"selected":""}>민자</option>
+                                        <option value="패널" ${c.pleatType==="패널"||c.pleatType==="판넬"||c.pleat==="panel"?"selected":""}>패널 제작</option>
+                                    </select>
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">설치 기구</label>
+                                    <select onchange="updateCurtainData(${room.id}, ${c.id}, 'installType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
+                                        <option value="rail" ${c.installType==='rail'?'selected':''}>기본 레일</option>
+                                        <option value="rail_2line" ${c.installType==='rail_2line'?'selected':''}>패널 레일 (2줄)</option>
+                                        <option value="rail_3line" ${c.installType==='rail_3line'?'selected':''}>패널 레일 (3줄)</option>
+                                        <option value="rod35" ${c.installType==='rod35'?'selected':''}>35파이 봉</option>
+                                        <option value="rod25" ${c.installType==='rod25'?'selected':''}>25파이 봉</option>
+                                    </select>
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">바닥 간격 (cm)</label>
+                                    <input type="number" step="0.5" value="${c.floorGap ?? 0}" oninput="updateCurtainData(${room.id}, ${c.id}, 'floorGap', parseFloat(this.value)||0)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-black text-indigo-900 bg-white outline-none">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">부자재 품명</label>
+                                    <input type="text" value="${isBlind ? '미사용' : c.hwName}" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwName', this.value)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs outline-none min-w-0 bg-white">
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">자당 단가</label>
+                                    <input type="number" value="${isBlind ? 0 : c.hwPrice}" step="100" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwPrice', parseFloat(this.value)||0)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs font-bold outline-none min-w-0 bg-white">
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">형상기억 가공</label>
+                                    <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'shapeFee', parseFloat(this.value))" class="w-full px-1 py-1 border rounded-lg text-xs font-semibold outline-none min-w-0 bg-white">
+                                        <option value="3000" ${!isBlind && c.shapeFee===3000?"selected":""}>적용</option>
+                                        <option value="0" ${isBlind || c.shapeFee===0?"selected":""}>미적용</option>
+                                    </select>
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] font-bold text-amber-800 mb-0.5 truncate">하단 리드밴드</label>
+                                    <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'leadBand', this.value === 'true')" class="w-full px-1 py-1 border border-amber-300 rounded-lg text-xs font-semibold bg-amber-50/50 outline-none min-w-0">
+                                        <option value="false" ${!c.leadBand ? 'selected' : ''}>미적용</option>
+                                        <option value="true" ${c.leadBand ? 'selected' : ''}>적용</option>
+                                    </select>
+                                </div>
+                                <div class="min-w-0 col-span-2 sm:col-span-1">
+                                    <label class="block text-[10px] font-bold text-amber-800 mb-0.5 truncate">호텔 핏</label>
+                                    <button type="button" ${isBlind ? 'disabled' : ''} onclick="toggleHotelFit(${room.id}, ${c.id})" class="w-full py-1 border rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 ${c.hotelFit ? 'bg-amber-700 text-white border-amber-800 shadow-sm' : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'}">
+                                        <span class="w-3 text-center ${c.hotelFit ? 'font-black text-amber-200' : 'text-slate-400'}">${c.hotelFit ? '✓' : '+'}</span>
+                                        <span>호텔핏</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">자당 단가</label>
-                            <input type="number" value="${isBlind ? 0 : c.hwPrice}" step="100" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwPrice', parseFloat(this.value)||0)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs font-bold outline-none min-w-0 bg-white">
-                        </div>
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">형상기억 가공</label>
-                            <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'shapeFee', parseFloat(this.value))" class="w-full px-1 py-1 border rounded-lg text-xs font-semibold outline-none min-w-0 bg-white">
-                                <option value="3000" ${!isBlind && c.shapeFee===3000?"selected":""}>적용</option>
-                                <option value="0" ${isBlind || c.shapeFee===0?"selected":""}>미적용</option>
-                            </select>
-                        </div>
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-amber-800 mb-0.5 truncate">하단 리드밴드</label>
-                            <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'leadBand', this.value === 'true')" class="w-full px-1 py-1 border border-amber-300 rounded-lg text-xs font-semibold bg-amber-50/50 outline-none min-w-0">
-                                <option value="false" ${!c.leadBand ? 'selected' : ''}>미적용</option>
-                                <option value="true" ${c.leadBand ? 'selected' : ''}>적용</option>
-                            </select>
-                        </div>
-                        <div class="min-w-0 col-span-2 sm:col-span-1">
-                            <label class="block text-[10px] font-bold text-amber-800 mb-0.5 truncate">호텔 핏</label>
-                            <button type="button" ${isBlind ? 'disabled' : ''} onclick="toggleHotelFit(${room.id}, ${c.id})" class="w-full py-1 border rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 ${c.hotelFit ? 'bg-amber-700 text-white border-amber-800 shadow-sm' : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'}">
-                                <span class="w-3 text-center ${c.hotelFit ? 'font-black text-amber-200' : 'text-slate-400'}">${c.hotelFit ? '✓' : '+'}</span>
-                                <span>호텔핏</span>
-                            </button>
-                        </div>
-                    </div>
+                    </details>
+                    `}
 
                     <div class="flex items-center justify-between text-xs pt-2 text-slate-600 border-t border-slate-200/70 gap-2">
                         <div class="text-[11px] sm:text-xs truncate flex-1 min-w-0 text-slate-600">
@@ -1283,6 +1349,9 @@ function renderRooms() {
                     <button onclick="removeRoom(${room.id})" class="whitespace-nowrap text-xs text-rose-500 hover:text-rose-700 font-bold px-2 py-1.5 rounded-xl hover:bg-rose-50 transition flex items-center gap-1">
                         삭제
                     </button>
+                    <button type="button" onclick="toggleRoomCollapse(${room.id})" aria-expanded="true" class="whitespace-nowrap text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1.5 rounded-xl hover:bg-slate-100 transition flex items-center gap-1">
+                        접기 <i class="fa-solid fa-chevron-up text-[10px]"></i>
+                    </button>
                 </div>
             </div>
             <div class="space-y-2.5 sm:space-y-3">${curtainsHtml}</div>
@@ -1298,24 +1367,6 @@ function renderRooms() {
 // ==============================================================
 // 직원 화면: 원단 DB 표 / 부가 기능
 // ==============================================================
-
-function toggleDbSection(forceOpen) {
-    const content = document.getElementById('dbCollapsibleContent');
-    const chevron = document.getElementById('dbAccordionChevron');
-    const statusText = document.getElementById('dbAccordionStatus');
-    if (!content) return;
-
-    const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
-    if (shouldOpen) {
-        content.classList.remove('hidden');
-        if (chevron) chevron.style.transform = 'rotate(180deg)';
-        if (statusText) statusText.textContent = '접기';
-    } else {
-        content.classList.add('hidden');
-        if (chevron) chevron.style.transform = 'rotate(0deg)';
-        if (statusText) statusText.textContent = '펼치기';
-    }
-}
 
 
 function renderDbTable() {
@@ -1485,12 +1536,17 @@ function saveTicketText(k, v) { if (!TICKET_TEXT_KEYS[k]) return; try { localSto
 function initTicketNoteInput() {
     const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote();
     Object.keys(TICKET_TEXT_INPUTS).forEach(k => { const t = document.getElementById(TICKET_TEXT_INPUTS[k]); if (t) t.value = loadTicketText(k); });
+    const fee = document.getElementById('defaultInstallFeeInput'); if (fee) fee.value = loadDefaultInstallFee();
 }
 // 비공개 팩에 함께 담는 견적서 글 (불러올 때는 팩에 적힌 것만 덮어씀 — 비어 있으면 이 기기 것을 그대로 둠)
-function ticketTextsForPack() { return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier') }; }
+function ticketTextsForPack() {
+    const fee = storedDefaultInstallFee();          // 기본 시공비는 이 기기에서 정한 적이 있을 때만 팩에 담음
+    return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'), fee: fee === null ? undefined : fee };
+}
 function applyTicketTextsFromPack(t) {
     if (!t || typeof t !== 'object') return;
     if (typeof t.note === 'string' && t.note.trim()) saveTicketNote(t.note);
+    if (typeof t.fee === 'number' && Number.isFinite(t.fee) && t.fee >= 0) saveDefaultInstallFee(t.fee);
     Object.keys(TICKET_TEXT_KEYS).forEach(k => { if (typeof t[k] === 'string' && t[k].trim()) saveTicketText(k, t[k]); });
     initTicketNoteInput();
 }

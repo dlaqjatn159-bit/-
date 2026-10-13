@@ -85,398 +85,440 @@
     <!-- ============================================================== -->
     <!-- 직원 화면: 빠른 간편 견적 + 원가 관리 (PIN 필요)                -->
     <!-- ============================================================== -->
-    <section id="trackExpressSection" class="hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 pt-6 sm:pt-8 pb-safe">
+    <section id="trackExpressSection" class="hidden">
+        <div class="staff-app">
 
-        <div id="staffBanner">
-            <span><i class="fa-solid fa-lock-open"></i> 직원 모드 · 원가가 표시됩니다 (<span id="lockHint">15분 동안 손대지 않으면 잠깁니다</span>)</span>
-            <span class="staff-banner-acts">
-                <button onclick="lockStaff()" style="text-decoration: underline;">지금 잠그기</button>
-                <button onclick="exitStaffMode()" style="text-decoration: underline;">고객 모드로 나가기</button>
-            </span>
-        </div>
-        
-        <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-[240px]">
-                <span class="font-serif-kr font-normal text-sm sm:text-base text-slate-900 flex-shrink-0">Re<i class="logo-dot">.</i>dam</span>
-                <input type="text" id="expressCustName" value="" placeholder="고객명/현장명 입력" class="w-full max-w-md px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/70" oninput="document.getElementById('custName').value=this.value; syncCustomerData()">
-                <input type="tel" id="expressCustPhone" value="" inputmode="numeric" placeholder="연락처" class="w-36 flex-shrink-0 px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/70" oninput="this.value=formatPhone(this.value); document.getElementById('custPhone').value=this.value">
-            </div>
+            <!-- 왼쪽 사이드바 (좁은 화면에서는 화면 아래 탭바로 바뀜) -->
+            <aside class="staff-side">
+                <div class="staff-brand font-serif-kr">Re<i class="logo-dot">.</i>dam</div>
+                <div class="staff-cust"><b id="sideCustName">이름 없는 상담</b>지금 상담 중</div>
+                <nav class="staff-nav" aria-label="직원 메뉴">
+                    <button type="button" data-view="consult" onclick="showStaffView('consult')" aria-current="page"><i class="fa-regular fa-comment-dots"></i>상담</button>
+                    <button type="button" data-view="docs" onclick="showStaffView('docs')"><i class="fa-regular fa-file-lines"></i>서류</button>
+                    <button type="button" data-view="history" onclick="showStaffView('history')"><i class="fa-solid fa-clock-rotate-left"></i>상담 기록<span class="badge" id="historyNavCount"></span></button>
+                    <button type="button" data-view="fabric" onclick="showStaffView('fabric')"><i class="fa-solid fa-swatchbook"></i>원단</button>
+                    <button type="button" data-view="settings" onclick="showStaffView('settings')"><i class="fa-solid fa-gear"></i>설정</button>
+                </nav>
+                <div class="staff-side-foot">
+                    <button type="button" class="btn-new" onclick="startNewConsultation()">+ 새 상담</button>
+                    <button type="button" onclick="lockStaff()">지금 잠그기</button>
+                    <button type="button" onclick="exitStaffMode()">잠그고 나가기</button>
+                    <div class="lock-hint" id="lockHint">15분 동안 손대지 않으면 잠깁니다</div>
+                </div>
+            </aside>
+
+            <main class="staff-main">
+                <!-- 좁은 화면(아래 탭바)에서만 보이는 위 띠: 사이드바 아래 버튼을 여기서 누름 -->
+                <div class="staff-topbar">
+                    <span class="font-serif-kr">Re<i class="logo-dot">.</i>dam</span>
+                    <span class="staff-topbar-acts">
+                        <button type="button" onclick="startNewConsultation()">새 상담</button>
+                        <button type="button" onclick="lockStaff()">지금 잠그기</button>
+                        <button type="button" onclick="exitStaffMode()">잠그고 나가기</button>
+                    </span>
+                </div>
+
+                <!-- ===== 상담 ===== -->
+                <section class="staff-view on" id="view-consult">
+                    <div class="staff-top">
+                        <div class="min-w-0">
+                            <h1 class="staff-h1 font-serif-kr">상담</h1>
+                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                                <input type="text" id="expressCustName" value="" placeholder="고객명/현장명 입력" class="w-56 max-w-full px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-white" oninput="document.getElementById('custName').value=this.value; syncCustomerData()">
+                                <input type="tel" id="expressCustPhone" value="" inputmode="numeric" placeholder="연락처" class="w-36 flex-shrink-0 px-3 py-1.5 border rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none bg-white" oninput="this.value=formatPhone(this.value); document.getElementById('custPhone').value=this.value">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="addRoom()" class="bg-amber-800 hover:bg-amber-900 text-white font-bold py-2 px-3 sm:px-4 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0">
+                                <i class="fa-solid fa-plus text-[10px]"></i> 공간 추가
+                            </button>
+                            <button onclick="presentToCustomer()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 sm:px-3.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+                                <i class="fa-solid fa-wand-magic-sparkles text-[10px] text-amber-200"></i>
+                                <span>고객에게 보여주기</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 sm:gap-6 w-full min-w-0">
+                        <div class="xl:col-span-7 space-y-5 sm:space-y-6 w-full min-w-0" id="roomsContainer"></div>
+
+                        <div class="staff-summary-col xl:col-span-5 space-y-5 sm:space-y-6 w-full min-w-0">
+                            <div class="bg-gradient-to-br from-[#2b1f17] via-[#36271e] to-[#201711] text-white rounded-2xl p-6 shadow-md relative overflow-hidden border border-amber-900/30">
+                                <div class="relative z-10 space-y-4">
+                                    <div class="flex justify-between items-center border-b border-amber-900/40 pb-3">
+                                        <span class="text-xs uppercase tracking-wider text-amber-200 font-bold">견적 금액 요약</span>
             
-            <div class="flex items-center gap-2">
-                <button onclick="startNewConsultation()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold py-2 px-3 sm:px-3.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0">
-                    <i class="fa-solid fa-rotate-right text-[10px]"></i>
-                    <span>새 상담</span>
-                </button>
-                <button onclick="presentToCustomer()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 sm:px-3.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
-                    <i class="fa-solid fa-wand-magic-sparkles text-[10px] text-amber-200"></i>
-                    <span>고객에게 보여주기</span>
-                </button>
-                <button onclick="addRoom()" class="bg-amber-800 hover:bg-amber-900 text-white font-bold py-2 px-3 sm:px-4 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0">
-                    <i class="fa-solid fa-plus text-[10px]"></i> 공간 추가
-                </button>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 w-full min-w-0">
-            <div class="lg:col-span-7 space-y-5 sm:space-y-6 w-full min-w-0" id="roomsContainer"></div>
-
-            <div class="lg:col-span-5 space-y-5 sm:space-y-6 w-full min-w-0">
-                <div class="bg-gradient-to-br from-[#2b1f17] via-[#36271e] to-[#201711] text-white rounded-2xl p-6 shadow-md relative overflow-hidden border border-amber-900/30">
-                    <div class="relative z-10 space-y-4">
-                        <div class="flex justify-between items-center border-b border-amber-900/40 pb-3">
-                            <span class="text-xs uppercase tracking-wider text-amber-200 font-bold">견적 금액 요약</span>
-
-                                                        <span id="badgeVat"
-                                  class="bg-amber-500/20 text-amber-200 text-xs px-2.5 py-1 rounded-full border border-amber-400/30 font-bold select-none flex items-center gap-1">
-                                <span>일반 소비자 판매가</span>
-                            </span>
-                        </div>
-
-                        <div class="space-y-1.5 text-xs" id="summaryRoomList"></div>
-
-                        <div class="pt-3 border-t border-amber-900/40 space-y-2.5 text-xs font-mono">
-                            <div class="flex justify-between items-center text-amber-100/90">
-                                <span>공간별 제품 합산:</span>
-                                <span class="font-bold text-white"><span id="resRoomsSubtotal">0</span>원</span>
-                            </div>
-
-                            <div class="bg-[#241a13]/90 p-3 rounded-xl border border-amber-900/40 space-y-2 text-xs font-sans">
-                                <div class="flex justify-between items-center gap-2">
-                                    <span class="text-amber-100/80 whitespace-nowrap">전체 시공/출장비:</span>
-                                    <input type="number" id="expressInstallFee" value="30000" step="5000" class="w-28 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-right text-xs font-bold font-mono text-white outline-none focus:ring-1 focus:ring-amber-500" oninput="updateGlobalInstallFee(this.value)">
-                                </div>
-                                <div class="flex justify-between items-center gap-2">
-                                    <span class="text-amber-100/80 whitespace-nowrap">부가세(VAT) 구분:</span>
-                                    <select id="expressVatOption" class="w-40 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500" onchange="updateGlobalVatOption(this.value)">
-                                        <option value="consumer" selected>일반 판매가</option>
-                                        <option value="business">세금계산서 (+10%)</option>
-                                    </select>
-                                </div>
-                                <div class="flex justify-between items-center gap-2">
-                                    <span class="text-amber-100/80 whitespace-nowrap">견적서 안내 문구:</span>
-                                    <input type="text" id="ticketNoteInput" maxlength="60" placeholder="예: 제작 약 7일 · 시공 약 2시간" class="flex-1 min-w-0 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-amber-100/30" oninput="saveTicketNote(this.value)">
-                                </div>
-                                <!-- 견적서 아래쪽에 들어가는 글 (이 기기에만 저장, 비공개 팩으로 옮겨짐). 비워 두면 그 줄은 견적서에 안 나옴 -->
-                                <div class="space-y-1">
-                                    <span class="text-amber-100/80">견적서 결제 조건:</span>
-                                    <textarea id="ticketPayInput" rows="2" maxlength="300" placeholder="예: 계약금 ○○% 입금 후 제작 시작, 잔금은 시공 당일&#10;○○은행 000-000-000000 (예금주)" class="w-full px-2 py-1 border rounded-lg text-xs font-semibold outline-none" oninput="saveTicketText('pay', this.value)"></textarea>
-                                </div>
-                                <div class="space-y-1">
-                                    <span class="text-amber-100/80">견적서 맞춤 제작 안내:</span>
-                                    <textarea id="ticketCustomInput" rows="2" maxlength="300" placeholder="예: 맞춤 제작 상품으로, 제작을 시작한 뒤에는 변경·취소가 어렵습니다." class="w-full px-2 py-1 border rounded-lg text-xs font-semibold outline-none" oninput="saveTicketText('custom', this.value)"></textarea>
-                                </div>
-                                <div class="space-y-1">
-                                    <span class="text-amber-100/80">견적서 공급자 정보:</span>
-                                    <textarea id="ticketSupplierInput" rows="2" maxlength="300" placeholder="예: Re.dam · 대표 ○○○ · 사업자등록번호 000-00-00000&#10;주소 · 연락처 010-0000-0000" class="w-full px-2 py-1 border rounded-lg text-xs font-semibold outline-none" oninput="saveTicketText('supplier', this.value)"></textarea>
+                                                                    <span id="badgeVat"
+                                              class="bg-amber-500/20 text-amber-200 text-xs px-2.5 py-1 rounded-full border border-amber-400/30 font-bold select-none flex items-center gap-1">
+                                            <span>일반 소비자 판매가</span>
+                                        </span>
+                                    </div>
+            
+                                    <div class="space-y-1.5 text-xs" id="summaryRoomList"></div>
+            
+                                    <div class="pt-3 border-t border-amber-900/40 space-y-2.5 text-xs font-mono">
+                                        <div class="flex justify-between items-center text-amber-100/90">
+                                            <span>공간별 제품 합산:</span>
+                                            <span class="font-bold text-white"><span id="resRoomsSubtotal">0</span>원</span>
+                                        </div>
+            
+                                        <div class="bg-[#241a13]/90 p-3 rounded-xl border border-amber-900/40 space-y-2 text-xs font-sans">
+                                            <div class="flex justify-between items-center gap-2">
+                                                <span class="text-amber-100/80 whitespace-nowrap">전체 시공/출장비:</span>
+                                                <input type="number" id="expressInstallFee" value="30000" step="5000" class="w-28 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-right text-xs font-bold font-mono text-white outline-none focus:ring-1 focus:ring-amber-500" oninput="updateGlobalInstallFee(this.value)">
+                                            </div>
+                                            <div class="flex justify-between items-center gap-2">
+                                                <span class="text-amber-100/80 whitespace-nowrap">부가세(VAT) 구분:</span>
+                                                <select id="expressVatOption" class="w-40 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500" onchange="updateGlobalVatOption(this.value)">
+                                                    <option value="consumer" selected>일반 판매가</option>
+                                                    <option value="business">세금계산서 (+10%)</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex justify-between items-center gap-2">
+                                                <span class="text-amber-100/80 whitespace-nowrap">견적서 안내 문구:</span>
+                                                <input type="text" id="ticketNoteInput" maxlength="60" placeholder="예: 제작 약 7일 · 시공 약 2시간" class="flex-1 min-w-0 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-amber-100/30" oninput="saveTicketNote(this.value)">
+                                            </div>
+                                        </div>
+            
+                                        <div class="flex justify-between text-slate-200 border-t border-amber-900/30 pt-1.5">
+                                            <span>판매가 (시공비 포함):</span>
+                                            <span class="font-bold text-white"><span id="resGrandSubtotal">0</span>원</span>
+                                        </div>
+                                        <div class="flex justify-between text-amber-300">
+                                            <span>부가세 (VAT):</span>
+                                            <span class="font-bold text-amber-300"><span id="resGrandVat">0</span>원</span>
+                                        </div>
+                                    </div>
+            
+                                    <div class="bg-gradient-to-r from-amber-950/60 to-[#1e150f] rounded-xl p-4 border border-amber-500/40 shadow-inner mt-3 select-none">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <p class="text-xs text-amber-200 font-bold">전체 공간 합산 최종 견적금액</p>
+                                            <span class="text-[10px] bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded font-bold border border-amber-400/30" id="resSummaryFinal">0원</span>
+                                        </div>
+                                        <div class="flex items-baseline justify-between">
+                                            <span class="text-3xl md:text-5xl font-black tracking-tight text-amber-300 font-mono" id="totalGrandPrice">0</span>
+                                            <span class="text-xl font-bold text-amber-200">원</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="flex justify-between text-slate-200 border-t border-amber-900/30 pt-1.5">
-                                <span>판매가 (시공비 포함):</span>
-                                <span class="font-bold text-white"><span id="resGrandSubtotal">0</span>원</span>
-                            </div>
-                            <div class="flex justify-between text-amber-300">
-                                <span>부가세 (VAT):</span>
-                                <span class="font-bold text-amber-300"><span id="resGrandVat">0</span>원</span>
-                            </div>
-                        </div>
-
-                        <div class="bg-gradient-to-r from-amber-950/60 to-[#1e150f] rounded-xl p-4 border border-amber-500/40 shadow-inner mt-3 select-none">
-                            <div class="flex justify-between items-center mb-1">
-                                <p class="text-xs text-amber-200 font-bold">전체 공간 합산 최종 견적금액</p>
-                                <span class="text-[10px] bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded font-bold border border-amber-400/30" id="resSummaryFinal">0원</span>
-                            </div>
-                            <div class="flex items-baseline justify-between">
-                                <span class="text-3xl md:text-5xl font-black tracking-tight text-amber-300 font-mono" id="totalGrandPrice">0</span>
-                                <span class="text-xl font-bold text-amber-200">원</span>
+                            <div id="adminMarginCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 transition-all">
+                                <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleMarginSection()">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center text-sm font-bold shadow-inner flex-shrink-0">
+                                            DB
+                                        </div>
+                                        <div class="min-w-0">
+                                            <h3 class="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-2 truncate">
+                                                원가 · 순이익
+                                                <span id="resMarginRateBadge" class="hidden bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                                                    순마진 0%
+                                                </span>
+                                            </h3>
+                                            <p class="text-[10px] sm:text-[11px] text-slate-400 truncate">"보기"를 눌러야 보입니다 (비공개)</p>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
+                                        <span id="marginAccordionStatus" class="font-semibold text-slate-700">보기</span>
+                                        <i id="marginAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300"></i>
+                                    </button>
+                                </div>
+            
+                                <div id="marginCollapsibleContent" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3">
+                                    <div class="grid grid-cols-2 gap-2.5">
+                                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <span class="text-[10px] font-bold text-slate-500 block mb-0.5">총 매입원가 (시공포함)</span>
+                                            <span class="text-sm sm:text-base font-black text-slate-800 font-mono" id="resTotalCost">0원</span>
+                                        </div>
+                                        <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200">
+                                            <span class="text-[10px] font-bold text-amber-800 block mb-0.5">예상 순이익</span>
+                                            <span class="text-sm sm:text-base font-black text-amber-900 font-mono" id="resNetProfit">0원</span>
+                                        </div>
+                                    </div>
+                                    <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-[11px] space-y-1 font-mono text-slate-600">
+                                        <div class="flex justify-between">
+                                            <span class="font-sans text-slate-500">원단 사입원가:</span>
+                                            <span id="resCostFabric" class="font-bold text-slate-700">0원</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-sans text-slate-500">봉제/가공공임:</span>
+                                            <span id="resCostLabor" class="font-bold text-slate-700">0원</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-sans text-slate-500">레일·부자재 원가:</span>
+                                            <span id="resCostHardware" class="font-bold text-slate-700">0원</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div id="adminMarginCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 transition-all">
-                    <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleMarginSection()">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center text-sm font-bold shadow-inner flex-shrink-0">
-                                DB
+                <!-- ===== 서류 ===== -->
+                <section class="staff-view" id="view-docs">
+                    <h1 class="staff-h1 font-serif-kr">서류</h1>
+                    <p class="staff-sub">지금 상담 기준으로 만듭니다.</p>
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 border-b pb-3">
+                            <div>
+                                <h2 class="text-base font-bold text-slate-900">통합 서류 자동 생성 & 시트 내보내기</h2>
+                                <p class="text-[11px] text-slate-400">발주서, 카톡 안내문 및 엑셀/구글시트 연동 지원</p>
                             </div>
-                            <div class="min-w-0">
-                                <h3 class="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-2 truncate">
-                                    현장 원가 & 정산 관리
-                                    <span id="resMarginRateBadge" class="hidden bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0">
-                                        순마진 0%
-                                    </span>
+                            <button onclick="downloadCsvFile()" class="bg-amber-800 hover:bg-amber-900 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm mt-1 sm:mt-0">
+                                <i class="fa-solid fa-file-arrow-down text-[11px]"></i> 엑셀 CSV 다운로드
+                            </button>
+                        </div>
+    
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            <button onclick="openTicketModal()" class="col-span-2 sm:col-span-1 bg-gradient-to-r from-amber-50 to-stone-100 hover:from-amber-100 hover:to-stone-200 text-stone-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300 shadow-sm">
+                                견적서
+                            </button>
+                            <button onclick="generateDoc('factory')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-slate-300">
+                                공장 발주서
+                            </button>
+                            <button onclick="generateDoc('kakao')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300">
+                                카톡 안내문
+                            </button>
+                            <button onclick="generateDoc('sheet')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300">
+                                시트 상세(표)
+                            </button>
+                            <button onclick="generateDoc('ledger')" class="bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-stone-300">
+                                고객대장(1행)
+                            </button>
+                        </div>
+    
+                        <div class="relative">
+                            <textarea id="outputDoc" rows="8" readonly placeholder="공장 통합 발주서, 고객 전달용 카톡 안내문, 시트 관리용 표 데이터를 버튼을 눌러 생성하세요." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-relaxed font-mono focus:outline-none resize-none"></textarea>
+                            <button onclick="copyToClipboard()" class="absolute top-3 right-3 bg-white hover:bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg border text-xs shadow-sm flex items-center gap-1 font-semibold">
+                                <i class="fa-regular fa-copy"></i> 복사
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== 상담 기록 ===== -->
+                <section class="staff-view" id="view-history">
+                    <h1 class="staff-h1 font-serif-kr">상담 기록</h1>
+                    <p class="staff-sub">지난 상담을 다시 불러오거나 지울 수 있습니다.</p>
+                    <div id="historyCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between gap-2">
+                            <div>
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                    상담 이력
+                                    <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="historyCount">0</span>
                                 </h3>
-                                <p class="text-[10px] sm:text-[11px] text-slate-400 truncate">터치하여 사입원가 및 예상 순이익 확인 (비공개)</p>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400">이 기기에 저장됩니다 · 백업 파일에 함께 담깁니다 · 직원 모드에서만 볼 수 있습니다 · 최근 500건</p>
                             </div>
                         </div>
-                        <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
-                            <span id="marginAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
-                            <i id="marginAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300"></i>
-                        </button>
+                        <p id="historyFullNotice" class="hidden mt-2 bg-rose-50 border border-rose-300 text-rose-700 font-bold text-[11px] sm:text-xs px-3 py-2 rounded-xl">기록 공간이 가득 찼어요. 백업 후 오래된 기록을 정리해 주세요. (정리하기 전에 이 창을 닫으면 방금 상담이 저장되지 않아요)</p>
+                        <div id="historyList" class="mt-2 max-h-[65vh] overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                </section>
+
+                <!-- ===== 원단: 탭 4개 (원단 목록 · 분류 · 색상 · 사진) ===== -->
+                <section class="staff-view" id="view-fabric">
+                    <h1 class="staff-h1 font-serif-kr">원단</h1>
+                    <p class="staff-sub">단가표에 있는 원단과, 고객 추천에 쓰는 분류·색상·사진입니다.</p>
+                    <div class="staff-tabs" role="tablist">
+                        <button type="button" role="tab" data-tab="list" aria-selected="true" onclick="showFabricTab('list')">원단 목록</button>
+                        <button type="button" role="tab" data-tab="tag" aria-selected="false" onclick="showFabricTab('tag')">분류 (톤 · 질감)</button>
+                        <button type="button" role="tab" data-tab="color" aria-selected="false" onclick="showFabricTab('color')">색상</button>
+                        <button type="button" role="tab" data-tab="photo" aria-selected="false" onclick="showFabricTab('photo')">사진</button>
                     </div>
 
-                    <div id="marginCollapsibleContent" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3">
-                        <div class="grid grid-cols-2 gap-2.5">
-                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                <span class="text-[10px] font-bold text-slate-500 block mb-0.5">총 매입원가 (시공포함)</span>
-                                <span class="text-sm sm:text-base font-black text-slate-800 font-mono" id="resTotalCost">0원</span>
-                            </div>
-                            <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200">
-                                <span class="text-[10px] font-bold text-amber-800 block mb-0.5">예상 순이익</span>
-                                <span class="text-sm sm:text-base font-black text-amber-900 font-mono" id="resNetProfit">0원</span>
-                            </div>
-                        </div>
-                        <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-[11px] space-y-1 font-mono text-slate-600">
-                            <div class="flex justify-between">
-                                <span class="font-sans text-slate-500">원단 사입원가:</span>
-                                <span id="resCostFabric" class="font-bold text-slate-700">0원</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="font-sans text-slate-500">봉제/가공공임:</span>
-                                <span id="resCostLabor" class="font-bold text-slate-700">0원</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="font-sans text-slate-500">레일·부자재 원가:</span>
-                                <span id="resCostHardware" class="font-bold text-slate-700">0원</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 border-b pb-3">
-                        <div>
-                            <h2 class="text-base font-bold text-slate-900">통합 서류 자동 생성 & 시트 내보내기</h2>
-                            <p class="text-[11px] text-slate-400">발주서, 카톡 안내문 및 엑셀/구글시트 연동 지원</p>
-                        </div>
-                        <button onclick="downloadCsvFile()" class="bg-amber-800 hover:bg-amber-900 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm mt-1 sm:mt-0">
-                            <i class="fa-solid fa-file-arrow-down text-[11px]"></i> 엑셀 CSV 다운로드
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        <button onclick="openTicketModal()" class="col-span-2 sm:col-span-1 bg-gradient-to-r from-amber-50 to-stone-100 hover:from-amber-100 hover:to-stone-200 text-stone-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300 shadow-sm">
-                            견적서
-                        </button>
-                        <button onclick="generateDoc('factory')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-slate-300">
-                            공장 발주서
-                        </button>
-                        <button onclick="generateDoc('kakao')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300">
-                            카톡 안내문
-                        </button>
-                        <button onclick="generateDoc('sheet')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold py-2 px-2 rounded-xl text-xs transition border border-amber-300">
-                            시트 상세(표)
-                        </button>
-                        <button onclick="generateDoc('ledger')" class="bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 px-2 rounded-xl text-xs transition border border-stone-300">
-                            고객대장(1행)
-                        </button>
-                    </div>
-
-                    <div class="relative">
-                        <textarea id="outputDoc" rows="8" readonly placeholder="공장 통합 발주서, 고객 전달용 카톡 안내문, 시트 관리용 표 데이터를 버튼을 눌러 생성하세요." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-relaxed font-mono focus:outline-none resize-none"></textarea>
-                        <button onclick="copyToClipboard()" class="absolute top-3 right-3 bg-white hover:bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg border text-xs shadow-sm flex items-center gap-1 font-semibold">
-                            <i class="fa-regular fa-copy"></i> 복사
-                        </button>
-                    </div>
-                </div>
-
-                <div id="historyCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
-                    <div class="flex items-center justify-between gap-2">
-                        <div>
-                            <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
-                                상담 이력
-                                <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="historyCount">0</span>
-                            </h3>
-                            <p class="text-[10px] sm:text-[11px] text-slate-400">이 기기에 저장됩니다 · 백업 파일에 함께 담깁니다 · 직원 모드에서만 볼 수 있습니다 · 최근 500건</p>
-                        </div>
-                    </div>
-                    <p id="historyFullNotice" class="hidden mt-2 bg-rose-50 border border-rose-300 text-rose-700 font-bold text-[11px] sm:text-xs px-3 py-2 rounded-xl">기록 공간이 가득 찼어요. 백업 후 오래된 기록을 정리해 주세요. (정리하기 전에 이 창을 닫으면 방금 상담이 저장되지 않아요)</p>
-                    <div id="historyList" class="mt-2 max-h-64 overflow-y-auto custom-scrollbar"></div>
-                </div>
-
-                <div id="tagCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
-                    <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleTagSection()">
-                        <div class="min-w-0">
-                            <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
-                                원단 분류 (고객 추천에 쓰입니다)
-                                <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="tagCount">0/0</span>
-                            </h3>
-                            <p class="text-[10px] sm:text-[11px] text-slate-400">원단마다 톤·질감(속지는 비침도)을 지정하면 분위기는 자동으로 정해집니다. 분위기는 고르지 않아도 되고, 자동 결과가 원단 느낌과 다를 때만 직접 고르면 그 값이 우선 (지정 전에는 이름으로 추측한 값)</p>
-                        </div>
-                        <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex-shrink-0">
-                            <span id="tagAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
-                            <i id="tagAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ml-1"></i>
-                        </button>
-                    </div>
-                    <div id="tagCollapsible" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3">
-                        <div class="grid grid-cols-3 gap-2">
-                            <select id="tagCat" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderTagEditor()">
-                                <option value="속지">속지</option><option value="겉지">겉지</option><option value="블라인드">블라인드</option><option value="ALL">전체</option>
-                            </select>
-                            <select id="tagBook" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderTagEditor()"></select>
-                            <select id="tagState" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderTagEditor()">
-                                <option value="ALL">전체 보기</option><option value="UNSET">아직 분류 안 한 것만</option>
-                            </select>
-                        </div>
-                        <p class="text-[10px] text-slate-400">진한 버튼 = 직접 지정한 값 · 점선 = 자동 추측 값(고객 화면에서는 "추천 이유"를 말하지 않습니다) · 같은 버튼을 다시 누르면 지정이 풀립니다</p>
-                        <div id="tagRows" class="max-h-96 overflow-y-auto custom-scrollbar"></div>
-                    </div>
-                </div>
-
-                <div id="colorCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
-                    <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleColorSection()">
-                        <div class="min-w-0">
-                            <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
-                                원단 색상 (샘플북 번호별)
-                                <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="colorCount">0개 원단</span>
-                            </h3>
-                            <p class="text-[10px] sm:text-[11px] text-slate-400">같은 원단의 색이 번호로 나뉘어 있을 때 (예: 블랑 1~10번). 번호마다 톤을 지정하면 공간에 어울리는 색을 골라 추천하고, 견적서·발주서에 "블랑 3번"으로 표시됩니다</p>
-                        </div>
-                        <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex-shrink-0">
-                            <span id="colorAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
-                            <i id="colorAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ml-1"></i>
-                        </button>
-                    </div>
-                    <div id="colorCollapsible" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3">
-                        <div class="grid grid-cols-2 gap-2">
-                            <select id="colorBook" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderColorEditor()"></select>
-                            <select id="colorFab" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderColorEditor()"></select>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2 text-xs">
-                            <span class="font-bold text-slate-600">번호 범위 추가</span>
-                            <input id="colorFrom" type="number" min="1" value="1" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
-                            <span>~</span>
-                            <input id="colorTo" type="number" min="1" value="10" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
-                            <button onclick="colorAddRange()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-1.5 rounded-xl whitespace-nowrap">추가</button>
-                            <span class="ml-2 font-bold text-slate-600">이름으로 추가</span>
-                            <input id="colorNewName" type="text" placeholder="예: 아이보리" class="w-28 px-2 py-1.5 border rounded-lg bg-white">
-                            <button onclick="colorAddName()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl whitespace-nowrap">추가</button>
-                            <label class="ml-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl cursor-pointer whitespace-nowrap">색상 입력표 불러오기
-                                <input type="file" id="colorFileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleColorFileUpload(event)">
-                            </label>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-1.5 text-xs bg-amber-50/60 border border-amber-100 rounded-xl p-2">
-                            <span class="font-bold text-amber-900">톤 일괄 지정</span>
-                            <input id="colorBulkFrom" type="number" min="1" placeholder="시작" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
-                            <span>~</span>
-                            <input id="colorBulkTo" type="number" min="1" placeholder="끝" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
-                            <span class="text-slate-500">번을</span>
-                            <button onclick="colorBulkTone('warm')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">웜</button>
-                            <button onclick="colorBulkTone('cool')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">쿨</button>
-                            <button onclick="colorBulkTone('neutral')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">뉴트럴</button>
-                            <button onclick="colorBulkTone('deep')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">딥</button>
-                            <span class="text-[10px] text-slate-500 w-full">색이 많을 때 비슷한 번호를 한 번에 지정합니다. (예: 1~8번을 쿨) 지정 뒤 개별 번호는 아래에서 고칠 수 있습니다</span>
-                        </div>
-                        <div id="colorEditor" class="max-h-80 overflow-y-auto custom-scrollbar"></div>
-                    </div>
-                </div>
-
-                <div id="photoCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
-                    <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
-                        원단 사진
-                        <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="photoCount">확인 전</span>
-                    </h3>
-                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">GitHub의 <b>photos</b> 폴더에 <b>원단ID.jpg</b> 이름으로 올리면 고객 화면 추천 카드에 자동으로 나타납니다. (jpg·webp·png, 가로 1000px 안팎, 한 장당 150KB 이하 권장) 사진이 없는 원단은 지금처럼 색상 배경으로 보입니다.</p>
-                    <div class="flex flex-wrap gap-2 mt-3">
-                        <button onclick="checkPhotos()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">사진 확인하기</button>
-                        <button onclick="downloadPhotoNameList()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">파일명 목록 내려받기 (CSV)</button>
-                        <button onclick="precachePhotos()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">오프라인용으로 미리 받기</button>
-                    </div>
-                    <div id="photoMissing" class="text-[11px] text-slate-500 mt-2 leading-relaxed"></div>
-                </div>
-
-                <div id="dbSectionCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 transition-all">
-                    <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleDbSection()">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center text-sm font-bold shadow-inner flex-shrink-0">
-                                DB
-                            </div>
-                            <div class="min-w-0">
-                                <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5 truncate">
-                                    보관 중인 원단 & 블라인드 DB
+                    <div class="staff-pane on" id="fabricTab-list">
+                        <div id="dbSectionCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3">
+                            <div>
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                    보관 중인 원단 &amp; 블라인드 DB
                                     <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0" id="dbCount">0</span>
                                 </h3>
-                                <p class="text-[10px] sm:text-[11px] text-slate-400 truncate">터치하여 원단 품목 및 단가 목록 접기/펼치기 (원가 포함 · 직원 전용)</p>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400">원단 품목 및 단가 목록 (원가 포함 · 직원 전용)</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <select id="dbBookFilter" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderDbTable()">
+                                        <option value="ALL">전체 책자 보기</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <input type="text" id="dbSearchInput" placeholder="품명/책자/ID 검색..." class="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-slate-50 outline-none focus:ring-1 focus:ring-amber-500" oninput="renderDbTable()">
+                                </div>
+                            </div>
+    
+                            <div class="overflow-x-auto max-h-[60vh] overflow-y-auto custom-scrollbar border rounded-xl border-slate-100">
+                                <table class="w-full text-left text-xs border-collapse">
+                                    <thead class="sticky top-0 bg-slate-100 text-slate-600 font-bold border-b">
+                                        <tr>
+                                            <th class="p-2.5">책자 / 품명</th>
+                                            <th class="p-2.5">단위 / 규격</th>
+                                            <th class="p-2.5">원단원가</th>
+                                            <th class="p-2.5">기본가공비</th>
+                                            <th class="p-2.5">소비자판매단가</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dbTableBody" class="divide-y divide-slate-100"></tbody>
+                                </table>
                             </div>
                         </div>
-                        <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap">
-                            <span id="dbAccordionStatus" class="font-semibold text-slate-700">펼치기</span>
-                            <i id="dbAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ml-1"></i>
-                        </button>
                     </div>
 
-                    <div id="dbCollapsibleContent" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3 sm:space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div class="staff-pane" id="fabricTab-tag">
+                        <div id="tagCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3">
                             <div>
-                                <select id="dbBookFilter" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderDbTable()">
-                                    <option value="ALL">전체 책자 보기</option>
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                    원단 분류 (고객 추천에 쓰입니다)
+                                    <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="tagCount">0/0</span>
+                                </h3>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400">원단마다 톤·질감(속지는 비침도)을 지정하면 분위기는 자동으로 정해집니다. 분위기는 고르지 않아도 되고, 자동 결과가 원단 느낌과 다를 때만 직접 고르면 그 값이 우선 (지정 전에는 이름으로 추측한 값)</p>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <select id="tagCat" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderTagEditor()">
+                                    <option value="속지">속지</option><option value="겉지">겉지</option><option value="블라인드">블라인드</option><option value="ALL">전체</option>
+                                </select>
+                                <select id="tagBook" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderTagEditor()"></select>
+                                <select id="tagState" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderTagEditor()">
+                                    <option value="ALL">전체 보기</option><option value="UNSET">아직 분류 안 한 것만</option>
                                 </select>
                             </div>
-                            <div>
-                                <input type="text" id="dbSearchInput" placeholder="품명/책자/ID 검색..." class="w-full px-2.5 py-1.5 border rounded-xl text-xs bg-slate-50 outline-none focus:ring-1 focus:ring-amber-500" oninput="renderDbTable()">
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto max-h-64 overflow-y-auto custom-scrollbar border rounded-xl border-slate-100">
-                            <table class="w-full text-left text-xs border-collapse">
-                                <thead class="sticky top-0 bg-slate-100 text-slate-600 font-bold border-b">
-                                    <tr>
-                                        <th class="p-2.5">책자 / 품명</th>
-                                        <th class="p-2.5">단위 / 규격</th>
-                                        <th class="p-2.5">원단원가</th>
-                                        <th class="p-2.5">기본가공비</th>
-                                        <th class="p-2.5">소비자판매단가</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dbTableBody" class="divide-y divide-slate-100"></tbody>
-                            </table>
+                            <p class="text-[10px] text-slate-400">진한 버튼 = 직접 지정한 값 · 점선 = 자동 추측 값(고객 화면에서는 "추천 이유"를 말하지 않습니다) · 같은 버튼을 다시 누르면 지정이 풀립니다</p>
+                            <div id="tagRows" class="max-h-[60vh] overflow-y-auto custom-scrollbar"></div>
                         </div>
                     </div>
-                </div>
 
-            </div>
+                    <div class="staff-pane" id="fabricTab-color">
+                        <div id="colorCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3">
+                            <div>
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                    원단 색상 (샘플북 번호별)
+                                    <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="colorCount">0개 원단</span>
+                                </h3>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400">같은 원단의 색이 번호로 나뉘어 있을 때 (예: 블랑 1~10번). 번호마다 톤을 지정하면 공간에 어울리는 색을 골라 추천하고, 견적서·발주서에 "블랑 3번"으로 표시됩니다</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="colorBook" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderColorEditor()"></select>
+                                <select id="colorFab" class="px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" onchange="renderColorEditor()"></select>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="font-bold text-slate-600">번호 범위 추가</span>
+                                <input id="colorFrom" type="number" min="1" value="1" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
+                                <span>~</span>
+                                <input id="colorTo" type="number" min="1" value="10" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
+                                <button onclick="colorAddRange()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-1.5 rounded-xl whitespace-nowrap">추가</button>
+                                <span class="ml-2 font-bold text-slate-600">이름으로 추가</span>
+                                <input id="colorNewName" type="text" placeholder="예: 아이보리" class="w-28 px-2 py-1.5 border rounded-lg bg-white">
+                                <button onclick="colorAddName()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl whitespace-nowrap">추가</button>
+                                <label class="ml-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl cursor-pointer whitespace-nowrap">색상 입력표 불러오기
+                                    <input type="file" id="colorFileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleColorFileUpload(event)">
+                                </label>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1.5 text-xs bg-amber-50/60 border border-amber-100 rounded-xl p-2">
+                                <span class="font-bold text-amber-900">톤 일괄 지정</span>
+                                <input id="colorBulkFrom" type="number" min="1" placeholder="시작" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
+                                <span>~</span>
+                                <input id="colorBulkTo" type="number" min="1" placeholder="끝" class="w-16 px-2 py-1.5 border rounded-lg bg-white text-center font-bold">
+                                <span class="text-slate-500">번을</span>
+                                <button onclick="colorBulkTone('warm')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">웜</button>
+                                <button onclick="colorBulkTone('cool')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">쿨</button>
+                                <button onclick="colorBulkTone('neutral')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">뉴트럴</button>
+                                <button onclick="colorBulkTone('deep')" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">딥</button>
+                                <span class="text-[10px] text-slate-500 w-full">색이 많을 때 비슷한 번호를 한 번에 지정합니다. (예: 1~8번을 쿨) 지정 뒤 개별 번호는 아래에서 고칠 수 있습니다</span>
+                            </div>
+                            <div id="colorEditor" class="max-h-[55vh] overflow-y-auto custom-scrollbar"></div>
+                        </div>
+                    </div>
+
+                    <div class="staff-pane" id="fabricTab-photo">
+                        <div id="photoCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
+                            <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                원단 사진
+                                <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full" id="photoCount">확인 전</span>
+                            </h3>
+                            <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">GitHub의 <b>photos</b> 폴더에 <b>원단ID.jpg</b> 이름으로 올리면 고객 화면 추천 카드에 자동으로 나타납니다. (jpg·webp·png, 가로 1000px 안팎, 한 장당 150KB 이하 권장) 사진이 없는 원단은 지금처럼 색상 배경으로 보입니다.</p>
+                            <div class="flex flex-wrap gap-2 mt-3">
+                                <button onclick="checkPhotos()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">사진 확인하기</button>
+                                <button onclick="downloadPhotoNameList()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">파일명 목록 내려받기 (CSV)</button>
+                                <button onclick="precachePhotos()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-2 rounded-xl text-xs shadow-sm whitespace-nowrap">오프라인용으로 미리 받기</button>
+                            </div>
+                            <div id="photoMissing" class="text-[11px] text-slate-500 mt-2 leading-relaxed"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== 설정: 한 번 정해 두면 잘 안 바꾸는 것들 ===== -->
+                <section class="staff-view" id="view-settings">
+                    <h1 class="staff-h1 font-serif-kr">설정</h1>
+                    <p class="staff-sub">한 번 정해 두면 잘 안 바꾸는 것들입니다.</p>
+
+                    <div class="staff-set">
+                        <h2 class="font-serif-kr">견적서 고정 문구</h2>
+                        <p>견적서 아래쪽에 늘 들어가는 글입니다. 비워 두면 그 줄은 견적서에 나오지 않아요. 이 기기에 저장되고 백업 파일(비공개 팩)로 옮겨집니다.</p>
+                        <label class="staff-field"><span>기본 시공·출장비 (새 상담을 시작할 때 들어가는 금액)</span>
+                            <input type="number" id="defaultInstallFeeInput" step="5000" min="0" inputmode="numeric" placeholder="30000" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveDefaultInstallFee(this.value)">
+                        </label>
+                        <label class="staff-field"><span>결제 조건</span>
+                            <textarea id="ticketPayInput" rows="2" maxlength="300" placeholder="예: 계약금 ○○% 입금 후 제작 시작, 잔금은 시공 당일&#10;○○은행 000-000-000000 (예금주)" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('pay', this.value)"></textarea>
+                        </label>
+                        <label class="staff-field"><span>맞춤 제작 안내</span>
+                            <textarea id="ticketCustomInput" rows="2" maxlength="300" placeholder="예: 맞춤 제작 상품으로, 제작을 시작한 뒤에는 변경·취소가 어렵습니다." class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('custom', this.value)"></textarea>
+                        </label>
+                        <label class="staff-field"><span>공급자 정보</span>
+                            <textarea id="ticketSupplierInput" rows="2" maxlength="300" placeholder="예: Re.dam · 대표 ○○○ · 사업자등록번호 000-00-00000&#10;주소 · 연락처 010-0000-0000" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('supplier', this.value)"></textarea>
+                        </label>
+                    </div>
+
+                    <div class="staff-set">
+                        <h2 class="font-serif-kr">자동 잠금</h2>
+                        <p>손대지 않고 이 시간이 지나면 하던 화면 위에 잠금 화면이 덮입니다. PIN을 넣으면 그 자리에서 이어서 할 수 있어요. 기기마다 따로 정합니다.</p>
+                        <div>
+                            <div id="lockSeg" class="lock-seg">
+                                <button type="button" data-min="5" onclick="setLockMin(5)">5분</button>
+                                <button type="button" data-min="15" onclick="setLockMin(15)">15분</button>
+                                <button type="button" data-min="30" onclick="setLockMin(30)">30분</button>
+                                <button type="button" data-min="0" onclick="setLockMin(0)">끄기</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="staff-set">
+                        <h2 class="font-serif-kr">데이터</h2>
+                        <p>백업 파일에는 원가와 상담 기록이 들어 있습니다. 고객 이름·연락처도 들어 있어요. 메신저·공개 저장소에 올리지 말고 본인만 보는 곳에 보관하세요.</p>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                            <span id="privStatus" class="text-[11px] font-bold"></span>
+                            <span id="offlineStatus" class="text-[11px] font-bold"></span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
+                                <i class="fa-solid fa-file-excel text-[11px] text-amber-700"></i> 단가표 갱신 (엑셀/CSV)
+                                <input type="file" id="fabricFileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFabricFileUpload(event)">
+                            </label>
+                            <label class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
+                                <i class="fa-solid fa-box-open text-[11px] text-amber-700"></i> 비공개 팩 불러오기
+                                <input type="file" id="packFileInput" accept=".json" class="hidden" onchange="handlePrivatePackUpload(event)">
+                            </label>
+                            <button onclick="exportPrivatePack()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+                                <i class="fa-solid fa-floppy-disk text-[11px] text-amber-700"></i> 백업 내려받기
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="staff-set">
+                        <h2 class="font-serif-kr">보안</h2>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="RedamAuth.changePin()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">
+                                PIN 변경
+                            </button>
+                            <button id="legacyPurgeBtn" onclick="purgeLegacyDataConfirm()" style="display:none" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">
+                                구버전 데이터 삭제
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
         </div>
-
-        <footer class="pt-4 border-t border-slate-200 space-y-3 text-xs text-slate-500">
-            <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-amber-600"></span>
-                <span class="text-[11px] font-semibold text-slate-600">Re.dam 단가 및 원단 데이터 관리</span>
-                <span id="privStatus" class="text-[11px] font-bold ml-2"></span>
-                <span id="offlineStatus" class="text-[11px] font-bold ml-2"></span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <label class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
-                    <i class="fa-solid fa-file-excel text-[11px] text-amber-700"></i> 단가표 갱신 (엑셀/CSV)
-                    <input type="file" id="fabricFileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFabricFileUpload(event)">
-                </label>
-                <label class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
-                    <i class="fa-solid fa-box-open text-[11px] text-amber-700"></i> 비공개 팩 불러오기
-                    <input type="file" id="packFileInput" accept=".json" class="hidden" onchange="handlePrivatePackUpload(event)">
-                </label>
-                <button onclick="exportPrivatePack()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
-                    <i class="fa-solid fa-floppy-disk text-[11px] text-amber-700"></i> 백업 내려받기
-                </button>
-                <button onclick="RedamAuth.changePin()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">
-                    PIN 변경
-                </button>
-                <button id="legacyPurgeBtn" onclick="purgeLegacyDataConfirm()" style="display:none" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">
-                    구버전 데이터 삭제
-                </button>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-[11px] font-semibold text-slate-600">자동 잠금 (이 기기만)</span>
-                <div id="lockSeg" class="lock-seg">
-                    <button type="button" data-min="5" onclick="setLockMin(5)">5분</button>
-                    <button type="button" data-min="15" onclick="setLockMin(15)">15분</button>
-                    <button type="button" data-min="30" onclick="setLockMin(30)">30분</button>
-                    <button type="button" data-min="0" onclick="setLockMin(0)">끄기</button>
-                </div>
-                <span class="text-[10px] text-slate-400">손대지 않고 이 시간이 지나면 하던 화면 위에 잠금 화면이 덮입니다. PIN을 넣으면 그 자리에서 이어서 할 수 있어요.</span>
-            </div>
-            <p class="text-[10px] text-slate-400">백업 파일에는 원가와 상담 기록이 들어 있습니다. 고객 이름·연락처도 들어 있어요. 메신저·공개 저장소에 올리지 말고 본인만 보는 곳에 보관하세요.</p>
-        </footer>
-
     </section>
 
     <!-- ============================================================== -->

@@ -25,7 +25,7 @@
         editingRoom: null,
         pendingItemQueue: [],
         currentItemIndex: 0,
-        installFee: 30000,
+        installFee: loadDefaultInstallFee(),
         focusedFabricId: null,
         keypadTarget: null
     };
@@ -1177,7 +1177,7 @@
             state.editingRoom = null;
             state.pendingItemQueue = [];
             state.currentItemIndex = 0;
-            state.installFee = 30000;
+            state.installFee = loadDefaultInstallFee();
             state.focusedFabricId = null;
             state.keypadTarget = null;
             stepHistory.length = 0;

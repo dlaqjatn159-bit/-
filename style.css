@@ -613,23 +613,80 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .lock-seg button:last-child { border-right: 0; }
 .lock-seg button[aria-pressed="true"] { background: var(--brand-dark); color: var(--brand-bg); }
 
-/* 직원 모드 표시 띠 */
-#staffBanner {
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    background: #281c15;
-    color: #f3d6c0;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    padding: 0.35rem 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.8rem;
+/* ============================================================== */
+/* 직원 화면: 왼쪽 고정 사이드바 + 메뉴 5개 (좁은 화면은 아래 탭바) */
+/* ============================================================== */
+.staff-app { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+.staff-side {
+    position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 1.1rem; padding: 1.4rem 0.9rem;
+    background: #281c15; color: #efe6da;
 }
-.staff-banner-acts { display: flex; gap: 1rem; flex-shrink: 0; white-space: nowrap; }
+.staff-brand { font-size: 1.4rem; font-weight: 400; letter-spacing: 0.035em; line-height: 1; padding: 0 0.6rem; }
+.staff-side .logo-dot, .staff-topbar .logo-dot { color: #d19a72; }      /* 어두운 바탕의 점 */
+.staff-cust { padding: 0 0.6rem; font-size: 0.78rem; color: #a8957f; }
+.staff-cust b { display: block; color: #efe6da; font-weight: 500; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.staff-nav { display: flex; flex-direction: column; gap: 2px; }
+.staff-nav button { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.75rem; border-radius: 8px; text-align: left; font-size: 0.92rem; font-weight: 500; color: #a8957f; }
+.staff-nav button i { width: 1.1rem; text-align: center; font-size: 0.95rem; }
+.staff-nav button:hover { color: #efe6da; background: rgba(255, 255, 255, 0.04); }
+.staff-nav button[aria-current="page"] { color: #efe6da; background: rgba(255, 255, 255, 0.09); }
+.staff-nav .badge { margin-left: auto; font-size: 0.7rem; color: #a8957f; }
+.staff-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+.staff-side-foot button { border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.85rem; text-align: left; color: #efe6da; }
+.staff-side-foot button:hover { background: rgba(255, 255, 255, 0.06); }
+.staff-side-foot .btn-new { background: #efe6da; border-color: #efe6da; color: #281c15; font-weight: 600; }
+.staff-side-foot .btn-new:hover { background: #fff; }
+.staff-side-foot .lock-hint { font-size: 0.72rem; color: #a8957f; padding: 0 0.25rem; }
+
+.staff-main { min-width: 0; padding: 1.6rem 1.75rem 5rem; }
+.staff-topbar { display: none; }
+.staff-view, .staff-pane { display: none; }
+.staff-view.on, .staff-pane.on { display: block; }
+.staff-h1 { font-size: 1.5rem; font-weight: 500; line-height: 1.2; color: var(--brand-dark); }
+.staff-sub { margin: 0.2rem 0 1.1rem; font-size: 0.8rem; color: var(--brand-muted); }
+.staff-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.75rem; margin-bottom: 1.1rem; }
+/* 상담: 넓은 화면(공간 카드 옆에 요약이 놓일 때)에서는 견적 요약을 오른쪽에 고정 — 공간이 길어져 내려가도 합계가 따라옴 */
+@media (min-width: 1280px) {
+    .staff-summary-col { position: sticky; top: 1.25rem; align-self: start; max-height: calc(100vh - 2.5rem); max-height: calc(100dvh - 2.5rem); overflow-y: auto; }
+}
+/* 커튼 카드의 "세부 옵션" (접힘) */
+.curtain-more > summary { cursor: pointer; list-style: none; padding: 0.15rem 0; font-size: 0.75rem; font-weight: 700; color: var(--brand-accent); user-select: none; }
+.curtain-more > summary::-webkit-details-marker { display: none; }
+.curtain-more > summary::before { content: "+ "; }
+.curtain-more[open] > summary::before { content: "− "; }
+.curtain-more > summary span { margin-left: 0.2rem; font-weight: 500; color: var(--brand-muted); }
+/* 원단 메뉴의 탭 */
+.staff-tabs { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 1px solid var(--brand-border); overflow-x: auto; }
+.staff-tabs button { padding: 0.6rem 0.9rem; border-bottom: 2px solid transparent; white-space: nowrap; font-size: 0.85rem; font-weight: 600; color: var(--brand-muted); }
+.staff-tabs button[aria-selected="true"] { color: var(--brand-dark); border-bottom-color: var(--brand-accent); }
+/* 설정 메뉴의 묶음 */
+.staff-set { display: grid; gap: 0.75rem; margin-bottom: 0.9rem; padding: 1.1rem 1.25rem; background: #fff; border: 1px solid var(--brand-border); border-radius: 1rem; max-width: 760px; }
+.staff-set h2 { font-size: 1rem; font-weight: 500; color: var(--brand-dark); }
+.staff-set p { font-size: 0.78rem; line-height: 1.55; color: var(--brand-muted); }
+.staff-field { display: grid; gap: 0.25rem; }
+.staff-field > span { font-size: 0.72rem; font-weight: 600; color: var(--brand-muted); }
+
+/* 태블릿 세로 · 폰: 사이드바가 화면 아래 탭바로 바뀌고, 사이드바 아래 버튼은 위 띠로 옮겨 감 */
+@media (max-width: 1023px) {
+    .staff-app { grid-template-columns: minmax(0, 1fr); }
+    .staff-side {
+        position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 45; overflow: visible;
+        flex-direction: row; gap: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+    .staff-brand, .staff-cust, .staff-side-foot { display: none; }
+    .staff-nav { flex-direction: row; justify-content: space-around; width: 100%; }
+    .staff-nav button { flex-direction: column; gap: 3px; padding: 6px 4px; font-size: 0.7rem; }
+    .staff-nav .badge { display: none; }
+    .staff-main { padding: 0 1rem 6.5rem; }
+    .staff-topbar {
+        position: sticky; top: 0; z-index: 40; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem;
+        margin: 0 -1rem 1rem; padding: 0.5rem 1rem; background: #281c15; color: #efe6da; font-size: 0.75rem; font-weight: 600;
+    }
+    .staff-topbar-acts { display: flex; gap: 1rem; flex-shrink: 0; white-space: nowrap; }
+    .staff-topbar-acts button { text-decoration: underline; text-underline-offset: 3px; }
+    #lockWarn { bottom: 5rem; }
+}
 
 /* 로고 Re.dam: 명조 보통 굵기, 색은 점에만 (밝은 바탕 흙빛 / 어두운 바탕·사진 위는 밝은 흙빛). 그러데이션·굵게·늘이기 금지 */
 .logo-dot { font-style: normal; color: #8a4a22; }

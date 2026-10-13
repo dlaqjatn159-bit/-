@@ -15,6 +15,7 @@ const STORE_KEYS = {
     history: 'redam_history_v1',     // 지난 상담 이력 (직원 모드에서만 열람)
     tags: 'redam_tags_v1',           // 사장님이 직접 지정한 원단 분류(언더톤·무드)
     colors: 'redam_colors_v1',       // 원단별 색상 번호와 색상별 톤
+    installFee: 'redam_default_install_fee_v1',   // 새 상담에 들어가는 기본 시공·출장비 (직원 화면 설정)
     legacy: 'curtain_fabric_db_v23'  // 구버전 앱이 남긴 데이터 (원가 포함 → 삭제 권장)
 };
 
@@ -38,7 +39,24 @@ let rooms = [];
 let roomIdCounter = 1;
 let curtainIdCounter = 100;
 
-let globalInstallFee = 30000;
+// 새 상담을 시작할 때 들어가는 기본 시공·출장비. 직원 화면 "설정"에서 바꾸면 이 기기에 저장됨 (정한 적 없으면 30,000원)
+const DEFAULT_INSTALL_FEE = 30000;
+function storedDefaultInstallFee() {
+    try {
+        const v = localStorage.getItem(STORE_KEYS.installFee), n = Number(v);
+        return (v !== null && v !== '' && Number.isFinite(n) && n >= 0) ? n : null;
+    } catch (e) { return null; }
+}
+function loadDefaultInstallFee() { const n = storedDefaultInstallFee(); return n === null ? DEFAULT_INSTALL_FEE : n; }
+function saveDefaultInstallFee(v) {
+    const n = Number(v);
+    try {
+        if (v === '' || v === null || !Number.isFinite(n) || n < 0) localStorage.removeItem(STORE_KEYS.installFee);      // 비우면 처음 값(30,000원)으로
+        else localStorage.setItem(STORE_KEYS.installFee, String(Math.round(n)));
+    } catch (e) {}
+}
+
+let globalInstallFee = loadDefaultInstallFee();
 let globalVatOption = "consumer";
 
 let currentMainTrack = 'curation';
