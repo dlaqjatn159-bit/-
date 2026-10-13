@@ -97,6 +97,7 @@ function enterStaffMode() {
     document.body.dataset.mode = 'staff';
     if (window.concierge) window.concierge.syncToMaster();   // 고객이 구성한 내용을 직원 화면으로 가져옴
     Costing.state.enabled = Costing.hasData();
+    setFinderOnly(false);
     showStaffView('consult');
     switchMainTrack('express');
     startIdleWatch();
@@ -105,6 +106,7 @@ function enterStaffMode() {
 function exitStaffMode(toastMsg, goToProposal) {
     stopIdleWatch();
     if (staffLocked) { staffLocked = false; RedamAuth.dismiss(); }      // 잠긴 채로 나갈 때는 잠금 창도 닫음
+    setFinderOnly(false);
     appMode = 'customer';
     document.body.dataset.mode = 'customer';
     Costing.state.enabled = false;
@@ -129,6 +131,7 @@ function presentToCustomer() {
 
 // 직원 화면 메뉴(왼쪽 사이드바 · 좁은 화면은 아래 탭바): 상담 / 서류 / 상담 기록 / 원단 / 설정. 내용은 모두 그려 두고 보이는 묶음만 바꿈
 function showStaffView(view) {
+    if (view !== 'fabric' && finderGate(() => showStaffView(view))) return;
     document.querySelectorAll('.staff-nav button').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     document.querySelectorAll('.staff-view').forEach(s => s.classList.toggle('on', s.id === 'view-' + view));
     if (view === 'fabric') renderFinder();      // 분류·색상을 고친 뒤 돌아와도 새 값으로 보이게, 열 때마다 다시 그림
@@ -136,6 +139,7 @@ function showStaffView(view) {
 }
 // 원단 메뉴의 탭 5개: 찾기(find) · 원단 목록(list) · 분류(tag) · 색상(color) · 사진(photo)
 function showFabricTab(tab) {
+    if (tab !== 'find' && finderGate(() => showFabricTab(tab))) return;
     document.querySelectorAll('.staff-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
     document.querySelectorAll('.staff-pane').forEach(p => p.classList.toggle('on', p.id === 'fabricTab-' + tab));
     if (tab === 'find') renderFinder();
@@ -165,6 +169,7 @@ function formatPhone(v) {
 
 // 새 상담 시작: 이전 고객의 입력을 전부 비움
 function startNewConsultation() {
+    if (finderGate(startNewConsultation)) return;
     if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
     archiveConsultation(collectConsultation(), Date.now());
     clearDraft();
@@ -190,7 +195,8 @@ function startNewConsultation() {
 // ==============================================================
 const RedamAuth = (function() {
     let taps = 0, tapTimer = null;
-    let mode = 'verify';        // 'verify' | 'setup' | 'change' | 'unlock'(잠금 화면)
+    let mode = 'verify';        // 'verify' | 'setup' | 'change' | 'unlock'(잠금 화면) | 'gate'(찾기만 열린 상태에서 다른 메뉴로 갈 때)
+    let gateNext = null;        // 'gate'에서 PIN이 맞으면 이어서 할 일
     let fails = 0, lockedUntil = 0;
 
     function el(id) { return document.getElementById(id); }
@@ -209,21 +215,22 @@ const RedamAuth = (function() {
 
     function openModal(m) {
         mode = m;
+        gateNext = null;
         el('pinInput').value = ''; el('pinInput2').value = ''; el('pinError').textContent = '';
         const two = (m === 'setup' || m === 'change');
         el('pinInput2').style.display = two ? 'block' : 'none';
-        const lock = (m === 'unlock');
-        el('pinTitle').textContent = lock ? '잠겨 있어요' : (m === 'verify' ? '직원 모드' : (m === 'setup' ? '직원 PIN 만들기' : 'PIN 변경'));
-        el('pinDesc').textContent = lock ? 'PIN을 넣으면 하던 화면으로 돌아갑니다.' : (m === 'verify' ? 'PIN을 입력해 주세요.'
-            : '숫자 4~8자리를 정하고 한 번 더 입력해 주세요. (분실하면 복구할 수 없으니 꼭 기억해 두세요)');
+        const lock = (m === 'unlock'), gate = (m === 'gate');
+        el('pinTitle').textContent = lock ? '잠겨 있어요' : (gate ? '다른 메뉴 열기' : (m === 'verify' ? '직원 모드' : (m === 'setup' ? '직원 PIN 만들기' : 'PIN 변경')));
+        el('pinDesc').textContent = lock ? 'PIN을 넣으면 하던 화면으로 돌아갑니다.' : (gate ? '찾기 화면 밖의 메뉴는 PIN을 넣어야 열립니다.' : (m === 'verify' ? 'PIN을 입력해 주세요.'
+            : '숫자 4~8자리를 정하고 한 번 더 입력해 주세요. (분실하면 복구할 수 없으니 꼭 기억해 두세요)'));
         el('pinInput').placeholder = two ? '새 PIN' : '••••';
         el('pinInput2').placeholder = '새 PIN 확인';
-        el('pinCancelBtn').textContent = lock ? '고객 화면으로' : '취소';
+        el('pinCancelBtn').textContent = lock ? '고객 화면으로' : (gate ? '찾기 화면으로' : '취소');
         el('pinModal').classList.toggle('is-lock', lock);          // 잠금 화면일 때는 뒤 화면(원가)이 읽히지 않게 더 흐리게
         el('pinModal').classList.remove('hidden');
         setTimeout(() => el('pinInput').focus(), 50);
     }
-    function closeModal() { mode = 'verify'; el('pinModal').classList.add('hidden'); el('pinModal').classList.remove('is-lock'); el('pinInput').value = ''; el('pinInput2').value = ''; }
+    function closeModal() { mode = 'verify'; gateNext = null; el('pinModal').classList.add('hidden'); el('pinModal').classList.remove('is-lock'); el('pinInput').value = ''; el('pinInput2').value = ''; }
 
     return {
         // 로고를 2초 안에 5번 탭하면 PIN 창을 연다 (고객이 우연히 누르는 것을 방지)
@@ -237,19 +244,22 @@ const RedamAuth = (function() {
         requestStaff: function() { openModal(loadStored() ? 'verify' : 'setup'); },
         changePin: function() { openModal('change'); },
         requestUnlock: function() { openModal('unlock'); },
+        // 찾기만 열린 상태에서 다른 메뉴로 갈 때: PIN이 맞으면 next를 이어서 함. "찾기 화면으로"는 창만 닫음
+        requestGate: function(next) { openModal('gate'); gateNext = next || null; },
         dismiss: closeModal,
         // 잠금 화면의 "고객 화면으로"는 창만 닫지 않고 고객 화면으로 나감
         cancel: function() { const wasLock = (mode === 'unlock'); closeModal(); if (wasLock) exitStaffMode(); },
         submit: async function() {
             const pin = el('pinInput').value.trim();
             const err = el('pinError');
-            if (mode === 'verify' || mode === 'unlock') {
+            if (mode === 'verify' || mode === 'unlock' || mode === 'gate') {
                 if (Date.now() < lockedUntil) { err.textContent = `잠시 후 다시 시도해 주세요. (${Math.ceil((lockedUntil - Date.now()) / 1000)}초)`; return; }
                 const st = loadStored();
                 if (st && (await hashPin(pin, st.salt)) === st.hash) {
-                    const wasLock = (mode === 'unlock');
+                    const was = mode, next = gateNext;
                     fails = 0; closeModal();
-                    if (wasLock) unlockStaff(); else enterStaffMode();      // 잠금 해제는 화면을 다시 그리지 않음 → 하던 화면 그대로
+                    if (was === 'verify') enterStaffMode();
+                    else { unlockStaff(); if (was === 'gate' && next) next(); }      // 잠금 해제는 화면을 다시 그리지 않음 → 하던 화면 그대로
                 } else {
                     fails++;
                     el('pinInput').value = '';
@@ -289,7 +299,7 @@ function renderLockSetting() {
     const min = loadLockMin();
     document.querySelectorAll('#lockSeg button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.min) === min)));
     const hint = document.getElementById('lockHint');
-    if (hint) hint.textContent = min ? `${min}분 동안 손대지 않으면 잠깁니다` : '이 기기는 자동으로 잠기지 않습니다';
+    if (hint) hint.textContent = staffFinderOnly ? '다른 메뉴는 PIN을 넣어야 열려요' : (min ? `${min}분 동안 손대지 않으면 잠깁니다` : '이 기기는 자동으로 잠기지 않습니다');
 }
 function markActivity() { lastActivity = Date.now(); }
 function idleTick() {
@@ -326,7 +336,22 @@ function lockStaff() {
 function unlockStaff() {
     staffLocked = false;
     setStaffLockedUi(false);
+    setFinderOnly(false);
     lastActivity = Date.now();
+}
+// 찾기만 열린 상태: 후보를 "고객에게 보여주기"로 보여 준 뒤 닫으면 PIN 없이 원단 › 찾기 화면까지만 씀 (고객과 나란히 앉아 볼 때 PIN을 계속 누르지 않게)
+//  - 상담·서류·상담 기록·설정, 원단의 다른 탭, 새 상담은 PIN을 한 번 넣어야 열리고, 넣고 나면 평소대로 돌아감
+//  - 자동 잠금·"지금 잠그기"·"잠그고 나가기"는 그대로
+let staffFinderOnly = false;
+function setFinderOnly(on) {
+    staffFinderOnly = !!on;
+    if (staffFinderOnly) document.body.dataset.finderOnly = '1'; else delete document.body.dataset.finderOnly;
+    renderLockSetting();
+}
+function finderGate(next) {
+    if (appMode !== 'staff' || !staffFinderOnly) return false;
+    RedamAuth.requestGate(next);
+    return true;
 }
 
 // ==============================================================
@@ -1011,7 +1036,7 @@ function finderPlainFabName(e) { return String(e.fabName || '').replace(/\([^)]*
 function finderPickName(e) { return e.color ? `${e.label ? e.label + ' · ' : ''}${finderPlainFabName(e)} ${e.no}` : finderPlainFabName(e); }
 function clearFinderPicks() { finderPicks = []; renderFinder(); }
 // 고객에게 보여주기: 직원 화면을 통째로 덮는 화면에 큰 색 칸(사진이 있으면 사진) · 색 이름 · 느낌만 나란히 (2~6개)
-//  - 보여 주는 동안 직원 화면은 잠근 것으로 침 → 닫으면 PIN을 넣어야 하던 화면으로 돌아옴 (자동 잠금과 같은 규칙)
+//  - 보여 주는 동안 직원 화면은 잠근 것으로 침(자동 잠금 창이 끼어들지 않게) → 닫으면 PIN 없이 찾기 화면까지만 열림 (setFinderOnly)
 function openFinderShow() {
     const all = finderEntries();
     const picks = finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean).slice(0, FINDER_PICK_MAX);
@@ -1046,7 +1071,7 @@ function closeFinderShow() {
     const box = document.getElementById('finderShow');
     if (box) box.classList.add('hidden');
     document.documentElement.style.overflow = '';
-    if (appMode === 'staff' && staffLocked) RedamAuth.requestUnlock();
+    if (appMode === 'staff' && staffLocked) { staffLocked = false; setStaffLockedUi(false); lastActivity = Date.now(); setFinderOnly(true); }
 }
 function setFinderView(view) { finderView = view === 'map' ? 'map' : 'grid'; renderFinder(); }
 // 색 지도: 가로 = 노란기 b(왼쪽 쿨 · 오른쪽 웜), 세로 = 밝기 L(위가 밝음). 지금 조건에 맞는 색은 진하고 크게, 나머지는 흐리게
@@ -1083,7 +1108,7 @@ function finderMapPick(event, svg) {
     const hit = nearest(finderMapPoints.filter(m => m.hit), 12) || nearest(finderMapPoints, 18);
     return hit ? hit.key : null;
 }
-// 카드의 버튼: "비슷한 색" = 그 색과 가까운 색 찾기 / "이 공간에 넣기" = 넣을 칸의 원단과 색상 번호를 바꾸고 상담 화면으로 돌아감
+// 카드의 버튼: "비슷한 색" = 그 색과 가까운 색 찾기 / "이 공간에 넣기" = 넣을 칸의 원단과 색상 번호를 바꾸고 상담 화면으로 돌아감(찾기만 열린 상태면 찾기 화면에 머묾)
 function finderClick(event) {
     const starBtn = event.target.closest('button[data-star], button[data-unstar]');
     if (starBtn) {
@@ -1124,13 +1149,15 @@ function finderClick(event) {
     if (!btn) return;
     const t = finderTargetCurtain();
     const e = finderEntries().find(x => x.key === btn.dataset.pick);
-    finderTarget = null;
-    if (!t || !e) { renderFinder(); showToast('넣을 칸을 찾지 못했어요. 상담 화면에서 "찾기"를 다시 눌러 주세요.', 'error'); return; }
+    if (!t || !e) { finderTarget = null; renderFinder(); showToast('넣을 칸을 찾지 못했어요. 상담 화면에서 "찾기"를 다시 눌러 주세요.', 'error'); return; }
     collapsedRooms.delete(t.room.id);
     updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
     t.c.colorName = e.color;
     renderRooms();
     calculateAll();
+    // 찾기만 열린 상태: 상담 화면으로 가지 않고(PIN이 필요) 넣을 칸도 그대로 둠 → 다른 색을 누르면 바로 바뀜
+    if (staffFinderOnly) { renderFinder(); showToast(`${e.fabName}${colorSuffix(e.color, e.fabricId)} → ${t.room.name} · ${t.c.label} 칸에 넣었어요. 다른 색을 누르면 바뀝니다.`); return; }
+    finderTarget = null;
     showStaffView('consult');
     const sub = document.getElementById(`curtainSub_${t.c.id}`);
     const card = sub && sub.closest('.staff-curtain');

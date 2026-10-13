@@ -632,6 +632,15 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .staff-nav button:hover { color: #efe6da; background: rgba(255, 255, 255, 0.04); }
 .staff-nav button[aria-current="page"] { color: #efe6da; background: rgba(255, 255, 255, 0.09); }
 .staff-nav .badge { margin-left: auto; font-size: 0.7rem; color: #a8957f; }
+/* 찾기만 열린 상태(후보를 고객에게 보여 준 뒤): PIN을 넣어야 열리는 메뉴·탭·새 상담은 흐리게 + 작은 자물쇠 */
+body[data-finder-only] .staff-nav button:not([data-view="fabric"]),
+body[data-finder-only] .staff-tabs button:not([data-tab="find"]),
+body[data-finder-only] .staff-side-foot .btn-new,
+body[data-finder-only] .staff-topbar-acts button:first-child { opacity: 0.45; }
+body[data-finder-only] .staff-nav button:not([data-view="fabric"])::after,
+body[data-finder-only] .staff-tabs button:not([data-tab="find"])::after { content: "\f023"; font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 0.62rem; margin-left: 0.4rem; }
+body[data-finder-only] .staff-nav button:not([data-view="fabric"])::after { margin-left: auto; }
+body[data-finder-only] .staff-nav .badge { display: none; }
 .staff-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.5rem; }
 .staff-side-foot button { border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.85rem; text-align: left; color: #efe6da; }
 .staff-side-foot button:hover { background: rgba(255, 255, 255, 0.06); }
@@ -812,6 +821,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .staff-nav { flex-direction: row; justify-content: space-around; width: 100%; }
     .staff-nav button { flex-direction: column; gap: 3px; padding: 6px 4px; font-size: 0.7rem; }
     .staff-nav .badge { display: none; }
+    body[data-finder-only] .staff-nav button:not([data-view="fabric"])::after { display: none; }      /* 아래 탭바는 좁아서 흐리게만 */
     .staff-main { padding: 0 1rem 6.5rem; }
     .staff-topbar {
         position: sticky; top: 0; z-index: 40; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem;
