@@ -395,7 +395,7 @@
                 const esc = v => String(v || '').replace(/"/g, '&quot;');
                 html += '<div class="ambient-stage ask-stage wel-stage">';
                 html += '<h1 class="wel-brand font-serif-kr" onclick="window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</h1>';
-                html += '<p class="wel-sub font-serif-kr">빛과 결을 채워 넣는 비스포크 큐레이션</p>';
+                html += '<p class="wel-sub font-serif-kr">빛을,<br>다시 담습니다</p>';
                 html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)">`;
                 html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)">`;
                 html += `<button type="button" class="txt-cta wel-go font-serif-kr" onclick="window.concierge.beginConsult()">${state.roomsCart.length ? '상담 이어가기' : '상담 시작'}</button>`;
@@ -408,7 +408,7 @@
             case "1.5-Room-Type":
                 html += askStage('어느 공간의 창인가요?', '', [
                     { label: '거실', desc: '빛과 쉼의 중심', on: "window.concierge.chooseRoomType('거실')" },
-                    { label: '방', desc: '숙면과 프라이빗', on: "window.concierge.chooseRoomType('방')" },
+                    { label: '방', desc: '편안한 잠과 쉼', on: "window.concierge.chooseRoomType('방')" },
                     { label: '서재', desc: '몰입을 위한 빛', on: "window.concierge.chooseRoomType('서재')" },
                     { label: '주방', desc: '단정하고 깨끗하게', on: "window.concierge.chooseRoomType('주방')" },
                     { label: '알파룸', desc: '다목적 공간', on: "window.concierge.chooseRoomType('알파룸')" },
@@ -433,10 +433,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("웜 톤", "오크·베이지", "FLOOR 01", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
-                html += renderBookmarkCard("쿨 톤", "타일·대리석", "FLOOR 02", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
-                html += renderBookmarkCard("뉴트럴 톤", "그레이지·회색", "FLOOR 03", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); }, 'vdesc' + was('floorTone', 'neutral'));
-                html += renderBookmarkCard("딥 톤", "월넛·브라운", "FLOOR 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); }, 'vdesc' + was('floorTone', 'deep'));
+                html += renderBookmarkCard("웜 톤", "오크·베이지", "", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
+                html += renderBookmarkCard("쿨 톤", "타일·대리석", "", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
+                html += renderBookmarkCard("뉴트럴 톤", "그레이지·회색", "", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); }, 'vdesc' + was('floorTone', 'neutral'));
+                html += renderBookmarkCard("딥 톤", "월넛·브라운", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); }, 'vdesc' + was('floorTone', 'deep'));
                 html += '</div></div>';
                 break;
 
@@ -445,9 +445,9 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('벽 톤도 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("웜 톤", "크림·아이보리", "WALL 01", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
-                html += renderBookmarkCard("쿨 톤", "화이트·그레이", "WALL 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
-                html += renderBookmarkCard("뉴트럴 톤", "그레이지", "WALL 03", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); }, 'vdesc' + was('wallTone', 'neutral'));
+                html += renderBookmarkCard("웜 톤", "크림·아이보리", "", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
+                html += renderBookmarkCard("쿨 톤", "화이트·그레이", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
+                html += renderBookmarkCard("뉴트럴 톤", "그레이지", "", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); }, 'vdesc' + was('wallTone', 'neutral'));
                 html += renderBookmarkCard("딥 톤", "체리·우드", "WALL 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); }, 'vdesc' + was('wallTone', 'deep'));
                 html += '</div></div>';
                 break;
@@ -495,12 +495,12 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('원하시는 분위기를 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("포근한", "아이보리·베이지", "MOOD 01", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); }, 'vdesc' + was('wantMood', 'soft_warm'));
-                html += renderBookmarkCard("깔끔한", "화이트·그레이", "MOOD 02", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); }, 'vdesc' + was('wantMood', 'urban_clean'));
-                html += renderBookmarkCard("은은한", "그레이지", "MOOD 03", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc' + was('wantMood', 'balanced_neutral'));
-                html += renderBookmarkCard("자연스러운", "린넨의 결", "MOOD 04", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); }, 'vdesc' + was('wantMood', 'textured_linen'));
-                html += renderBookmarkCard("아늑한", "차콜·브라운", "MOOD 05", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); }, 'vdesc' + was('wantMood', 'deep_private'));
-                html += renderBookmarkCard("화사한", "밝고 가벼운", "MOOD 06", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); }, 'vdesc' + was('wantMood', 'airy_bright'));
+                html += renderBookmarkCard("포근한", "아이보리·베이지", "", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); }, 'vdesc' + was('wantMood', 'soft_warm'));
+                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); }, 'vdesc' + was('wantMood', 'urban_clean'));
+                html += renderBookmarkCard("은은한", "그레이지", "", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc' + was('wantMood', 'balanced_neutral'));
+                html += renderBookmarkCard("자연스러운", "린넨의 결", "", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); }, 'vdesc' + was('wantMood', 'textured_linen'));
+                html += renderBookmarkCard("아늑한", "차콜·브라운", "", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); }, 'vdesc' + was('wantMood', 'deep_private'));
+                html += renderBookmarkCard("화사한", "밝고 가벼운", "", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); }, 'vdesc' + was('wantMood', 'airy_bright'));
                 html += '</div></div>';
                 break;
 
@@ -508,15 +508,14 @@
             case "3-Config-Style":
                 // 공간 종류(방은 빛 차단 희망까지)에 맞는 구성에 "추천" 표시. 카드 순서는 그대로
                 const recComp = (typeof recommendComposition === 'function') ? recommendComposition(state.editingRoom) : null;
-                const compTag = (key, en) => en;
                 const recCls = key => recComp === key ? 'is-recommended' : '';
                 html += '<div class="bookmark-stage">';
                 html += stepHead('창을 어떻게 구성할까요?', recComp ? '빛과 시선 답에 맞는 구성을 표시했어요' : '');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("이중 커튼", "호텔처럼", compTag('double', "DOUBLE LAYER"), SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
-                html += renderBookmarkCard("속지 커튼", "은은한 채광", compTag('sheer_only', "SHEER ONLY"), SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'));
-                html += renderBookmarkCard("겉지 커튼", "빛 차단", compTag('drape_only', "DRAPE ONLY"), SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
-                html += renderBookmarkCard("블라인드", "빛 각도 조절", compTag('blind_only', "BLIND SHADE"), SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
+                html += renderBookmarkCard("이중 커튼", "호텔처럼", "", SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
+                html += renderBookmarkCard("속지 커튼", "은은한 채광", "", SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'));
+                html += renderBookmarkCard("겉지 커튼", "빛 차단", "", SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
+                html += renderBookmarkCard("블라인드", "빛 각도 조절", "", SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
                 html += '</div></div>';
                 break;
 
@@ -526,10 +525,10 @@
                 const typeLabel = curItem.presetType === 'sheer' ? '속지' : (curItem.presetType === 'drape' ? '겉지' : '블라인드');
                 html += '<div class="ambient-stage" onclick="window.concierge.proceedToFabricQueue()">';
                 html += '<div class="ambient-light-glow"></div>';
-                html += `<span class="q-meta">${state.editingRoom.name} · Curated Fabric</span>`;
-                html += `<h2 class="q-title font-serif-kr">빛과 톤에 어울리는<br>${typeLabel} 컬렉션을 제안합니다.</h2>`;
-                html += '<p class="q-sub font-serif-kr">공간의 마감재와 채광 밸런스를 고려한 맞춤 패브릭입니다.</p>';
-                html += '<div class="q-hint font-serif-kr"><span>패브릭 컬렉션 확인하기</span><i class="fa-solid fa-arrow-right text-xs"></i></div>';
+                html += `<span class="q-meta">${state.editingRoom.name} · 원단 제안</span>`;
+                html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br>${typeLabel}를 골랐습니다.</h2>`;
+                html += '<p class="q-sub font-serif-kr">바닥·벽의 색과 들어오는 햇빛을 보고 고른 원단입니다.</p>';
+                html += '<div class="q-hint font-serif-kr"><span>원단 보기</span><i class="fa-solid fa-arrow-right text-xs"></i></div>';
                 html += '</div>';
                 break;
 

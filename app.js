@@ -2155,7 +2155,7 @@ function drawTicket(ctx, data, W) {
     function layoutFooter() {
         setFont(400, 22, SANS);
         const rows = [
-            { label: '안내', lines: paras(data.note, INFO_W).concat(['전문 피팅 시공 및 1년 무상 A/S']) },
+            { label: '안내', lines: paras(data.note, INFO_W) },
             { label: '결제 조건', lines: paras(data.pay, INFO_W) },
             { label: '맞춤 제작 안내', lines: paras(data.custom, INFO_W) }
         ].filter(r => r.lines.length);
