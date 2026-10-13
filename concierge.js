@@ -18,6 +18,10 @@
         l4: "linear-gradient(135deg, #3e2c21 0%, #201711 100%)"
     };
 
+    // 바닥·벽 카드의 큰 글씨(색 이름). "같은 바닥·벽인가요?" 설명도 손님이 카드에서 본 이 이름으로 씀
+    const FLOOR_NAMES = { warm: "오크·베이지", cool: "화이트·그레이", neutral: "그레이지·회색", deep: "월넛·브라운" };
+    const WALL_NAMES = { warm: "크림·아이보리", cool: "화이트·그레이", neutral: "그레이지", deep: "체리·우드" };
+
     const state = {
         step: "0-Start",
         roomsCart: [],
@@ -420,7 +424,7 @@
             // [Step 2-0: 앞 공간과 같은 바닥·벽인지 (두 번째 공간부터)]
             case "2-Base-Copy": {
                 const src = copySourceRoom();
-                const srcDesc = src ? `바닥 ${TONE_LABELS[src.floorTone] || ''} 톤 · 벽 ${TONE_LABELS[src.wallTone] || ''} 톤` : '';
+                const srcDesc = src ? [FLOOR_NAMES[src.floorTone] && `바닥 ${FLOOR_NAMES[src.floorTone]}`, WALL_NAMES[src.wallTone] && `벽 ${WALL_NAMES[src.wallTone]}`].filter(Boolean).join(' / ') : '';
                 html += askStage(src ? `${withGwa(src.name)} 바닥·벽이 같은가요?` : '바닥·벽을 골라 주세요', srcDesc, [
                     { label: '네, 같아요', desc: '바닥·벽 선택을 건너뛰어요', on: 'window.concierge.copyBaseFromPrev(true)' },
                     { label: '아니요, 새로 고를게요', desc: '이 공간의 톤을 직접 골라요', on: 'window.concierge.copyBaseFromPrev(false)' }
@@ -433,10 +437,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("웜 톤", "오크·베이지", "", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
-                html += renderBookmarkCard("쿨 톤", "타일·대리석", "", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
-                html += renderBookmarkCard("뉴트럴 톤", "그레이지·회색", "", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); }, 'vdesc' + was('floorTone', 'neutral'));
-                html += renderBookmarkCard("딥 톤", "월넛·브라운", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); }, 'vdesc' + was('floorTone', 'deep'));
+                html += renderBookmarkCard(FLOOR_NAMES.warm, "밝은 원목 마루 같은", "", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
+                html += renderBookmarkCard(FLOOR_NAMES.cool, "타일·대리석 같은", "", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
+                html += renderBookmarkCard(FLOOR_NAMES.neutral, "회색빛 마루·타일 같은", "", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); }, 'vdesc' + was('floorTone', 'neutral'));
+                html += renderBookmarkCard(FLOOR_NAMES.deep, "진한 원목 마루 같은", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); }, 'vdesc' + was('floorTone', 'deep'));
                 html += '</div></div>';
                 break;
 
@@ -445,10 +449,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('벽 톤도 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("웜 톤", "크림·아이보리", "", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
-                html += renderBookmarkCard("쿨 톤", "화이트·그레이", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
-                html += renderBookmarkCard("뉴트럴 톤", "그레이지", "", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); }, 'vdesc' + was('wallTone', 'neutral'));
-                html += renderBookmarkCard("딥 톤", "체리·우드", "WALL 04", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); }, 'vdesc' + was('wallTone', 'deep'));
+                html += renderBookmarkCard(WALL_NAMES.warm, "따뜻한 흰 벽지 같은", "", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
+                html += renderBookmarkCard(WALL_NAMES.cool, "맑은 흰 벽지 같은", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
+                html += renderBookmarkCard(WALL_NAMES.neutral, "회색빛 벽지 같은", "", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); }, 'vdesc' + was('wallTone', 'neutral'));
+                html += renderBookmarkCard(WALL_NAMES.deep, "진한 나무 벽 같은", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); }, 'vdesc' + was('wallTone', 'deep'));
                 html += '</div></div>';
                 break;
 
