@@ -475,6 +475,7 @@ function restoreDraftOnLoad() {
         return false;
     }
     applySnapshot(d);
+    if (window.concierge) window.concierge.resume();      // 하던 상담이므로 시작 화면(로고 모션)은 건너뜀
     __lastDraftJson = JSON.stringify(collectConsultation());
     showToast('진행 중이던 상담을 복구했습니다.', 'info');
     return true;

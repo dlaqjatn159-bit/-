@@ -1097,6 +1097,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .txt-cta { position: relative; z-index: 10; background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem 0.4rem; font-size: 1.45rem; font-weight: 700; color: #91401a; border-bottom: 1.5px solid #91401a; }
 .wel-go { margin-top: 2.6rem; }
 
+/* ===== 로고 모션: 시작 화면의 "시작하기"를 누르면 화면을 통째로 덮고, 끝나면 첫 화면으로 이어짐 (concierge.js playIntro). 아무 데나 누르면 건너뜀 ===== */
+.logo-intro { position: fixed; inset: 0; z-index: 9500; background: var(--brand-bg); cursor: pointer; touch-action: none; user-select: none; }
+.logo-intro svg { display: block; width: 100%; height: 100%; }
+.logo-intro path { fill: var(--brand-dark); }
+
 /* 치수 미세 조절 버튼 (넓이 ±1·±10, 높이 ±1·±5) */
 .nudge-row { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.9rem; }
 .nudge-btn {
