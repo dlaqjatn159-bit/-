@@ -75,6 +75,7 @@ function switchMainTrack(track) {
         renderDbTable();
         updatePrivateStatus();
         renderHistory();
+        warnHistoryFull();
         updateOfflineStatus();
         renderTagEditor();
         renderColorEditor();
@@ -258,8 +259,9 @@ function stopIdleWatch() {
 //    다음 고객에게 보이지 않게 합니다. 이력은 직원 모드(PIN)에서만 볼 수 있습니다.
 // ==============================================================
 const DRAFT_FRESH_MS = 3 * 60 * 60 * 1000;
-const HISTORY_MAX = 30;
+const HISTORY_MAX = 500;
 let __lastDraftJson = '';
+let __historyUnsaved = null;       // 저장에 실패한 이력 목록 (창을 닫기 전까지 기억 → 백업·정리 후 다시 저장)
 
 function collectConsultation() {
     const src = (appMode === 'staff' || !window.concierge) ? rooms : window.concierge.getRoomsForSave();
@@ -303,10 +305,36 @@ function clearDraft() {
 }
 
 function loadHistory() {
+    if (__historyUnsaved) return __historyUnsaved.slice();
     try { const h = JSON.parse(localStorage.getItem(STORE_KEYS.history)); return Array.isArray(h) ? h : []; } catch (e) { return []; }
 }
 function saveHistory(list) {
-    try { localStorage.setItem(STORE_KEYS.history, JSON.stringify(list.slice(0, HISTORY_MAX))); } catch (e) { console.warn('이력 저장 실패', e); }
+    const kept = list.slice(0, HISTORY_MAX);
+    try {
+        localStorage.setItem(STORE_KEYS.history, JSON.stringify(kept));
+        __historyUnsaved = null;
+        return true;
+    } catch (e) {
+        console.warn('이력 저장 실패', e);
+        __historyUnsaved = kept;                   // 기기에 못 적은 목록은 화면이 열려 있는 동안만 남음
+        warnHistoryFull();
+        return false;
+    }
+}
+// 기록 공간(브라우저 저장소)이 가득 차 이력을 못 적었을 때: 직원 화면에서만 알림 (고객 화면에는 띄우지 않음)
+const HISTORY_FULL_MSG = '기록 공간이 가득 찼어요. 백업 후 오래된 기록을 정리해 주세요';
+function warnHistoryFull() {
+    if (__historyUnsaved && appMode === 'staff') showToast(HISTORY_FULL_MSG, 'error');
+}
+// 비공개 팩(백업)의 상담 기록을 이 기기 기록과 합침 — 덮어쓰지 않음. id가 같으면 더 새 것(updatedAt)만 남기고 최근 순으로 정렬
+function mergeHistoryFromPack(incoming) {
+    const byId = {};
+    const usable = h => h && /^[\w-]+$/.test(h.id) && h.snapshot && Array.isArray(h.snapshot.rooms) && h.snapshot.rooms.every(r => r && Array.isArray(r.curtains));
+    loadHistory().concat(incoming.filter(usable)).forEach(h => {
+        if (!byId[h.id] || (h.updatedAt || 0) > (byId[h.id].updatedAt || 0)) byId[h.id] = h;
+    });
+    saveHistory(Object.values(byId).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
+    renderHistory();
 }
 function archiveConsultation(snap, updatedAt) {
     if (!snap || !snap.rooms || snap.rooms.length === 0) return;
@@ -351,6 +379,7 @@ function renderHistory() {
     if (!box) return;
     const list = loadHistory();
     const cnt = document.getElementById('historyCount'); if (cnt) cnt.textContent = list.length;
+    const full = document.getElementById('historyFullNotice'); if (full) full.classList.toggle('hidden', !__historyUnsaved);
     if (list.length === 0) { box.innerHTML = '<div class="text-xs text-slate-400 py-3 text-center">저장된 상담이 없습니다.</div>'; return; }
     const pad = n => String(n).padStart(2, '0');
     box.innerHTML = list.map(h => {
