@@ -64,9 +64,9 @@ function calculateAll() {
 
         if (summaryListContainer) {
             summaryListContainer.innerHTML += `
-                <div class="flex justify-between items-center text-indigo-200 text-xs">
-                    <span>${room.name} (${room.curtains.length}개):</span>
-                    <span class="font-bold text-white font-mono">${roomSubtotalSum.toLocaleString()}원</span>
+                <div class="staff-sum-line">
+                    <span>${room.name} (${room.curtains.length}개)</span>
+                    <span>${roomSubtotalSum.toLocaleString()}원</span>
                 </div>
             `;
         }
@@ -82,7 +82,6 @@ function calculateAll() {
     setText('resGrandSubtotal', sellingPrice.toLocaleString());
     setText('resGrandVat', vatAmount.toLocaleString());
     setText('resRoomsSubtotal', grandSubtotal.toLocaleString());
-    setText('resSummaryFinal', `${finalPrice.toLocaleString()}원`);
     setText('proposalGrandPriceText', finalPrice.toLocaleString());
 
     if (staff) {

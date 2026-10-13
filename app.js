@@ -109,8 +109,7 @@ function exitStaffMode(toastMsg, goToProposal) {
     document.body.dataset.mode = 'customer';
     Costing.state.enabled = false;
     // 원가가 화면에 남지 않도록 정리
-    const margin = document.getElementById('marginCollapsibleContent');
-    if (margin) margin.classList.add('hidden');
+    toggleMarginSection(false);
     const outDoc = document.getElementById('outputDoc');
     if (outDoc) outDoc.value = '';
     renderDbTable();
@@ -459,8 +458,15 @@ function renderHistory() {
     const nav = document.getElementById('historyNavCount'); if (nav) nav.textContent = list.length || '';
     const full = document.getElementById('historyFullNotice'); if (full) full.classList.toggle('hidden', !__historyUnsaved);
     if (list.length === 0) { box.innerHTML = '<div class="text-xs text-slate-400 py-3 text-center">저장된 상담이 없습니다.</div>'; return; }
+    // 이름·연락처 찾기 (연락처는 하이픈 없이 숫자만 쳐도 찾음)
+    const q = ((document.getElementById('historySearch') || {}).value || '').trim().toLowerCase(), qDigits = q.replace(/\D/g, '');
+    const shown = !q ? list : list.filter(h => {
+        const phone = (h.snapshot && h.snapshot.phone) || '';
+        return (h.name || '').toLowerCase().includes(q) || phone.includes(q) || (qDigits.length >= 2 && phone.replace(/\D/g, '').includes(qDigits));
+    });
+    if (shown.length === 0) { box.innerHTML = '<div class="text-xs text-slate-400 py-3 text-center">찾는 상담이 없어요.</div>'; return; }
     const pad = n => String(n).padStart(2, '0');
-    box.innerHTML = list.map(h => {
+    box.innerHTML = shown.map(h => {
         const d = new Date(h.updatedAt);
         const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         const nm = ((h.name || '(이름 없음)') + (h.snapshot && h.snapshot.phone ? ' · ' + h.snapshot.phone : '')).replace(/</g, '&lt;');
@@ -775,7 +781,6 @@ function purgeLegacyDataConfirm() {
 
 function toggleMarginSection(forceOpen) {
     const content = document.getElementById('marginCollapsibleContent');
-    const chevron = document.getElementById('marginAccordionChevron');
     const statusText = document.getElementById('marginAccordionStatus');
     const badge = document.getElementById('resMarginRateBadge');
     if (!content) return;
@@ -783,12 +788,10 @@ function toggleMarginSection(forceOpen) {
     const shouldOpen = forceOpen !== undefined ? forceOpen : content.classList.contains('hidden');
     if (shouldOpen) {
         content.classList.remove('hidden');
-        if (chevron) chevron.style.transform = 'rotate(180deg)';
         if (statusText) statusText.textContent = '가리기';
         if (badge) badge.classList.remove('hidden');
     } else {
         content.classList.add('hidden');
-        if (chevron) chevron.style.transform = 'rotate(0deg)';
         if (statusText) statusText.textContent = '보기';
         if (badge) badge.classList.add('hidden');
     }
@@ -1106,6 +1109,40 @@ function setAllRoomsCollapsed(on) {
 // 펼쳐 둔 커튼은 화면을 다시 그려도 펼쳐진 채로 두고, 접힌 줄에는 지금 값(설치 기구 + 추가한 옵션)을 짧게 보여 줌
 const openCurtainDetails = new Set();
 function setCurtainDetailsOpen(curtainId, open) { if (open) openCurtainDetails.add(curtainId); else openCurtainDetails.delete(curtainId); }
+// 원단 찾기: 원단 칸에 글자를 치면 책자·이름으로 좁혀진 목록이 나옴 (띄어 쓴 낱말이 모두 들어 있는 원단만. 예: "데미안 몽", "암막")
+function fabricSearchLabel(f) { return f ? `${f.book} ${f.name}` : ''; }
+function fabricSearchHits(query) {
+    const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+    return FABRIC_DB.filter(f => { const hay = `${f.book} ${f.name} ${f.id}`.toLowerCase(); return words.every(w => hay.includes(w)); });
+}
+function renderFabricSearch(input, showAll) {
+    const list = input.nextElementSibling;
+    if (!list) return;
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const hits = fabricSearchHits(showAll ? '' : input.value);
+    list.innerHTML = hits.length ? hits.map(f => {
+        const spec = f.calcType === 'hebe' ? '헤베' : (f.calcType === 'width' ? `폭당 ${f.specCm}cm` : `Y당 ${f.specCm}cm`);
+        return `<button type="button" data-id="${esc(f.id)}" class="${f.id === input.dataset.fabricId ? 'is-current' : ''}">${esc(f.book)} ${esc(f.name)}<small>${esc(f.categoryType || '')} · ${spec} · ${(f.price || 0).toLocaleString()}원/${esc(f.unit)}</small></button>`;
+    }).join('') : '<p>찾는 원단이 없어요</p>';
+    list.hidden = false;
+    if (showAll) { const cur = list.querySelector('.is-current'); if (cur) list.scrollTop = cur.offsetTop - 8; }
+}
+function pickFabricFromSearch(event, roomId, curtainId) {
+    const btn = event.target.closest('button[data-id]');
+    if (btn) updateCurtainData(roomId, curtainId, 'fabricId', btn.dataset.id);        // 화면을 다시 그리면서 목록도 닫힘
+}
+function fabricSearchKey(event, input) {
+    if (event.key === 'Enter') { const first = input.nextElementSibling && input.nextElementSibling.querySelector('button[data-id]'); if (first) first.click(); }
+    else if (event.key === 'Escape') input.blur();
+}
+// 칸을 벗어나면 목록을 닫고, 고르지 않았으면 지금 원단 이름으로 되돌림 (목록을 누르는 동안에는 닫히지 않게 잠깐 기다림)
+function closeFabricSearch(input) {
+    setTimeout(() => {
+        if (!input.isConnected || document.activeElement === input) return;
+        if (input.nextElementSibling) input.nextElementSibling.hidden = true;
+        input.value = fabricSearchLabel(FABRIC_DB.find(f => f.id === input.dataset.fabricId));
+    }, 200);
+}
 const INSTALL_TYPE_LABELS = { rail: '기본 레일', rail_2line: '패널 레일 (2줄)', rail_3line: '패널 레일 (3줄)', rod35: '35파이 봉', rod25: '25파이 봉' };
 function curtainOptionSummary(c) {
     return '· ' + [INSTALL_TYPE_LABELS[c.installType] || c.hwName || '', c.shapeFee > 0 ? '형상기억' : '', c.leadBand ? '리드밴드' : '', c.hotelFit ? '호텔핏' : ''].filter(Boolean).join(', ');
@@ -1123,7 +1160,6 @@ function renderRooms() {
         return;
     }
 
-    const books = [...new Set(FABRIC_DB.map(f => f.book))];
     const escText = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
     if (rooms.length > 1) {
@@ -1157,24 +1193,6 @@ function renderRooms() {
 
         let curtainsHtml = "";
         room.curtains.forEach((c, curtainIndex) => {
-            const filteredFabrics = c.bookFilter === "ALL" ? FABRIC_DB : FABRIC_DB.filter(f => f.book === c.bookFilter);
-            let fabricOptionsHtml = "";
-
-            if (filteredFabrics.length === 0) {
-                fabricOptionsHtml = `<option value="">제품 없음</option>`;
-            } else {
-                const groupBooks = [...new Set(filteredFabrics.map(f => f.book))];
-                groupBooks.forEach(b => {
-                    fabricOptionsHtml += `<optgroup label="${b}">`;
-                    filteredFabrics.filter(f => f.book === b).forEach(f => {
-                        const selected = (f.id === c.fabricId) ? "selected" : "";
-                        let badgeDesc = f.calcType === "hebe" ? "헤베" : (f.calcType === "width" ? `폭당 ${f.specCm}cm` : `Y당 ${f.specCm}cm`);
-                        fabricOptionsHtml += `<option value="${f.id}" ${selected}>[${badgeDesc}] ${f.name} - ${(f.price||0).toLocaleString()}원/${f.unit}</option>`;
-                    });
-                    fabricOptionsHtml += `</optgroup>`;
-                });
-            }
-
             let curFab = FABRIC_DB.find(f => f.id === c.fabricId);
             if (!curFab && FABRIC_DB.length > 0) {
                 curFab = FABRIC_DB[0];
@@ -1236,26 +1254,18 @@ function renderRooms() {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2">
-                        <div class="min-w-0">
-                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">책자 필터</label>
-                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'bookFilter', this.value)" class="w-full px-2 py-1 border rounded-lg text-xs font-semibold bg-white outline-none min-w-0">
-                                <option value="ALL">전체 책자</option>
-                                ${books.map(b => `<option value="${b}" ${c.bookFilter===b?'selected':''}>${b}</option>`).join('')}
-                            </select>
+                    <div class="min-w-0">
+                        <div class="flex justify-between items-center mb-0.5">
+                            <label class="block text-[10px] font-bold text-slate-500">원단 (책자·이름으로 찾기)</label>
+                            <span class="text-[9px] text-amber-900 font-extrabold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 flex-shrink-0">
+                                ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : ""}
+                            </span>
                         </div>
-                        <div class="sm:col-span-2 min-w-0">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <label class="block text-[10px] font-bold text-slate-500">제품 / 원단 선택</label>
-                                <span class="text-[9px] text-amber-900 font-extrabold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 flex-shrink-0">
-                                    ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : ""}
-                                </span>
-                            </div>
-                            <select onchange="updateCurtainData(${room.id}, ${c.id}, 'fabricId', this.value)" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0">
-                                ${fabricOptionsHtml}
-                            </select>
-                            ${colorSelect}
+                        <div class="fabric-combo">
+                            <input type="text" value="${escText(fabricSearchLabel(curFab))}" data-fabric-id="${curFab ? escText(curFab.id) : ''}" autocomplete="off" placeholder="예: 데미안 몽크, 암막" onfocus="this.select(); renderFabricSearch(this, true)" oninput="renderFabricSearch(this)" onkeydown="fabricSearchKey(event, this)" onblur="closeFabricSearch(this)" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0">
+                            <div class="fabric-combo-list custom-scrollbar" hidden onmousedown="event.preventDefault()" onclick="pickFabricFromSearch(event, ${room.id}, ${c.id})"></div>
                         </div>
+                        ${colorSelect}
                     </div>
 
                     ${isBlind ? '' : `

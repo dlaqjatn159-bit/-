@@ -650,6 +650,42 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 @media (min-width: 1280px) {
     .staff-summary-col { position: sticky; top: 1.25rem; align-self: start; max-height: calc(100vh - 2.5rem); max-height: calc(100dvh - 2.5rem); overflow-y: auto; }
 }
+/* 상담: 견적 요약 (밝은 판 한 장 — 공간별 소계 · 시공비/부가세/안내 한 줄 · 최종 금액 · 원가) */
+.staff-summary { padding: 1.15rem 1.25rem 1.2rem; background: #fffdf9; border: 1px solid var(--brand-border); border-radius: 1rem; }
+.staff-summary h2 { margin-bottom: 0.7rem; font-size: 1rem; font-weight: 500; color: var(--brand-dark); }
+.staff-sum-line { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; padding: 0.28rem 0; font-size: 0.82rem; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+.staff-sum-line > span:first-child { min-width: 0; color: var(--brand-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.staff-sum-line > span:last-child { flex-shrink: 0; white-space: nowrap; }
+.staff-sum-line.strong { margin-top: 0.3rem; padding-top: 0.55rem; border-top: 1px solid var(--brand-border); font-weight: 600; }
+.staff-sum-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin: 0.6rem 0; padding: 0.8rem 0; border-top: 1px solid var(--brand-border); border-bottom: 1px solid var(--brand-border); }
+.staff-sum-fields label { display: grid; gap: 0.25rem; min-width: 0; }
+.staff-sum-fields label.wide { grid-column: 1 / -1; }
+.staff-sum-fields label > span { font-size: 0.7rem; font-weight: 600; color: var(--brand-muted); }
+.staff-sum-fields input, .staff-sum-fields select { width: 100%; min-width: 0; padding: 0.45rem 0.6rem; border: 1px solid var(--brand-border); border-radius: 0.5rem; font-size: 0.82rem; font-weight: 600; outline: none; }
+.staff-sum-fields input[type="number"] { text-align: right; }
+.staff-sum-total { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-top: 0.6rem; padding-top: 0.8rem; border-top: 1px solid var(--brand-dark); }
+.staff-sum-total > span:first-child { font-size: 0.82rem; font-weight: 600; color: var(--brand-dark); }
+.staff-sum-total .v { font-size: 1.75rem; font-weight: 500; line-height: 1.1; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+.staff-sum-total .v small { margin-left: 0.15rem; font-size: 0.9rem; }
+.staff-sum-cost { margin-top: 0.95rem; padding-top: 0.7rem; border-top: 1px dashed var(--brand-border); }
+.staff-sum-cost-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; font-size: 0.82rem; color: var(--brand-muted); }
+.staff-sum-badge { margin-left: 0.35rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--brand-light); font-size: 0.7rem; font-weight: 700; color: var(--brand-accent); }
+.staff-eye { padding: 0.15rem 0.75rem; border: 1px solid var(--brand-border); border-radius: 999px; background: #fff; font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); }
+.staff-sum-cost #marginCollapsibleContent { margin-top: 0.4rem; }
+.staff-sum-line.profit > span:last-child { font-weight: 700; color: #3f6b45; }
+.staff-sum-sub { margin-top: 0.3rem; padding-top: 0.3rem; border-top: 1px solid var(--brand-border); }
+.staff-sum-sub .staff-sum-line { padding: 0.14rem 0; font-size: 0.75rem; }
+/* 원단 찾기: 원단 칸 아래로 열리는 목록 (책자·이름으로 좁혀짐) */
+.fabric-combo { position: relative; }
+.fabric-combo-list {
+    position: absolute; left: 0; right: 0; top: 100%; z-index: 30; margin-top: 4px; max-height: 260px; overflow-y: auto;
+    background: #fff; border: 1px solid var(--brand-border); border-radius: 0.6rem; box-shadow: 0 8px 20px rgba(40, 28, 21, 0.14);
+}
+.fabric-combo-list[hidden] { display: none; }
+.fabric-combo-list button { display: block; width: 100%; padding: 0.5rem 0.7rem; text-align: left; font-size: 0.8rem; font-weight: 600; color: var(--brand-dark); }
+.fabric-combo-list button:hover, .fabric-combo-list button.is-current { background: var(--brand-panel); }
+.fabric-combo-list small { display: block; margin-top: 1px; font-size: 0.68rem; font-weight: 500; color: var(--brand-muted); }
+.fabric-combo-list p { padding: 0.6rem 0.7rem; font-size: 0.78rem; color: var(--brand-muted); }
 /* 커튼 카드의 "세부 옵션" (접힘) */
 .curtain-more > summary { cursor: pointer; list-style: none; padding: 0.15rem 0; font-size: 0.75rem; font-weight: 700; color: var(--brand-accent); user-select: none; }
 .curtain-more > summary::-webkit-details-marker { display: none; }

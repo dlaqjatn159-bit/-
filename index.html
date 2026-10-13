@@ -143,111 +143,72 @@
                         <div class="xl:col-span-7 space-y-5 sm:space-y-6 w-full min-w-0" id="roomsContainer"></div>
 
                         <div class="staff-summary-col xl:col-span-5 space-y-5 sm:space-y-6 w-full min-w-0">
-                            <div class="bg-gradient-to-br from-[#2b1f17] via-[#36271e] to-[#201711] text-white rounded-2xl p-6 shadow-md relative overflow-hidden border border-amber-900/30">
-                                <div class="relative z-10 space-y-4">
-                                    <div class="flex justify-between items-center border-b border-amber-900/40 pb-3">
-                                        <span class="text-xs uppercase tracking-wider text-amber-200 font-bold">견적 금액 요약</span>
-            
-                                                                    <span id="badgeVat"
-                                              class="bg-amber-500/20 text-amber-200 text-xs px-2.5 py-1 rounded-full border border-amber-400/30 font-bold select-none flex items-center gap-1">
-                                            <span>일반 소비자 판매가</span>
-                                        </span>
-                                    </div>
-            
-                                    <div class="space-y-1.5 text-xs" id="summaryRoomList"></div>
-            
-                                    <div class="pt-3 border-t border-amber-900/40 space-y-2.5 text-xs font-mono">
-                                        <div class="flex justify-between items-center text-amber-100/90">
-                                            <span>공간별 제품 합산:</span>
-                                            <span class="font-bold text-white"><span id="resRoomsSubtotal">0</span>원</span>
-                                        </div>
-            
-                                        <div class="bg-[#241a13]/90 p-3 rounded-xl border border-amber-900/40 space-y-2 text-xs font-sans">
-                                            <div class="flex justify-between items-center gap-2">
-                                                <span class="text-amber-100/80 whitespace-nowrap">전체 시공/출장비:</span>
-                                                <input type="number" id="expressInstallFee" value="30000" step="5000" class="w-28 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-right text-xs font-bold font-mono text-white outline-none focus:ring-1 focus:ring-amber-500" oninput="updateGlobalInstallFee(this.value)">
-                                            </div>
-                                            <div class="flex justify-between items-center gap-2">
-                                                <span class="text-amber-100/80 whitespace-nowrap">부가세(VAT) 구분:</span>
-                                                <select id="expressVatOption" class="w-40 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500" onchange="updateGlobalVatOption(this.value)">
-                                                    <option value="consumer" selected>일반 판매가</option>
-                                                    <option value="business">세금계산서 (+10%)</option>
-                                                </select>
-                                            </div>
-                                            <div class="flex justify-between items-center gap-2">
-                                                <span class="text-amber-100/80 whitespace-nowrap">견적서 안내 문구:</span>
-                                                <input type="text" id="ticketNoteInput" maxlength="60" placeholder="예: 제작 약 7일 · 시공 약 2시간" class="flex-1 min-w-0 px-2 py-1 bg-[#1a130e] border border-amber-900/60 rounded-lg text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-amber-100/30" oninput="saveTicketNote(this.value)">
-                                            </div>
-                                        </div>
-            
-                                        <div class="flex justify-between text-slate-200 border-t border-amber-900/30 pt-1.5">
-                                            <span>판매가 (시공비 포함):</span>
-                                            <span class="font-bold text-white"><span id="resGrandSubtotal">0</span>원</span>
-                                        </div>
-                                        <div class="flex justify-between text-amber-300">
-                                            <span>부가세 (VAT):</span>
-                                            <span class="font-bold text-amber-300"><span id="resGrandVat">0</span>원</span>
-                                        </div>
-                                    </div>
-            
-                                    <div class="bg-gradient-to-r from-amber-950/60 to-[#1e150f] rounded-xl p-4 border border-amber-500/40 shadow-inner mt-3 select-none">
-                                        <div class="flex justify-between items-center mb-1">
-                                            <p class="text-xs text-amber-200 font-bold">전체 공간 합산 최종 견적금액</p>
-                                            <span class="text-[10px] bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded font-bold border border-amber-400/30" id="resSummaryFinal">0원</span>
-                                        </div>
-                                        <div class="flex items-baseline justify-between">
-                                            <span class="text-3xl md:text-5xl font-black tracking-tight text-amber-300 font-mono" id="totalGrandPrice">0</span>
-                                            <span class="text-xl font-bold text-amber-200">원</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- 견적 요약: 공간별 소계 → 시공비·부가세·안내 한 줄 → 최종 금액 → 원가·순이익("보기"를 눌러야 보임) -->
+                            <div class="staff-summary">
+                                <h2 class="font-serif-kr">견적 요약</h2>
 
-                            <div id="adminMarginCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 transition-all">
-                                <div class="flex items-center justify-between cursor-pointer select-none gap-2" onclick="toggleMarginSection()">
-                                    <div class="flex items-center gap-2.5 min-w-0">
-                                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center text-sm font-bold shadow-inner flex-shrink-0">
-                                            DB
-                                        </div>
-                                        <div class="min-w-0">
-                                            <h3 class="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-2 truncate">
-                                                원가 · 순이익
-                                                <span id="resMarginRateBadge" class="hidden bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0">
-                                                    순마진 0%
-                                                </span>
-                                            </h3>
-                                            <p class="text-[10px] sm:text-[11px] text-slate-400 truncate">"보기"를 눌러야 보입니다 (비공개)</p>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-slate-200 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
-                                        <span id="marginAccordionStatus" class="font-semibold text-slate-700">보기</span>
-                                        <i id="marginAccordionChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300"></i>
-                                    </button>
+                                <div id="summaryRoomList"></div>
+                                <div class="staff-sum-line strong">
+                                    <span>공간별 제품 합산</span>
+                                    <span><span id="resRoomsSubtotal">0</span>원</span>
                                 </div>
-            
-                                <div id="marginCollapsibleContent" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3">
-                                    <div class="grid grid-cols-2 gap-2.5">
-                                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                            <span class="text-[10px] font-bold text-slate-500 block mb-0.5">총 매입원가 (시공포함)</span>
-                                            <span class="text-sm sm:text-base font-black text-slate-800 font-mono" id="resTotalCost">0원</span>
-                                        </div>
-                                        <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200">
-                                            <span class="text-[10px] font-bold text-amber-800 block mb-0.5">예상 순이익</span>
-                                            <span class="text-sm sm:text-base font-black text-amber-900 font-mono" id="resNetProfit">0원</span>
-                                        </div>
+
+                                <div class="staff-sum-fields">
+                                    <label><span>시공·출장비</span>
+                                        <input type="number" id="expressInstallFee" value="30000" step="5000" inputmode="numeric" oninput="updateGlobalInstallFee(this.value)">
+                                    </label>
+                                    <label><span>부가세</span>
+                                        <select id="expressVatOption" onchange="updateGlobalVatOption(this.value)">
+                                            <option value="consumer" selected>일반 판매가</option>
+                                            <option value="business">세금계산서 (+10%)</option>
+                                        </select>
+                                    </label>
+                                    <label class="wide"><span>이번 견적 안내 한 줄</span>
+                                        <input type="text" id="ticketNoteInput" maxlength="60" placeholder="예: 제작 약 7일 · 시공 약 2시간" oninput="saveTicketNote(this.value)">
+                                    </label>
+                                </div>
+
+                                <div class="staff-sum-line">
+                                    <span>판매가 (시공비 포함)</span>
+                                    <span><span id="resGrandSubtotal">0</span>원</span>
+                                </div>
+                                <div class="staff-sum-line">
+                                    <span>부가세 (VAT)</span>
+                                    <span><span id="resGrandVat">0</span>원</span>
+                                </div>
+
+                                <div class="staff-sum-total">
+                                    <span>최종 금액</span>
+                                    <span class="v font-serif-kr"><span id="totalGrandPrice">0</span><small>원</small></span>
+                                </div>
+
+                                <div id="adminMarginCard" class="staff-sum-cost">
+                                    <div class="staff-sum-cost-head" onclick="toggleMarginSection()">
+                                        <span>원가 · 순이익 <span id="resMarginRateBadge" class="hidden staff-sum-badge">순마진 0%</span></span>
+                                        <button type="button" class="staff-eye"><span id="marginAccordionStatus">보기</span></button>
                                     </div>
-                                    <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-[11px] space-y-1 font-mono text-slate-600">
-                                        <div class="flex justify-between">
-                                            <span class="font-sans text-slate-500">원단 사입원가:</span>
-                                            <span id="resCostFabric" class="font-bold text-slate-700">0원</span>
+                                    <div id="marginCollapsibleContent" class="hidden">
+                                        <div class="staff-sum-line">
+                                            <span>총 매입원가 (시공 포함)</span>
+                                            <span id="resTotalCost">0원</span>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="font-sans text-slate-500">봉제/가공공임:</span>
-                                            <span id="resCostLabor" class="font-bold text-slate-700">0원</span>
+                                        <div class="staff-sum-line profit">
+                                            <span>예상 순이익</span>
+                                            <span id="resNetProfit">0원</span>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="font-sans text-slate-500">레일·부자재 원가:</span>
-                                            <span id="resCostHardware" class="font-bold text-slate-700">0원</span>
+                                        <div class="staff-sum-sub">
+                                            <div class="staff-sum-line">
+                                                <span>원단 사입원가</span>
+                                                <span id="resCostFabric">0원</span>
+                                            </div>
+                                            <div class="staff-sum-line">
+                                                <span>봉제/가공공임</span>
+                                                <span id="resCostLabor">0원</span>
+                                            </div>
+                                            <div class="staff-sum-line">
+                                                <span>레일·부자재 원가</span>
+                                                <span id="resCostHardware">0원</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -303,7 +264,7 @@
                     <h1 class="staff-h1 font-serif-kr">상담 기록</h1>
                     <p class="staff-sub">지난 상담을 다시 불러오거나 지울 수 있습니다.</p>
                     <div id="historyCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
-                        <div class="flex items-center justify-between gap-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
                             <div>
                                 <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
                                     상담 이력
@@ -311,6 +272,7 @@
                                 </h3>
                                 <p class="text-[10px] sm:text-[11px] text-slate-400">이 기기에 저장됩니다 · 백업 파일에 함께 담깁니다 · 직원 모드에서만 볼 수 있습니다 · 최근 500건</p>
                             </div>
+                            <input type="text" id="historySearch" autocomplete="off" placeholder="이름 · 연락처 찾기 (예: 김하늘, 5678)" class="w-60 max-w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="renderHistory()">
                         </div>
                         <p id="historyFullNotice" class="hidden mt-2 bg-rose-50 border border-rose-300 text-rose-700 font-bold text-[11px] sm:text-xs px-3 py-2 rounded-xl">기록 공간이 가득 찼어요. 백업 후 오래된 기록을 정리해 주세요. (정리하기 전에 이 창을 닫으면 방금 상담이 저장되지 않아요)</p>
                         <div id="historyList" class="mt-2 max-h-[65vh] overflow-y-auto custom-scrollbar"></div>
