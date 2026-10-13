@@ -1175,13 +1175,13 @@ function renderRooms() {
 
         if (collapsedRooms.has(room.id)) {
             // 접힌 공간: 한 줄 전체가 "펼치기" 버튼
-            roomCard.className = "bg-white rounded-2xl shadow-sm border border-slate-200 w-full min-w-0";
+            roomCard.className = "staff-room w-full min-w-0";
             roomCard.innerHTML = `
                 <button type="button" onclick="toggleRoomCollapse(${room.id})" aria-expanded="false" class="w-full flex items-center gap-2.5 p-3.5 sm:px-5 sm:py-4 text-left rounded-2xl hover:bg-slate-50 transition">
-                    <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-900 text-xs flex items-center justify-center font-bold flex-shrink-0">${roomIndex + 1}</span>
-                    <span class="font-bold text-slate-800 text-sm sm:text-base truncate flex-shrink-0 max-w-[40%]">${escText(room.name)}</span>
+                    <span class="staff-num">${roomIndex + 1}</span>
+                    <span class="staff-room-name font-serif-kr truncate flex-shrink-0 max-w-[40%]">${escText(room.name)}</span>
                     <span class="text-[11px] sm:text-xs text-slate-500 truncate flex-1 min-w-0">${escText(room.curtains.map(c => c.label).join(' + '))}</span>
-                    <span class="font-black text-amber-800 text-sm sm:text-base font-mono whitespace-nowrap flex-shrink-0" id="roomSubtotal_${room.id}">0원</span>
+                    <span class="staff-amt whitespace-nowrap flex-shrink-0" id="roomSubtotal_${room.id}">0원</span>
                     <span class="whitespace-nowrap flex-shrink-0 text-xs font-bold text-slate-500 flex items-center gap-1">펼치기 <i class="fa-solid fa-chevron-down text-[10px]"></i></span>
                 </button>
             `;
@@ -1189,7 +1189,7 @@ function renderRooms() {
             return;
         }
 
-        roomCard.className = "bg-white rounded-2xl p-3.5 sm:p-5 md:p-6 shadow-sm border border-slate-200 space-y-3 sm:space-y-4 relative w-full min-w-0";
+        roomCard.className = "staff-room p-3.5 sm:p-5 space-y-3 sm:space-y-4 relative w-full min-w-0";
 
         let curtainsHtml = "";
         room.curtains.forEach((c, curtainIndex) => {
@@ -1210,11 +1210,11 @@ function renderRooms() {
             const actualCurtainHeight = isBlind ? c.height : Math.max(0, (c.height || 0) - deduction + floorGapVal);
 
             curtainsHtml += `
-                <div class="bg-slate-50/80 rounded-xl p-3 sm:p-4 border border-slate-200 space-y-2.5 sm:space-y-3 relative w-full min-w-0">
-                    <div class="flex justify-between items-center border-b border-slate-200/80 pb-2 gap-2">
+                <div class="staff-curtain space-y-2.5 sm:space-y-3 relative w-full min-w-0">
+                    <div class="flex justify-between items-center gap-2">
                         <div class="flex items-center gap-2 flex-1 min-w-0">
-                            <span class="w-5 h-5 rounded-full bg-indigo-900 text-amber-200 text-[10px] flex items-center justify-center font-bold flex-shrink-0">${curtainIndex + 1}</span>
-                            <input type="text" value="${c.label}" onchange="updateCurtainData(${room.id}, ${c.id}, 'label', this.value)" class="font-bold text-slate-800 text-xs outline-none bg-transparent hover:bg-white focus:bg-white border-b border-transparent focus:border-amber-400 px-1 w-full min-w-0">
+                            <span class="staff-num sm">${curtainIndex + 1}</span>
+                            <input type="text" value="${c.label}" onchange="updateCurtainData(${room.id}, ${c.id}, 'label', this.value)" class="staff-curtain-name outline-none border rounded px-1 py-0.5 w-full min-w-0">
                         </div>
                         ${room.curtains.length > 1 ? `
                             <button onclick="removeCurtainFromRoom(${room.id},${c.id})" class="whitespace-nowrap flex-shrink-0 text-[11px] text-rose-500 hover:text-rose-700 font-bold px-1.5 py-0.5 rounded hover:bg-rose-50 transition flex items-center gap-1">
@@ -1231,14 +1231,14 @@ function renderRooms() {
                         <div class="min-w-0 flex flex-col justify-end">
                             <div class="flex justify-between items-center mb-1 gap-0.5">
                                 <label class="block text-[10px] font-bold text-slate-500 truncate">세로(cm)</label>
-                                ${!isBlind ? `<span class="text-[9px] text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 rounded flex-shrink-0 leading-tight">제작:${actualCurtainHeight}</span>` : ''}
+                                ${!isBlind ? `<span class="staff-chip">제작:${actualCurtainHeight}</span>` : ''}
                             </div>
                             <input type="number" value="${c.height}" oninput="updateCurtainData(${room.id}, ${c.id}, 'height', parseFloat(this.value)||0)" class="w-full h-8 px-2 py-1 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none focus:ring-1 focus:ring-amber-500 min-w-0 box-border">
                         </div>
                         <div class="min-w-0 flex flex-col justify-end">
                             ${isBlind ? `
                                 <label class="block text-[10px] font-bold text-amber-800 mb-1 truncate">적용 면적</label>
-                                <div class="w-full h-8 px-1.5 py-1 border border-amber-300 rounded-lg text-[11px] font-bold bg-amber-100/80 text-amber-900 text-center flex items-center justify-center truncate box-border">
+                                <div class="staff-static w-full px-1.5 border rounded-lg text-center flex items-center justify-center truncate box-border">
                                     최저 2.0헤베
                                 </div>
                             ` : `
@@ -1257,7 +1257,7 @@ function renderRooms() {
                     <div class="min-w-0">
                         <div class="flex justify-between items-center mb-0.5">
                             <label class="block text-[10px] font-bold text-slate-500">원단 (책자·이름으로 찾기)</label>
-                            <span class="text-[9px] text-amber-900 font-extrabold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 flex-shrink-0">
+                            <span class="staff-chip">
                                 ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : ""}
                             </span>
                         </div>
@@ -1272,7 +1272,7 @@ function renderRooms() {
                     <details class="curtain-more" ${openCurtainDetails.has(c.id) ? 'open' : ''} ontoggle="setCurtainDetailsOpen(${c.id}, this.open)">
                         <summary>세부 옵션 <span id="curtainOpt_${c.id}">${escText(curtainOptionSummary(c))}</span></summary>
                         <div class="space-y-2.5 sm:space-y-3 pt-2.5">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 bg-amber-50/40 p-2 rounded-lg border border-amber-100 ${isBlind ? 'hidden' : ''}">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2">
                                 <div class="min-w-0">
                                     <label class="block text-[10px] font-bold text-indigo-950 mb-0.5 truncate">가공 형태</label>
                                     <select onchange="updateCurtainData(${room.id}, ${c.id}, 'pleatType', this.value)" class="w-full px-2 py-1 border border-amber-200 rounded-lg text-xs font-bold text-indigo-900 bg-white outline-none">
@@ -1323,8 +1323,8 @@ function renderRooms() {
                                 </div>
                                 <div class="min-w-0 col-span-2 sm:col-span-1">
                                     <label class="block text-[10px] font-bold text-amber-800 mb-0.5 truncate">호텔 핏</label>
-                                    <button type="button" ${isBlind ? 'disabled' : ''} onclick="toggleHotelFit(${room.id}, ${c.id})" class="w-full py-1 border rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 ${c.hotelFit ? 'bg-amber-700 text-white border-amber-800 shadow-sm' : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'}">
-                                        <span class="w-3 text-center ${c.hotelFit ? 'font-black text-amber-200' : 'text-slate-400'}">${c.hotelFit ? '✓' : '+'}</span>
+                                    <button type="button" ${isBlind ? 'disabled' : ''} onclick="toggleHotelFit(${room.id}, ${c.id})" class="staff-toggle w-full border rounded-lg transition flex items-center justify-center gap-1 ${c.hotelFit ? 'is-on' : ''}">
+                                        <span class="w-3 text-center">${c.hotelFit ? '✓' : '+'}</span>
                                         <span>호텔핏</span>
                                     </button>
                                 </div>
@@ -1333,13 +1333,13 @@ function renderRooms() {
                     </details>
                     `}
 
-                    <div class="flex items-center justify-between text-xs pt-2 text-slate-600 border-t border-slate-200/70 gap-2">
-                        <div class="text-[11px] sm:text-xs truncate flex-1 min-w-0 text-slate-600">
-                            산출수량: <strong class="text-indigo-950 font-bold" id="curtainQty_${c.id}">-</strong>
+                    <div class="staff-curtain-foot">
+                        <div class="truncate flex-1 min-w-0">
+                            산출수량: <strong id="curtainQty_${c.id}">-</strong>
                         </div>
                         <div class="whitespace-nowrap flex-shrink-0 text-right">
-                            <span class="text-[11px] text-slate-500">판매가:</span>
-                            <strong class="text-amber-800 font-black text-xs sm:text-sm font-mono ml-0.5" id="curtainSub_${c.id}">0원</strong>
+                            <span>판매가</span>
+                            <strong class="staff-amt ml-1" id="curtainSub_${c.id}">0원</strong>
                         </div>
                     </div>
                 </div>
@@ -1347,13 +1347,13 @@ function renderRooms() {
         });
 
         roomCard.innerHTML = `
-            <div class="flex items-center justify-between gap-2 border-b pb-3">
+            <div class="staff-room-head">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-900 text-xs flex items-center justify-center font-bold flex-shrink-0">${roomIndex + 1}</span>
-                    <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="font-bold text-slate-800 text-sm sm:text-base outline-none hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-amber-500 rounded px-1.5 py-0.5 w-full min-w-0">
+                    <span class="staff-num">${roomIndex + 1}</span>
+                    <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="staff-room-name font-serif-kr outline-none border rounded px-1.5 py-0.5 w-full min-w-0">
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
-                    <button onclick="addCurtainToRoom(${room.id})" class="whitespace-nowrap bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold px-2.5 py-1.5 rounded-xl text-xs transition border border-amber-300 flex items-center gap-1">
+                    <button onclick="addCurtainToRoom(${room.id})" class="staff-btn whitespace-nowrap flex items-center gap-1">
                         + 추가
                     </button>
                     <button onclick="removeRoom(${room.id})" class="whitespace-nowrap text-xs text-rose-500 hover:text-rose-700 font-bold px-2 py-1.5 rounded-xl hover:bg-rose-50 transition flex items-center gap-1">
@@ -1364,10 +1364,10 @@ function renderRooms() {
                     </button>
                 </div>
             </div>
-            <div class="space-y-2.5 sm:space-y-3">${curtainsHtml}</div>
-            <div class="bg-indigo-950 text-white p-3 rounded-xl flex justify-between items-center text-xs shadow-sm">
-                <span class="font-bold flex items-center gap-1 truncate mr-2">${room.name} 소계:</span>
-                <span class="font-black text-amber-300 text-base font-mono whitespace-nowrap flex-shrink-0" id="roomSubtotal_${room.id}">0원</span>
+            <div class="staff-curtains">${curtainsHtml}</div>
+            <div class="staff-room-sum">
+                <span class="truncate mr-2">${room.name} 소계</span>
+                <span class="staff-amt font-serif-kr whitespace-nowrap flex-shrink-0" id="roomSubtotal_${room.id}">0원</span>
             </div>
         `;
         container.appendChild(roomCard);

@@ -675,6 +675,35 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .staff-sum-line.profit > span:last-child { font-weight: 700; color: #3f6b45; }
 .staff-sum-sub { margin-top: 0.3rem; padding-top: 0.3rem; border-top: 1px solid var(--brand-border); }
 .staff-sum-sub .staff-sum-line { padding: 0.14rem 0; font-size: 0.75rem; }
+/* 상담: 공간 카드 · 커튼 칸 — 견적 요약과 같은 밝은 판, 색은 차분하게, 글씨·입력칸은 탭에서 누르기 좋게 */
+.staff-room { background: #fffdf9; border: 1px solid var(--brand-border); border-radius: 1rem; }
+.staff-room-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--brand-border); }
+.staff-num { flex-shrink: 0; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #f0e8dd; font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); }
+.staff-num.sm { width: 1.35rem; height: 1.35rem; font-size: 0.68rem; }
+.staff-room-name { font-size: 1.05rem; font-weight: 500; color: var(--brand-dark); }
+.staff-amt { font-weight: 600; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+.staff-btn { padding: 0.4rem 0.75rem; border: 1px solid var(--brand-border); border-radius: 0.6rem; background: #fff; font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); }
+.staff-btn:hover { background: var(--brand-panel); }
+/* 공간 이름 · 커튼 이름: 평소에는 글자처럼 보이고, 누르면 입력칸 테두리가 나타남 */
+input[type="text"].staff-room-name:not(:focus), input[type="text"].staff-curtain-name:not(:focus) { background-color: transparent !important; border-color: transparent !important; }
+input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
+/* 커튼 칸: 상자 안의 상자 대신 점선으로만 나눔 */
+.staff-curtains > .staff-curtain { padding: 0.95rem 0; border-bottom: 1px dashed var(--brand-border); }
+.staff-curtains > .staff-curtain:first-child { padding-top: 0.15rem; }
+.staff-curtains > .staff-curtain:last-child { padding-bottom: 0.15rem; border-bottom: 0; }
+.staff-room label:not(.text-rose-600) { font-size: 0.72rem; font-weight: 600; color: var(--brand-muted); }
+.staff-room label.text-rose-600 { font-size: 0.72rem; }
+.staff-curtain select, .staff-curtain input[type="number"], .staff-curtain .fabric-combo input, .staff-curtain details input[type="text"] { height: 2.3rem; font-size: 0.82rem; font-weight: 600; }
+.staff-chip { flex-shrink: 0; padding: 0.05rem 0.4rem; border-radius: 0.3rem; background: var(--brand-panel); font-size: 0.65rem; font-weight: 600; line-height: 1.5; color: var(--brand-muted); }
+.staff-static { height: 2.3rem; background: var(--brand-panel); border-color: var(--brand-border); font-size: 0.75rem; font-weight: 600; color: var(--brand-muted); }
+.staff-toggle { height: 2.3rem; background: #fff; border-color: var(--brand-border); font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); }
+.staff-toggle.is-on { background: var(--brand-dark); border-color: var(--brand-dark); color: var(--brand-bg); }
+.staff-toggle:disabled { opacity: 0.5; }
+.staff-curtain-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.1rem; font-size: 0.78rem; color: var(--brand-muted); }
+.staff-curtain-foot strong { font-weight: 600; color: var(--brand-dark); }
+.staff-curtain-foot .staff-amt { font-size: 0.92rem; font-weight: 700; }
+.staff-room-sum { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; padding-top: 0.8rem; border-top: 1px solid var(--brand-dark); font-size: 0.82rem; font-weight: 600; color: var(--brand-dark); }
+.staff-room-sum .staff-amt { font-size: 1.25rem; font-weight: 500; }
 /* 원단 찾기: 원단 칸 아래로 열리는 목록 (책자·이름으로 좁혀짐) */
 .fabric-combo { position: relative; }
 .fabric-combo-list {
