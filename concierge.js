@@ -1126,6 +1126,8 @@
         staffTap: function() {
             if (window.RedamAuth) window.RedamAuth.tap();
         },
+        // 직원 화면 "원단 찾기"의 후보 보여주기 화면도 고객 화면과 같은 칸(세로 제목 + 짧은 글)을 씀
+        bookmarkCard: renderBookmarkCard,
         setClientName: function(v) {
             const el = document.getElementById('custName');
             if (el) el.value = v;

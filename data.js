@@ -596,7 +596,18 @@ function removeFabricColor(id, name) {
     if (store[id].length === 0) delete store[id];
     saveColorsStore();
 }
-// 색상 입력표(엑셀/CSV) 행을 읽어 반영: 열 이름에 "원단 ID", "색상", "톤"이 들어 있으면 됩니다. ("색 이름", "밝기" 열은 있으면 읽음)
+// 색상코드(#RRGGBB)와 색 값(붉은기 a · 노란기 b): 색상 입력표의 선택 열. 원단 찾기의 카드 색·채도·색조·비슷한 색·색 지도에 쓰임
+function normalizeHexInput(v) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(v == null ? '' : v).trim());
+    return m ? '#' + m[1].toUpperCase() : null;
+}
+function normalizeLabInput(v) {
+    const s = String(v == null ? '' : v).trim().replace(',', '.').replace('−', '-');
+    if (!s) return null;
+    const n = Number(s);
+    return (isFinite(n) && n >= -128 && n <= 128) ? Math.round(n * 10) / 10 : null;
+}
+// 색상 입력표(엑셀/CSV) 행을 읽어 반영: 열 이름에 "원단 ID", "색상", "톤"이 들어 있으면 됩니다. ("색 이름", "밝기", "색상코드", "붉은기", "노란기" 열은 있으면 읽음)
 function importColorRows(rows) {
     let hi = -1;
     for (let i = 0; i < Math.min(rows.length, 15); i++) {
@@ -606,10 +617,14 @@ function importColorRows(rows) {
     if (hi < 0) return { error: "머리글(원단 ID, 색상, 색상 톤)을 찾지 못했습니다." };
     const head = rows[hi].map(x => String(x == null ? '' : x));
     const iId = head.findIndex(h => h.includes('원단') && h.includes('ID'));
-    const iColor = head.findIndex(h => h.includes('색상') && !h.includes('톤') && !h.includes('파일'));
+    const iExact = head.findIndex(h => h.trim() === '색상');                         // 딱 "색상"인 열이 먼저 ("색상코드"·"색상 톤"과 헷갈리지 않게)
+    const iColor = iExact >= 0 ? iExact : head.findIndex(h => h.includes('색상') && !h.includes('톤') && !h.includes('파일') && !h.includes('코드'));
     const iTone = head.findIndex(h => h.includes('톤'));
     const iLabel = head.findIndex(h => h.includes('이름') && !h.includes('ID'));     // 선택: "색 이름"·"가까운 이름" 열
     const iLight = head.findIndex(h => h.includes('밝기'));                          // 선택: "밝기" 열 (L값 0~100)
+    const iHex = head.findIndex(h => h.includes('색상코드'));                        // 선택: "색상코드" 열 (#RRGGBB)
+    const iA = head.findIndex(h => h.includes('붉은기'));                            // 선택: "붉은기" 열 (a값)
+    const iB = head.findIndex(h => h.includes('노란기'));                            // 선택: "노란기" 열 (b값)
     const known = new Set(FABRIC_DB.map(f => f.id));
     const next = {}; let colorCount = 0, unknown = 0;
     for (let i = hi + 1; i < rows.length; i++) {
@@ -625,6 +640,10 @@ function importColorRows(rows) {
         if (label) entry.label = label;
         const light = iLight >= 0 ? normalizeLightInput(r[iLight]) : null;
         if (light != null) entry.light = light;
+        const hex = iHex >= 0 ? normalizeHexInput(r[iHex]) : null;
+        if (hex) entry.hex = hex;
+        const a = iA >= 0 ? normalizeLabInput(r[iA]) : null, b = iB >= 0 ? normalizeLabInput(r[iB]) : null;
+        if (a != null && b != null) { entry.a = a; entry.b = b; }
         next[id].push(entry);
         colorCount++;
     }
@@ -653,6 +672,83 @@ function bestColorFor(fabric, room, category) {
     // 원단끼리 비교할 때는 색상 순서용 가산점(+0.5)을 빼서, 색상을 등록하지 않은 단색 원단과 공평하게 비교
     return { color: classified ? ranked[0].name : null, score: ranked[0].score - (ranked[0].tone ? 0.5 : 0), ranked, classified };
 }
+
+// ==============================================================
+// 원단 찾기 (직원 화면 › 원단 › 찾기): 원단의 색 하나 = 카드 한 장. 색이 없는 원단은 원단 한 장
+//  - "원단만 시킬 때" 품목(고객 추천에서 숨긴 것)은 빼고 보여 줌. 블라인드는 색 정보(색상코드·밝기·색 값)가 들어온 색만 나옴
+//  - 색 값: 밝기 L(0~100) · 붉은기 a · 노란기 b → 채도 C = √(a²+b²), 색조 각도 h = atan2(b, a) (0~360°)
+// ==============================================================
+const LIGHT_BAND_LABELS = { l5: '아주 밝음', l4: '밝음', l3: '중간', l2: '진함', l1: '아주 진함' };
+function lightBandOf(L) { return typeof L !== 'number' ? null : (L >= 85 ? 'l5' : (L >= 70 ? 'l4' : (L >= 55 ? 'l3' : (L >= 40 ? 'l2' : 'l1')))); }
+const CHROMA_LABELS = { s0: '거의 없음', s1: '은은함', s2: '또렷함', s3: '선명함' };
+function chromaBandOf(C) { return typeof C !== 'number' ? null : (C < 3.5 ? 's0' : (C < 8 ? 's1' : (C < 15 ? 's2' : 's3'))); }
+const HUE_LABELS = { gray: '회색 (무채색)', beige: '베이지·브라운', yellow: '크림·노랑·올리브', red: '핑크·로즈·붉은 브라운', green: '민트·그린', blue: '블루·네이비' };
+function hueGroupOf(a, b) {
+    if (typeof a !== 'number' || typeof b !== 'number') return null;
+    if (Math.hypot(a, b) < 3.5) return 'gray';
+    const h = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
+    return (h < 60 || h >= 330) ? 'red' : (h < 95 ? 'beige' : (h < 140 ? 'yellow' : (h < 200 ? 'green' : 'blue')));
+}
+// 색 번호는 두 자리로 보여 줌 (샘플북 표기: 01, 02 …). 이름으로 넣은 색은 그대로
+function colorNoLabel(name) { return /^\d+$/.test(String(name)) ? String(name).padStart(2, '0') : String(name || ''); }
+// 원단 폭: 대폭 = 270cm 이상 (블라인드는 해당 없음). 책자의 폭 표기에 ±3cm쯤 오차가 있어 279cm(110인치)도 대폭으로 봄
+const WIDE_SPEC_CM = 270;
+const WIDTH_LABELS = { wide: '대폭', normal: '일반폭' };
+// 가격대(직원 화면 전용): 판매가를 같은 종류·같은 단위끼리(속지 Y당, 겉지 Y당, 겉지 폭당 …) 낮은 순으로 줄 세워 셋으로 나눔
+//  - tier = 낮음/중간/높음, rank = 그 묶음 안에서의 자리(0 = 가장 낮음 ~ 1 = 가장 높음. 단위가 다른 원단끼리 "가격 낮은 순"으로 줄 세울 때 씀)
+const PRICE_TIER_LABELS = { low: '낮음', mid: '중간', high: '높음' };
+function fabricPriceTiers(list) {
+    const groups = {}, out = {};
+    list.forEach(f => { const k = `${f.categoryType}|${f.calcType}`; (groups[k] = groups[k] || []).push(f); });
+    Object.keys(groups).forEach(k => {
+        const g = groups[k], prices = g.map(f => f.price || 0).sort((a, b) => a - b), n = prices.length;
+        const t1 = prices[Math.ceil(n / 3) - 1], t2 = prices[Math.ceil(2 * n / 3) - 1];
+        g.forEach(f => {
+            const p = f.price || 0;
+            out[f.id] = n < 2 ? { tier: 'mid', rank: 0.5 } : { tier: p <= t1 ? 'low' : (p <= t2 ? 'mid' : 'high'), rank: prices.indexOf(p) / (n - 1) };
+        });
+    });
+    return out;
+}
+function finderEntries() {
+    const out = [];
+    const tiers = fabricPriceTiers(FABRIC_DB.filter(f => !isCustomerHidden(f)));
+    FABRIC_DB.forEach(f => {
+        if (isCustomerHidden(f)) return;
+        const m = f.manual || {};
+        const blind = f.categoryType === '블라인드' || f.calcType === 'hebe';
+        const sheer = !blind && f.categoryType === '속지';
+        const make = c => {
+            const tone = (c && c.tone) || (m.tone ? f.tone : null);          // 직접 정한 톤만 (이름으로 추측한 톤은 "미정")
+            const L = (c && typeof c.light === 'number') ? c.light : (typeof f.light === 'number' ? f.light : null);
+            const hasAb = !!(c && typeof c.a === 'number' && typeof c.b === 'number');
+            const C = hasAb ? Math.hypot(c.a, c.b) : null;
+            // 느낌은 색마다: 색의 톤·밝기를 덮어써서 계산 (rankColorsFor와 같은 방식)
+            const view = c ? Object.assign({}, f, { tone: c.tone || f.tone, light: L, manual: Object.assign({}, m, { tone: !!c.tone || !!m.tone }) }) : f;
+            return {
+                key: f.id + '__' + (c ? c.name : ''), fabric: f, fabricId: f.id, book: f.book, fabName: f.name, cat: blind ? 'blind' : (sheer ? 'sheer' : 'drape'),
+                color: c ? c.name : '', no: c ? colorNoLabel(c.name) : '', label: (c && c.label) || '',
+                tone, L, band: lightBandOf(L), hex: (c && c.hex) || null, a: hasAb ? c.a : null, b: hasAb ? c.b : null,
+                C, sat: chromaBandOf(C), hue: hasAb ? hueGroupOf(c.a, c.b) : null,
+                texture: (f.texture && TEXTURE_LABELS[f.texture]) ? f.texture : null,
+                blackout: (sheer || blind) ? null : blackoutLevel(f),
+                density: (sheer && m.density && DENSITY_LABELS[f.density]) ? f.density : null,
+                blindLight: blind ? blindLight(f) : null, blindKind: blind ? blindKind(f) : null,      // 블라인드: 암막/일반/투시 · 콤비/롤/프린트
+                specCm: blind ? null : (f.specCm || null), wide: (blind || !f.specCm) ? null : (f.specCm >= WIDE_SPEC_CM ? 'wide' : 'normal'),
+                price: f.price || 0, priceTier: tiers[f.id].tier, priceRank: tiers[f.id].rank,
+                view,       // 이 색의 톤·밝기를 입힌 원단 (공간에 어울리는 점수를 낼 때 씀)
+                mood: hasMoodInput(f) ? moodOf(view) : null
+            };
+        };
+        const colors = getFabricColors(f.id);
+        (colors.length ? colors.map(make) : [make(null)]).forEach(e => { if (!blind || e.hex || e.L != null || e.a != null) out.push(e); });
+    });
+    return out;
+}
+// 두 색이 얼마나 다른지: Lab 거리 ΔE = √(ΔL² + Δa² + Δb²). 색 값(밝기·붉은기·노란기)이 모두 있는 색끼리만 잼
+function finderHasLab(e) { return !!e && e.L != null && e.a != null && e.b != null; }
+function colorDistance(p, q) { return Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b); }
+function colorDistanceWord(d) { return d < 3 ? '거의 같음' : (d < 6 ? '아주 비슷' : (d < 10 ? '비슷' : '조금 다름')); }
 
 // ---- 사장님이 직접 지정한 분류(덮어쓰기). 엑셀을 다시 불러와도 유지됩니다 ----
 function loadTagOverrides() {

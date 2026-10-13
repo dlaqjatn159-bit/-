@@ -131,12 +131,14 @@ function presentToCustomer() {
 function showStaffView(view) {
     document.querySelectorAll('.staff-nav button').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     document.querySelectorAll('.staff-view').forEach(s => s.classList.toggle('on', s.id === 'view-' + view));
+    if (view === 'fabric') renderFinder();      // 분류·색상을 고친 뒤 돌아와도 새 값으로 보이게, 열 때마다 다시 그림
     window.scrollTo(0, 0);
 }
-// 원단 메뉴의 탭 4개: 원단 목록(list) · 분류(tag) · 색상(color) · 사진(photo)
+// 원단 메뉴의 탭 5개: 찾기(find) · 원단 목록(list) · 분류(tag) · 색상(color) · 사진(photo)
 function showFabricTab(tab) {
     document.querySelectorAll('.staff-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
     document.querySelectorAll('.staff-pane').forEach(p => p.classList.toggle('on', p.id === 'fabricTab-' + tab));
+    if (tab === 'find') renderFinder();
 }
 // 사이드바 머리의 "지금 고객 이름"
 function renderSideCust() {
@@ -168,6 +170,7 @@ function startNewConsultation() {
     clearDraft();
     initDefaultRooms();
     collapsedRooms.clear(); openCurtainDetails.clear();
+    finderTarget = null; finderView = 'grid'; finderPicks = []; resetFinderFilters(true);
     globalInstallFee = loadDefaultInstallFee();
     globalVatOption = 'consumer';
     const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
@@ -348,7 +351,8 @@ function collectConsultation() {
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
         installFee: globalInstallFee,
-        vat: globalVatOption
+        vat: globalVatOption,
+        picks: finderPicks.slice()          // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
     };
 }
 
@@ -426,6 +430,7 @@ function applySnapshot(snap) {
     }));
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
+    finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set('custName', snap.name || ''); set('expressCustName', snap.name || '');
     set('custPhone', snap.phone || ''); set('expressCustPhone', snap.phone || '');
@@ -492,6 +497,7 @@ function loadHistoryItem(id) {
     archiveConsultation(collectConsultation(), Date.now());
     saveHistory(loadHistory().filter(h => h.id !== id));       // 불러온 상담은 "진행 중"이 되므로 이력에서 이동
     applySnapshot(item.snapshot);
+    finderTarget = null; finderView = 'grid'; resetFinderFilters(true);       // 원단 찾기의 넣을 칸·거름망은 상담 하나 동안만
     renderRooms();
     renderHistory();
     warnIfQuoteFabricsMissing();
@@ -756,6 +762,380 @@ async function precachePhotos() {
     async function worker() { while (queue.length) { const u = queue.shift(); try { const r = await fetch(u); if (r.ok) ok++; } catch (e) {} } }
     await Promise.all([worker(), worker(), worker(), worker()]);
     showToast(`사진 ${ok}장을 오프라인용으로 저장했습니다.`);
+}
+
+// ---- 원단 찾기 (원단 › 찾기 탭): 원단의 색 하나가 카드 한 장 ----
+// 상담 화면의 원단 칸 옆 "찾기"로 들어오면 그 칸이 "넣을 칸"이 되고, 카드의 "이 공간에 넣기"로 원단과 색상 번호가 한 번에 들어감
+let finderTarget = null;      // { roomId, curtainId } — 화면에서만 쓰는 상태라 저장하지 않음
+function finderTargetCurtain() {
+    if (!finderTarget) return null;
+    const room = rooms.find(r => r.id === finderTarget.roomId);
+    const c = room && room.curtains.find(x => x.id === finderTarget.curtainId);
+    return c ? { room, c } : null;
+}
+// 상담 화면의 커튼 칸이 어떤 칸인지: 블라인드(지금 원단이 블라인드) / 속지 / 겉지
+function finderCurtainKind(c) {
+    const fab = FABRIC_DB.find(f => f.id === c.fabricId);
+    if (fab && (fab.calcType === 'hebe' || fab.categoryType === '블라인드')) return 'blind';
+    return (c.presetType ? c.presetType === 'sheer' : !!(fab && fab.categoryType === '속지')) ? 'sheer' : 'drape';
+}
+function openFabricFinder(roomId, curtainId) {
+    finderTarget = { roomId, curtainId };
+    // 넣을 칸이 속지면 속지만, 겉지면 겉지만(블라인드 칸이면 블라인드만) 먼저 보여 줌 (종류 칩을 누르면 풀림)
+    const t = finderTargetCurtain();
+    if (t) finderSel.cat = new Set([finderCurtainKind(t.c)]);
+    finderRef = null; if (finderSort === 'sim' || finderSort === 'pair') finderSort = 'light';       // 비슷한 색·속지 짝을 찾던 중이었으면 풀고 시작
+    finderView = 'grid';
+    showFabricTab('find');
+    showStaffView('fabric');
+}
+function clearFinderTarget() { finderTarget = null; renderFinder(); }
+
+// 거름망: 같은 묶음 안에서 여러 개를 고르면 "또는", 묶음끼리는 "그리고". 고른 상태는 상담 하나 동안만 기억(새 상담·상담 불러오기 때 지움)
+//  - 빛 가림(겉지) · 비침(속지) · 빛 가림(블라인드)은 한 묶음으로 셈: "완전암막 + 많이 비침"을 고르면 둘 다 나옴
+const FINDER_TONE_DOTS = { warm: '#d8c3a0', neutral: '#c4bfb7', cool: '#a9b4bd', deep: '#4a3f36' };
+const FINDER_HUE_DOTS = { gray: '#b5b3b0', beige: '#c9b79a', yellow: '#d6c98e', red: '#c9a2a0', green: '#a9c2b4', blue: '#9fadc2' };
+const FINDER_KEYS = ['mood', 'cat', 'tone', 'light', 'hue', 'sat', 'tex', 'bo', 'dens', 'blight', 'width', 'price', 'book'];
+// 정렬. 이 밖에 상담에 고객 화면의 질문(바닥·벽·분위기 등)을 거친 공간이 있으면 공간마다 "○○에 어울리는 순"(fit:공간번호)이 생김
+const FINDER_SORTS = { light: '밝은 순', dark: '진한 순', book: '책자 순', vivid: '채도 높은 순', muted: '채도 낮은 순', price: '가격 낮은 순', sim: '고른 색과 비슷한 순' };
+const FINDER_SIM_MAX = 16;     // 비슷한 색은 가까운 순으로 16개까지
+let finderSel = {};
+let finderSort = 'light';
+let finderRef = null;          // "비슷한 색"의 기준 색 (카드 key)
+let finderView = 'grid';       // 'grid'(색 카드) | 'map'(색 지도)
+const FINDER_PICK_MAX = 6;     // 후보는 6개까지 (고객에게는 2~6개를 나란히 보여 줌)
+let finderPicks = [];          // 후보로 별표한 색 (카드 key). 상담에 같이 저장됨
+let finderMapPoints = [];      // 색 지도에 찍힌 점 (누른 자리에서 가장 가까운 점을 찾는 데 씀)
+function resetFinderFilters(silent) {
+    FINDER_KEYS.forEach(k => { finderSel[k] = new Set(); });
+    finderSort = 'light'; finderRef = null;
+    const q = document.getElementById('finderQuery'); if (q) q.value = '';
+    if (!silent) renderFinder();
+}
+resetFinderFilters(true);
+// 묶음마다 고를 수 있는 것: [값, 이름, 색 점]. 빛 가림·비침·책자(와 종류의 블라인드)는 지금 원단에 있는 값만 보여 줌
+function finderOptions(all) {
+    const has = (key, v) => all.some(e => e[key] === v);
+    return {
+        mood: Object.keys(MOOD_LABELS).map(k => [k, MOOD_LABELS[k]]),
+        cat: [['drape', '겉지'], ['sheer', '속지'], ['blind', '블라인드']].filter(o => o[0] !== 'blind' || has('cat', 'blind')),
+        tone: ['warm', 'neutral', 'cool', 'deep'].map(k => [k, TONE_LABELS[k], FINDER_TONE_DOTS[k]]),
+        light: Object.keys(LIGHT_BAND_LABELS).map(k => [k, LIGHT_BAND_LABELS[k]]),
+        hue: Object.keys(HUE_LABELS).map(k => [k, HUE_LABELS[k], FINDER_HUE_DOTS[k]]),
+        sat: Object.keys(CHROMA_LABELS).map(k => [k, CHROMA_LABELS[k]]),
+        tex: Object.keys(TEXTURE_LABELS).map(k => [k, TEXTURE_LABELS[k]]),
+        bo: BLACKOUT_ORDER.filter(k => has('blackout', k)).map(k => [k, BLACKOUT_LABELS[k]]),
+        dens: DENSITY_ORDER.filter(k => has('density', k)).map(k => [k, DENSITY_LABELS[k]]),
+        blight: Object.keys(BLIND_LIGHT_LABELS).filter(k => has('blindLight', k)).map(k => [k, BLIND_LIGHT_LABELS[k]]),
+        width: Object.keys(WIDTH_LABELS).map(k => [k, WIDTH_LABELS[k]]),
+        price: Object.keys(PRICE_TIER_LABELS).map(k => [k, PRICE_TIER_LABELS[k]]),
+        book: [...new Set(all.map(e => e.book))].sort((x, y) => x.localeCompare(y, 'ko')).map(b => [b, b])
+    };
+}
+function finderChipClick(event) {
+    const btn = event.target.closest('button[data-v]');
+    const box = btn && btn.closest('.finder-chips');
+    if (!box) return;
+    const set = finderSel[box.dataset.k];
+    if (set.has(btn.dataset.v)) set.delete(btn.dataset.v); else set.add(btn.dataset.v);
+    renderFinder();
+}
+// 글자 검색: 띄어 쓴 낱말이 모두 맞아야 함. 숫자만 있는 낱말은 색 번호("블랑 03", "블랑03", "블랑 3" 모두 블랑 3번)
+function finderQueryWords() {
+    const q = ((document.getElementById('finderQuery') || {}).value || '').toLowerCase();
+    const words = [];
+    q.split(/\s+/).filter(Boolean).forEach(w => { const m = /^(\D+)(\d+)$/.exec(w); if (m) words.push(m[1], m[2]); else words.push(w); });
+    return words;
+}
+function finderMatch(e, words) {
+    const s = finderSel;
+    if (s.mood.size && !s.mood.has(e.mood)) return false;
+    if (s.cat.size && !s.cat.has(e.cat)) return false;
+    if (s.tone.size && !s.tone.has(e.tone)) return false;
+    if (s.light.size && !s.light.has(e.band)) return false;
+    if (s.hue.size && !s.hue.has(e.hue)) return false;
+    if (s.sat.size && !s.sat.has(e.sat)) return false;
+    if (s.tex.size && !s.tex.has(e.texture)) return false;
+    if ((s.bo.size || s.dens.size || s.blight.size) && !s.bo.has(e.blackout) && !s.dens.has(e.density) && !s.blight.has(e.blindLight)) return false;
+    if (s.width.size && !s.width.has(e.wide)) return false;
+    if (s.price.size && !s.price.has(e.priceTier)) return false;
+    if (s.book.size && !s.book.has(e.book)) return false;
+    if (words.length) {
+        const hay = `${e.label}${e.fabName}${e.book}${e.fabricId}${e.blindKind ? BLIND_KIND_LABELS[e.blindKind] : ''}`.toLowerCase().replace(/\s+/g, '');
+        const isNo = /^\d+$/.test(e.color);
+        if (!words.every(w => (/^\d+$/.test(w) && isNo) ? parseInt(w, 10) === parseInt(e.color, 10) : hay.includes(w))) return false;
+    }
+    return true;
+}
+function renderFinder() {
+    const out = document.getElementById('finderOut');
+    if (!out) return;
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const target = finderTargetCurtain();
+    if (finderTarget && !target) finderTarget = null;        // 넣을 칸(공간·커튼)이 그사이 지워졌으면 풀어 줌
+    const hint = document.getElementById('finderHint'), tbox = document.getElementById('finderTarget');
+    if (hint) hint.hidden = !!target;
+    if (tbox) {
+        tbox.hidden = !target;
+        tbox.innerHTML = target ? `<div><b>${esc(target.room.name)} · ${esc(target.c.label)}</b> 칸에 넣을 원단을 고르는 중<br><span>카드의 "이 공간에 넣기"를 누르면 원단과 색상 번호가 그 칸에 들어갑니다</span></div><button type="button" onclick="clearFinderTarget()">그만 고르기</button>` : '';
+    }
+
+    const all = finderEntries();
+    // 후보 띠: 별표한 색을 누른 순서대로 (지금 원단 목록에 없는 색은 띠에서만 빠짐)
+    const picks = finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean);
+    const pbox = document.getElementById('finderPicks');
+    if (pbox) {
+        pbox.hidden = !picks.length;
+        pbox.innerHTML = !picks.length ? '' : `<b class="font-serif-kr">후보 ${picks.length}개</b><div class="finder-picks-list">`
+            + picks.map(e => `<span class="finder-pick"><i${e.hex ? ` style="background:${e.hex}"` : ''}></i>${esc(finderPickName(e))}<button type="button" data-unstar="${esc(e.key)}" aria-label="후보에서 빼기">×</button></span>`).join('')
+            + `</div><button type="button" class="staff-btn" onclick="clearFinderPicks()">모두 빼기</button><button type="button" onclick="openFinderShow()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 rounded-xl text-xs whitespace-nowrap">고객에게 보여주기</button>`;
+    }
+    // 거름망 칩 (고른 것은 짙게)
+    const opts = finderOptions(all);
+    document.querySelectorAll('.finder-chips').forEach(box => {
+        const k = box.dataset.k;
+        finderSel[k].forEach(v => { if (!opts[k].some(o => o[0] === v)) finderSel[k].delete(v); });      // 원단이 바뀌어 없어진 값은 풀어 줌
+        box.innerHTML = opts[k].map(o => `<button type="button" class="finder-chip" data-v="${esc(o[0])}" aria-pressed="${finderSel[k].has(o[0])}">${o[2] ? `<i style="background:${o[2]}"></i>` : ''}${esc(o[1])}</button>`).join('');
+        box.closest('.finder-fgroup').hidden = !opts[k].length;
+    });
+    // 비슷한 색(sim): 기준 색과 색 차이(ΔE)가 작은 순으로 16개. 거름망 가운데 종류(겉지·속지)만 지킴
+    // 속지 짝(pair): 기준 겉지와 같은 톤이고 그보다 밝은 속지를 색 차이가 작은 순으로 (겉지가 딥이면 웜·뉴트럴 속지 모두). 색 값이 없는 속지는 톤만 맞춰 뒤에
+    const refAny = finderRef ? all.find(e => e.key === finderRef) : null;
+    const ref = (refAny && (finderSort === 'pair' ? refAny.cat === 'drape' : finderHasLab(refAny))) ? refAny : null;
+    if (!ref) { finderRef = null; if (finderSort === 'sim' || finderSort === 'pair') finderSort = 'light'; }
+    const sim = !!ref && finderSort === 'sim';
+    const pair = !!ref && finderSort === 'pair';
+    const pairTones = !pair ? null : (ref.tone === 'deep' ? ['warm', 'neutral'] : (ref.tone ? [ref.tone] : null));
+    // "○○에 어울리는 순": 고객 화면의 질문을 거친 공간만 (직원 화면에서 그냥 추가한 공간은 바닥·벽 답이 없어 점수를 낼 수 없음). 넣을 칸의 공간이 먼저
+    const fitRooms = rooms.filter(r => r.diagnosed).sort((x, y) => (target ? (y.id === target.room.id) - (x.id === target.room.id) : 0));
+    const fitRoom = finderSort.startsWith('fit:') ? fitRooms.find(r => 'fit:' + r.id === finderSort) : null;
+    if (finderSort.startsWith('fit:') && !fitRoom) finderSort = 'light';
+    const byBook = (x, y) => `${x.book} ${x.fabName}`.localeCompare(`${y.book} ${y.fabName}`, 'ko') || colorSort({ name: x.color }, { name: y.color });
+    // 값이 없는 색은 늘 뒤로 (그 안에서는 책자 · 원단 · 번호 순)
+    const by = (key, dir) => (x, y) => (x[key] == null || y[key] == null) ? ((x[key] == null) - (y[key] == null)) || byBook(x, y) : (dir * (x[key] - y[key])) || byBook(x, y);
+    let list;
+    if (sim) {
+        list = all.filter(e => e.key !== ref.key && finderHasLab(e) && (!finderSel.cat.size || finderSel.cat.has(e.cat)));
+        list.forEach(e => { e.dist = colorDistance(e, ref); });
+        list.sort((x, y) => x.dist - y.dist);
+        list = list.slice(0, FINDER_SIM_MAX);
+    } else if (pair) {
+        const refLab = finderHasLab(ref);
+        list = all.filter(e => e.cat === 'sheer' && (!pairTones || pairTones.includes(e.tone)) && !(ref.L != null && e.L != null && e.L <= ref.L));
+        list.forEach(e => { e.dist = (refLab && finderHasLab(e)) ? colorDistance(e, ref) : null; });
+        list.sort(by('dist', 1));
+    } else {
+        const words = finderQueryWords();
+        list = all.filter(e => finderMatch(e, words));
+        if (fitRoom) {
+            // 기존 추천 점수 그대로: 색의 톤·밝기를 입힌 원단으로 calculateFabricMatchScore (점수가 같으면 밝은 색 먼저)
+            list.forEach(e => { e.fit = calculateFabricMatchScore(e.view, fitRoom, e.fabric.categoryType); });
+            list.sort((x, y) => (y.fit - x.fit) || by('L', -1)(x, y));
+        } else if (finderSort === 'price') list.sort((x, y) => (x.priceRank - y.priceRank) || (x.price - y.price) || byBook(x, y));      // 단위가 다른 원단은 저마다의 묶음 안 자리로 견줌
+        else list.sort(finderSort === 'dark' ? by('L', 1) : (finderSort === 'vivid' ? by('C', -1) : (finderSort === 'muted' ? by('C', 1) : (finderSort === 'book' ? byBook : by('L', -1)))));
+    }
+    const showPrice = finderSort === 'price' || finderSel.price.size > 0;       // 가격대 꼬리표는 가격으로 거르거나 줄 세울 때만 보임
+    const sortSel = document.getElementById('finderSort');
+    if (sortSel) {
+        const sorts = Object.keys(FINDER_SORTS).filter(k => k !== 'sim').map(k => [k, FINDER_SORTS[k]]).concat(fitRooms.map(r => ['fit:' + r.id, `${r.name}에 어울리는 순`]), [['sim', FINDER_SORTS.sim]], pair ? [['pair', '겉지에 어울리는 속지']] : []);
+        sortSel.innerHTML = sorts.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
+        sortSel.value = finderSort;
+    }
+    const pairRule = pairTones ? `${pairTones.map(t => TONE_LABELS[t]).join('·')} 톤 · 겉지보다 밝은 색` : '겉지보다 밝은 색';
+    const cnt = document.getElementById('finderCount');
+    if (cnt) cnt.innerHTML = sim ? `<b class="font-serif-kr">비슷한 색 ${list.length}개</b><small>거름망은 종류(겉지·속지)만 적용</small>`
+        : (pair ? `<b class="font-serif-kr">어울리는 속지 ${list.length}개</b><small>${pairRule} · 거름망은 적용 안 함</small>`
+            : `<b class="font-serif-kr">${list.length}색</b><small>${new Set(list.map(e => e.fabricId)).size}개 원단 · 전체 ${all.length}색</small>`);
+    const rbox = document.getElementById('finderRef');
+    if (rbox) {
+        rbox.hidden = !ref;
+        const refName = ref ? esc(`${ref.fabName} ${ref.no} ${ref.label}`.replace(/\s+/g, ' ').trim()) : '';
+        rbox.innerHTML = !ref ? '' : `<i style="background:${ref.hex || 'transparent'}"></i><div>` + (pair
+            ? `<b>${refName}</b> 에 어울리는 속지를 찾는 중<br><span>겉지와 같은 톤이고 더 밝은 속지 (색이 가까운 것부터, 색 값이 없는 속지는 톤만 맞춰 뒤에)</span>`
+            : `<b>${refName}</b> 와 비슷한 색을 찾는 중<br><span>다른 책자에서 대신할 색을 찾을 때</span>`) + `</div><button type="button" onclick="clearFinderRef()">그만 찾기</button>`;
+    }
+    document.querySelectorAll('#finderViewSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === finderView)));
+    if (!all.length) { out.innerHTML = '<div class="finder-empty">보여 줄 원단이 없어요.<br>설정에서 단가표나 비공개 팩을 먼저 불러와 주세요.</div>'; return; }
+    if (finderView === 'map') { out.innerHTML = finderMapHtml(all, new Set(list.map(e => e.key)), ref); return; }
+    if (!list.length) {
+        out.innerHTML = '<div class="finder-empty">' + (sim ? '비슷한 색을 찾지 못했어요.<br>종류(겉지·속지) 조건을 풀어 보세요.'
+            : (pair ? '어울리는 속지를 찾지 못했어요.<br>분류 탭에서 속지의 톤이 정해져 있는지 확인해 보세요.' : '조건에 맞는 색이 없어요.<br>조건을 하나씩 빼 보세요.')) + '</div>';
+        return;
+    }
+
+    // 예전 입력표로만 색을 넣은 기기: 색 값이 하나도 없으면 어떻게 채우는지 알려 줌
+    const note = all.some(e => e.hex) ? '' : '<p class="finder-hint">아직 색 값이 들어 있지 않아요. 색상 탭의 "색상 입력표 불러오기"로 새 입력표(밝기·색상코드·붉은기·노란기 열)를 올리면 카드에 색이 보입니다.</p>';
+    const chip = (text, unset) => `<span class="staff-chip${unset ? ' is-unset' : ''}">${text}</span>`;
+    out.innerHTML = note + '<div class="finder-grid">' + list.map(e => {
+        const tags = [
+            e.tone ? chip(TONE_LABELS[e.tone]) : chip('톤 미정', true),
+            e.mood ? chip(MOOD_LABELS[e.mood]) : chip('느낌 미정', true),
+            e.cat === 'blind' ? (e.blindKind ? chip(BLIND_KIND_LABELS[e.blindKind]) : '') + chip(BLIND_LIGHT_LABELS[e.blindLight])
+                : (e.cat === 'sheer' ? (e.density ? chip(DENSITY_LABELS[e.density]) : chip('비침 미정', true)) : (e.blackout ? chip(BLACKOUT_LABELS[e.blackout]) : chip('빛 가림 미정', true))),
+            e.sat ? chip('채도 ' + CHROMA_LABELS[e.sat]) : chip('채도 미정', true),
+            e.texture ? chip(TEXTURE_LABELS[e.texture]) : chip('질감 미정', true),
+            e.specCm ? chip((e.wide === 'wide' ? '대폭 ' : '') + e.specCm + 'cm') : '',
+            showPrice ? chip('가격 ' + PRICE_TIER_LABELS[e.priceTier]) : ''
+        ].join('');
+        const title = e.color ? (e.label || `${e.no}번`) : e.fabName;
+        const light = (e.L != null ? `밝기 ${Math.round(e.L)}` : '밝기 미정') + (sim ? ` · ${colorDistanceWord(e.dist)}` : '') + (pair && e.dist == null ? ' · 톤만 맞춤' : '') + (fitRoom ? ` · 어울림 ${e.fit}` : '');
+        const meta = e.color ? `${e.book} ${e.fabName} ${e.no} · ${light}` : `${e.book} · ${light}`;
+        // 찾기 버튼 줄(비슷한 색 · 겉지는 어울리는 속지) + 넣기 버튼 줄
+        const finds = (finderHasLab(e) ? `<button type="button" data-sim="${esc(e.key)}">비슷한 색</button>` : '') + (e.cat === 'drape' ? `<button type="button" data-pair="${esc(e.key)}">어울리는 속지</button>` : '');
+        const acts = (finds ? `<div class="finder-acts">${finds}</div>` : '') + (target ? `<div class="finder-acts"><button type="button" data-pick="${esc(e.key)}">이 공간에 넣기</button></div>` : '');
+        const photo = (e.color && __photoFound[e.fabricId + '__' + e.color]) || __photoFound[e.fabricId];      // 사진 탭에서 "사진 확인하기"를 한 뒤에만 사진이 보임
+        const isCur = !!target && target.c.fabricId === e.fabricId && (target.c.colorName || '') === e.color;
+        const starred = finderPicks.includes(e.key);
+        return `<article class="finder-card${isCur ? ' is-current' : ''}">
+            <div class="finder-sw${e.hex ? '' : ' is-none'}"${e.hex ? ` style="background:${e.hex}"` : ''}>${photo ? `<img src="${esc(photo)}" alt="" loading="lazy">` : (e.hex ? '' : '<span>색 값 없음</span>')}<button type="button" class="finder-star${starred ? ' is-on' : ''}" data-star="${esc(e.key)}" aria-pressed="${starred}" aria-label="후보로 별표">${starred ? '★' : '☆'}</button></div>
+            <div class="finder-body">
+                <div class="finder-name">${esc(title)}</div>
+                <div class="finder-meta">${esc(meta)}${isCur ? ' · 지금 이 칸' : ''}</div>
+                <div class="finder-tags">${tags}</div>
+            </div>
+            ${acts}
+        </article>`;
+    }).join('') + '</div>';
+}
+// 정렬 바꾸기: "고른 색과 비슷한 순"은 카드의 "비슷한 색"을 누른 뒤에만. 다른 정렬을 고르면 비슷한 색 찾기는 끝남
+function finderSortChange(value) {
+    if (value === 'sim' && (!finderRef || finderSort === 'pair')) showToast('카드의 "비슷한 색"을 먼저 눌러 주세요.', 'info');
+    else if (value !== 'pair') { finderSort = (FINDER_SORTS[value] || String(value).startsWith('fit:')) ? value : 'light'; if (finderSort !== 'sim') finderRef = null; }
+    renderFinder();
+}
+function clearFinderRef() { finderRef = null; finderSort = 'light'; renderFinder(); }
+
+// ---- 후보 모아 보기: 카드의 별표(☆)로 후보를 모으고, "고객에게 보여주기"로 가격·원가 없이 나란히 보여 줌 ----
+// 원단 이름에서 괄호(암막률 등)는 떼고 보여 줌
+function finderPlainFabName(e) { return String(e.fabName || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(); }
+function finderPickName(e) { return e.color ? `${e.label ? e.label + ' · ' : ''}${finderPlainFabName(e)} ${e.no}` : finderPlainFabName(e); }
+function clearFinderPicks() { finderPicks = []; renderFinder(); }
+// 고객에게 보여주기: 직원 화면을 통째로 덮는 화면에 큰 색 칸(사진이 있으면 사진) · 색 이름 · 느낌만 나란히 (2~6개)
+//  - 보여 주는 동안 직원 화면은 잠근 것으로 침 → 닫으면 PIN을 넣어야 하던 화면으로 돌아옴 (자동 잠금과 같은 규칙)
+function openFinderShow() {
+    const all = finderEntries();
+    const picks = finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean).slice(0, FINDER_PICK_MAX);
+    const box = document.getElementById('finderShow'), canvas = document.getElementById('finderShowCanvas');
+    if (!box || !canvas || !window.concierge) return;
+    if (picks.length < 2) { showToast('후보를 2개 이상 별표해 주세요. (6개까지)', 'info'); return; }
+    canvas.style.setProperty('--items-count', picks.length);
+    canvas.innerHTML = picks.map(e => {
+        const name = (e.label || finderPlainFabName(e)).replace(/[<>&"]/g, '');
+        const mood = e.mood ? MOOD_LABELS[e.mood] : '';
+        // 색 값도 사진도 없는 원단은 지어낸 색을 보여 주지 않음
+        return window.concierge.bookmarkCard(name, e.hex ? mood : [mood, '샘플북으로 보여 드릴게요'].filter(Boolean).join(' · '), '', e.hex || 'var(--brand-panel)', function() {}, '');
+    }).join('');
+    Array.from(canvas.children).forEach((card, i) => {
+        const e = picks[i], img = document.createElement('img');
+        card.style.cursor = 'default';
+        img.className = 'fabric-photo'; img.alt = '';
+        img.setAttribute('data-id', e.fabricId); img.setAttribute('data-color', e.color); img.setAttribute('data-i', '0');
+        img.style.visibility = 'hidden';                         // 사진을 다 받은 뒤에만 보임 (찾는 동안 깨진 그림 표시가 안 보이게)
+        img.onload = function() { img.style.visibility = ''; };
+        img.onerror = function() { photoFallback(img); };       // 사진이 없으면 색 칸 그대로
+        img.src = fabricPhotoUrls(e.fabricId, e.color)[0];
+        const bg = card.querySelector('.bookmark-bg');
+        if (bg) bg.after(img);
+        if (i === picks.length - 1) card.insertAdjacentHTML('beforeend', '<div class="card-brand">Re<i class="logo-dot">.</i>dam</div>');
+    });
+    box.classList.remove('hidden');
+    document.documentElement.style.overflow = 'hidden';         // 뒤의 직원 화면이 밀리지 않게
+    if (appMode === 'staff') { staffLocked = true; setStaffLockedUi(true); }
+}
+function closeFinderShow() {
+    const box = document.getElementById('finderShow');
+    if (box) box.classList.add('hidden');
+    document.documentElement.style.overflow = '';
+    if (appMode === 'staff' && staffLocked) RedamAuth.requestUnlock();
+}
+function setFinderView(view) { finderView = view === 'map' ? 'map' : 'grid'; renderFinder(); }
+// 색 지도: 가로 = 노란기 b(왼쪽 쿨 · 오른쪽 웜), 세로 = 밝기 L(위가 밝음). 지금 조건에 맞는 색은 진하고 크게, 나머지는 흐리게
+// 색 값(밝기·노란기)이 없는 색은 지도에 나오지 않음. 노란기가 눈금 밖(-12 미만 · 30 초과)인 색은 가장자리에 찍힘
+function finderMapHtml(all, on, ref) {
+    const W = 720, H = 400, P = { l: 44, r: 16, t: 20, b: 40 };
+    const x = b => P.l + (Math.max(-12, Math.min(30, b)) + 12) / 42 * (W - P.l - P.r);
+    const y = L => P.t + (100 - L) / 90 * (H - P.t - P.b);
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    let g = '';
+    [20, 40, 60, 80].forEach(L => { g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(L).toFixed(1)}" y2="${y(L).toFixed(1)}"/><text x="${P.l - 8}" y="${(y(L) + 4).toFixed(1)}" text-anchor="end">${L}</text>`; });
+    [-8, 0, 8, 16, 24].forEach(b => { g += `<line x1="${x(b).toFixed(1)}" x2="${x(b).toFixed(1)}" y1="${P.t}" y2="${H - P.b}"/>`; });
+    g += `<text x="${P.l}" y="${H - 12}">← 푸른기 (쿨)</text><text x="${x(0).toFixed(1)}" y="${H - 12}" text-anchor="middle">뉴트럴</text><text x="${W - P.r}" y="${H - 12}" text-anchor="end">노란기 (웜) →</text>`;
+    g += `<text x="${P.l - 8}" y="${P.t + 4}" text-anchor="end">밝음</text>`;
+    const pts = all.filter(e => e.L != null && e.b != null);
+    finderMapPoints = pts.map(e => ({ key: e.key, x: x(e.b), y: y(e.L), hit: on.has(e.key) }));
+    const isRef = e => !!ref && ref.key === e.key;
+    const rank = e => isRef(e) ? 2 : (on.has(e.key) ? 1 : 0);        // 흐린 점 → 조건에 맞는 점 → 기준 색 순으로 위에 그림
+    const dots = pts.slice().sort((p, q) => rank(p) - rank(q)).map(e => {
+        const r = rank(e);
+        return `<circle cx="${x(e.b).toFixed(1)}" cy="${y(e.L).toFixed(1)}" r="${r === 2 ? 10 : (r === 1 ? 7.5 : 5)}" fill="${e.hex || '#cccccc'}" opacity="${r ? 1 : 0.22}" stroke="${r === 2 ? 'var(--brand-accent)' : 'var(--brand-dark)'}" stroke-opacity="${r === 2 ? 1 : 0.35}" stroke-width="${r === 2 ? 3 : 1}"><title>${esc(`${e.fabName} ${e.no} ${e.label}`.replace(/\s+/g, ' ').trim())} · 밝기 ${Math.round(e.L)}</title></circle>`;
+    }).join('');
+    const missing = all.length - pts.length;
+    return `<div class="finder-map"><svg data-map viewBox="0 0 ${W} ${H}" role="img" aria-label="원단 색을 밝기와 웜·쿨로 펼친 지도">${g}${dots}</svg></div>
+        <p class="finder-map-hint">위로 갈수록 밝고, 오른쪽으로 갈수록 노란기(웜)가 많아요. 진한 점이 지금 조건에 맞는 색이고, 점을 누르면 그 색과 비슷한 색을 찾습니다. 점이 비어 있는 곳은 갖고 있는 책자에 없는 색이라, 새 책자를 고를 때도 참고가 됩니다.${missing ? ` (색 값이 없는 ${missing}색은 지도에 나오지 않아요.)` : ''}</p>`;
+}
+// 지도에서 누른 자리와 가장 가까운 점 (손가락으로 눌러도 잡히게). 조건에 맞는 진한 점이 가까이 있으면 그 점이 먼저
+function finderMapPick(event, svg) {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const pt = svg.createSVGPoint(); pt.x = event.clientX; pt.y = event.clientY;
+    const p = pt.matrixTransform(ctm.inverse());
+    const nearest = (list, max) => list.reduce((best, m) => { const d = Math.hypot(m.x - p.x, m.y - p.y); return (d < max && (!best || d < best.d)) ? { key: m.key, d } : best; }, null);
+    const hit = nearest(finderMapPoints.filter(m => m.hit), 12) || nearest(finderMapPoints, 18);
+    return hit ? hit.key : null;
+}
+// 카드의 버튼: "비슷한 색" = 그 색과 가까운 색 찾기 / "이 공간에 넣기" = 넣을 칸의 원단과 색상 번호를 바꾸고 상담 화면으로 돌아감
+function finderClick(event) {
+    const starBtn = event.target.closest('button[data-star], button[data-unstar]');
+    if (starBtn) {
+        const key = starBtn.dataset.star || starBtn.dataset.unstar;
+        const all = finderEntries();
+        if (finderPicks.includes(key)) finderPicks = finderPicks.filter(k => k !== key);
+        else if (finderPicks.filter(k => all.some(e => e.key === k)).length >= FINDER_PICK_MAX) showToast(`후보는 ${FINDER_PICK_MAX}개까지예요. 하나를 빼고 다시 눌러 주세요.`, 'info');
+        else finderPicks.push(key);
+        renderFinder();
+        return;
+    }
+    const pairBtn = event.target.closest('button[data-pair]');
+    if (pairBtn) {
+        finderRef = pairBtn.dataset.pair; finderSort = 'pair'; finderView = 'grid';
+        // 넣을 칸이 겉지 칸이면 같은 공간의 속지 칸으로 옮김. 속지 칸이 없으면 넣을 칸을 풂 (겉지 칸에 속지가 들어가지 않게)
+        const t = finderTargetCurtain();
+        if (t && finderCurtainKind(t.c) !== 'sheer') {
+            const s = t.room.curtains.find(c => finderCurtainKind(c) === 'sheer');
+            finderTarget = s ? { roomId: t.room.id, curtainId: s.id } : null;
+        }
+        renderFinder();
+        const pane = document.getElementById('fabricTab-find');
+        if (pane) pane.scrollIntoView({ block: 'start' });
+        return;
+    }
+    const svg = event.target.closest('svg[data-map]');
+    const simBtn = event.target.closest('button[data-sim]');
+    const simKey = svg ? finderMapPick(event, svg) : (simBtn ? simBtn.dataset.sim : null);
+    if (svg || simBtn) {
+        if (!simKey) return;
+        finderRef = simKey; finderSort = 'sim'; finderView = 'grid';      // 지도의 점을 눌러도 카드 보기로 돌아와 비슷한 색을 보여 줌
+        renderFinder();
+        const pane = document.getElementById('fabricTab-find');
+        if (pane) pane.scrollIntoView({ block: 'start' });
+        return;
+    }
+    const btn = event.target.closest('button[data-pick]');
+    if (!btn) return;
+    const t = finderTargetCurtain();
+    const e = finderEntries().find(x => x.key === btn.dataset.pick);
+    finderTarget = null;
+    if (!t || !e) { renderFinder(); showToast('넣을 칸을 찾지 못했어요. 상담 화면에서 "찾기"를 다시 눌러 주세요.', 'error'); return; }
+    collapsedRooms.delete(t.room.id);
+    updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
+    t.c.colorName = e.color;
+    renderRooms();
+    calculateAll();
+    showStaffView('consult');
+    const sub = document.getElementById(`curtainSub_${t.c.id}`);
+    const card = sub && sub.closest('.staff-curtain');
+    if (card) card.scrollIntoView({ block: 'center' });
+    showToast(`${e.fabName}${colorSuffix(e.color, e.fabricId)} → ${t.room.name} · ${t.c.label} 칸에 넣었어요.`);
 }
 
 // ==============================================================
@@ -1161,6 +1541,7 @@ function renderRooms() {
     }
 
     const escText = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const finderHasBlind = finderEntries().some(e => e.cat === 'blind');      // 블라인드 칸의 "찾기" 버튼은 찾기 화면에 블라인드가 있을 때만 (색 정보가 들어온 블라인드만 나옴)
 
     if (rooms.length > 1) {
         const allCollapsed = rooms.every(r => collapsedRooms.has(r.id));
@@ -1261,9 +1642,12 @@ function renderRooms() {
                                 ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : ""}
                             </span>
                         </div>
-                        <div class="fabric-combo">
-                            <input type="text" value="${escText(fabricSearchLabel(curFab))}" data-fabric-id="${curFab ? escText(curFab.id) : ''}" autocomplete="off" placeholder="예: 데미안 몽크, 암막" onfocus="this.select(); renderFabricSearch(this, true)" oninput="renderFabricSearch(this)" onkeydown="fabricSearchKey(event, this)" onblur="closeFabricSearch(this)" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0">
-                            <div class="fabric-combo-list custom-scrollbar" hidden onmousedown="event.preventDefault()" onclick="pickFabricFromSearch(event, ${room.id}, ${c.id})"></div>
+                        <div class="flex items-stretch gap-1.5">
+                            <div class="fabric-combo flex-1 min-w-0">
+                                <input type="text" value="${escText(fabricSearchLabel(curFab))}" data-fabric-id="${curFab ? escText(curFab.id) : ''}" autocomplete="off" placeholder="예: 데미안 몽크, 암막" onfocus="this.select(); renderFabricSearch(this, true)" oninput="renderFabricSearch(this)" onkeydown="fabricSearchKey(event, this)" onblur="closeFabricSearch(this)" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0">
+                                <div class="fabric-combo-list custom-scrollbar" hidden onmousedown="event.preventDefault()" onclick="pickFabricFromSearch(event, ${room.id}, ${c.id})"></div>
+                            </div>
+                            ${isBlind && !finderHasBlind ? '' : `<button type="button" onclick="openFabricFinder(${room.id}, ${c.id})" title="색으로 원단 찾기" class="staff-btn whitespace-nowrap flex-shrink-0">찾기</button>`}
                         </div>
                         ${colorSelect}
                     </div>

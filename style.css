@@ -101,7 +101,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     overflow: hidden;
 }
 
-#v2FloatingPrevBtn, #v2HomeBtn {
+#v2FloatingPrevBtn, #v2HomeBtn, .finder-show-close {
     position: fixed;
     top: 2rem;
     left: 2rem;
@@ -123,7 +123,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     opacity: 0;
     pointer-events: none;
 }
-#v2FloatingPrevBtn:hover, #v2HomeBtn:hover {
+#v2FloatingPrevBtn:hover, #v2HomeBtn:hover, .finder-show-close:hover {
     background: #ffffff;
     transform: scale(1.04);
 }
@@ -725,6 +725,75 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .staff-tabs { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 1px solid var(--brand-border); overflow-x: auto; }
 .staff-tabs button { padding: 0.6rem 0.9rem; border-bottom: 2px solid transparent; white-space: nowrap; font-size: 0.85rem; font-weight: 600; color: var(--brand-muted); }
 .staff-tabs button[aria-selected="true"] { color: var(--brand-dark); border-bottom-color: var(--brand-accent); }
+/* 원단 › 찾기: 원단의 색 하나가 카드 한 장 (색 칸 · 색 이름 · 책자/원단/번호 · 밝기 · 꼬리표) */
+.finder-hint { margin: -0.2rem 0 0.9rem; font-size: 0.8rem; color: var(--brand-muted); }
+.finder-target { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.9rem; padding: 0.65rem 0.9rem; border-radius: 0.75rem; background: var(--brand-light); font-size: 0.82rem; line-height: 1.5; color: var(--brand-dark); }
+.finder-hint[hidden], .finder-target[hidden] { display: none; }
+.finder-target span { font-size: 0.75rem; color: var(--brand-muted); }
+.finder-target button { flex-shrink: 0; margin-left: auto; padding: 0.3rem 0.75rem; border: 1px solid currentColor; border-radius: 0.5rem; white-space: nowrap; font-size: 0.75rem; font-weight: 600; color: var(--brand-accent); }
+/* 왼쪽 거름망 판 + 오른쪽 카드. 거름망은 화면을 내려도 따라오고, 길면 판 안에서만 밀림 */
+.finder { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+.finder-filters { position: sticky; top: 0.75rem; display: grid; gap: 0.85rem; max-height: calc(100vh - 1.5rem); max-height: calc(100dvh - 1.5rem); overflow-y: auto; padding: 0.9rem; background: #fffdf9; border: 1px solid var(--brand-border); border-radius: 0.75rem; }
+.finder-filters input { width: 100%; min-width: 0; padding: 0.5rem 0.65rem; border: 1px solid var(--brand-border); border-radius: 0.5rem; background: #fff; font-size: 0.82rem; font-weight: 600; color: var(--brand-dark); outline: none; user-select: text; }
+.finder-filters input:focus { border-color: var(--brand-accent); }
+.finder-fgroup { display: grid; gap: 0.4rem; }
+.finder-fgroup[hidden] { display: none; }
+.finder-fgroup > b { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.72rem; font-weight: 600; color: var(--brand-muted); }
+.finder-fgroup > b em { font-style: normal; font-weight: 400; }
+.finder-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.finder-chip { padding: 0.3rem 0.65rem; border: 1px solid var(--brand-border); border-radius: 999px; background: #fff; font-size: 0.78rem; font-weight: 500; color: var(--brand-dark); }
+.finder-chip[aria-pressed="true"] { background: var(--brand-dark); border-color: var(--brand-dark); color: var(--brand-bg); }
+.finder-chip i { display: inline-block; width: 0.6rem; height: 0.6rem; margin-right: 0.35rem; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 50%; }
+/* 밝기 · 채도 눈금 띠: 아래 칩과 같은 방향 (밝음 → 진함 / 옅음 → 선명함) */
+.finder-scale { height: 0.5rem; border-radius: 999px; background: linear-gradient(90deg, #f2efe9, #8a857e, #2a2622); }
+.finder-scale.is-sat { background: linear-gradient(90deg, #b9b4ad, #c7b08a, #d39a3f); }
+.finder-reset { justify-self: start; font-size: 0.78rem; font-weight: 600; color: var(--brand-accent); text-decoration: underline; text-underline-offset: 3px; }
+.finder-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.75rem; }
+.finder-ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* 후보 모아 보기: 카드 색 칸의 별표 · 화면 위 후보 띠 */
+.finder-star { position: absolute; top: 0.35rem; right: 0.35rem; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: rgba(255, 253, 249, 0.88); font-size: 1rem; line-height: 1; color: var(--brand-muted); }
+.finder-star.is-on { background: var(--brand-dark); color: #f3d6c0; }
+.finder-picks { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; padding: 0.65rem 0.9rem; background: #fffdf9; border: 1px solid var(--brand-border); border-radius: 0.75rem; }
+.finder-picks[hidden] { display: none; }
+.finder-picks > b { white-space: nowrap; font-size: 0.95rem; font-weight: 500; color: var(--brand-dark); }
+.finder-picks-list { display: flex; flex: 1; flex-wrap: wrap; gap: 0.35rem; min-width: 0; }
+.finder-pick { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.3rem 0.2rem 0.5rem; border: 1px solid var(--brand-border); border-radius: 999px; background: #fff; font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); }
+.finder-pick i { flex-shrink: 0; width: 0.9rem; height: 0.9rem; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 50%; background: var(--brand-panel); }
+.finder-pick button { width: 1.3rem; height: 1.3rem; border-radius: 50%; font-size: 0.95rem; line-height: 1; color: var(--brand-muted); }
+.finder-pick button:hover { background: var(--brand-panel); }
+/* 후보를 고객에게 보여 주는 화면: 직원 화면을 통째로 덮음 (고객 화면의 사진 칸과 같은 모양, 가격·원가 없음) */
+.finder-show { position: fixed; inset: 0; z-index: 260; background: var(--brand-bg); }
+.finder-show.hidden { display: none; }
+.finder-show-close { opacity: 1; pointer-events: auto; }
+/* 색 지도: 가로 = 노란기(왼쪽 쿨 · 오른쪽 웜), 세로 = 밝기. 조건에 맞는 색은 진하게, 나머지는 흐리게 */
+.finder-map { padding: 0.75rem; overflow-x: auto; background: #fffdf9; border: 1px solid var(--brand-border); border-radius: 0.75rem; }
+.finder-map svg { display: block; width: 100%; min-width: 520px; height: auto; cursor: pointer; }
+.finder-map text { fill: var(--brand-muted); font-size: 11px; }
+.finder-map line { stroke: var(--brand-border); }
+.finder-map-hint { margin: 0.5rem 0.15rem 0; font-size: 0.75rem; line-height: 1.6; color: var(--brand-muted); }
+.finder-sort { padding: 0.4rem 0.6rem; border: 1px solid var(--brand-border); border-radius: 0.5rem; background: #fff; font-size: 0.8rem; font-weight: 600; color: var(--brand-dark); outline: none; }
+/* "비슷한 색"을 찾는 중일 때의 기준 색 표시 */
+.finder-target.has-swatch > i { flex-shrink: 0; width: 2.1rem; height: 2.1rem; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 0.4rem; }
+.finder-count b { font-size: 1.05rem; font-weight: 500; color: var(--brand-dark); }
+.finder-count small { margin-left: 0.45rem; font-size: 0.78rem; color: var(--brand-muted); }
+.finder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 0.65rem; }
+.finder-card { display: flex; flex-direction: column; overflow: hidden; background: #fffdf9; border: 1px solid var(--brand-border); border-radius: 0.75rem; }
+.finder-card.is-current { border-color: var(--brand-accent); box-shadow: 0 0 0 1px var(--brand-accent); }
+.finder-sw { position: relative; height: 4.5rem; border-bottom: 1px solid var(--brand-border); }
+/* 색 값이 없는 색: 빗금 (진짜 색처럼 보이지 않게) */
+.finder-sw.is-none { display: grid; place-items: center; background: repeating-linear-gradient(135deg, #fffdf9 0 7px, var(--brand-panel) 7px 14px); font-size: 0.68rem; color: var(--brand-muted); }
+.finder-sw img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.finder-body { display: grid; flex: 1; align-content: start; gap: 0.2rem; padding: 0.6rem 0.7rem 0.7rem; }
+.finder-name { font-size: 0.88rem; font-weight: 600; color: var(--brand-dark); }
+.finder-meta { font-size: 0.74rem; color: var(--brand-muted); }
+.finder-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
+.finder-tags .staff-chip { font-size: 0.7rem; }
+.finder-tags .staff-chip.is-unset { background: transparent; border: 1px dashed var(--brand-border); opacity: 0.75; }
+.finder-acts { display: flex; border-top: 1px solid var(--brand-border); }
+.finder-acts button { flex: 1; padding: 0.6rem 0.3rem; font-size: 0.78rem; font-weight: 600; color: var(--brand-accent); }
+.finder-acts button + button { border-left: 1px solid var(--brand-border); }
+.finder-acts button:hover { background: var(--brand-light); }
+.finder-empty { padding: 2rem; border: 1px dashed var(--brand-border); border-radius: 0.75rem; background: #fffdf9; text-align: center; font-size: 0.85rem; line-height: 1.6; color: var(--brand-muted); }
 /* 설정 메뉴의 묶음 */
 .staff-set { display: grid; gap: 0.75rem; margin-bottom: 0.9rem; padding: 1.1rem 1.25rem; background: #fff; border: 1px solid var(--brand-border); border-radius: 1rem; max-width: 760px; }
 .staff-set h2 { font-size: 1rem; font-weight: 500; color: var(--brand-dark); }
@@ -750,6 +819,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     }
     .staff-topbar-acts { display: flex; gap: 1rem; flex-shrink: 0; white-space: nowrap; }
     .staff-topbar-acts button { text-decoration: underline; text-underline-offset: 3px; }
+    /* 원단 찾기: 거름망이 카드 위로 올라가고, 묶음은 옆으로 나란히 놓여 길이를 줄임 */
+    .finder { grid-template-columns: minmax(0, 1fr); }
+    .finder-filters { position: static; max-height: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); align-items: start; }
+    .finder-filters input, .finder-reset { grid-column: 1 / -1; }
+    .finder-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     #lockWarn { bottom: 5rem; }
 }
 

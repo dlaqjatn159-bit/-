@@ -279,18 +279,60 @@
                     </div>
                 </section>
 
-                <!-- ===== 원단: 탭 4개 (원단 목록 · 분류 · 색상 · 사진) ===== -->
+                <!-- ===== 원단: 탭 5개 (찾기 · 원단 목록 · 분류 · 색상 · 사진) ===== -->
                 <section class="staff-view" id="view-fabric">
                     <h1 class="staff-h1 font-serif-kr">원단</h1>
-                    <p class="staff-sub">단가표에 있는 원단과, 고객 추천에 쓰는 분류·색상·사진입니다.</p>
+                    <p class="staff-sub">색으로 원단을 찾고, 단가표의 원단과 고객 추천에 쓰는 분류·색상·사진을 관리합니다.</p>
                     <div class="staff-tabs" role="tablist">
-                        <button type="button" role="tab" data-tab="list" aria-selected="true" onclick="showFabricTab('list')">원단 목록</button>
+                        <button type="button" role="tab" data-tab="find" aria-selected="true" onclick="showFabricTab('find')">찾기</button>
+                        <button type="button" role="tab" data-tab="list" aria-selected="false" onclick="showFabricTab('list')">원단 목록</button>
                         <button type="button" role="tab" data-tab="tag" aria-selected="false" onclick="showFabricTab('tag')">분류 (톤 · 질감)</button>
                         <button type="button" role="tab" data-tab="color" aria-selected="false" onclick="showFabricTab('color')">색상</button>
                         <button type="button" role="tab" data-tab="photo" aria-selected="false" onclick="showFabricTab('photo')">사진</button>
                     </div>
 
-                    <div class="staff-pane on" id="fabricTab-list">
+                    <!-- 찾기: 원단의 색 하나가 카드 한 장. 상담 화면의 원단 칸 옆 "찾기"로 들어오면 고른 색이 그 칸에 들어감 -->
+                    <div class="staff-pane on" id="fabricTab-find">
+                        <div class="finder-picks" id="finderPicks" hidden onclick="finderClick(event)"></div>
+                        <p class="finder-hint" id="finderHint">상담 화면의 원단 칸 옆 "찾기" 버튼을 누르면 이 화면이 열리고, 고른 색은 그 칸에 바로 들어갑니다.</p>
+                        <div class="finder-target" id="finderTarget" hidden></div>
+                        <div class="finder">
+                            <!-- 거름망: 같은 묶음 안에서 여러 개를 고르면 "또는", 묶음끼리는 "그리고" (빛 가림과 비침은 한 묶음) -->
+                            <aside class="finder-filters custom-scrollbar" aria-label="거름망" onclick="finderChipClick(event)">
+                                <input type="text" id="finderQuery" autocomplete="off" placeholder="색 이름이나 원단: 베이지, 블랑 03" oninput="renderFinder()">
+                                <div class="finder-fgroup"><b>느낌</b><div class="finder-chips" data-k="mood"></div></div>
+                                <div class="finder-fgroup"><b>종류</b><div class="finder-chips" data-k="cat"></div></div>
+                                <div class="finder-fgroup"><b>톤</b><div class="finder-chips" data-k="tone"></div></div>
+                                <div class="finder-fgroup"><b>밝기</b><div class="finder-scale" aria-hidden="true"></div><div class="finder-chips" data-k="light"></div></div>
+                                <div class="finder-fgroup"><b>색조 <em>무슨 색 기운인지</em></b><div class="finder-chips" data-k="hue"></div></div>
+                                <div class="finder-fgroup"><b>채도 <em>색이 얼마나 짙은지</em></b><div class="finder-scale is-sat" aria-hidden="true"></div><div class="finder-chips" data-k="sat"></div></div>
+                                <div class="finder-fgroup"><b>질감</b><div class="finder-chips" data-k="tex"></div></div>
+                                <div class="finder-fgroup"><b>빛 가림 <em>겉지</em></b><div class="finder-chips" data-k="bo"></div></div>
+                                <div class="finder-fgroup"><b>비침 <em>속지</em></b><div class="finder-chips" data-k="dens"></div></div>
+                                <div class="finder-fgroup"><b>빛 가림 <em>블라인드</em></b><div class="finder-chips" data-k="blight"></div></div>
+                                <div class="finder-fgroup"><b>원단 폭 <em>대폭 = 270cm 이상</em></b><div class="finder-chips" data-k="width"></div></div>
+                                <div class="finder-fgroup"><b>가격대 <em>같은 종류·단위끼리</em></b><div class="finder-chips" data-k="price"></div></div>
+                                <div class="finder-fgroup"><b>책자</b><div class="finder-chips" data-k="book"></div></div>
+                                <button type="button" class="finder-reset" onclick="resetFinderFilters()">조건 모두 지우기</button>
+                            </aside>
+                            <section class="min-w-0">
+                                <div class="finder-bar">
+                                    <div class="finder-count" id="finderCount"></div>
+                                    <div class="finder-ctrl">
+                                        <select id="finderSort" class="finder-sort" aria-label="정렬" onchange="finderSortChange(this.value)"></select>
+                                        <div class="lock-seg" id="finderViewSeg">
+                                            <button type="button" data-view="grid" aria-pressed="true" onclick="setFinderView('grid')">색 카드</button>
+                                            <button type="button" data-view="map" aria-pressed="false" onclick="setFinderView('map')">색 지도</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="finder-target has-swatch" id="finderRef" hidden></div>
+                                <div id="finderOut" onclick="finderClick(event)"></div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <div class="staff-pane" id="fabricTab-list">
                         <div id="dbSectionCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3">
                             <div>
                                 <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
@@ -569,6 +611,15 @@
 
     <!-- 인쇄/PDF 전용: 견적서 이미지를 여기에 담아 인쇄합니다 -->
     <div id="printSheet"><img id="printImg" alt="견적서"></div>
+
+    <!-- 원단 찾기 › 후보 모아 보기: 별표한 색을 고객에게 나란히 보여 주는 화면 (가격·원가 없음). 닫으면 직원 화면은 PIN 잠금 -->
+    <div id="finderShow" class="finder-show hidden">
+        <div class="bookmark-stage">
+            <div class="step-head"><p class="step-q font-serif-kr">마음에 드는 색을 골라 보세요</p></div>
+            <div class="bookmark-canvas" id="finderShowCanvas"></div>
+        </div>
+        <button type="button" class="finder-show-close" onclick="closeFinderShow()" title="닫기" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
+    </div>
 
     <!-- 직원 PIN 창 -->
     <div id="pinModal" class="pin-overlay hidden" role="dialog" aria-modal="true">
