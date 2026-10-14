@@ -8,7 +8,11 @@
 // ==============================================================
 (function () {
     const GRAY_L = 50, WHITE_L = 95;          // 카드 목표 밝기 (회색 카드 L50, 흰 카드 L95)
-    const SAMPLE = 21;                        // 누른 자리 주변 21×21px 평균
+    const SAMPLE = 21;                        // 카드: 누른 자리 주변 21×21px 평균
+    const AREA_R = 0.07;                      // 바닥·벽: 반지름 = 사진 짧은 쪽의 7% (1600×1200 사진이면 지름 약 170px)
+    const MULTI = { floor: true, wall: true };// 여러 곳을 눌러 평균하는 자리
+    const MAX_POINTS = 3;                     // 3곳까지 (넷째를 누르면 가장 먼저 누른 곳이 빠짐)
+    const AREA_TRIM = 0.15;                   // 바닥·벽: 가장 어두운 15% · 가장 밝은 15%는 빼고 평균
     const SHADOW_DL = 6.0;                    // 카드 안 위아래·좌우 밝기 차이가 이 이상이면 그림자 안내
     const LIGHT_HI = 78, LIGHT_LO = 52;       // 밝기 3단계 (임시값 — 현장 시험 뒤 확정)
     const DEEP_L = 40;                        // 이보다 어두우면 톤은 "딥"
@@ -91,11 +95,51 @@
         };
     }
 
+    // 바닥·벽: 무늬(나뭇결·타일 줄눈·벽지 결)가 있어도 누른 자리에 따라 색이 흔들리지 않게
+    // 누른 자리 둘레 넓은 동그라미(사진 짧은 쪽의 AREA_R) 안을 평균. 밝기 순으로 아래·위 TRIM씩(틈·옹이·반사)은 뺌
+    function sampleArea(pin) {
+        const cv = st.photos[pin.v];
+        if (!cv) return null;
+        const R = areaRadiusPx(cv);
+        const cx = Math.max(R, Math.min(cv.width - R - 1, Math.round(pin.x * cv.width)));
+        const cy = Math.max(R, Math.min(cv.height - R - 1, Math.round(pin.y * cv.height)));
+        const size = 2 * R + 1;
+        const d = cv.getContext('2d').getImageData(cx - R, cy - R, size, size).data;
+        const step = Math.max(1, Math.round(R / 40));          // 점이 너무 많으면 건너뛰며 (많아야 약 5천 개)
+        const px = [];
+        for (let y = -R; y <= R; y += step) {
+            for (let x = -R; x <= R; x += step) {
+                if (x * x + y * y > R * R) continue;
+                const i = ((y + R) * size + (x + R)) * 4;
+                const lr = toLin(d[i]), lg = toLin(d[i + 1]), lb = toLin(d[i + 2]);
+                px.push([lr, lg, lb, 0.2126 * lr + 0.7152 * lg + 0.0722 * lb]);
+            }
+        }
+        px.sort((p, q) => p[3] - q[3]);
+        const cut = Math.floor(px.length * AREA_TRIM), kept = px.slice(cut, px.length - cut);
+        const lin = [0, 1, 2].map(k => kept.reduce((s, p) => s + p[k], 0) / kept.length);
+        return { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0 };
+    }
+    // 누른 점: st.pins[자리] = [{ v: 사진 번호, x, y }, …]. 카드는 1곳, 바닥·벽은 MAX_POINTS곳까지 (평균)
+    function pinsOf(key) { return (st && st.pins[key]) || []; }
+    function dropPins(v) {      // 그 사진에 찍은 점은 모두 지움 (사진을 바꾸거나 뺄 때)
+        Object.keys(st.pins).forEach(k => { st.pins[k] = st.pins[k].filter(p => p.v !== v); if (!st.pins[k].length) delete st.pins[k]; });
+    }
+    function areaRadiusPx(cv) { return Math.max(12, Math.round(Math.min(cv.width, cv.height) * AREA_R)); }
+
     // 두 카드로 보정: 빨강·초록·파랑을 따로, 회색 카드는 L50 회색 · 흰 카드는 L95 흰색이 되도록 곧게 늘임
     // (카메라의 노출과 색 틀어짐을 함께 바로잡음. Lab에서 색기만 빼는 것보다 진한 색에서 정확)
     function compute() {
         const s = {};
-        STEPS.forEach(stp => { s[stp.key] = st.pins[stp.key] ? samplePin(st.pins[stp.key]) : null; });
+        STEPS.forEach(stp => {
+            const ps = pinsOf(stp.key);
+            if (!ps.length) { s[stp.key] = null; return; }
+            if (!MULTI[stp.key]) { s[stp.key] = samplePin(ps[0]); return; }      // 카드는 작은 칸 하나
+            // 바닥·벽: 누른 곳마다 넓은 동그라미 평균 → 그것들을 다시 평균 (판자·타일마다 색이 다른 바닥)
+            const parts = ps.map(sampleArea).filter(Boolean);
+            const lin = [0, 1, 2].map(k => parts.reduce((t, p) => t + p.lin[k], 0) / parts.length);
+            s[stp.key] = { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0, n: parts.length };
+        });
         const res = { raw: s, wall: null, floor: null, cardsSwapped: false, shadow: 0 };
         if (!s.gray || !s.white) return res;
         res.cardsSwapped = s.white.lab.L < s.gray.lab.L;
@@ -134,10 +178,10 @@
                 st.view = which;
                 // 벽 사진: 그 사진의 핀은 비우고 ④ 벽을 찍게 / 첫 사진: 처음부터 다시
                 if (which === 1) {
-                    if (st.pins.wall && st.pins.wall.v === 1) delete st.pins.wall;
+                    dropPins(1);
                     st.active = 3;
                 } else {
-                    Object.keys(st.pins).forEach(k2 => { if (st.pins[k2].v === 0) delete st.pins[k2]; });
+                    dropPins(0);
                     st.active = 0;
                 }
                 render();
@@ -156,7 +200,7 @@
     }
     function removeWallPhoto() {
         st.photos[1] = null;
-        if (st.pins.wall && st.pins.wall.v === 1) delete st.pins.wall;
+        dropPins(1);
         st.view = 0;
         render();
     }
@@ -254,13 +298,22 @@
         h += '</div></div>';
 
         if (cv) {
-            h += `<div class="rc-canvas-wrap" id="rcCanvasWrap" style="aspect-ratio:${cv.width} / ${cv.height};width:min(100%, calc(56vh * ${(cv.width / cv.height).toFixed(4)}))">`;      // 세로 사진도 화면 안에
+            h += `<div class="rc-canvas-wrap" id="rcCanvasWrap" style="aspect-ratio:${cv.width} / ${cv.height};width:min(100%, calc(52vh * ${(cv.width / cv.height).toFixed(4)}))">`;      // 세로 사진도 화면 안에
             STEPS.forEach((s2, i) => {
-                const p = st.pins[s2.key];
-                if (!p || p.v !== st.view) return;
-                h += `<span class="rc-pin${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%;background:${s2.color}">${i + 1}</span>`;
+                pinsOf(s2.key).forEach(p => {
+                    if (p.v !== st.view) return;
+                    if (MULTI[s2.key]) {      // 바닥·벽은 읽는 동그라미도 보여 줌
+                        h += `<span class="rc-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv) / cv.width * 100).toFixed(2)}%;border-color:${s2.color}"></span>`;
+                    }
+                    h += `<span class="rc-pin${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%;background:${s2.color}">${i + 1}</span>`;
+                });
             });
             h += '</div>';
+            if (MULTI[stp.key]) {
+                const n = pinsOf(stp.key).length;
+                h += `<div class="rc-guide"><span>${stp.label.slice(2)}은 동그라미 안을 평균해요. 판자·타일·무늬마다 색이 다르면 <b>다른 곳도 눌러 주세요</b> (${MAX_POINTS}곳까지 평균${n ? ` · 지금 ${n}곳` : ''})</span>`
+                    + (n ? `<button type="button" onclick="RoomColor.clearStep()">다시 누르기</button>` : '') + '</div>';
+            }
         } else {
             h += '<div class="rc-empty">';
             h += '<p class="font-serif-kr">걸레받이에 <b>회색·흰 카드</b>를 기대어 놓고<br>바닥과 벽이 함께 나오게 한 장 찍어 주세요</p>';
@@ -270,9 +323,9 @@
         }
         h += '<div class="rc-steps">';
         STEPS.forEach((s2, i) => {
-            const done = !!st.pins[s2.key];
+            const n = pinsOf(s2.key).length, done = n > 0;
             h += `<button type="button" class="rc-step${i === st.active ? ' on' : ''}${done ? ' done' : ''}" onclick="RoomColor.step(${i})"${st.photos[0] ? '' : ' disabled'}>`;
-            h += `<span>${s2.label}${done ? ' ✓' : ''}</span><small>${s2.sub}</small></button>`;
+            h += `<span>${s2.label}${done ? ' ✓' : ''}</span><small>${n > 1 ? `${n}곳 평균` : s2.sub}</small></button>`;
         });
         h += '</div></div>';
 
@@ -305,7 +358,7 @@
             }
             if (res.raw.gray && res.raw.white) {
                 h += `<p class="rc-cards">카드 읽은 값: 회색 L ${res.raw.gray.lab.L.toFixed(1)} · 흰 L ${res.raw.white.lab.L.toFixed(1)}`
-                   + (st.photos[1] && st.pins.wall && st.pins.wall.v === 1 ? '<br>벽 사진에는 카드가 없어 카드 사진의 두 카드로 보정했어요.' : '') + '</p>';
+                   + (st.photos[1] && pinsOf('wall').some(p => p.v === 1) ? '<br>벽 사진에는 카드가 없어 카드 사진의 두 카드로 보정했어요.' : '') + '</p>';
             }
         }
         h += '</div></div>';
@@ -329,11 +382,13 @@
         const rect = e.currentTarget.getBoundingClientRect();
         const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-        const key = STEPS[st.active].key;
-        st.pins[key] = { v: st.view, x, y };
-        // 다음 비어 있는 자리로. 벽 사진이 있으면 ④ 벽은 그 사진에서
-        const next = STEPS.findIndex(s2 => !st.pins[s2.key]);
-        if (next >= 0) {
+        const key = STEPS[st.active].key, pt = { v: st.view, x, y };
+        const first = !pinsOf(key).length;
+        // 카드는 옮기기, 바닥·벽은 한 곳 더 (MAX_POINTS를 넘으면 가장 먼저 누른 곳이 빠짐)
+        st.pins[key] = MULTI[key] ? pinsOf(key).concat([pt]).slice(-MAX_POINTS) : [pt];
+        // 처음 누른 자리면 다음 비어 있는 자리로. 벽 사진이 있으면 ④ 벽은 그 사진에서
+        const next = STEPS.findIndex(s2 => !pinsOf(s2.key).length);
+        if (next >= 0 && (first || !MULTI[key])) {
             st.active = next;
             if (st.photos[1]) st.view = STEPS[next].key === 'wall' ? 1 : 0;
         }
@@ -360,10 +415,11 @@
         },
         step(i) {
             st.active = i;
-            const p = st.pins[STEPS[i].key];
+            const p = pinsOf(STEPS[i].key).slice(-1)[0];
             if (st.photos[1]) st.view = p ? p.v : (STEPS[i].key === 'wall' ? 1 : 0);
             render();
         },
+        clearStep() { delete st.pins[STEPS[st.active].key]; render(); },      // 바닥·벽 "다시 누르기"
         view(v) { st.view = v; render(); },
         apply,
         // 직원 화면 공간 카드 안 한 줄: 잰 색 + 맞춘 카드 (고객이 다른 카드를 고르면 그것도 표시)
