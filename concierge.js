@@ -146,7 +146,7 @@
             lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
             diagnosed: !!r.diagnosed,
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
-            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null,      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
+            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
                 let realFab = liveDb.find(f => f.id === c.fabricId);
@@ -246,6 +246,17 @@
         if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "1-Space-Edit") stepHistory.pop();
         goToStep("1-Space-Edit", false);
     }
+    // 공간 안에서 바닥·벽 카드를 고름: 잰 색과 다른 카드를 고르면 그 부분은 카드로 바뀜(잰 색을 지움 → 색 잇기는 건너뜀). 같은 카드면 잰 색 그대로
+    function cardPickInRoom(part, tone) {
+        const ed = state.editingRoom, mc = ed.measuredColor;
+        if (mc && mc[part]) {
+            if (mc[part].tone === tone) return;
+            mc[part] = null; mc.bridge = null;
+            if (!mc.wall && !mc.floor) ed.measuredColor = null;
+            ed.colorSrc = null;
+        }
+        ed.cardParts = Object.assign({}, ed.cardParts, { [part]: true });
+    }
     // 중심 화면으로 돌아감: 그 뒤에 쌓인 단계(수정하기 등)는 뒤로 가기 목록에서 지움
     function backToSpace() {
         while (stepHistory.length && stepHistory[stepHistory.length - 1].step !== "1-Space") stepHistory.pop();
@@ -282,26 +293,40 @@
     function roomTypeOf(room) {
         return String((room && (room.roomType || room.name)) || '').replace(/\s*\d+$/, '');
     }
-    // 흐름 B: 사실(바닥·벽·채광) → 필요(빛 가림·바깥 시선) → 구성 → 취향(분위기·속지 느낌) → 원단
+    // 공간 안 흐름 (20번): (벽·바닥을 모르는 공간만 바닥·벽 카드) → 빛 → 빛 가림 → 바깥 시선 → 구성
+    //   → (잰 공간·커튼만) 우리 집 색 → 색 잇기 → 분위기 → (속지 느낌) → 원단 → 마무리(옵션)
     function diagnosisSteps() {
-        const steps = ["2-Base-Floor", "2-Base-Wall", "2-Base-Light", "2-Base-Block", "2-Base-Privacy", "3-Config-Style", "2-Base-Mood"];
-        const items = (state.editingRoom && state.editingRoom.items) || [];
+        const ed = state.editingRoom || {}, items = ed.items || [];
+        const steps = ed.askCards ? ["2-Base-Floor", "2-Base-Wall"] : [];
+        steps.push("2-Base-Light", "2-Base-Block", "2-Base-Privacy", "3-Config-Style");
+        if (canLink(ed)) steps.push("2-Base-Home", "2-Base-Link");
+        steps.push("2-Base-Mood");
         if (state.step === "2-Base-SheerFeel" || items.some(i => i.presetType === 'sheer')) steps.push("2-Base-SheerFeel");
         return steps;
     }
+    // 색 잇기를 물을 수 있는 공간: 벽·바닥을 둘 다 잰 색이 있고(카드로만 고른 공간은 아님), 블라인드가 아님 (블라인드 색 데이터 없음)
+    function canLink(ed) {
+        const mc = ed && ed.measuredColor;
+        return !!(mc && mc.wall && mc.floor && mc.bridge) && !(ed.items || []).some(i => i.presetType === 'blind');
+    }
+    const LINK_WORD = { wall: '벽과 이어지는 색', bridge: '벽과 바닥 사이를 잇는 색', floor: '바닥 톤을 따르는 색' };
+    const LINK_WHY = { wall: '창이 벽에 녹아들어 공간이 넓어 보여요.', bridge: '벽과 바닥을 이어 주어 공간이 차분하게 하나로 보여요.', floor: '바닥과 같은 결이라 따뜻하고 안정감 있어요.' };
+    // 색 잇기 방향과 어울리는 분위기 카드 (추천 표시만, 점수는 그대로 — 사장님이 써 보며 정함)
+    const LINK_MOODS = { wall: ['urban_clean', 'airy_bright'], bridge: ['balanced_neutral'], floor: ['soft_warm', 'textured_linen'] };
     // 글 질문 화면 ("제안합니다" 화면과 같은 분위기): 큰 질문 + 글자 선택지. 사진이 필요 없는 질문에 사용
     function askStage(question, sub, opts, o) {
         o = o || {};
         const steps = diagnosisSteps(), at = steps.indexOf(state.step);
         let h = '<div class="ambient-stage ask-stage"><div class="ambient-light-glow"></div>';
         if (at >= 0) h += '<div class="step-dots ask-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
+        if (o.top) h += o.top;
         if (!o.noRoom && state.editingRoom && state.editingRoom.name) h += `<span class="q-meta">${state.editingRoom.name}</span>`;
         h += `<h2 class="q-title font-serif-kr">${question}</h2>`;
         if (sub) h += `<p class="q-sub">${sub}</p>`;
         if (o.extra) h += o.extra;
         h += `<div class="ask-opts${opts.length > 4 ? ' is-many' : ''}">`;
         opts.forEach(op => {
-            h += `<button type="button" class="ask-opt${op.rec ? ' is-rec' : ''}${op.was ? ' was-picked' : ''}" onclick="${op.on}"><span class="ask-label font-serif-kr">${op.label}</span>${op.desc ? `<span class="ask-desc">${op.desc}</span>` : ''}</button>`;
+            h += `<button type="button" class="ask-opt${op.rec ? ' is-rec' : ''}${op.was ? ' was-picked' : ''}" onclick="${op.on}"><span class="ask-label font-serif-kr">${op.label}</span>${op.desc ? `<span class="ask-desc">${op.desc}</span>` : ''}${op.extra || ''}</button>`;
         });
         h += '</div></div>';
         return h;
@@ -375,12 +400,74 @@
         hideKeypadDirectly();
         window.RoomColor.openCustomer({ name, parts, doneLabel, doneNote, onDone, onSkip, onCancel: function() {} });
     }
+    // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
+    // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
+    let spaceEntries = null;
+    function entryOf(fabricId, color) { return (spaceEntries || []).find(e => e.key === fabricId + '__' + (color || '')) || null; }
+    // 같은 종류(겉지·속지) 가운데 노란기 차이가 작고(9 미만) 밝기만 한 단계 다른 색. 지금 색에 색 값이 없으면 없음
+    function toneNeighbors(c) {
+        const cur = entryOf(c.fabricId, c.colorName);
+        if (!cur || cur.L == null || cur.b == null) return { lighter: null, darker: null };
+        const pool = spaceEntries.filter(x => x.cat === cur.cat && x.key !== cur.key && x.hex && x.L != null && x.b != null && Math.abs(x.b - cur.b) < 9);
+        // 같은 원단의 색을 먼저 (결·값이 그대로). 같은 원단에 없을 때만 다른 원단에서
+        const pick = (list, gap) => {
+            const same = list.filter(x => x.fabricId === cur.fabricId);
+            return (same.length ? same : list).sort((p, q) => gap(p) - gap(q))[0] || null;
+        };
+        return {
+            lighter: pick(pool.filter(x => x.L > cur.L + 1.5), x => (x.L - cur.L) + Math.abs(x.b - cur.b) * 0.3),
+            darker: pick(pool.filter(x => x.L < cur.L - 1.5), x => (cur.L - x.L) + Math.abs(x.b - cur.b) * 0.3)
+        };
+    }
+    // 고객에게 보여 줄 "원단 이름 + 색 이름" (예: 오솔로 아이보리)
+    function shortFabName(fabricId, color) {
+        const f = getLiveDb().find(x => x.id === fabricId);
+        if (!f) return '';
+        const label = (color && typeof colorLabelOf === 'function') ? colorLabelOf(fabricId, color) : '';
+        const p = splitNameColor(f, label || (color ? (/^\d+$/.test(String(color)) ? `${color}번` : String(color)) : ''));
+        return [p.name, p.colorTag].filter(Boolean).join(' ');
+    }
+    // 공간의 원단 한 칸을 다른 색(다른 원단일 수도)으로 바꿈. 금액은 다시 셈, 옵션은 그대로. 알림에 "되돌리기"
+    function swapCurtain(roomId, idx, fabricId, color, silent) {
+        const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[idx];
+        if (!c) return;
+        const prev = { fabricId: c.fabricId, colorName: c.colorName || '' };
+        c.fabricId = fabricId; c.colorName = color || '';
+        c.calc = calculateV1ItemPrice(c);
+        r.subtotal = r.curtains.reduce((s, x) => s + ((x.calc && x.calc.curtainSubtotal) || 0), 0);
+        syncToV1MasterRooms();
+        state.justFilledRoomId = r.id; state.justFilledIdx = idx;
+        if (state.step === "1-Space") render();
+        if (silent) return;
+        const name = shortFabName(fabricId, color);
+        spaceToast(`${r.name} ${kindOf(c)}: ${typeof finderJosa === 'function' ? finderJosa(name, '으로', '로') : name + '(으)로'} 바꿨어요`,
+            () => swapCurtain(roomId, idx, prev.fabricId, prev.colorName, true));
+    }
+    // 고객 화면 알림 (아래 가운데, 짙은 갈색). 되돌리기가 있으면 3.5초, 없으면 1.8초
+    let spaceToastTimer = 0;
+    function spaceToast(msg, undo) {
+        let t = document.getElementById('spaceToast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'spaceToast'; t.className = 'space-toast'; t.setAttribute('role', 'status');
+            t.innerHTML = '<span></span><button type="button">되돌리기</button>';
+            document.body.appendChild(t);
+        }
+        t.querySelector('span').textContent = msg;
+        const b = t.querySelector('button');
+        b.hidden = !undo;
+        b.onclick = () => { t.classList.remove('on'); if (undo) undo(); };
+        t.classList.add('on');
+        clearTimeout(spaceToastTimer);
+        spaceToastTimer = setTimeout(() => t.classList.remove('on'), undo ? 3500 : 1800);
+    }
     function spaceHtml(currentCust) {
+        spaceEntries = (typeof finderEntries === 'function') ? finderEntries() : [];
         const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
         const list = state.roomsCart, doneN = list.filter(r => r.isConfigured).length;
-        const fresh = state.justFilledRoomId;        // 방금 원단을 고른 공간: 색 칸이 차오르는 움직임
-        state.justFilledRoomId = null;
-        const fillCls = r => r.id === fresh ? ' fill-in' : '';
+        const fresh = state.justFilledRoomId, freshIdx = state.justFilledIdx;        // 방금 원단을 고른 공간(한 톤 바꾸기면 그 칸만): 색 칸이 차오르는 움직임
+        state.justFilledRoomId = null; state.justFilledIdx = null;
+        const fillCls = (r, i) => (r.id === fresh && (freshIdx == null || freshIdx === i)) ? ' fill-in' : '';
         let h = '<div class="dos-stage"><div class="dos-sheet">';
         h += '<div class="dos-top font-serif-kr"><h1 onclick="window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</h1><span class="dos-phase">공간에 담을 색</span></div>';
         h += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${esc(currentCust)} 고객님` : '고객님'}의 공간</p>`;
@@ -388,7 +475,7 @@
                    : '<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴볼게요</h2>';
         // 맨 위 공간 전체 색 띠: 처음엔 빈 띠, 공간마다 빈 칸이 생기고 원단을 고르면 그 칸이 색으로 채워짐
         const strip = list.length ? list.map(r => r.isConfigured && r.curtains.length
-            ? r.curtains.map(c => `<i class="${fillCls(r).trim()}" style="background:${colorFillOf(c.fabricId, c.colorName)}"></i>`).join('')
+            ? r.curtains.map((c, i) => `<i class="${fillCls(r, i).trim()}" style="background:${colorFillOf(c.fabricId, c.colorName)}"></i>`).join('')
             : `<i style="background:${HATCH}"></i>`).join('') : `<i style="background:${HATCH}"></i>`;
         const cap = list.length ? list.map(r => `<span style="flex:${r.isConfigured && r.curtains.length ? r.curtains.length : 1}">${esc(r.name)}</span>`).join('') : '<span>공간을 담으면 여기에 색이 채워져요</span>';
         h += `<div class="dos-house"><div class="dos-house-strip">${strip}</div><div class="dos-house-cap">${cap}</div></div>`;
@@ -410,21 +497,29 @@
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f, cls) => `<div class="${(dark(bg) ? 'is-dark' : '') + (cls || '')}" style="flex:${f};background:${bg || HATCH}"><span>${k}</span></div>`;
             h += '<div class="dos-cband">' + seg('벽', wall && wall.hex, 1.6) + seg('바닥', floor && floor.hex, 1.1)
-                + (r.isConfigured && r.curtains.length ? r.curtains.map(c => seg(kindOf(c), colorFillOf(c.fabricId, c.colorName), 1.3, fillCls(r))).join('') : seg('원단', null, 2.6)) + '</div>';
+                + (r.isConfigured && r.curtains.length ? r.curtains.map((c, i) => seg(kindOf(c), colorFillOf(c.fabricId, c.colorName), 1.3, fillCls(r, i))).join('') : seg('원단', null, 2.6)) + '</div>';
             if (!r.isConfigured) { h += '<p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 담겨요.</p></section>'; return; }
-            const reason = (typeof ticketItemReason === 'function' && r.curtains[0]) ? ticketItemReason(r, r.curtains[0]) : '';
+            // 이유 한 줄: 색 잇기를 골랐으면 그 방향("벽과 바닥 사이를 잇는 색으로 골랐어요. …"), 아니면 견적서와 같은 추천 이유
+            const reason = (r.linkDir && LINK_WORD[r.linkDir]) ? `${LINK_WORD[r.linkDir]}으로 골랐어요. ${LINK_WHY[r.linkDir]}`
+                : ((typeof ticketItemReason === 'function' && r.curtains[0]) ? ticketItemReason(r, r.curtains[0]) : '');
             if (reason) h += `<p class="dos-why">${reason}</p>`;
             // 원단 줄: 고른 뒤에만. 세로 색 조각(사진이 있으면 사진)이 아래에서 위로 채워짐
-            r.curtains.forEach(c => {
+            // 원단 줄마다 "더 보기"(다른 색 찾기) · 한 톤 밝게 / 한 톤 진하게(누르면 바로 바뀜, 알림에 되돌리기)
+            r.curtains.forEach((c, i) => {
                 const opts = [];
                 if (c.shapeFee > 0) opts.push('형상기억');
                 if (c.leadBand) opts.push('리드밴드');
                 if (c.hotelFit) opts.push('호텔핏');
+                const tones = c.presetType === 'blind' ? null : toneNeighbors(c);
+                const toneBtn = (e, word) => `<button type="button"${e ? ` onclick="window.concierge.toneSwap(${r.id}, ${i}, '${e.key.replace(/'/g, "\\'")}')"` : ' disabled'}><i style="background:${e ? e.hex : '#eee8df'}"></i><span>${word}</span></button>`;
                 h += '<div class="dos-item">';
-                h += `<div class="dos-sw${fillCls(r)}" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
+                h += `<div class="dos-sw${fillCls(r, i)}" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
                 h += `<div class="dos-txt"><div class="dos-kind">${kindOf(c)}</div>`;
                 h += `<div class="dos-fab font-serif-kr">${(typeof ticketFabricName === 'function') ? ticketFabricName(c, c.calc || {}) : ((c.calc && c.calc.fabName) || c.label || '원단')}${opts.length ? `<em>${opts.join(' · ')}</em>` : ''}</div>`;
-                h += '</div></div>';
+                if (c.presetType !== 'blind') h += `<button type="button" class="dos-more" onclick="openSpaceMore(${r.id}, ${i})">더 보기</button>`;
+                h += '</div>';
+                if (tones) h += `<div class="dos-tone">${toneBtn(tones.lighter, '한 톤 밝게')}<span class="dos-tone-cur"></span>${toneBtn(tones.darker, '한 톤 진하게')}</div>`;
+                h += '</div>';
             });
             h += '</section>';
         });
@@ -672,14 +767,48 @@
                 html += '</div></div>';
                 break;
 
-            // [Step 2-3: 일조량 진단]
-            case "2-Base-Light":
+            // [Step 2-3: 일조량 진단] 공간에 들어와 처음 묻는 질문. 위에 이 공간의 벽·바닥 확인 칩 (다르면 바닥·벽 카드로 고침)
+            case "2-Base-Light": {
+                const ed = state.editingRoom, wall = roomPart(ed, 'wall'), floor = roomPart(ed, 'floor');
+                const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 안 쟀어요'}</b></span>`;
+                const chip = ed.askCards ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
+                    + `<button type="button" onclick="window.concierge.fixRoomColors()">${wall && floor ? '다르면 고치기' : '카드로 고르기'}</button></div>`;
                 html += askStage('창으로 햇빛은 얼마나 들어오나요?', '', [
                     { label: '풍부해요', desc: '남향·고층, 눈부신 직사광', on: "window.concierge.selectLightLevel('high')", was: was('lightLevel', 'high') },
                     { label: '은은해요', desc: '동향·서향, 부드러운 햇살', on: "window.concierge.selectLightLevel('mid')", was: was('lightLevel', 'mid') },
                     { label: '차분해요', desc: '북향·저층, 낮은 채광', on: "window.concierge.selectLightLevel('low')", was: was('lightLevel', 'low') }
+                ], { top: chip });
+                break;
+            }
+
+            // [우리 집 색] 질문 아님: 잰 바닥·벽 색이 아래에서 차오름 → "다음" (잰 공간 · 커튼 구성만)
+            case "2-Base-Home": {
+                const ed = state.editingRoom, mc = ed.measuredColor;
+                const field = (k, c, names, descs) => `<div class="home-f"><div class="home-fill" style="background:${c.hex}"></div><span class="home-k">${k}</span><b class="font-serif-kr">${names[c.tone] || ''}</b><small>${descs[c.tone] || ''}</small></div>`;
+                const steps = diagnosisSteps(), at = steps.indexOf(state.step);
+                html += '<div class="ambient-stage ask-stage home-stage">';
+                html += '<div class="step-dots ask-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
+                html += `<span class="q-meta">${ed.name}</span>`;
+                html += '<h2 class="q-title font-serif-kr">재어 보니 이런 색이에요</h2>';
+                html += '<p class="q-sub">커튼은 이 두 색 사이에서 자리를 찾아요</p>';
+                html += '<div class="home-fields">' + field('바닥', mc.floor, FLOOR_NAMES, { warm: '밝은 원목', cool: '밝은 타일·대리석', neutral: '회색 마루·타일', deep: '진한 원목 마루' })
+                    + field('벽', mc.wall, WALL_NAMES, { warm: '따뜻한 흰 벽지', cool: '맑은 흰 벽지', neutral: '회색 벽지', deep: '진한 나무 벽' }) + '</div>';
+                html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.goLinkStep()">다음</button>';
+                html += '</div>';
+                break;
+            }
+
+            // [색 잇기] 커튼을 벽·바닥과 어떻게 이을지. 답은 원단 찾기의 세 방식과 같은 계산으로 겉지·속지 추천에 더해짐 (data.js roomLinkBonus)
+            case "2-Base-Link": {
+                const mc = state.editingRoom.measuredColor;
+                const bar = pos => `<span class="link-prev" aria-hidden="true"><span class="link-bar" style="background:linear-gradient(90deg, ${mc.wall.hex}, ${mc.bridge.hex} 35%, ${mc.floor.hex})"></span><span class="link-mk" style="left:${pos}%"></span><span class="link-ends"><em>벽</em><em>바닥</em></span></span>`;
+                html += askStage('커튼을 어떻게 이어 줄까요?', '', [
+                    { label: '넓어 보이게', desc: '벽과 이어지는 색', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) },
+                    { label: '그 중간으로', desc: '벽과 바닥 사이를 잇는 색', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) },
+                    { label: '바닥과 어울리게', desc: '바닥 톤을 따르는 색', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
                 ]);
                 break;
+            }
 
             // [빛 가림: 모든 공간에서 (구성 추천과 겉지 암막·블라인드 추천에 사용)]
             case "2-Base-Block":
@@ -715,14 +844,17 @@
             // [Step 2-4: 희망 분위기 선택]
             case "2-Base-Mood":
                 html += '<div class="bookmark-stage">';
-                html += stepHead('원하시는 분위기를 골라 주세요');
+                // 색 잇기를 골랐으면 위 작은 글로 보여 주고, 그 방향과 어울리는 분위기 카드에 추천 표시 (점수는 그대로)
+                const ld = state.editingRoom && state.editingRoom.linkDir;
+                state.__recMoods = ld ? LINK_MOODS[ld] : [];
+                html += stepHead('원하시는 분위기를 골라 주세요', ld ? (ld === 'bridge' ? '그 중간으로 잇는 색 안에서 골라 드려요' : LINK_WORD[ld] + ' 안에서 골라 드려요') : '');
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("포근한", "아이보리·베이지", "", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); }, 'vdesc' + was('wantMood', 'soft_warm'));
-                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); }, 'vdesc' + was('wantMood', 'urban_clean'));
-                html += renderBookmarkCard("은은한", "그레이지", "", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc' + was('wantMood', 'balanced_neutral'));
-                html += renderBookmarkCard("자연스러운", "린넨의 결", "", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); }, 'vdesc' + was('wantMood', 'textured_linen'));
-                html += renderBookmarkCard("아늑한", "차콜·브라운", "", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); }, 'vdesc' + was('wantMood', 'deep_private'));
-                html += renderBookmarkCard("화사한", "밝고 가벼운", "", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); }, 'vdesc' + was('wantMood', 'airy_bright'));
+                html += renderBookmarkCard("포근한", "아이보리·베이지", "", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); }, 'vdesc' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
+                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); }, 'vdesc' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
+                html += renderBookmarkCard("은은한", "그레이지", "", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
+                html += renderBookmarkCard("자연스러운", "린넨의 결", "", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); }, 'vdesc' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
+                html += renderBookmarkCard("아늑한", "차콜·브라운", "", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); }, 'vdesc' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
+                html += renderBookmarkCard("화사한", "밝고 가벼운", "", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); }, 'vdesc' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
                 html += '</div></div>';
                 break;
 
@@ -812,6 +944,31 @@
                 }
 
                 html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name}에 추가</button>`;
+                html += '</div>';
+                break;
+            }
+
+            // [마무리(옵션)] 원단을 고른 뒤: 크기는 공간 추가 때 적었으므로 옵션만 (실측 화면의 옵션 글자 모양 그대로) → "○○ 마치기" → 중심 화면
+            case "6-Finish": {
+                const curRoom = state.editingRoom;
+                const hasSheer = curRoom.items.some(i => i.presetType === 'sheer');
+                const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
+                const optBtn = (key, label, on, fn) =>
+                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" onclick="${fn}">${label}</button>`;
+                html += '<div class="msr-stage">';
+                html += `<span class="q-meta">${curRoom.name} · 마무리</span>`;
+                // 옵션은 처음부터 모두 켜져 있음 → "더할 것"이 아니라 "이렇게 마무리" + 뺄 것을 누르게 (10-15 사장님)
+                html += '<h2 class="msr-title font-serif-kr">이렇게 마무리해 드려요</h2>';
+                html += '<p class="q-sub">빼고 싶은 것은 눌러 주세요</p>';
+                html += '<div class="msr-opts">';
+                if (hasDrape) {
+                    html += optBtn('shapeFee', '형상기억 가공', curRoom.shapeFee, 'window.concierge.toggleNudgeShapeFee()');
+                    html += optBtn('hotelFit', '호텔핏', curRoom.hotelFit, 'window.concierge.toggleNudgeHotelFit()');
+                }
+                if (hasSheer) html += optBtn('leadBand', '하단 리드밴드', curRoom.leadBand, "window.concierge.fastToggleOption('leadBand')");
+                html += '</div>';
+                html += '<button class="opt-info-link" onclick="window.concierge.showOptionInfo()">옵션을 적용하면 어떻게 달라지나요?</button>';
+                html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name} 마치기</button>`;
                 html += '</div>';
                 break;
             }
@@ -1426,9 +1583,14 @@
                 wantMood: target.wantMood || null,
                 roomType: target.roomType || roomTypeOf(target),
                 lightBlock: target.lightBlock || null, privacy: target.privacy || null, sheerFeel: target.sheerFeel || null,
-                measuredColor: target.measuredColor || null,
+                measuredColor: target.measuredColor ? JSON.parse(JSON.stringify(target.measuredColor)) : null,     // 카드로 고치면 그 부분을 지우므로 복사본
+                colorSrc: target.colorSrc || null,
+                cardParts: target.cardParts ? Object.assign({}, target.cardParts) : null,
+                diagnosed: !!target.diagnosed,
+                linkDir: target.linkDir || null,
                 width: Number(target.width) || 340,          // 수정하기·공간 추가에서 적은 크기가 있으면 그것부터
                 height: Number(target.height) || 235,
+                sizeKnown: !!(Number(target.width) && Number(target.height)),      // 공간 추가 때 크기를 적었으면 원단 뒤에는 옵션(마무리)만
                 shapeFee: true,
                 hotelFit: true,
                 leadBand: true,
@@ -1451,11 +1613,26 @@
                 state.editingRoom.prev = {
                     floorTone: target.floorTone, wallTone: target.wallTone, lightLevel: target.lightLevel,
                     lightBlock: target.lightBlock || null, privacy: target.privacy || null,
-                    wantMood: target.wantMood || null, sheerFeel: target.sheerFeel || null, comp
+                    wantMood: target.wantMood || null, sheerFeel: target.sheerFeel || null, comp, linkDir: target.linkDir || null
                 };
             }
-            // 새 공간이고, 앞에서 진단을 마친 공간이 있으면 "같은 바닥·벽" 바로가기부터
-            goToStep((!target.isConfigured && copySourceRoom()) ? "2-Base-Copy" : "2-Base-Floor");
+            // 새 흐름(20번): 벽·바닥을 이미 아는 공간(잰 색·집 기본 색·카드)은 빛 질문부터(위에 확인 칩). 모르는 공간은 바닥·벽 카드부터
+            // 예전에 마친 공간을 다시 상담할 때는 예전처럼 바닥·벽 카드부터 (지난 답 회색 표시)
+            const known = !!(roomPart(target, 'wall') && roomPart(target, 'floor'));
+            state.editingRoom.askCards = target.isConfigured || !known;
+            goToStep(state.editingRoom.askCards ? "2-Base-Floor" : "2-Base-Light");
+        },
+        // 빛 질문 위 칩의 "다르면 고치기": 바닥·벽 카드로 고친 뒤 다시 빛 질문으로
+        fixRoomColors: function() {
+            if (!state.editingRoom) return;
+            state.editingRoom.fixing = true;
+            goToStep("2-Base-Floor");
+        },
+        // 우리 집 색 → 색 잇기
+        goLinkStep: function() { goToStep("2-Base-Link"); },
+        selectLink: function(dir) {
+            state.editingRoom.linkDir = dir;
+            goToStep("2-Base-Mood");
         },
         copyBaseFromPrev: function(same) {
             const src = copySourceRoom();
@@ -1491,13 +1668,23 @@
             if (ov) ov.style.display = 'none';
         },
         selectFloorTone: function(tone) {
+            if (!state.editingRoom.editOnly) cardPickInRoom('floor', tone);
             state.editingRoom.floorTone = tone;
             if (state.editingRoom.editOnly) { pickInEdit('floor'); return; }
             goToStep("2-Base-Wall");
         },
         selectWallTone: function(tone) {
+            if (!state.editingRoom.editOnly) cardPickInRoom('wall', tone);
             state.editingRoom.wallTone = tone;
             if (state.editingRoom.editOnly) { pickInEdit('wall'); return; }
+            if (state.editingRoom.fixing) {
+                // "다르면 고치기"로 왔으면 바닥·벽 카드는 뒤로 가기 목록에서 빼고 빛 질문으로 돌아감
+                state.editingRoom.fixing = false;
+                while (stepHistory.length && stepHistory[stepHistory.length - 1].step !== "2-Base-Light") stepHistory.pop();
+                if (stepHistory.length) stepHistory.pop();
+                goToStep("2-Base-Light", false);
+                return;
+            }
             goToStep("2-Base-Light");
         },
         // ---- 중심 화면 › 수정하기 ----
@@ -1598,7 +1785,10 @@
             }
             state.pendingItemQueue = state.editingRoom.items;
             state.currentItemIndex = 0;
-            goToStep("2-Base-Mood");           // 구성 다음은 취향(분위기)
+            // 구성 다음: 잰 공간·커튼이면 우리 집 색 → 색 잇기, 아니면 바로 취향(분위기). 블라인드로 바꾸면 고른 잇기 방향은 지움
+            if (canLink(state.editingRoom)) { goToStep("2-Base-Home"); return; }
+            state.editingRoom.linkDir = null;
+            goToStep("2-Base-Mood");
         },
         // "원단 보기": "찾는 중" 화면에서 사진을 미리 받은 뒤 원단 화면으로 (두 번 눌러도 한 번만)
         proceedToFabricQueue: function() {
@@ -1657,6 +1847,10 @@
                 stepHistory.push({ step: state.step, idx: state.currentItemIndex });      // 뒤로 가면 이 칸(속지) 원단 화면으로
                 state.currentItemIndex++;
                 goToStep("3.5-Bridge", false);
+            } else if (state.editingRoom.sizeKnown) {
+                // 크기는 공간 추가 때 적었음 → 마무리(옵션). 블라인드만이면 고를 옵션이 없으니 바로 마침
+                if (state.editingRoom.items.some(i => i.presetType === "sheer" || i.presetType === "drape")) goToStep("6-Finish");
+                else window.concierge.commitRoomCart();
             } else {
                 goToStep("6-Measure");
             }
@@ -1718,6 +1912,9 @@
                 roomTarget.sheerFeel = state.editingRoom.sheerFeel || null;
                 roomTarget.roomType = state.editingRoom.roomType || roomTarget.roomType || null;
                 roomTarget.measuredColor = state.editingRoom.measuredColor || null;
+                roomTarget.colorSrc = state.editingRoom.colorSrc || null;
+                roomTarget.cardParts = state.editingRoom.cardParts || null;
+                roomTarget.linkDir = state.editingRoom.linkDir || null;          // 색 잇기 답 (원단 추천·중심 화면 이유 한 줄)
                 roomTarget.diagnosed = true;          // 바닥·벽·채광 진단을 거침 → 제안서에 진단 요약·추천 이유 표시
                 roomTarget.curtains = finalizedCurtains;
                 roomTarget.subtotal = roomSubSum;
@@ -1745,6 +1942,19 @@
         // 직원 화면 "원단 찾기"의 후보 보여주기 화면도 고객 화면과 같은 칸(세로 제목 + 짧은 글)을 씀
         bookmarkCard: renderBookmarkCard,
         // 원단 칸 글자: { name: 원단 이름(책자·괄호·가격·끝의 색 낱말 뺌), colorTag: 색 이름(없으면 끝의 색 낱말) }
+        // ---- 중심 화면 › 더 보기 (app.js openSpaceMore가 씀) ----
+        // 공간과 그 원단 칸: { room(공간 — 벽·바닥 잰 색 · 색 잇기 · 추천 점수에 쓰는 답), curtain, kind: 'sheer' | 'drape' }
+        spaceSlot: function(roomId, idx) {
+            const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[idx];
+            return c ? { room: r, curtain: c, kind: c.presetType === 'sheer' ? 'sheer' : 'drape' } : null;
+        },
+        swapCurtain: function(roomId, idx, fabricId, color) { swapCurtain(roomId, idx, fabricId, color); },
+        toneSwap: function(roomId, idx, key) {
+            const e = (spaceEntries || []).find(x => x.key === key);
+            if (e) swapCurtain(roomId, idx, e.fabricId, e.color);
+        },
+        shortFabName: shortFabName,
+        linkWord: function(dir) { return { wall: '넓어 보이게', bridge: '그 중간으로', floor: '바닥과 어울리게' }[dir] || ''; },
         cardNameParts: function(fabricId, colorTag) {
             const f = getLiveDb().find(x => x.id === fabricId);
             return f ? splitNameColor(f, colorTag || '') : null;
@@ -1780,7 +1990,7 @@
                     lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
                     roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
                     measuredColor: r.measuredColor || null,
-                    width: Number(r.width) || null, height: Number(r.height) || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null,
+                    width: Number(r.width) || null, height: Number(r.height) || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,
                     isConfigured: r.curtains.length > 0,          // 공간 추가만 하고 아직 상담 전인 공간(커튼 없음)은 "상담하기"로
                     curtains: r.curtains.map(c => ({ ...c })),
                     subtotal: sub
@@ -1825,7 +2035,7 @@
                 name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
                 roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
                 measuredColor: r.measuredColor || null,
-                width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null,
+                width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,
                 curtains: r.isConfigured ? r.curtains : []
             }));
         },

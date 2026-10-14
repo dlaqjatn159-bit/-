@@ -662,7 +662,8 @@ function rankColorsFor(fabric, room, category) {
     const colors = getFabricColors(fabric.id);
     const ranked = colors.map(c => {
         const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
-        return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + (c.tone ? 0.5 : 0) };
+        const link = category === '블라인드' ? 0 : roomLinkBonus(c, room);      // 고객이 고른 색 잇기 방향 (20번)
+        return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + link + (c.tone ? 0.5 : 0) };
     });
     ranked.sort((a, b) => (b.score - a.score) || colorSort(a, b));
     return ranked;
@@ -751,6 +752,42 @@ function finderEntries() {
 // 두 색이 얼마나 다른지: Lab 거리 ΔE = √(ΔL² + Δa² + Δb²). 색 값(밝기·붉은기·노란기)이 모두 있는 색끼리만 잼
 function finderHasLab(e) { return !!e && e.L != null && e.a != null && e.b != null; }
 function colorDistance(p, q) { return Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b); }
+// ---- 벽·바닥 잇기: 직원 화면 원단 찾기의 세 방식(15번)과 고객 화면 "색 잇기"(20번)가 같은 계산을 씀 ----
+//  - bridge(그 중간으로 = 벽·바닥 이어주기): 벽~바닥을 잇는 선 가까이(BRIDGE_TUBE 안)의 색 중 "이어주는 색"(벽 쪽에 가까운 점)에 가까운 순
+//  - wall(넓어 보이게 = 벽과 맞추기): 벽과 색 차이가 작은 순 / floor(바닥과 어울리게): 바닥보다 밝은 색 중 "바닥 + 밝기 14" 근처 순
+const BRIDGE_TUBE = 11.5;      // 임시값 (현장 시험 뒤 확정)
+const FLOOR_LIFT = 14;         // 바닥과 맞추기: 바닥보다 이만큼 밝은 색 근처를 먼저 (밝기 88까지)
+function roomLinkOk(mc, mode) {
+    return !!mc && (mode === 'bridge' ? !!(mc.wall && mc.floor && mc.bridge) : !!mc[mode]);
+}
+// 점에서 벽~바닥 선분까지 거리(line)와 이어주는 색까지 거리(target)
+function bridgeDistances(e, mc) {
+    const w = mc.wall, f = mc.floor;
+    const v = [f.L - w.L, f.a - w.a, f.b - w.b], d = [e.L - w.L, e.a - w.a, e.b - w.b];
+    const len2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] || 1;
+    const t = Math.max(0, Math.min(1, (d[0] * v[0] + d[1] * v[1] + d[2] * v[2]) / len2));
+    const line = Math.hypot(d[0] - t * v[0], d[1] - t * v[1], d[2] - t * v[2]);
+    return { line, target: colorDistance(e, mc.bridge) };
+}
+// 색 하나(e: L·a·b)가 그 방식에 얼마나 맞는지: 작을수록 잘 맞음. 맞지 않으면 null (띠 밖, 바닥보다 어두움 등)
+function roomLinkDistance(e, mc, mode) {
+    if (!roomLinkOk(mc, mode) || typeof e.L !== 'number' || typeof e.a !== 'number' || typeof e.b !== 'number') return null;
+    if (mode === 'bridge') {
+        const d = bridgeDistances(e, mc), lowL = Math.min(mc.wall.L, mc.floor.L) - 4;
+        return (d.line <= BRIDGE_TUBE && e.L >= lowL) ? d.target * 0.65 + d.line * 0.35 : null;
+    }
+    if (mode === 'wall') return colorDistance(e, mc.wall);
+    if (e.L < mc.floor.L) return null;
+    return colorDistance(e, { L: Math.min(88, mc.floor.L + FLOOR_LIFT), a: mc.floor.a, b: mc.floor.b });
+}
+// 고객 화면 "색 잇기" 답을 원단 추천에 더하는 점수 (겉지·속지, 색 값이 있는 색만). 거리 0이면 +LINK_WEIGHT, LINK_RANGE 이상이면 0
+//  - 처음 값(20번 3단계, Claude Code 제안): 속지 느낌 +8과 같은 무게. 현장에서 써 보며 사장님이 정함
+const LINK_WEIGHT = 8, LINK_RANGE = 20;
+function roomLinkBonus(c, room) {
+    if (!room || !room.linkDir || !c) return 0;
+    const d = roomLinkDistance({ L: c.light, a: c.a, b: c.b }, room.measuredColor, room.linkDir);
+    return d == null ? 0 : LINK_WEIGHT * Math.max(0, 1 - d / LINK_RANGE);
+}
 function colorDistanceWord(d) { return d < 3 ? '거의 같음' : (d < 6 ? '아주 비슷' : (d < 10 ? '비슷' : '조금 다름')); }
 
 // ---- 사장님이 직접 지정한 분류(덮어쓰기). 엑셀을 다시 불러와도 유지됩니다 ----

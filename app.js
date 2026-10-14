@@ -105,6 +105,7 @@ function handleBack() {
     if (window.concierge && window.concierge.isSeeking && window.concierge.isSeeking()) return false;     // "찾는 중" 화면은 끝날 때까지 기다림
     if (visible('roomColorOverlay')) { RoomColor.close(); return false; }
     if (visible('roomColorCust')) { RoomColor.cancelCustomer(); return false; }        // 고객 화면 색 재기 = ← 와 같음
+    if (visible('spaceMore')) { if (spaceMore && spaceMore.sheet) { spaceMore.sheet = null; renderSpaceMore(); } else closeSpaceMore(); return false; }     // 중심 화면 › 더 보기
     if (visible('ticketModal')) { closeTicketModal(); return false; }
     if (closeFinderSlots()) return false;
     if (document.querySelector('#finderOut .finder-card.is-open')) { finderOpenCard(null); return false; }
@@ -450,7 +451,7 @@ function collectConsultation() {
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
             roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
             measuredColor: r.measuredColor || null,          // 방 색 재기로 잰 벽·바닥 색 (사진은 저장 안 함)
-            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null,      // 중심 화면: 공간 추가 때 정한 크기·색 출처
+            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,      // 중심 화면: 공간 추가 때 정한 크기·색 출처
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
         installFee: globalInstallFee,
@@ -937,21 +938,8 @@ const FINDER_SIM_MAX = 16;     // 비슷한 색은 가까운 순으로 16개까�
 //  - 이어주기: 벽~바닥을 잇는 선 가까이(BRIDGE_TUBE 안)의 색 중 "이어주는 색"(벽 쪽에 가까운 점)에 가까운 순
 //  - 벽과 맞추기: 벽과 색 차이가 작은 순 / 바닥과 맞추기: 바닥보다 밝은 색 중 "바닥 + 밝기 14" 근처 순
 const FINDER_ROOM_MODES = { bridge: '벽·바닥 이어주기', wall: '벽과 맞추기', floor: '바닥과 맞추기' };
-const BRIDGE_TUBE = 11.5;      // 임시값 (현장 시험 뒤 확정)
-const FLOOR_LIFT = 14;         // 바닥과 맞추기: 바닥보다 이만큼 밝은 색 근처를 먼저 (밝기 88까지)
-function finderRoomModeOk(room, mode) {
-    const mc = room && room.measuredColor;
-    return !!mc && (mode === 'bridge' ? !!(mc.wall && mc.floor && mc.bridge) : !!mc[mode]);
-}
-// 점에서 벽~바닥 선분까지 거리(line)와 이어주는 색까지 거리(target)
-function bridgeDistances(e, mc) {
-    const w = mc.wall, f = mc.floor;
-    const v = [f.L - w.L, f.a - w.a, f.b - w.b], d = [e.L - w.L, e.a - w.a, e.b - w.b];
-    const len2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] || 1;
-    const t = Math.max(0, Math.min(1, (d[0] * v[0] + d[1] * v[1] + d[2] * v[2]) / len2));
-    const line = Math.hypot(d[0] - t * v[0], d[1] - t * v[1], d[2] - t * v[2]);
-    return { line, target: colorDistance(e, mc.bridge) };
-}
+// 계산(BRIDGE_TUBE · FLOOR_LIFT · bridgeDistances · roomLinkDistance)은 data.js — 고객 화면의 "색 잇기" 추천과 같이 씀
+function finderRoomModeOk(room, mode) { return roomLinkOk(room && room.measuredColor, mode); }
 // 잰 공간의 원단 찾기 열기 (방 색 재기 창의 "반영 후 이어주는 원단 찾기", 공간 카드의 "이어주는 원단 보기")
 function openRoomColorFinder(roomId) {
     const room = rooms.find(r => r.id === roomId);
@@ -1138,20 +1126,13 @@ function renderFinder() {
         if (mMode) {
             // 색 값(밝기·붉은기·노란기)이 있는 색만. 거름망(종류·빛 가림 등)은 그대로 적용
             list = list.filter(finderHasLab);
-            if (mMode === 'bridge') {
-                const lowL = Math.min(mc.wall.L, mc.floor.L) - 4;
-                list.forEach(e => { const d = bridgeDistances(e, mc); e.rline = d.line; e.rd = d.target; e.rscore = d.target * 0.65 + d.line * 0.35; });
-                list = list.filter(e => e.rline <= BRIDGE_TUBE && e.L >= lowL);
-                list.sort((x, y) => x.rscore - y.rscore);
-            } else if (mMode === 'wall') {
-                list.forEach(e => { e.rd = colorDistance(e, mc.wall); });
-                list.sort((x, y) => x.rd - y.rd);
-            } else {
-                const goal = { L: Math.min(88, mc.floor.L + FLOOR_LIFT), a: mc.floor.a, b: mc.floor.b };
-                list = list.filter(e => e.L >= mc.floor.L);
-                list.forEach(e => { e.rd = colorDistance(e, goal); });
-                list.sort((x, y) => x.rd - y.rd);
-            }
+            // 세 방식 모두 data.js roomLinkDistance (맞지 않는 색은 null → 뺌). e.rd = 화면에 쓰는 "벽과 / 이어주는 색과 ○○" 거리
+            list.forEach(e => {
+                e.rscore = roomLinkDistance(e, mc, mMode);
+                e.rd = mMode === 'bridge' ? colorDistance(e, mc.bridge) : (mMode === 'wall' ? e.rscore : null);
+            });
+            list = list.filter(e => e.rscore != null);
+            list.sort((x, y) => x.rscore - y.rscore);
         } else if (fitRoom) {
             // 기존 추천 점수 그대로: 색의 톤·밝기를 입힌 원단으로 calculateFabricMatchScore (점수가 같으면 밝은 색 먼저)
             list.forEach(e => { e.fit = calculateFabricMatchScore(e.view, fitRoom, e.fabric.categoryType); });
@@ -1295,12 +1276,17 @@ function finderShowName(e) {
     const color = p.colorTag || (e.color ? (/^\d+$/.test(no) ? `${no}번` : no) : '');
     return { name: p.name, color, full: [p.name, color].filter(Boolean).join(' ') };
 }
-function openFinderShow() {
-    const all = finderEntries();
-    const picks = finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean).slice(0, FINDER_PICK_MAX);
+//  - custom(고객 화면 중심 화면 › 더 보기의 "나란히 보기"): { list, curKey, onPick(e) } — 지금 원단 + 후보. 고르면 onPick, 넣을 칸·담음 표시는 안 씀
+let finderShowMode = null;
+function openFinderShow(custom) {
+    const all = custom ? null : finderEntries();
+    const picks = custom ? custom.list : finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean).slice(0, FINDER_PICK_MAX);
     const box = document.getElementById('finderShow'), canvas = document.getElementById('finderShowCanvas');
     if (!box || !canvas || !window.concierge) return;
-    if (picks.length < 2) { showToast('후보를 2개 이상 별표해 주세요. (6개까지)', 'info'); return; }
+    if (picks.length < 2) { if (!custom) showToast('후보를 2개 이상 별표해 주세요. (6개까지)', 'info'); return; }
+    finderShowMode = custom || null;
+    const head = box.querySelector('.step-head');
+    if (head) head.innerHTML = custom ? '<p class="step-q font-serif-kr">어느 쪽이 더 마음에 드세요?</p><p class="step-sub">한 번 누르면 표시되고, 한 번 더 누르면 정해요</p>' : '<p class="step-q font-serif-kr">마음에 드는 색을 골라 보세요</p>';
     finderShowList = picks; finderShowSel = -1; finderShowChanged = false;
     canvas.style.setProperty('--items-count', picks.length);
     canvas.innerHTML = picks.map((e, i) => {
@@ -1312,6 +1298,7 @@ function openFinderShow() {
     Array.from(canvas.children).forEach((card, i) => {
         const e = picks[i], img = document.createElement('img');
         card.insertAdjacentHTML('beforeend', '<span class="finder-show-put" aria-hidden="true">✓ 담음</span>');
+        if (custom && e.key === custom.curKey) card.insertAdjacentHTML('beforeend', '<span class="finder-show-now">지금</span>');
         img.className = 'fabric-photo'; img.alt = '';
         img.setAttribute('data-id', e.fabricId); img.setAttribute('data-color', e.color); img.setAttribute('data-i', '0');
         img.style.visibility = 'hidden';                         // 사진을 다 받은 뒤에만 보임 (찾는 동안 깨진 그림 표시가 안 보이게)
@@ -1332,7 +1319,7 @@ function openFinderShow() {
 function finderShowMarks() {
     const canvas = document.getElementById('finderShowCanvas');
     if (!canvas) return;
-    const t = finderTargetCurtain();
+    const t = finderShowMode ? null : finderTargetCurtain();      // 나란히 보기(custom)에는 "담음" 표시 없음
     canvas.classList.toggle('has-sel', finderShowSel >= 0);
     Array.from(canvas.children).forEach((card, i) => {
         const e = finderShowList[i];
@@ -1376,6 +1363,7 @@ function finderShowAskClick(ev) {
     if (!btn) { if (!ev.target.closest('.finder-show-ask-in')) closeFinderShowAsk(); return; }      // 판 밖 = 다시 고를게요
     const e = finderShowList[finderShowSel];
     if (btn.dataset.ask === 'no' || !e) { closeFinderShowAsk(); return; }
+    if (finderShowMode) { const m = finderShowMode; closeFinderShow(); m.onPick(e); return; }      // 나란히 보기: 정하면 닫고 그 칸을 바꿈
     if (btn.dataset.askSlot) {
         const [roomId, curtainId] = btn.dataset.askSlot.split(':').map(Number);
         finderTarget = { roomId, curtainId };       // 고른 칸이 "넣을 칸"이 됨 → 다음에 고르면 같은 칸이 바뀜
@@ -1402,11 +1390,226 @@ function closeFinderShow() {
     const done = document.getElementById('finderShowDone');
     if (done) done.classList.remove('on');
     finderShowSel = -1;
+    finderShowMode = null;
     document.documentElement.style.overflow = '';
     if (appMode === 'staff' && staffLocked) { staffLocked = false; setStaffLockedUi(false); lastActivity = Date.now(); setFinderOnly(true); }
     if (finderShowChanged) { finderShowChanged = false; renderFinder(); }       // 찾기 카드에 "지금 이 칸" 표시
 }
 function setFinderView(view) { finderView = view === 'map' ? 'map' : 'grid'; renderFinder(); }
+
+// ==============================================================
+// 중심 화면 › 더 보기 (고객 화면, 작업목록 20번 4단계): 카드 ↔ 색 지도 → ☆ 후보 → 지금 원단과 나란히 보기
+//  - 직원 원단 찾기와 같은 목록(finderEntries) · 카드 모양(finder-card) · 잇기 계산(roomLinkDistance). 가격·책자·꼬리표·숫자 없음
+//  - 거름망은 고객이 알아듣는 말만: 밝기 · 결 · 비침(속지) / 빛 가림(겉지) + 순서(카드 보기에서만). PIN 없이 고객이 직접 씀
+// ==============================================================
+const MORE_STAR_MAX = 4;
+const MORE_FILTERS = {
+    bright: { label: '밝기', opts: { light: '밝은 색', mid: '중간 색', dark: '진한 색' }, of: e => e.L == null ? null : (e.L >= 85 ? 'light' : (e.L >= 55 ? 'mid' : 'dark')) },
+    tex: { label: '결', opts: { smooth: '매끈한', natural: '결 있는', cozy: '도톰한' }, of: e => e.texture },
+    see: { label: '비침', kind: 'sheer', opts: { clear: '맑게 비침', soft: '은은하게', day: '낮에도 가림' }, of: e => ({ light: 'clear', medium: 'soft', day: 'day', heavy: 'day' })[e.density] || null },
+    block: { label: '빛 가림', kind: 'drape', opts: { life: '생활 암막', full: '완전 암막' }, of: e => (e.blackout === 'life' || e.blackout === 'full') ? e.blackout : null }
+};
+const MORE_SORTS = { fit: '우리 집에 어울리는 순', light: '밝은 순', dark: '진한 순' };
+let spaceMore = null;       // { roomId, idx, view: 'cards' | 'map', stars: [키], focus: 키, sel: { 묶음: Set }, sort, sheet: 키 }
+function openSpaceMore(roomId, idx) {
+    if (!window.concierge || !window.concierge.spaceSlot(roomId, idx)) return;
+    spaceMore = { roomId, idx, view: 'cards', stars: [], focus: null, sel: { bright: new Set(), tex: new Set(), see: new Set(), block: new Set() }, sort: 'fit', sheet: null };
+    let ov = document.getElementById('spaceMore');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'spaceMore';
+        ov.className = 'more-overlay';
+        ov.addEventListener('click', spaceMoreClick);
+        ov.addEventListener('change', ev => { if (ev.target.matches('select[data-msort]')) { spaceMore.sort = ev.target.value; renderSpaceMore(); } });
+        document.body.appendChild(ov);
+    }
+    ov.hidden = false;
+    renderSpaceMore();
+}
+function closeSpaceMore() {
+    const ov = document.getElementById('spaceMore');
+    if (ov) { ov.hidden = true; ov.innerHTML = ''; }
+    spaceMore = null;
+}
+// 지금 칸의 공간·원단과 같은 종류 색 목록. cur = 지금 들어 있는 색(목록에 없을 수도)
+function spaceMoreData() {
+    const slot = window.concierge.spaceSlot(spaceMore.roomId, spaceMore.idx);
+    if (!slot) return null;
+    const all = finderEntries().filter(e => e.cat === slot.kind);
+    const curKey = slot.curtain.fabricId + '__' + (slot.curtain.colorName || '');
+    return { slot, all, cur: all.find(e => e.key === curKey) || null, curKey };
+}
+function spaceMoreOk(e) { return Object.keys(MORE_FILTERS).every(k => !spaceMore.sel[k].size || spaceMore.sel[k].has(MORE_FILTERS[k].of(e))); }
+// 우리 집에 어울리는 점수: 고객 원단 화면 추천과 같은 계산 (기존 추천 점수 + 색 잇기 점수)
+function spaceMoreFit(e, room) {
+    const cat = e.cat === 'sheer' ? '속지' : '겉지';
+    return calculateFabricMatchScore(e.view, room, cat) + roomLinkBonus({ light: e.L, a: e.a, b: e.b }, room);
+}
+const moreEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+function renderSpaceMore() {
+    const ov = document.getElementById('spaceMore'), d = spaceMore && spaceMoreData();
+    if (!ov || !d) { closeSpaceMore(); return; }
+    const { slot, cur } = d, room = slot.room, kindWord = slot.kind === 'sheer' ? '속지' : '겉지';
+    const mc = room.measuredColor, measured = !!(mc && mc.wall && mc.floor);
+    const keep = (ov.querySelector('.more-body') || {}).scrollTop || 0;
+    // 거름망 (지도에서는 순서 없음). 여러 개 고를 수 있음
+    const grp = k => {
+        const f = MORE_FILTERS[k];
+        if (f.kind && f.kind !== slot.kind) return '';
+        return `<span class="more-fg"><em>${f.label}</em>` + Object.keys(f.opts).map(v => `<button type="button" class="more-chip${spaceMore.sel[k].has(v) ? ' on' : ''}" data-mf="${k}:${v}" aria-pressed="${spaceMore.sel[k].has(v)}">${f.opts[v]}</button>`).join('') + '</span>';
+    };
+    const any = Object.values(spaceMore.sel).some(s => s.size);
+    let h = '<button type="button" class="cm-back" data-mclose aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button>';
+    h += '<div class="more-head">';
+    h += `<span class="q-meta">${moreEsc(room.name)} · ${kindWord} · 더 보기</span>`;
+    h += `<h2 class="more-title font-serif-kr">${measured ? '우리 집 색 사이에서 더 찾아볼까요' : '다른 색을 더 찾아볼까요'}</h2>`;
+    h += `<div class="more-seg"><button type="button" class="${spaceMore.view === 'cards' ? 'on' : ''}" data-mview="cards">카드로 보기</button><button type="button" class="${spaceMore.view === 'map' ? 'on' : ''}" data-mview="map">색 지도로 보기</button></div>`;
+    h += '<div class="more-fbar">' + grp('bright') + grp('tex') + grp('see') + grp('block');
+    if (spaceMore.view === 'cards') h += '<span class="more-fg"><em>순서</em><select data-msort>' + Object.keys(MORE_SORTS).map(k => `<option value="${k}"${spaceMore.sort === k ? ' selected' : ''}>${MORE_SORTS[k]}</option>`).join('') + '</select></span>';
+    if (any) h += '<button type="button" class="more-clear" data-mclear>조건 풀기</button>';
+    h += '</div></div>';
+    h += `<div class="more-body">${spaceMore.view === 'map' ? spaceMoreMapHtml(d) : spaceMoreCardsHtml(d)}</div>`;
+    h += spaceMoreSheetHtml(d);
+    const n = spaceMore.stars.length;
+    if (n && !spaceMore.sheet) {
+        const sw = spaceMore.stars.map(k => { const e = d.all.find(x => x.key === k); return `<i style="background:${(e && e.hex) || 'var(--brand-panel)'}"></i>`; }).join('');
+        h += `<div class="more-foot"><span class="more-foot-sw">${sw}</span><span>후보 ${n}개</span><button type="button" class="more-go font-serif-kr" data-mside>지금 원단과 나란히 보기 →</button></div>`;
+    }
+    ov.innerHTML = h;
+    const body = ov.querySelector('.more-body');
+    if (body) body.scrollTop = spaceMore.focus ? 0 : keep;
+}
+// 카드: 지금 원단이 맨 앞("지금"), 지도에서 "카드로 크게 보기"를 누른 색이 그다음, 나머지는 순서대로 (조건에 맞는 것만)
+function spaceMoreCardsHtml(d) {
+    const room = d.slot.room;
+    let list = d.all.filter(e => e.key !== d.curKey && spaceMoreOk(e));
+    if (spaceMore.sort === 'light' || spaceMore.sort === 'dark') {
+        const s = spaceMore.sort === 'light' ? -1 : 1;
+        list.sort((x, y) => (x.L == null) - (y.L == null) || s * ((x.L || 0) - (y.L || 0)));
+    } else {
+        list.forEach(e => { e.mfit = spaceMoreFit(e, room); });
+        list.sort((x, y) => y.mfit - x.mfit);
+    }
+    const shown = list.length;
+    if (spaceMore.focus) { const f = list.find(e => e.key === spaceMore.focus) || d.all.find(e => e.key === spaceMore.focus); if (f && f.key !== d.curKey) list = [f].concat(list.filter(e => e.key !== f.key)); }
+    if (d.cur) list = [d.cur].concat(list);
+    const card = e => {
+        const n = finderShowName(e), isCur = e.key === d.curKey, on = spaceMore.stars.includes(e.key);
+        const photo = photoFor(e.fabricId, e.color);
+        const colorPage = `<div class="finder-sw-page${e.hex ? '' : ' is-none'}"${e.hex ? ` style="background:${e.hex}"` : ''}>${e.hex ? '' : '<span>샘플북</span>'}</div>`;
+        return `<article class="finder-card more-card${isCur ? ' is-current' : ''}${e.key === spaceMore.focus ? ' is-focus' : ''}">`
+            + `<div class="finder-sw"><div class="finder-sw-track">${colorPage}${photo ? finderPhotoPageHtml(photo) : ''}</div>${photo ? FINDER_SW_DOTS : ''}`
+            + (isCur ? '<span class="finder-cur">지금</span>' : `<button type="button" class="finder-star${on ? ' is-on' : ''}" data-mstar="${moreEsc(e.key)}" aria-pressed="${on}" aria-label="후보로 담기">${on ? '★' : '☆'}</button>`)
+            + `</div><div class="more-fbody"><b class="font-serif-kr">${moreEsc(n.name)}</b><span>${moreEsc(n.color)}${photo ? '' : ' · 샘플북'}</span></div></article>`;
+    };
+    const hint = '카드를 옆으로 밀면 사진이 나와요. 마음에 드는 색에 ☆를 눌러 후보로 모아 주세요.' + (Object.values(spaceMore.sel).some(s => s.size) ? ` (조건에 맞는 ${shown}색 · 지금 원단은 늘 맨 앞)` : '');
+    return `<p class="more-hint">${hint}</p><div class="finder-grid more-grid">${list.map(card).join('')}</div>`;
+}
+// 색 지도 (고객용): 위 밝게 · 아래 진하게 · 왼쪽 차분하게 · 오른쪽 따뜻하게 (숫자 없음). 같은 종류 원단만, 겹친 점은 살짝 띄움
+//  우리 집 바닥·벽 표지와 둘을 잇는 띠, 고른 잇기 자리(점선 원), 지금 원단은 "지금". 조건에 안 맞는 점은 흐리게
+function spaceMoreMapHtml(d) {
+    const room = d.slot.room, mc = room.measuredColor, measured = !!(mc && mc.wall && mc.floor);
+    const pool = d.all.filter(e => e.L != null && e.b != null && e.hex);
+    if (!pool.length) return '<p class="more-hint">색 값이 들어온 원단이 아직 없어요.</p>';
+    const W = 900, H = 500, P = { l: 70, r: 70, t: 30, b: 44 };
+    const Ls = pool.map(e => e.L).concat(measured ? [mc.wall.L, mc.floor.L] : []), bs = pool.map(e => e.b).concat(measured ? [mc.wall.b, mc.floor.b] : []);
+    // 눈금은 색 대부분(위아래 3%를 뺀 범위)과 우리 집 벽·바닥에 맞춤. 멀리 떨어진 몇 색은 가장자리에 붙여 찍음 (가운데가 뭉치지 않게)
+    const q = (arr, p) => { const s = arr.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.max(0, Math.round((s.length - 1) * p)))]; };
+    const homeL = measured ? [mc.wall.L, mc.floor.L] : [], homeB = measured ? [mc.wall.b, mc.floor.b] : [];
+    const Lmin = Math.min(q(Ls, 0.03), ...homeL) - 3, Lmax = Math.max(q(Ls, 0.97), ...homeL) + 2, bmin = Math.min(q(bs, 0.03), ...homeB) - 2, bmax = Math.max(q(bs, 0.97), ...homeB) + 2;
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const X = b => P.l + (clamp(b, bmin, bmax) - bmin) / ((bmax - bmin) || 1) * (W - P.l - P.r);
+    const Y = L => P.t + (Lmax - clamp(L, Lmin, Lmax)) / ((Lmax - Lmin) || 1) * (H - P.t - P.b);
+    let g = '';
+    [0.25, 0.5, 0.75].forEach(f => { const y = Y(Lmin + (Lmax - Lmin) * f).toFixed(1); g += `<line class="more-gl" x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}"/>`; });
+    [1 / 3, 2 / 3].forEach(f => { const x = X(bmin + (bmax - bmin) * f).toFixed(1); g += `<line class="more-gl" y1="${P.t}" y2="${H - P.b}" x1="${x}" x2="${x}"/>`; });
+    g += `<text class="more-ax" x="${W / 2}" y="${P.t - 10}" text-anchor="middle">↑ 밝게</text><text class="more-ax" x="${W / 2}" y="${H - 12}" text-anchor="middle">↓ 진하게</text>`;
+    g += `<text class="more-ax" x="${P.l - 10}" y="${H / 2}" text-anchor="end">차분하게</text><text class="more-ax" x="${W - P.r + 10}" y="${H / 2}">따뜻하게</text>`;
+    if (measured) {
+        g += `<line x1="${X(mc.floor.b).toFixed(1)}" y1="${Y(mc.floor.L).toFixed(1)}" x2="${X(mc.wall.b).toFixed(1)}" y2="${Y(mc.wall.L).toFixed(1)}" stroke="#e3c9b4" stroke-width="26" stroke-linecap="round" opacity=".55"/>`;
+    }
+    // 고른 잇기 자리(점선 원)와 우리 집 벽·바닥 표지는 점 위에 그림 (가려지지 않게)
+    let top = '';
+    if (measured) {
+        const dir = room.linkDir;
+        const tgt = dir === 'bridge' ? mc.bridge : (dir === 'wall' ? mc.wall : (dir === 'floor' ? { L: Math.min(88, mc.floor.L + FLOOR_LIFT), b: mc.floor.b } : null));
+        if (tgt) { const tx = X(tgt.b), ty = Y(tgt.L); top += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="26" fill="none" stroke="#b8714a" stroke-width="2" stroke-dasharray="4 4"/><text class="more-lbl more-halo" x="${(tx + 32).toFixed(1)}" y="${(ty - 18).toFixed(1)}">${window.concierge.linkWord(dir)}</text>`; }
+        const home = (c, txt) => `<g class="more-home"><rect x="${(X(c.b) - 15).toFixed(1)}" y="${(Y(c.L) - 15).toFixed(1)}" width="30" height="30" rx="3" fill="${c.hex}"/><text class="more-halo" x="${(X(c.b) + 22).toFixed(1)}" y="${(Y(c.L) + 5).toFixed(1)}">${txt}</text></g>`;
+        top += home(mc.wall, '벽') + home(mc.floor, '바닥');
+    }
+    // 겹친 점은 서로 밀어 살짝 띄움 (위치는 보기용, 색 값은 그대로)
+    const pts = pool.map(e => ({ e, x: X(e.b), y: Y(e.L) }));
+    for (let k = 0; k < 40; k++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+        const a = pts[i], c = pts[j], dx = c.x - a.x, dy = c.y - a.y, dd = Math.hypot(dx, dy) || 0.01, need = 21;
+        if (dd < need) { const m = (need - dd) / 2, ux = dx / dd, uy = dy / dd; a.x -= ux * m; a.y -= uy * m; c.x += ux * m; c.y += uy * m; }
+    }
+    pts.forEach(p => { p.x = clamp(p.x, P.l - 20, W - P.r + 20); p.y = clamp(p.y, P.t, H - P.b); });
+    const curPt = pts.find(p => p.e.key === d.curKey);
+    const dots = pts.sort((p, q) => (p.e.key === d.curKey) - (q.e.key === d.curKey)).map(({ e, x, y }) => {
+        const isCur = e.key === d.curKey, st = spaceMore.stars.includes(e.key);
+        return `<g class="more-dot${isCur ? ' is-cur' : ''}${isCur || spaceMoreOk(e) ? '' : ' is-off'}" data-mpt="${moreEsc(e.key)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCur ? 13 : 10}" fill="${e.hex}"/>`
+            + (st ? `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle" font-size="11" fill="#91401a">★</text>` : '') + '</g>';
+    }).join('');
+    const curLbl = curPt ? `<text class="more-lbl more-halo" x="${curPt.x.toFixed(1)}" y="${(curPt.y + 28).toFixed(1)}" text-anchor="middle">지금</text>` : '';
+    return `<p class="more-hint">점을 누르면 그 원단을 볼 수 있어요. ★는 후보로 담은 색, 흐린 점은 조건에 안 맞는 색이에요.</p><div class="more-map"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${dots}${top}${curLbl}</svg></div>`;
+}
+// 지도에서 누른 점: 아래 작은 판 (사진 · 원단 · 색 이름 · 지금 색과 견준 말 · ☆ 후보로 담기 / 카드로 크게 보기 / 닫기)
+function spaceMoreSheetHtml(d) {
+    if (!spaceMore.sheet || spaceMore.view !== 'map') return '';
+    const e = d.all.find(x => x.key === spaceMore.sheet);
+    if (!e) return '';
+    const cur = d.cur, n = finderShowName(e), isCur = e.key === d.curKey, st = spaceMore.stars.includes(e.key), photo = photoFor(e.fabricId, e.color);
+    let word = '지금 고른 색이에요.';
+    if (!isCur && cur && cur.L != null && e.L != null && cur.b != null && e.b != null) {
+        const lw = e.L > cur.L + 1 ? '밝고' : (e.L < cur.L - 1 ? '진하고' : '비슷한 밝기에');
+        const bw = e.b > cur.b + 1.5 ? '조금 더 따뜻해요' : (e.b < cur.b - 1.5 ? '조금 더 차분해요' : '결이 비슷해요');
+        word = `지금 색보다 ${lw} ${bw}.`;
+    } else if (!isCur) word = '';
+    return `<div class="more-sheet"><div class="more-sheet-ph" style="${photo ? `background-image:url('${photo}');` : ''}background-color:${e.hex || 'var(--brand-panel)'}"></div>`
+        + `<div class="more-sheet-tx"><b class="font-serif-kr">${moreEsc(n.name)}</b><span>${moreEsc(n.color)}</span><small>${word}${photo ? '' : ' 샘플북으로 직접 보여 드릴게요.'}</small>`
+        + `<div class="more-sheet-bt">${isCur ? '' : `<button type="button" class="more-go font-serif-kr" data-mstar="${moreEsc(e.key)}">${st ? '★ 후보에서 빼기' : '☆ 후보로 담기'}</button>`}`
+        + `<button type="button" class="more-sub" data-mfocus="${moreEsc(e.key)}">카드로 크게 보기</button><button type="button" class="more-sub" data-msheet-close>닫기</button></div></div></div>`;
+}
+function spaceMoreClick(ev) {
+    if (!spaceMore) return;
+    const t = ev.target, by = sel => t.closest(sel);
+    let b;
+    if (by('[data-mclose]')) { closeSpaceMore(); return; }
+    if ((b = by('[data-mview]'))) { spaceMore.view = b.dataset.mview; spaceMore.sheet = null; spaceMore.focus = null; renderSpaceMore(); return; }
+    if ((b = by('[data-mf]'))) { const [k, v] = b.dataset.mf.split(':'), s = spaceMore.sel[k]; s.has(v) ? s.delete(v) : s.add(v); renderSpaceMore(); return; }
+    if (by('[data-mclear]')) { Object.values(spaceMore.sel).forEach(s => s.clear()); renderSpaceMore(); return; }
+    if ((b = by('[data-mstar]'))) {
+        const k = b.dataset.mstar, st = spaceMore.stars;
+        if (st.includes(k)) spaceMore.stars = st.filter(x => x !== k);
+        else if (st.length >= MORE_STAR_MAX) { showMoreNote('후보는 4개까지예요'); return; }
+        else st.push(k);
+        renderSpaceMore(); return;
+    }
+    if ((b = by('[data-mfocus]'))) { spaceMore.focus = b.dataset.mfocus; spaceMore.sheet = null; spaceMore.view = 'cards'; renderSpaceMore(); return; }
+    if (by('[data-msheet-close]')) { spaceMore.sheet = null; renderSpaceMore(); return; }
+    if ((b = by('[data-mpt]'))) { spaceMore.sheet = b.dataset.mpt; renderSpaceMore(); return; }
+    if ((b = by('button[data-dot]'))) { const tr = b.closest('.finder-sw').querySelector('.finder-sw-track'); tr.scrollTo({ left: tr.clientWidth * Number(b.dataset.dot), behavior: 'smooth' }); return; }
+    if (by('[data-mside]')) { openSpaceSide(); return; }
+}
+function showMoreNote(msg) {
+    const ov = document.getElementById('spaceMore');
+    if (!ov) return;
+    let n = ov.querySelector('.more-note');
+    if (!n) { n = document.createElement('div'); n.className = 'more-note'; ov.appendChild(n); }
+    n.textContent = msg; n.classList.add('on');
+    clearTimeout(showMoreNote.t); showMoreNote.t = setTimeout(() => n.classList.remove('on'), 1600);
+}
+// 나란히 보기: 지금 원단 + 후보를 고객 원단 화면과 같은 띠 카드로 (19번 "고객에게 보여주기"와 같은 화면·같은 고르기)
+function openSpaceSide() {
+    const d = spaceMoreData();
+    if (!d) return;
+    const list = [d.cur].concat(spaceMore.stars.map(k => d.all.find(e => e.key === k))).filter(Boolean);
+    const { roomId, idx } = spaceMore;
+    openFinderShow({ list, curKey: d.curKey, onPick: e => {
+        closeSpaceMore();
+        if (e.key !== d.curKey) window.concierge.swapCurtain(roomId, idx, e.fabricId, e.color);      // 바꾸면 중심 화면에 "되돌리기" 알림
+    } });
+}
 // 색 지도: 가로 = 노란기 b(왼쪽 쿨 · 오른쪽 웜), 세로 = 밝기 L(위가 밝음). 지금 조건에 맞는 색은 진하고 크게, 나머지는 흐리게
 // 색 값(밝기·노란기)이 없는 색은 지도에 나오지 않음. 노란기가 눈금 밖(-12 미만 · 30 초과)인 색은 가장자리에 찍힘
 // mc: 방 색을 잰 공간의 measuredColor면 [벽]·[바닥] 표지, 둘을 잇는 띠, 이어주는 색 동그라미를 같이 그림
