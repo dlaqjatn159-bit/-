@@ -18,6 +18,12 @@
         l4: "linear-gradient(135deg, #3e2c21 0%, #201711 100%)"
     };
 
+    // 속지 느낌 카드 배경: 그 느낌의 대표 원단 사진(1번 색)을 그라데이션 위에 깔고, 사진이 없으면 그라데이션만 보임
+    function sheerFeelBg(fabricId, fallback) {
+        const url = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabricId, '1')[0] : '';
+        return url ? `url('${url}') center / cover no-repeat, ${fallback}` : fallback;
+    }
+
     // 바닥·벽 카드의 큰 글씨(색 이름). "같은 바닥·벽인가요?" 설명도 손님이 카드에서 본 이 이름으로 씀
     const FLOOR_NAMES = { warm: "오크·베이지", cool: "화이트·그레이", neutral: "그레이지·회색", deep: "월넛·브라운" };
     const WALL_NAMES = { warm: "크림·아이보리", cool: "화이트·그레이", neutral: "그레이지", deep: "체리·우드" };
@@ -487,9 +493,10 @@
             case "2-Base-SheerFeel":
                 html += '<div class="bookmark-stage">';
                 html += stepHead('속지는 어떤 느낌이 좋으세요?');
-                html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc' + was('sheerFeel', 'smooth'));
-                html += renderBookmarkCard("결 있는", "린넨처럼", "", SOLID_TEXTURES.oak, function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc' + was('sheerFeel', 'textured'));
+                html += '<div class="bookmark-canvas" style="--items-count: 4;">';
+                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", sheerFeelBg('데미안_쉬폰', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc' + was('sheerFeel', 'smooth'));
+                html += renderBookmarkCard("결 있는", "린넨처럼", "", sheerFeelBg('데미안_오솔로', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc' + was('sheerFeel', 'textured'));
+                html += renderBookmarkCard("도톰한", "보송하게", "", sheerFeelBg('데미안_부클', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc' + was('sheerFeel', 'cozy'));
                 html += renderBookmarkCard("추천대로", "", "", SOLID_TEXTURES.l2, function() { window.concierge.selectSheerFeel('any'); }, 'vdesc' + was('sheerFeel', 'any'));
                 html += '</div></div>';
                 break;

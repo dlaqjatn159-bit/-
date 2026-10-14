@@ -1900,7 +1900,7 @@ function closeTicketModal() {
 const TICKET_LIGHT_LABELS = { high: '햇빛 풍부', mid: '햇빛 은은', low: '햇빛 차분' };
 const TICKET_BLOCK_LABELS = { light: '빛은 은은하게', soft: '빛은 적당히 가림', dark: '빛은 완전 차단' };
 const TICKET_PRIVACY_LABELS = { open: '바깥 시선 괜찮음', some: '바깥 시선 조금 신경', high: '바깥 시선 많이 신경' };
-const TICKET_FEEL_LABELS = { smooth: '속지는 깔끔·매끈하게', textured: '속지는 결이 살아 있게' };
+const TICKET_FEEL_LABELS = { smooth: '속지는 깔끔·매끈하게', textured: '속지는 결이 살아 있게', cozy: '속지는 도톰·보송하게' };
 // 공간 진단 요약 한 줄 (고객 화면에서 진단을 거친 공간만)
 function ticketRoomSummary(r) {
     if (!r || !r.diagnosed) return '';

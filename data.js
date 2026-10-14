@@ -388,10 +388,11 @@ function calculateFabricMatchScore(fabric, room, category) {
         if (table) score += table[fabric.density] || 0;
         // 이중커튼: 낮에는 속지만 쳐 두고 지내므로 덜 비치는 속지를 우대 (겉지는 필요할 때만)
         if (dbl && (fabric.density === 'day' || fabric.density === 'heavy')) score += 2;
-        // 질감 취향: 속지는 "깔끔파(쉬폰)"와 "질감파(린넨·네프)"가 확연히 나뉨 → 맞으면 +8, 반대면 -4, 포근은 결 선택 때만 +3 (질감 미입력 원단은 0)
+        // 질감 취향: 매끈한(쉬폰) / 결 있는(린넨·네프) / 도톰한(보송한 혼방)이 확연히 나뉨 → 고른 질감과 같으면 +8, 다르면 -4 (질감 미입력 원단은 0)
         const tx = fabric.texture;
         if (room.sheerFeel === 'smooth' && tx) score += tx === 'smooth' ? 8 : -4;
-        if (room.sheerFeel === 'textured' && tx) score += tx === 'natural' ? 8 : (tx === 'cozy' ? 3 : -4);
+        if (room.sheerFeel === 'textured' && tx) score += tx === 'natural' ? 8 : -4;
+        if (room.sheerFeel === 'cozy' && tx) score += tx === 'cozy' ? 8 : -4;
     }
 
     // 빛 차단 희망 (방): 완전히 어둡게 → 완전 암막을 사실상 최우선, 적당히 → 적당 암막, 들어와도 → 비암막·적당 암막
@@ -434,7 +435,8 @@ function recommendReason(fabric, room, category, maxParts) {
     if (category === '속지' && room.lightLevel === 'high' && (fabric.density === 'heavy' || fabric.density === 'day')) parts.push('강한 햇빛을 거르는 비침');
     if (category === '속지' && room.sheerFeel && fabric.texture) {
         const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
-            : room.sheerFeel === 'textured' && fabric.texture !== 'smooth' ? '자연스럽게 살아 있는 결' : '';
+            : room.sheerFeel === 'textured' && fabric.texture === 'natural' ? '자연스럽게 살아 있는 결'
+            : room.sheerFeel === 'cozy' && fabric.texture === 'cozy' ? '도톰하고 보송한 느낌' : '';
         if (msg) parts.unshift(msg);   // 고객이 고른 취향 → 앞쪽 (사생활 문장 다음)
     }
     if (category === '속지' && room.privacy) {
