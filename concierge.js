@@ -545,16 +545,7 @@
 
             // [Step 4: 실제 FABRIC_DB 기반 원단 3종 쇼케이스]
             case "4-Fabric-Queue":
-                const queueItem = state.pendingItemQueue[state.currentItemIndex] || { label: "창문", presetType: "sheer" };
-                const isTargetBlind = queueItem.presetType === 'blind';
-                const targetCategory = isTargetBlind ? '블라인드' : (queueItem.presetType === 'sheer' ? '속지' : '겉지');
-                
-                let pool = getLiveCategoryPool(targetCategory);
-                // 원단마다 "공간에 가장 어울리는 색"까지 계산해 순위를 매김. 점수가 같으면 사장님이 직접 분류한 원단을 먼저
-                const ranked = pool.map(f => ({ f: f, best: bestColorFor(f, state.editingRoom, targetCategory) }));
-                ranked.sort((a, b) => (b.best.score - a.best.score)
-                    || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
-                const showcaseList = (typeof pickShowcase === 'function') ? pickShowcase(ranked, 3) : ranked.slice(0, 3);
+                const { queueItem, targetCategory, showcaseList } = fabricShowcase();
                 state.colorPick = state.colorPick || {};
 
                 const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
@@ -693,7 +684,14 @@
 
         html += '</div>';
         main.innerHTML = html;
-        if (state.step === "4-Fabric-Queue") bindColorDecks();     // 색상 카드 밀어 넘기기 연결
+        if (state.step === "4-Fabric-Queue") {
+            bindColorDecks();     // 색상 카드 밀어 넘기기 연결
+            // "찾는 중" 화면을 거치지 않고 열렸을 때(뒤로 가기 등): 사진 주소를 찾은 뒤 넣음
+            main.querySelectorAll('.fabric-photo[data-pending]').forEach(img => {
+                const id = img.getAttribute('data-id'), color = img.getAttribute('data-color') || '';
+                findPhoto(id, color).then(url => { if (!img.hasAttribute("data-pending")) return; img.removeAttribute("data-pending"); if (url) img.src = url; });      // 그사이 색을 바꿨으면 그대로 둠
+            });
+        }
         if (state.step === "7-Final-Dossier") renderFinalPaper();
     }
 
@@ -761,7 +759,10 @@
         const isLast = idx === (state.fabPanelCount || 1) - 1;
         let h = `<div class="bookmark-card color-top" data-fab="${f.id}" style="right: 0;" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
         h += `<div class="bookmark-bg" style="background: ${colorFillOf(f.id, pick)};"></div>`;
-        h += `<img class="fabric-photo" alt="" data-id="${f.id}" data-color="${pick}" data-i="0" src="${fabricPhotoUrls(f.id, pick)[0]}" onerror="window.concierge.imgFallback(this)">`;
+        // 사진은 앞·뒤 두 장: 색을 바꿀 때 뒤 장에 새 사진을 받아 겹쳐 바꿈. 주소는 미리 찾아 둔 것만 씀(아직 모르면 찾은 뒤 넣음)
+        const known = knownPhoto(f.id, pick);
+        h += `<img class="fabric-photo is-front" alt="" data-id="${f.id}" data-color="${pick}"${known ? ` src="${known}"` : (known === undefined ? ' data-pending="1"' : '')}>`;
+        h += '<img class="fabric-photo is-back" alt="">';
         h += '<div class="bookmark-gradient fab-gradient"></div>';
         // 아래 띠: 왼쪽에 세로 이름(아래 정렬), 그 오른쪽에 세로 색 이름. 오른쪽 끝 아래에 견본 칩
         h += `<div class="fab-band${isLast ? ' is-last' : ''}">`;
@@ -788,24 +789,125 @@
     function bindColorDecks() {
         document.querySelectorAll('.fab-panel').forEach(bindFabricPanel);
     }
-    // 한 칸만 새 색으로 바꿈 (화면 전체를 다시 그리지 않아 깜빡이지 않음). 새 사진을 먼저 받아 두고 0.22초 겹쳐 바꿈
-    function swapFabricPanel(panel, html, photoUrl) {
-        const ready = new Promise(res => {
-            const im = new Image(); let done = false;
-            const fin = () => { if (!done) { done = true; res(); } };
-            im.onload = fin; im.onerror = fin; setTimeout(fin, 700);
-            im.src = photoUrl;
+    // 원단 화면에 나올 원단 3개 (지금 칸의 종류에 맞춰, 공간에 어울리는 점수 순). "찾는 중" 화면과 원단 화면이 같은 결과를 씀
+    function fabricShowcase() {
+        const queueItem = state.pendingItemQueue[state.currentItemIndex] || { label: "창문", presetType: "sheer" };
+        const targetCategory = queueItem.presetType === 'blind' ? '블라인드' : (queueItem.presetType === 'sheer' ? '속지' : '겉지');
+        // 원단마다 "공간에 가장 어울리는 색"까지 계산해 순위를 매김. 점수가 같으면 사장님이 직접 분류한 원단을 먼저
+        const ranked = getLiveCategoryPool(targetCategory).map(f => ({ f: f, best: bestColorFor(f, state.editingRoom, targetCategory) }));
+        ranked.sort((a, b) => (b.best.score - a.best.score)
+            || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
+        const showcaseList = (typeof pickShowcase === 'function') ? pickShowcase(ranked, 3) : ranked.slice(0, 3);
+        return { queueItem, targetCategory, showcaseList };
+    }
+
+    // ---- 원단 사진 주소 기억 ----
+    // 원단·색마다 실제로 있는 사진 주소(없으면 '')를 한 번만 찾아 둠 → 없는 주소(.webp·.png 등)를 다시 시도하며 깜빡이지 않게
+    // decode까지 끝낸 뒤에 알려 주므로, 받은 주소를 화면에 넣으면 바로 그려짐
+    const photoSeek = {};       // 원단ID__색 → Promise(주소 또는 '')
+    const photoKnown = {};      // 원단ID__색 → 주소 또는 '' (찾기가 끝난 것만)
+    function findPhoto(fabId, color) {
+        const key = fabId + '__' + (color || '');
+        if (!photoSeek[key]) {
+            const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabId, color) : [];
+            photoSeek[key] = (async () => {
+                for (const u of urls) {
+                    const im = new Image();
+                    im.src = u;
+                    try { await im.decode(); photoKnown[key] = u; return u; } catch (e) {}
+                }
+                photoKnown[key] = '';
+                return '';
+            })();
+        }
+        return photoSeek[key];
+    }
+    function knownPhoto(fabId, color) { return photoKnown[fabId + '__' + (color || '')]; }
+
+    // 견본 칩으로 색을 바꿈: 칸은 그대로 두고 사진만 바꿈 (칸 전체를 새로 그리면 글자·칩까지 깜빡여서)
+    //  - 뒤 장에 새 사진을 넣고 decode가 끝난 뒤 0.25초 겹쳐 바꿈. 사진이 없는 색은 앞 장만 사라져 바탕색이 보임
+    //  - 바탕색 · 세로 색 이름 · 칩 밑줄은 그 자리에서 값만 바꿈. 빨리 여러 번 누르면 마지막 것만 남음
+    function swapFabricPanel(panel, html, fabId, colorName) {
+        const card = panel.querySelector('.bookmark-card');
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        const next = tmp.querySelector('.bookmark-card');
+        if (!card || !next) { panel.innerHTML = html; return; }
+        const bg = card.querySelector('.bookmark-bg'), nbg = next.querySelector('.bookmark-bg');
+        if (bg && nbg) bg.style.background = nbg.style.background;
+        const desc = card.querySelector('.fab-vdesc'), ndesc = next.querySelector('.fab-vdesc');
+        if (desc && ndesc) desc.innerHTML = ndesc.innerHTML;
+        else if (desc) desc.remove();
+        else if (ndesc) { const name = card.querySelector('.fab-vname'); if (name) name.after(ndesc); }
+        const nchips = Array.from(next.querySelectorAll('.fab-chip'));
+        card.querySelectorAll('.fab-chip').forEach((b, i) => {
+            const on = !!nchips[i] && nchips[i].classList.contains('on');
+            b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
         });
-        ready.then(() => {
-            const olds = Array.from(panel.children);
-            const tmp = document.createElement('div');
-            tmp.innerHTML = html;
-            Array.from(tmp.children).forEach(el => panel.insertBefore(el, panel.firstChild));
-            olds.forEach(el => { el.classList.add('is-leaving'); el.style.pointerEvents = 'none'; });
-            requestAnimationFrame(() => olds.forEach(el => { el.style.opacity = '0'; }));
-            setTimeout(() => olds.forEach(el => el.remove()), 260);
-            bindFabricPanel(panel);
+        const token = (panel.__swap || 0) + 1;
+        panel.__swap = token;
+        card.querySelectorAll('.fabric-photo').forEach(img => { img.removeAttribute('data-pending'); img.setAttribute('data-color', colorName || ''); });
+        findPhoto(fabId, colorName).then(url => {
+            if (panel.__swap !== token) return;
+            const front = card.querySelector('.fabric-photo.is-front'), back = card.querySelector('.fabric-photo.is-back');
+            if (!front || !back) return;
+            if (!url) { front.style.opacity = '0'; return; }
+            if (front.getAttribute('src') === url && front.style.opacity !== '0') return;
+            back.src = url;
+            const show = () => {
+                if (panel.__swap !== token) return;
+                back.style.opacity = '1'; front.style.opacity = '0';
+                setTimeout(() => {
+                    if (panel.__swap !== token) return;
+                    front.classList.replace('is-front', 'is-back'); back.classList.replace('is-back', 'is-front');
+                    front.removeAttribute('style'); back.removeAttribute('style');
+                }, 260);
+            };
+            (back.decode ? back.decode() : Promise.resolve()).then(show, show);
         });
+    }
+
+    // ---- "찾는 중" 화면: 원단 화면이 열리기 전, 보여 줄 원단 3개의 모든 색 사진을 미리 받아 둠 ----
+    //  - 밝은 종이색 바탕 + 흰빛이 모여 살구빛 → 흙빛 점(로고 모션과 같은 결), 점은 천천히 숨 쉬듯
+    //  - 원단 하나가 준비될 때마다 그 원단 색 조각이 하나씩 나타남. 다 되면 "3가지 원단을 골랐어요" → 0.6초 뒤 원단 화면
+    //  - 최소 1.2초(같은 공간의 두 번째 칸부터는 0.8초), 최대 3초(넘으면 넘어가고 남은 사진은 뒤에서 계속 받음)
+    const SEEK_MIN_MS = 1200, SEEK_MIN_NEXT_MS = 800, SEEK_MAX_MS = 3000, SEEK_DONE_MS = 600;
+    function playFabricSeek(then) {
+        const { showcaseList } = fabricShowcase();
+        const second = state.currentItemIndex > 0;      // 같은 공간의 두 번째 칸(겉지 다음 속지 등)은 짧게
+        const minMs = second ? SEEK_MIN_NEXT_MS : SEEK_MIN_MS;
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        const box = document.createElement('div');
+        box.className = 'fab-seek';
+        box.setAttribute('role', 'status');
+        box.innerHTML = '<div class="fab-seek-in"><div class="fab-seek-light" aria-hidden="true"><i class="fab-seek-glow"></i><i class="fab-seek-dot"></i></div>'
+            + '<p class="fab-seek-q font-serif-kr">공간에 맞는 원단을 찾고 있어요</p>'
+            + '<p class="fab-seek-sub">바닥·벽의 색과 들어오는 햇빛을 보고 있어요</p>'
+            + '<div class="fab-seek-found" aria-hidden="true">' + showcaseList.map(e => {
+                const pick = colorDeckOrder(e.best)[0] || '';
+                return `<i style="background: ${colorFillOf(e.f.id, pick)};"></i>`;
+            }).join('') + '</div></div>';
+        document.body.appendChild(box);
+        const chips = box.querySelectorAll('.fab-seek-found i'), sub = box.querySelector('.fab-seek-sub');
+        const t0 = Date.now();
+        const all = Promise.all(showcaseList.map((e, i) => {
+            const colors = colorDeckOrder(e.best);
+            return Promise.all((colors.length ? colors : ['']).map(c => findPhoto(e.f.id, c)))
+                .then(() => sleep(Math.max(0, (second ? 300 : 600) + i * 200 - (Date.now() - t0))))      // 한꺼번에 뜨지 않고 하나씩
+                .then(() => chips[i].classList.add('on'));
+        }));
+        Promise.race([all, sleep(SEEK_MAX_MS)])
+            .then(() => sleep(Math.max(0, minMs - (Date.now() - t0))))
+            .then(() => {
+                chips.forEach(c => c.classList.add('on'));
+                sub.textContent = showcaseList.length ? `${showcaseList.length}가지 원단을 골랐어요` : '원단을 골랐어요';
+                return sleep(SEEK_DONE_MS);
+            })
+            .then(() => {
+                if (then) then();               // 원단 화면을 아래에 그린 뒤 이 화면을 서서히 걷음
+                box.classList.add('is-out');
+                setTimeout(() => box.remove(), 600);
+            });
     }
 
     function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass) {
@@ -1157,8 +1259,12 @@
             state.currentItemIndex = 0;
             goToStep("2-Base-Mood");           // 구성 다음은 취향(분위기)
         },
+        // "원단 보기": "찾는 중" 화면에서 사진을 미리 받은 뒤 원단 화면으로 (두 번 눌러도 한 번만)
         proceedToFabricQueue: function() {
-            goToStep("4-Fabric-Queue");
+            if (state.seeking) return;
+            state.seeking = true;
+            const open = () => { state.seeking = false; goToStep("4-Fabric-Queue"); };
+            try { playFabricSeek(open); } catch (e) { open(); }      // 찾는 중 화면에 문제가 생겨도 원단 화면은 열림
         },
         // 색상 카드 넘기기: dir 1 = 다음 색, -1 = 이전 색 (끝에서 한 바퀴 돌아 처음으로)
         stepColor: function(fabId, dir) {
@@ -1175,7 +1281,7 @@
             const panel = Array.from(document.querySelectorAll('.fab-panel')).find(p => p.getAttribute('data-fab') === fabId);
             if (!panel) { render(); return; }
             const idx = parseInt(panel.getAttribute('data-idx') || '0', 10);
-            swapFabricPanel(panel, fabricCardHtml(fabric, best, idx, next, item, cat), fabricPhotoUrls(fabric.id, next)[0]);
+            swapFabricPanel(panel, fabricCardHtml(fabric, best, idx, next, item, cat), fabric.id, next);
         },
         // 뒤 색 띠를 눌렀을 때: 그 색을 앞으로
         showColor: function(fabId, colorName) {
@@ -1190,7 +1296,7 @@
             const panel = Array.from(document.querySelectorAll('.fab-panel')).find(p => p.getAttribute('data-fab') === fabId);
             if (!panel) { render(); return; }
             const idx = parseInt(panel.getAttribute('data-idx') || '0', 10);
-            swapFabricPanel(panel, fabricCardHtml(fabric, best, idx, colorName, item, cat), fabricPhotoUrls(fabric.id, colorName)[0]);
+            swapFabricPanel(panel, fabricCardHtml(fabric, best, idx, colorName, item, cat), fabric.id, colorName);
         },
         handleQueueFabricClick: function(fabId) {
             const item = state.pendingItemQueue[state.currentItemIndex];

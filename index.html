@@ -334,12 +334,16 @@
 
                     <div class="staff-pane" id="fabricTab-list">
                         <div id="dbSectionCard" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3">
-                            <div>
-                                <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
-                                    보관 중인 원단 &amp; 블라인드 DB
-                                    <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0" id="dbCount">0</span>
-                                </h3>
-                                <p class="text-[10px] sm:text-[11px] text-slate-400">원단 품목 및 단가 목록 (원가 포함 · 직원 전용)</p>
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                        보관 중인 원단 &amp; 블라인드 DB
+                                        <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-full flex-shrink-0" id="dbCount">0</span>
+                                    </h3>
+                                    <p class="text-[10px] sm:text-[11px] text-slate-400">원단 품목 및 단가 목록 (원가 포함 · 직원 전용)</p>
+                                </div>
+                                <!-- 단가는 평소 ●●●로 가림. 탭을 떠나거나 잠기면 다시 가림 (기기에 저장하지 않음) -->
+                                <button type="button" id="dbPriceBtn" class="staff-btn flex-shrink-0" onclick="toggleDbPrices()" aria-pressed="false">단가 보기</button>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <div>

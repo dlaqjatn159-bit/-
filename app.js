@@ -134,6 +134,7 @@ function showStaffView(view) {
     if (view !== 'fabric' && finderGate(() => showStaffView(view))) return;
     document.querySelectorAll('.staff-nav button').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     document.querySelectorAll('.staff-view').forEach(s => s.classList.toggle('on', s.id === 'view-' + view));
+    if (view !== 'fabric') hideDbPrices();
     if (view === 'fabric') renderFinder();      // 분류·색상을 고친 뒤 돌아와도 새 값으로 보이게, 열 때마다 다시 그림
     window.scrollTo(0, 0);
 }
@@ -142,6 +143,7 @@ function showFabricTab(tab) {
     if (tab !== 'find' && finderGate(() => showFabricTab(tab))) return;
     document.querySelectorAll('.staff-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
     document.querySelectorAll('.staff-pane').forEach(p => p.classList.toggle('on', p.id === 'fabricTab-' + tab));
+    if (tab !== 'list') hideDbPrices();
     if (tab === 'find') renderFinder();
 }
 // 사이드바 머리의 "지금 고객 이름"
@@ -324,6 +326,7 @@ function stopIdleWatch() {
 }
 // 잠금 중에는 뒤의 직원 화면을 누르거나 키보드로 고칠 수 없게 함 (화면은 PIN 창이 흐리게 덮음)
 function setStaffLockedUi(on) {
+    if (on) hideDbPrices();
     const sec = document.getElementById('trackExpressSection'); if (sec) sec.inert = on;
     const warn = document.getElementById('lockWarn'); if (warn) warn.classList.add('hidden');
 }
@@ -345,6 +348,8 @@ function unlockStaff() {
 let staffFinderOnly = false;
 function setFinderOnly(on) {
     staffFinderOnly = !!on;
+    // 고객과 나란히 보는 상태: 가격 정렬·가격대 거름망은 숨기고, 골라 둔 것도 풀어 줌 (PIN을 넣은 평소 상태에서는 그대로 씀)
+    if (staffFinderOnly) { if (finderSel.price) finderSel.price.clear(); if (finderSort === 'price') finderSort = 'light'; }
     if (staffFinderOnly) document.body.dataset.finderOnly = '1'; else delete document.body.dataset.finderOnly;
     renderLockSetting();
 }
@@ -893,6 +898,17 @@ function finderMatch(e, words) {
     }
     return true;
 }
+// 후보 띠: 별표한 색을 누른 순서대로 (지금 원단 목록에 없는 색은 띠에서만 빠짐)
+function renderFinderPicks(all) {
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const picks = finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean);
+    const pbox = document.getElementById('finderPicks');
+    if (!pbox) return;
+    pbox.hidden = !picks.length;
+    pbox.innerHTML = !picks.length ? '' : `<b class="font-serif-kr">후보 ${picks.length}개</b><div class="finder-picks-list">`
+        + picks.map(e => `<span class="finder-pick"><i${e.hex ? ` style="background:${e.hex}"` : ''}></i>${esc(finderPickName(e))}<button type="button" data-unstar="${esc(e.key)}" aria-label="후보에서 빼기">×</button></span>`).join('')
+        + `</div><button type="button" class="staff-btn" onclick="clearFinderPicks()">모두 빼기</button><button type="button" onclick="openFinderShow()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 rounded-xl text-xs whitespace-nowrap">고객에게 보여주기</button>`;
+}
 function renderFinder() {
     const out = document.getElementById('finderOut');
     if (!out) return;
@@ -907,22 +923,14 @@ function renderFinder() {
     }
 
     const all = finderEntries();
-    // 후보 띠: 별표한 색을 누른 순서대로 (지금 원단 목록에 없는 색은 띠에서만 빠짐)
-    const picks = finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean);
-    const pbox = document.getElementById('finderPicks');
-    if (pbox) {
-        pbox.hidden = !picks.length;
-        pbox.innerHTML = !picks.length ? '' : `<b class="font-serif-kr">후보 ${picks.length}개</b><div class="finder-picks-list">`
-            + picks.map(e => `<span class="finder-pick"><i${e.hex ? ` style="background:${e.hex}"` : ''}></i>${esc(finderPickName(e))}<button type="button" data-unstar="${esc(e.key)}" aria-label="후보에서 빼기">×</button></span>`).join('')
-            + `</div><button type="button" class="staff-btn" onclick="clearFinderPicks()">모두 빼기</button><button type="button" onclick="openFinderShow()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 rounded-xl text-xs whitespace-nowrap">고객에게 보여주기</button>`;
-    }
+    renderFinderPicks(all);
     // 거름망 칩 (고른 것은 짙게)
     const opts = finderOptions(all);
     document.querySelectorAll('.finder-chips').forEach(box => {
         const k = box.dataset.k;
         finderSel[k].forEach(v => { if (!opts[k].some(o => o[0] === v)) finderSel[k].delete(v); });      // 원단이 바뀌어 없어진 값은 풀어 줌
         box.innerHTML = opts[k].map(o => `<button type="button" class="finder-chip" data-v="${esc(o[0])}" aria-pressed="${finderSel[k].has(o[0])}">${o[2] ? `<i style="background:${o[2]}"></i>` : ''}${esc(o[1])}</button>`).join('');
-        box.closest('.finder-fgroup').hidden = !opts[k].length;
+        box.closest('.finder-fgroup').hidden = !opts[k].length || (k === 'price' && staffFinderOnly);
     });
     // 비슷한 색(sim): 기준 색과 색 차이(ΔE)가 작은 순으로 16개. 거름망 가운데 종류(겉지·속지)만 지킴
     // 속지 짝(pair): 기준 겉지와 같은 톤이고 그보다 밝은 속지를 색 차이가 작은 순으로 (겉지가 딥이면 웜·뉴트럴 속지 모두). 색 값이 없는 속지는 톤만 맞춰 뒤에
@@ -963,7 +971,7 @@ function renderFinder() {
     const showPrice = finderSort === 'price' || finderSel.price.size > 0;       // 가격대 꼬리표는 가격으로 거르거나 줄 세울 때만 보임
     const sortSel = document.getElementById('finderSort');
     if (sortSel) {
-        const sorts = Object.keys(FINDER_SORTS).filter(k => k !== 'sim').map(k => [k, FINDER_SORTS[k]]).concat(fitRooms.map(r => ['fit:' + r.id, `${r.name}에 어울리는 순`]), [['sim', FINDER_SORTS.sim]], pair ? [['pair', '겉지에 어울리는 속지']] : []);
+        const sorts = Object.keys(FINDER_SORTS).filter(k => k !== 'sim' && !(k === 'price' && staffFinderOnly)).map(k => [k, FINDER_SORTS[k]]).concat(fitRooms.map(r => ['fit:' + r.id, `${r.name}에 어울리는 순`]), [['sim', FINDER_SORTS.sim]], pair ? [['pair', '겉지에 어울리는 속지']] : []);
         sortSel.innerHTML = sorts.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
         sortSel.value = finderSort;
     }
@@ -1006,27 +1014,60 @@ function renderFinder() {
         const title = e.color ? (e.label || `${e.no}번`) : e.fabName;
         const light = (e.L != null ? `밝기 ${Math.round(e.L)}` : '밝기 미정') + (sim ? ` · ${colorDistanceWord(e.dist)}` : '') + (pair && e.dist == null ? ' · 톤만 맞춤' : '') + (fitRoom ? ` · 어울림 ${e.fit}` : '');
         const meta = e.color ? `${e.book} ${e.fabName} ${e.no} · ${light}` : `${e.book} · ${light}`;
-        // 찾기 버튼 줄(비슷한 색 · 겉지는 어울리는 속지) + 넣기 버튼 줄
+        // 정보판 안: 찾기 버튼 줄(비슷한 색 · 겉지는 어울리는 속지). 넣기 버튼은 넣을 칸을 고르는 중일 때 카드 맨 아래에 늘 보임
         const finds = (finderHasLab(e) ? `<button type="button" data-sim="${esc(e.key)}">비슷한 색</button>` : '') + (e.cat === 'drape' ? `<button type="button" data-pair="${esc(e.key)}">어울리는 속지</button>` : '');
-        const acts = (finds ? `<div class="finder-acts">${finds}</div>` : '') + (target ? `<div class="finder-acts"><button type="button" data-pick="${esc(e.key)}">이 공간에 넣기</button></div>` : '');
+        const acts = finds ? `<div class="finder-acts">${finds}</div>` : '';
+        const put = target ? `<div class="finder-acts is-put"><button type="button" data-pick="${esc(e.key)}">이 공간에 넣기</button></div>` : '';
         const photo = (e.color && __photoFound[e.fabricId + '__' + e.color]) || __photoFound[e.fabricId];      // 사진 탭에서 "사진 확인하기"를 한 뒤에만 사진이 보임
         const isCur = !!target && target.c.fabricId === e.fabricId && (target.c.colorName || '') === e.color;
         const starred = finderPicks.includes(e.key);
-        return `<article class="finder-card${isCur ? ' is-current' : ''}">
-            <div class="finder-sw${e.hex ? '' : ' is-none'}"${e.hex ? ` style="background:${e.hex}"` : ''}>${photo ? `<img src="${esc(photo)}" alt="" loading="lazy">` : (e.hex ? '' : '<span>색 값 없음</span>')}<button type="button" class="finder-star${starred ? ' is-on' : ''}" data-star="${esc(e.key)}" aria-pressed="${starred}" aria-label="후보로 별표">${starred ? '★' : '☆'}</button></div>
-            <div class="finder-body">
-                <div class="finder-name">${esc(title)}</div>
-                <div class="finder-meta">${esc(meta)}${isCur ? ' · 지금 이 칸' : ''}</div>
-                <div class="finder-tags">${tags}</div>
+        // 색 칸: 첫 장은 늘 잰 색, 사진이 있으면 옆으로 밀어 둘째 장(사진). 사진이 없으면 한 장만(점 없음)
+        const colorPage = `<div class="finder-sw-page${e.hex ? '' : ' is-none'}"${e.hex ? ` style="background:${e.hex}"` : ''}>${e.hex ? '' : '<span>색 값 없음</span>'}</div>`;
+        const photoPage = photo ? `<div class="finder-sw-page"><img src="${esc(photo)}" alt="" loading="lazy"><span class="finder-sw-tag">사진</span></div>` : '';
+        const dots = photo ? '<div class="finder-sw-dots"><button type="button" data-dot="0" aria-current="true" aria-label="색"><i></i></button><button type="button" data-dot="1" aria-current="false" aria-label="사진"><i></i></button></div>' : '';
+        return `<article class="finder-card${isCur ? ' is-current' : ''}" data-key="${esc(e.key)}">
+            <div class="finder-sw">
+                <div class="finder-sw-track">${colorPage}${photoPage}</div>${dots}
+                ${isCur ? '<span class="finder-cur">지금 이 칸</span>' : ''}
+                <button type="button" class="finder-star${starred ? ' is-on' : ''}" data-star="${esc(e.key)}" aria-pressed="${starred}" aria-label="후보로 별표">${starred ? '★' : '☆'}</button>
             </div>
-            ${acts}
+            <div class="finder-info" aria-hidden="true">
+                <div class="finder-tags">${tags}</div>
+                ${acts}
+            </div>
+            <button type="button" class="finder-head" data-head aria-expanded="false">
+                <span class="finder-head-txt"><span class="finder-name">${esc(title)}</span><span class="finder-meta">${esc(meta)}</span></span>
+                <span class="finder-chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></span>
+            </button>
+            ${put}
         </article>`;
     }).join('') + '</div>';
 }
+// 카드 정보판: 이름 줄을 누르면 그 카드 안에서 색 칸 자리만 덮음 (카드 크기 그대로라 스크롤이 밀리지 않음)
+//  - 한 번에 하나만 열림. 다시 그리지 않고 class만 바꿈(밀어 둔 사진·스크롤 그대로). 다시 그리면(거름망·정렬 등) 모두 닫힘
+function finderOpenCard(card) {
+    const open = card && !card.classList.contains('is-open') ? card : null;
+    document.querySelectorAll('#finderOut .finder-card.is-open').forEach(c => { if (c !== open) setFinderCardOpen(c, false); });
+    if (card) setFinderCardOpen(card, !!open);
+}
+function setFinderCardOpen(card, on) {
+    card.classList.toggle('is-open', on);
+    card.querySelector('.finder-head').setAttribute('aria-expanded', String(on));
+    card.querySelector('.finder-info').setAttribute('aria-hidden', String(!on));
+}
+// 색 칸을 옆으로 밀면 아래 점(지금 장)을 맞춤. scroll은 위로 전해지지 않아 capture로 받음
+function finderSwScroll(ev) {
+    const t = ev.target;
+    if (!t.classList || !t.classList.contains('finder-sw-track')) return;
+    const i = Math.round(t.scrollLeft / (t.clientWidth || 1));
+    t.parentElement.querySelectorAll('[data-dot]').forEach(d => d.setAttribute('aria-current', String(Number(d.dataset.dot) === i)));
+}
+document.addEventListener('scroll', finderSwScroll, { capture: true, passive: true });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') finderOpenCard(null); });
 // 정렬 바꾸기: "고른 색과 비슷한 순"은 카드의 "비슷한 색"을 누른 뒤에만. 다른 정렬을 고르면 비슷한 색 찾기는 끝남
 function finderSortChange(value) {
     if (value === 'sim' && (!finderRef || finderSort === 'pair')) showToast('카드의 "비슷한 색"을 먼저 눌러 주세요.', 'info');
-    else if (value !== 'pair') { finderSort = (FINDER_SORTS[value] || String(value).startsWith('fit:')) ? value : 'light'; if (finderSort !== 'sim') finderRef = null; }
+    else if (value !== 'pair') { finderSort = ((FINDER_SORTS[value] && !(value === 'price' && staffFinderOnly)) || String(value).startsWith('fit:')) ? value : 'light'; if (finderSort !== 'sim') finderRef = null; }
     renderFinder();
 }
 function clearFinderRef() { finderRef = null; finderSort = 'light'; renderFinder(); }
@@ -1118,7 +1159,21 @@ function finderClick(event) {
         if (finderPicks.includes(key)) finderPicks = finderPicks.filter(k => k !== key);
         else if (finderPicks.filter(k => all.some(e => e.key === k)).length >= FINDER_PICK_MAX) showToast(`후보는 ${FINDER_PICK_MAX}개까지예요. 하나를 빼고 다시 눌러 주세요.`, 'info');
         else finderPicks.push(key);
-        renderFinder();
+        // 카드는 다시 그리지 않고 별표만 바꿈 (열어 둔 정보판·밀어 둔 사진이 그대로 있게)
+        const on = finderPicks.includes(key);
+        document.querySelectorAll('#finderOut button[data-star]').forEach(b => {
+            if (b.dataset.star !== key) return;
+            b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '★' : '☆';
+        });
+        renderFinderPicks(all);
+        return;
+    }
+    const head = event.target.closest('button[data-head]');
+    if (head) { finderOpenCard(head.closest('.finder-card')); return; }
+    const dot = event.target.closest('button[data-dot]');
+    if (dot) {
+        const t = dot.closest('.finder-sw').querySelector('.finder-sw-track');
+        t.scrollTo({ left: t.clientWidth * Number(dot.dataset.dot), behavior: 'smooth' });
         return;
     }
     const pairBtn = event.target.closest('button[data-pair]');
@@ -1530,7 +1585,7 @@ function renderFabricSearch(input, showAll) {
     const hits = fabricSearchHits(showAll ? '' : input.value);
     list.innerHTML = hits.length ? hits.map(f => {
         const spec = f.calcType === 'hebe' ? '헤베' : (f.calcType === 'width' ? `폭당 ${f.specCm}cm` : `Y당 ${f.specCm}cm`);
-        return `<button type="button" data-id="${esc(f.id)}" class="${f.id === input.dataset.fabricId ? 'is-current' : ''}">${esc(f.book)} ${esc(f.name)}<small>${esc(f.categoryType || '')} · ${spec} · ${(f.price || 0).toLocaleString()}원/${esc(f.unit)}</small></button>`;
+        return `<button type="button" data-id="${esc(f.id)}" class="${f.id === input.dataset.fabricId ? 'is-current' : ''}">${esc(f.book)} ${esc(f.name)}<small>${esc(f.categoryType || '')} · ${spec}</small></button>`;
     }).join('') : '<p>찾는 원단이 없어요</p>';
     list.hidden = false;
     if (showAll) { const cur = list.querySelector('.is-current'); if (cur) list.scrollTop = cur.offsetTop - 8; }
@@ -1672,7 +1727,7 @@ function renderRooms() {
                         </div>
                         <div class="flex items-stretch gap-1.5">
                             <div class="fabric-combo flex-1 min-w-0">
-                                <input type="text" value="${escText(fabricSearchLabel(curFab))}" data-fabric-id="${curFab ? escText(curFab.id) : ''}" autocomplete="off" placeholder="예: 데미안 몽크, 암막" onfocus="this.select(); renderFabricSearch(this, true)" oninput="renderFabricSearch(this)" onkeydown="fabricSearchKey(event, this)" onblur="closeFabricSearch(this)" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0">
+                                <input type="text" value="${escText(fabricSearchLabel(curFab))}" data-fabric-id="${curFab ? escText(curFab.id) : ''}" autocomplete="off" placeholder="예: 데미안 몽크, 암막" onfocus="this.select(); renderFabricSearch(this, true)" oninput="renderFabricSearch(this)" onkeydown="fabricSearchKey(event, this)" onblur="closeFabricSearch(this)" class="fab-name-input w-full px-2 rounded-lg bg-white outline-none min-w-0">
                                 <div class="fabric-combo-list custom-scrollbar" hidden onmousedown="event.preventDefault()" onclick="pickFabricFromSearch(event, ${room.id}, ${c.id})"></div>
                             </div>
                             ${isBlind && !finderHasBlind ? '' : `<button type="button" onclick="openFabricFinder(${room.id}, ${c.id})" title="색으로 원단 찾기" class="staff-btn whitespace-nowrap flex-shrink-0">찾기</button>`}
@@ -1791,6 +1846,17 @@ function renderRooms() {
 // ==============================================================
 
 
+// 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
+// 원단 목록 탭을 떠나거나 화면이 잠기면 다시 가림 (기기에 저장하지 않음 — 고객이 옆에 있을 수 있어서)
+var dbPricesShown = false;     // var: 파일을 다 읽기 전에 renderDbTable이 불려도 되게
+function toggleDbPrices(on) {
+    dbPricesShown = (on === undefined) ? !dbPricesShown : !!on;
+    const btn = document.getElementById('dbPriceBtn');
+    if (btn) { btn.textContent = dbPricesShown ? '단가 가리기' : '단가 보기'; btn.setAttribute('aria-pressed', String(dbPricesShown)); }
+    renderDbTable();
+}
+function hideDbPrices() { if (dbPricesShown) toggleDbPrices(false); }
+
 function renderDbTable() {
     const tbody = document.getElementById('dbTableBody');
     if (!tbody) return;
@@ -1822,8 +1888,10 @@ function renderDbTable() {
         let badgeColor = f.calcType === "hebe" ? "bg-amber-100 text-amber-900" : (f.calcType === "width" ? "bg-stone-200 text-stone-800" : (f.specCm >= 200 ? "bg-amber-200 text-amber-950 font-bold" : "bg-stone-100 text-stone-700"));
         let calcBadge = `<span class="${badgeColor} px-1.5 py-0.5 rounded font-bold">${badgeDesc}</span>`;
         const pv = (appMode === 'staff') ? Costing.costOf(f.id) : null;
-        let laborText = pv ? `${(pv.labor||0).toLocaleString()}원/${f.unit||'마'}` : '—';
-        let costText = pv ? `${(pv.cost||0).toLocaleString()}원` : '—';
+        const hid = '<span class="text-slate-300 tracking-widest">●●●</span>';
+        let laborText = !dbPricesShown ? hid : (pv ? `${(pv.labor||0).toLocaleString()}원/${f.unit||'마'}` : '—');
+        let costText = !dbPricesShown ? hid : (pv ? `${(pv.cost||0).toLocaleString()}원` : '—');
+        const priceText = dbPricesShown ? `${(f.price||0).toLocaleString()}원/${f.unit||'폭'}` : hid;
 
         tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition text-xs">
@@ -1834,7 +1902,7 @@ function renderDbTable() {
                 <td class="p-2.5 font-mono">${calcBadge}</td>
                 <td class="p-2.5 font-mono text-slate-500">${costText}</td>
                 <td class="p-2.5 font-mono text-amber-800">${laborText}</td>
-                <td class="p-2.5 font-mono font-bold text-indigo-950">${(f.price||0).toLocaleString()}원/${f.unit||'폭'}</td>
+                <td class="p-2.5 font-mono font-bold text-indigo-950">${priceText}</td>
             </tr>
         `;
     });
