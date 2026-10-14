@@ -16,6 +16,7 @@ const STORE_KEYS = {
     tags: 'redam_tags_v1',           // 사장님이 직접 지정한 원단 분류(언더톤·무드)
     colors: 'redam_colors_v1',       // 원단별 색상 번호와 색상별 톤
     installFee: 'redam_default_install_fee_v1',   // 새 상담에 들어가는 기본 시공·출장비 (직원 화면 설정)
+    photoList: 'redam_photo_list_v1',  // 실제로 있는 원단 사진 주소 목록 (사진 확인 결과. 다음에 열 때 바로 쓰려고)
     legacy: 'curtain_fabric_db_v23'  // 구버전 앱이 남긴 데이터 (원가 포함 → 삭제 권장)
 };
 

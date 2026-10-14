@@ -778,7 +778,7 @@
             // 견본 칩: 색마다 하나(어울리는 색 순서). 누르면 그 색이 칸에 나옴, 지금 색은 밑줄. 칸(원단)을 누르면 지금 색으로 고름
             h += '<div class="fab-chips">' + order.map(nx => {
                 const label = colorTagOf(f, nx, n);
-                return `<button type="button" class="fab-chip${nx === pick ? ' on' : ''}" aria-label="${label}" aria-pressed="${nx === pick}" onclick="event.stopPropagation(); window.concierge.showColor('${f.id}', '${String(nx).replace(/'/g, "\\'")}')"><i style="background: ${colorFillOf(f.id, nx)};"></i></button>`;
+                return `<button type="button" class="fab-chip${nx === pick ? ' on' : ''}" data-c="${String(nx).replace(/"/g, '&quot;')}" aria-label="${label}" aria-pressed="${nx === pick}" onclick="event.stopPropagation(); window.concierge.showColor('${f.id}', '${String(nx).replace(/'/g, "\\'")}')"><i style="background: ${colorFillOf(f.id, nx)};"></i></button>`;
             }).join('') + '</div>';
         }
         h += '</div>';
@@ -788,7 +788,76 @@
         return h;
     }
     // (예전 "옆으로 밀기"·"뒤에 겹친 색 띠"는 뺐음 → 지금은 아래 띠의 견본 칩을 눌러 색을 바꿈)
-    function bindFabricPanel(panel) {}
+    // 견본 칩은 아래 한 줄만 (원단마다 모양이 같게 — 10-14 사장님): 넘치면 줄 끝에 "+7" 칩 → 누르면 사진 위로 모든 색 판이 올라옴
+    const CHIP_ROWS = 1, CHIP_W = 44;
+    function fitChips(panel) {
+        const box = panel.querySelector('.fab-chips');
+        if (!box) return;
+        const chips = Array.from(box.querySelectorAll('.fab-chip'));
+        chips.forEach(c => { c.hidden = false; });
+        const old = box.querySelector('.fab-more');
+        if (old) old.remove();
+        const perRow = Math.floor(box.clientWidth / CHIP_W);
+        if (!perRow || chips.length <= perRow * CHIP_ROWS) return;      // 화면에 안 보여 폭을 모를 때(0)는 그대로 둠
+        const keep = perRow * CHIP_ROWS - 1;
+        chips.slice(keep).forEach(c => { c.hidden = true; });
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'fab-more';
+        more.textContent = '+' + (chips.length - keep);
+        more.setAttribute('aria-label', `색 ${chips.length - keep}개 더 보기`);
+        more.onclick = ev => { ev.stopPropagation(); openAllColors(panel); };
+        box.appendChild(more);
+        syncMoreChip(panel);
+    }
+    // 지금 색이 숨은 칩 가운데 있으면 "+7" 칩에 밑줄
+    function syncMoreChip(panel) {
+        const more = panel.querySelector('.fab-more');
+        if (more) more.classList.toggle('on', Array.from(panel.querySelectorAll('.fab-chips .fab-chip[hidden]')).some(c => c.classList.contains('on')));
+    }
+    // 모든 색 판: 그 칸의 사진 아래쪽에서 올라옴 (띠와 같은 짙은 갈색, 칩 크기 그대로, 지금 색 밑줄). 색을 누르면 닫히고 그 색으로
+    function openAllColors(panel) {
+        closeAllColors();
+        const card = panel.querySelector('.bookmark-card');
+        if (!card) return;
+        const fabId = panel.getAttribute('data-fab');
+        const sheet = document.createElement('div');
+        sheet.className = 'fab-allcolors';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-label', '모든 색');
+        sheet.innerHTML = '<div class="fab-allcolors-in">' + Array.from(panel.querySelectorAll('.fab-chips .fab-chip')).map(c => {
+            const on = c.classList.contains('on');
+            return `<button type="button" class="fab-chip${on ? ' on' : ''}" data-c="${String(c.getAttribute('data-c') || '').replace(/"/g, '&quot;')}" aria-label="${c.getAttribute('aria-label') || ''}" aria-pressed="${on}">${c.innerHTML}</button>`;
+        }).join('') + '</div>';
+        sheet.addEventListener('click', ev => {
+            ev.stopPropagation();       // 판을 눌러도 원단이 골라지지 않게
+            const b = ev.target.closest('.fab-chip');
+            if (!b) return;
+            closeAllColors();
+            window.concierge.showColor(fabId, b.getAttribute('data-c') || '');
+        });
+        card.appendChild(sheet);
+        requestAnimationFrame(() => sheet.classList.add('on'));
+    }
+    // 열린 모든 색 판을 닫음. 닫은 게 있으면 true (뒤로 버튼이 씀)
+    function closeAllColors() {
+        const open = document.querySelectorAll('.fab-allcolors');
+        open.forEach(el => el.remove());
+        return open.length > 0;
+    }
+    // 판 밖을 누르면 닫기만 함 (뒤에 있는 원단 칸·칩이 눌리지 않게)
+    document.addEventListener('click', ev => {
+        const sheet = document.querySelector('.fab-allcolors');
+        if (!sheet || sheet.contains(ev.target)) return;
+        ev.stopPropagation(); ev.preventDefault();
+        closeAllColors();
+    }, true);
+    let fitChipsTimer = 0;
+    window.addEventListener('resize', () => {
+        clearTimeout(fitChipsTimer);
+        fitChipsTimer = setTimeout(() => document.querySelectorAll('.fab-panel').forEach(fitChips), 150);
+    });
+    function bindFabricPanel(panel) { fitChips(panel); }
     function bindColorDecks() {
         document.querySelectorAll('.fab-panel').forEach(bindFabricPanel);
     }
@@ -812,7 +881,11 @@
     function findPhoto(fabId, color) {
         const key = fabId + '__' + (color || '');
         if (!photoSeek[key]) {
-            const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabId, color) : [];
+            // 직원 화면 사진 확인 목록(app.js, 기기에 저장됨)을 먼저 봄: 있는 주소면 그것부터, 이번 실행에서 확인했는데 없으면 찾지 않음
+            const listed = (typeof knownPhotoFor === 'function') ? knownPhotoFor(fabId, color) : undefined;
+            if (listed === '') { photoKnown[key] = ''; photoSeek[key] = Promise.resolve(''); return photoSeek[key]; }
+            let urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabId, color) : [];
+            if (listed) urls = [listed].concat(urls.filter(u => u !== listed));
             photoSeek[key] = (async () => {
                 for (const u of urls) {
                     const im = new Image();
@@ -847,6 +920,7 @@
             const on = !!nchips[i] && nchips[i].classList.contains('on');
             b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
         });
+        syncMoreChip(panel);
         const token = (panel.__swap || 0) + 1;
         panel.__swap = token;
         card.querySelectorAll('.fabric-photo').forEach(img => { img.removeAttribute('data-pending'); img.setAttribute('data-color', colorName || ''); });
@@ -1092,6 +1166,18 @@
         prevStep: function() {
             prevStep();
         },
+        // 탭의 뒤로(app.js "뒤로 버튼"이 부름): 떠 있는 것(키패드 · 옵션 설명 · 모든 색 판)을 닫았으면 true
+        closeTopLayer: function() {
+            const pad = document.getElementById("v2VirtualKeypadSheet");
+            if (pad && pad.classList.contains("active")) { hideKeypadDirectly(); return true; }
+            const ov = document.getElementById('optInfoOverlay');
+            if (ov && getComputedStyle(ov).display !== 'none') { ov.style.display = 'none'; return true; }
+            return closeAllColors();
+        },
+        // "찾는 중" 화면이 떠 있으면 뒤로를 무시 (끝나면 원단 화면이 열림)
+        isSeeking: function() { return !!state.seeking || !!document.querySelector('.fab-seek'); },
+        // 화면 왼쪽 위 ← 가 할 일이 있는지 (없으면 뒤로를 눌러도 아무 일도 없음)
+        canGoBack: function() { return stepHistory.length > 0; },
         goToSpaceCanvas: function() {
             goToStep("1-Space");
         },

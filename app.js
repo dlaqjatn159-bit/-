@@ -53,7 +53,75 @@ window.onload = function() {
     if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
     }
+    initBackButton();
 };
+
+// ---- 뒤로 버튼 ----
+// 앱은 한 페이지 안에서 화면만 바꾸므로, 그대로 두면 탭의 뒤로(버튼·가장자리 밀기)가 앱을 통째로 닫음
+// → 열 때 방문 기록에 "앱 안" 표시를 하나 넣어 두고(pushState), 뒤로가 눌리면(popstate) 앱 안에서 처리한 뒤 표시를 다시 넣음
+//   1 떠 있는 것 닫기 → 2 잠금 화면이면 아무것도 안 함 → 3 고객 화면은 ← 와 같게(맨 처음이면 아무 일 없음)
+//   → 4 직원 화면은 원단의 다른 탭 → 찾기 탭, 다른 메뉴 → 상담 → 5 상담에서는 "한 번 더 누르면 앱이 닫혀요"(2초 안에 또 누르면 닫힘)
+const BACK_EXIT_MS = 2000;
+let backExitTimer = 0;
+function pushBackGuard() { history.pushState({ redam: 'guard' }, ''); }
+function initBackButton() {
+    const s = history.state;
+    if (!(s && s.redam === 'guard')) {
+        if (!(s && s.redam === 'base')) history.replaceState({ redam: 'base' }, '');
+        pushBackGuard();
+    }
+    window.addEventListener('popstate', ev => {
+        if (ev.state && ev.state.redam === 'guard') return;      // (앞으로 가기로 표시 쪽으로 돌아온 경우) 할 일 없음
+        if (backExitTimer) { clearTimeout(backExitTimer); backExitTimer = 0; }
+        const exit = handleBack();
+        if (exit) {
+            // 이번에는 표시를 다시 넣지 않음 → 2초 안에 한 번 더 누르면 정말로 앱이 닫힘. 2초가 지나면 표시를 되돌려 둠
+            saveDraftTick();
+            showToast('한 번 더 누르면 앱이 닫혀요', 'info');
+            backExitTimer = setTimeout(rearmBackGuard, BACK_EXIT_MS);
+            return;
+        }
+        pushBackGuard();
+    });
+    // 2초를 기다리는 동안 화면을 누르면(다른 메뉴로 가는 등) 바로 표시를 되돌림 → 그다음 뒤로는 다시 앱 안에서 처리
+    document.addEventListener('pointerdown', () => { if (backExitTimer) rearmBackGuard(); }, true);
+}
+function rearmBackGuard() {
+    clearTimeout(backExitTimer);
+    backExitTimer = 0;
+    pushBackGuard();
+}
+// 뒤로 한 번을 앱 안에서 처리. 앱을 닫아도 되는 자리(직원 화면 상담)면 true
+function handleBack() {
+    const visible = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden') && !el.hidden; };
+    // 2. 잠금 화면: 아무것도 안 함 (뒤로로 잠금이 풀리거나 뒤 화면이 보이면 안 됨)
+    const pin = document.getElementById('pinModal');
+    if (visible('pinModal') && pin.classList.contains('is-lock')) return false;
+    // 1. 떠 있는 것 닫기 (위에 있는 것부터)
+    if (visible('pinModal')) { RedamAuth.dismiss(); return false; }               // 직원 모드 PIN · 다른 메뉴 열기 PIN 창 = 취소와 같음
+    if (visible('finderShow')) { closeFinderShow(); return false; }              // 후보 보여 주기 (닫는 × 와 같음. 이 화면 동안은 잠긴 상태로 셈)
+    if (appMode === 'staff' && staffLocked) return false;                          // 잠긴 상태: 아무것도 안 함
+    if (window.concierge && window.concierge.isSeeking && window.concierge.isSeeking()) return false;     // "찾는 중" 화면은 끝날 때까지 기다림
+    if (visible('roomColorOverlay')) { RoomColor.close(); return false; }
+    if (visible('ticketModal')) { closeTicketModal(); return false; }
+    if (closeFinderSlots()) return false;
+    if (document.querySelector('#finderOut .finder-card.is-open')) { finderOpenCard(null); return false; }
+    if (window.concierge && window.concierge.closeTopLayer && window.concierge.closeTopLayer()) return false;
+    // 3. 고객 화면: ← 와 똑같이 이전 단계로. 더 돌아갈 곳이 없으면 아무 일도 없음 (고객이 실수로 앱을 닫지 않게)
+    if (appMode !== 'staff') {
+        if (window.concierge && window.concierge.canGoBack()) window.concierge.prevStep();
+        return false;
+    }
+    // 4. 직원 화면: 원단의 다른 탭 → 찾기 탭, 상담이 아닌 메뉴 → 상담 (찾기만 열린 상태면 PIN 창이 뜸)
+    const view = (document.querySelector('.staff-view.on') || {}).id || '';
+    if (view === 'view-fabric') {
+        const pane = (document.querySelector('.staff-pane.on') || {}).id || '';
+        if (pane && pane !== 'fabricTab-find') { showFabricTab('find'); return false; }
+    }
+    if (view && view !== 'view-consult') { showStaffView('consult'); return false; }
+    // 5. 상담 화면
+    return true;
+}
 
 // 두 화면만 존재: 'curation'(고객) / 'express'(직원)
 function switchMainTrack(track) {
@@ -729,7 +797,24 @@ function handleColorFileUpload(event) {
 }
 
 // ---- 사진 ----
-let __photoFound = {};     // 원단ID(또는 원단ID__색상) → 찾은 사진 주소
+// 사진 확인 결과(있는 사진 주소 목록)는 기기에 저장 → 다음에 앱을 열면 원단 찾기에 바로 사진이 보임
+//  원단 › 찾기가 처음 열릴 때 뒤에서 조용히 한 번 더 확인해 바뀐 것만 고침. 인터넷이 없으면 저장된 목록을 그대로 씀
+let __photoFound = loadPhotoList();     // 원단ID(또는 원단ID__색상) → 찾은 사진 주소
+let __photoChecked = false;             // 이번 실행에서 확인을 마쳤는지
+let __photoScan = null;                 // 확인 중이면 그 Promise (두 번 돌지 않게)
+function loadPhotoList() {
+    try { const s = JSON.parse(localStorage.getItem(STORE_KEYS.photoList)); return (s && s.found && typeof s.found === 'object') ? s.found : {}; } catch (e) { return {}; }
+}
+function savePhotoList() {
+    try { localStorage.setItem(STORE_KEYS.photoList, JSON.stringify({ ver: (window.REDAM_FILES || {})['app.js'] || '', date: new Date().toISOString().slice(0, 10), found: __photoFound })); } catch (e) {}
+}
+// 그 원단·색의 사진 주소 (색 사진이 없으면 원단 대표 사진, 없으면 '')
+function photoFor(fabricId, color) { return (color && __photoFound[fabricId + '__' + color]) || __photoFound[fabricId] || ''; }
+// 고객 원단 화면(concierge.js)이 쓰는 같은 목록: 주소 / '' (이번 실행에서 확인했는데 없음) / undefined (모름 → 직접 찾음)
+function knownPhotoFor(fabricId, color) {
+    const u = photoFor(fabricId, color);
+    return u || (__photoChecked ? '' : undefined);
+}
 // 사진 대상: 원단 대표 사진 + 색상별 사진
 function photoTargets() {
     const list = [];
@@ -739,32 +824,42 @@ function photoTargets() {
     });
     return list;
 }
+// 사진이 실제로 있는지 하나씩 확인. 끝까지 확인했을 때만 목록을 바꾸고 저장 (중간에 인터넷이 끊기면 예전 목록 그대로)
+function scanPhotos(onProgress) {
+    if (__photoScan) return __photoScan;
+    __photoScan = (async () => {
+        const found = {};
+        let done = 0, offline = false;
+        const targets = photoTargets();
+        const queue = targets.slice();
+        async function worker() {
+            while (queue.length && !offline) {
+                const t = queue.shift();
+                for (const url of t.urls) {
+                    try {
+                        const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+                        if (res.ok) { found[t.key] = url; break; }
+                    } catch (e) { offline = true; break; }
+                }
+                done++;
+                if (onProgress) onProgress(done, targets.length);
+            }
+        }
+        await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+        if (!offline) { __photoFound = found; __photoChecked = true; savePhotoList(); }
+        return { offline, total: targets.length };
+    })().finally(() => { __photoScan = null; });
+    return __photoScan;
+}
 async function checkPhotos() {
     const statusEl = document.getElementById('photoCount');
     const missEl = document.getElementById('photoMissing');
     if (statusEl) statusEl.textContent = '확인 중...';
-    __photoFound = {};
-    const photoTargetsAtStart = null;
-    let done = 0, offline = false;
-    const targets = photoTargets();
-    const queue = targets.slice();
-    async function worker() {
-        while (queue.length) {
-            const t = queue.shift();
-            for (const url of t.urls) {
-                try {
-                    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-                    if (res.ok) { __photoFound[t.key] = url; break; }
-                } catch (e) { offline = true; break; }
-            }
-            done++;
-            if (statusEl && done % 10 === 0) statusEl.textContent = `확인 중... ${done}/${targets.length}`;
-        }
-    }
-    await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
-    if (offline) { if (statusEl) statusEl.textContent = '확인 실패'; showToast('인터넷에 연결된 상태에서 확인해 주세요.', 'error'); return; }
+    const r = await scanPhotos((done, total) => { if (statusEl && done % 10 === 0) statusEl.textContent = `확인 중... ${done}/${total}`; });
+    if (r.offline) { if (statusEl) statusEl.textContent = '확인 실패'; showToast('인터넷에 연결된 상태에서 확인해 주세요.', 'error'); return; }
+    refreshFinderPhotos();
     const found = Object.keys(__photoFound).length;
-    if (statusEl) statusEl.textContent = `${found} / ${targets.length}장`;
+    if (statusEl) statusEl.textContent = `${found} / ${r.total}장`;
     if (missEl) {
         const miss = photoTargets().filter(t => !__photoFound[t.key]).map(t => `${t.fabric.book} ${t.fabric.name}${colorSuffix(t.color, t.fabric.id)}`);
         missEl.textContent = miss.length ? `사진이 없는 커튼 원단 ${miss.length}개: ${miss.slice(0, 12).join(', ')}${miss.length > 12 ? ' …' : ''}` : '커튼 원단 사진이 모두 준비되었습니다.';
@@ -785,7 +880,7 @@ function downloadPhotoNameList() {
 }
 
 async function precachePhotos() {
-    if (Object.keys(__photoFound).length === 0) await checkPhotos();
+    if (!__photoChecked && navigator.onLine !== false) await checkPhotos();
     const urls = Object.values(__photoFound);
     if (urls.length === 0) { showToast('저장할 사진이 없습니다.', 'info'); return; }
     showToast(`사진 ${urls.length}장을 저장하는 중...`, 'info');
@@ -943,9 +1038,44 @@ function renderFinderPicks(all) {
         + picks.map(e => `<span class="finder-pick"><i${e.hex ? ` style="background:${e.hex}"` : ''}></i>${esc(finderPickName(e))}<button type="button" data-unstar="${esc(e.key)}" aria-label="후보에서 빼기">×</button></span>`).join('')
         + `</div><button type="button" class="staff-btn" onclick="clearFinderPicks()">모두 빼기</button><button type="button" onclick="openFinderShow()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 rounded-xl text-xs whitespace-nowrap">고객에게 보여주기</button>`;
 }
+// 카드 색 칸의 둘째 장(사진)과 아래 점
+const FINDER_SW_DOTS = '<div class="finder-sw-dots"><button type="button" data-dot="0" aria-current="true" aria-label="색"><i></i></button><button type="button" data-dot="1" aria-current="false" aria-label="사진"><i></i></button></div>';
+function finderPhotoPageHtml(url) {
+    return `<div class="finder-sw-page"><img src="${String(url).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" alt="" loading="lazy"><span class="finder-sw-tag">사진</span></div>`;
+}
+// 사진 확인이 끝나면 카드의 사진 장만 고침 (다시 그리지 않으니 열어 둔 정보판·밀어 둔 사진·스크롤이 그대로)
+function refreshFinderPhotos() {
+    const cards = document.querySelectorAll('#finderOut .finder-card');
+    if (!cards.length) return;
+    const byKey = new Map(finderEntries().map(e => [e.key, e]));
+    cards.forEach(card => {
+        const e = byKey.get(card.dataset.key);
+        if (!e) return;
+        const url = photoFor(e.fabricId, e.color);
+        const sw = card.querySelector('.finder-sw'), track = sw && sw.querySelector('.finder-sw-track');
+        if (!track) return;
+        const page = track.children[1], img = page && page.querySelector('img');
+        if (url && !page) {
+            track.insertAdjacentHTML('beforeend', finderPhotoPageHtml(url));
+            track.insertAdjacentHTML('afterend', FINDER_SW_DOTS);
+        } else if (url && img && img.getAttribute('src') !== url) img.src = url;
+        else if (!url && page) {
+            page.remove();
+            const dots = sw.querySelector('.finder-sw-dots');
+            if (dots) dots.remove();
+            track.scrollLeft = 0;
+        }
+    });
+}
+// 원단 › 찾기가 화면에 보일 때, 이번 실행에서 아직 확인 안 했으면 뒤에서 조용히 사진 확인 (상태 글·알림 없이)
+function ensureFinderPhotos() {
+    if (__photoChecked || __photoScan || navigator.onLine === false) return;
+    scanPhotos().then(r => { if (!r.offline) refreshFinderPhotos(); });
+}
 function renderFinder() {
     const out = document.getElementById('finderOut');
     if (!out) return;
+    if (out.offsetParent) ensureFinderPhotos();
     const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     const target = finderTargetCurtain();
     if (finderTarget && !target) finderTarget = null;        // 넣을 칸(공간·커튼)이 그사이 지워졌으면 풀어 줌
@@ -1059,6 +1189,7 @@ function renderFinder() {
     // 예전 입력표로만 색을 넣은 기기: 색 값이 하나도 없으면 어떻게 채우는지 알려 줌
     const note = all.some(e => e.hex) ? '' : '<p class="finder-hint">아직 색 값이 들어 있지 않아요. 색상 탭의 "색상 입력표 불러오기"로 새 입력표(밝기·색상코드·붉은기·노란기 열)를 올리면 카드에 색이 보입니다.</p>';
     const chip = (text, unset) => `<span class="staff-chip${unset ? ' is-unset' : ''}">${text}</span>`;
+    const anySlot = rooms.some(r => r.curtains.length);
     out.innerHTML = note + '<div class="finder-grid">' + list.map(e => {
         const tags = [
             e.tone ? chip(TONE_LABELS[e.tone]) : chip('톤 미정', true),
@@ -1074,17 +1205,18 @@ function renderFinder() {
         const light = (e.L != null ? `밝기 ${Math.round(e.L)}` : '밝기 미정') + (sim ? ` · ${colorDistanceWord(e.dist)}` : '') + (pair && e.dist == null ? ' · 톤만 맞춤' : '') + (fitRoom ? ` · 어울림 ${e.fit}` : '')
             + (mMode === 'floor' ? ` · 바닥보다 ${Math.round(e.L - mc.floor.L)} 밝음` : (mMode ? ` · ${mMode === 'wall' ? '벽과' : '이어주는 색과'} ${colorDistanceWord(e.rd)}` : ''));
         const meta = e.color ? `${e.book} ${e.fabName} ${e.no} · ${light}` : `${e.book} · ${light}`;
-        // 정보판 안: 찾기 버튼 줄(비슷한 색 · 겉지는 어울리는 속지). 넣기 버튼은 넣을 칸을 고르는 중일 때 카드 맨 아래에 늘 보임
+        // 정보판 안: 찾기 버튼 줄(비슷한 색 · 겉지는 어울리는 속지). 넣기 버튼은 상담에 커튼·블라인드 칸이 하나라도 있으면 카드 맨 아래에 늘 보임
+        //  (넣을 칸이 정해져 있으면 바로 넣고, 없으면 누를 때 "어느 칸에 넣을까요?" 판이 뜸)
         const finds = (finderHasLab(e) ? `<button type="button" data-sim="${esc(e.key)}">비슷한 색</button>` : '') + (e.cat === 'drape' ? `<button type="button" data-pair="${esc(e.key)}">어울리는 속지</button>` : '');
         const acts = finds ? `<div class="finder-acts">${finds}</div>` : '';
-        const put = target ? `<div class="finder-acts is-put"><button type="button" data-pick="${esc(e.key)}">이 공간에 넣기</button></div>` : '';
-        const photo = (e.color && __photoFound[e.fabricId + '__' + e.color]) || __photoFound[e.fabricId];      // 사진 탭에서 "사진 확인하기"를 한 뒤에만 사진이 보임
+        const put = (target || anySlot) ? `<div class="finder-acts is-put"><button type="button" data-pick="${esc(e.key)}">이 공간에 넣기</button></div>` : '';
+        const photo = photoFor(e.fabricId, e.color);      // 저장된 사진 목록 (찾기가 처음 열릴 때 뒤에서 다시 확인)
         const isCur = !!target && target.c.fabricId === e.fabricId && (target.c.colorName || '') === e.color;
         const starred = finderPicks.includes(e.key);
         // 색 칸: 첫 장은 늘 잰 색, 사진이 있으면 옆으로 밀어 둘째 장(사진). 사진이 없으면 한 장만(점 없음)
         const colorPage = `<div class="finder-sw-page${e.hex ? '' : ' is-none'}"${e.hex ? ` style="background:${e.hex}"` : ''}>${e.hex ? '' : '<span>색 값 없음</span>'}</div>`;
-        const photoPage = photo ? `<div class="finder-sw-page"><img src="${esc(photo)}" alt="" loading="lazy"><span class="finder-sw-tag">사진</span></div>` : '';
-        const dots = photo ? '<div class="finder-sw-dots"><button type="button" data-dot="0" aria-current="true" aria-label="색"><i></i></button><button type="button" data-dot="1" aria-current="false" aria-label="사진"><i></i></button></div>' : '';
+        const photoPage = photo ? finderPhotoPageHtml(photo) : '';
+        const dots = photo ? FINDER_SW_DOTS : '';
         return `<article class="finder-card${isCur ? ' is-current' : ''}" data-key="${esc(e.key)}">
             <div class="finder-sw">
                 <div class="finder-sw-track">${colorPage}${photoPage}</div>${dots}
@@ -1123,7 +1255,7 @@ function finderSwScroll(ev) {
     t.parentElement.querySelectorAll('[data-dot]').forEach(d => d.setAttribute('aria-current', String(Number(d.dataset.dot) === i)));
 }
 document.addEventListener('scroll', finderSwScroll, { capture: true, passive: true });
-document.addEventListener('keydown', ev => { if (ev.key === 'Escape') finderOpenCard(null); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') { closeFinderSlots(); finderOpenCard(null); } });
 // 정렬 바꾸기: "고른 색과 비슷한 순"은 카드의 "비슷한 색"을 누른 뒤에만. 다른 정렬을 고르면 비슷한 색 찾기는 끝남
 function finderSortChange(value) {
     if (value === 'sim' && (!finderRef || finderSort === 'pair')) showToast('카드의 "비슷한 색"을 먼저 눌러 주세요.', 'info');
@@ -1282,10 +1414,25 @@ function finderClick(event) {
         if (pane) pane.scrollIntoView({ block: 'start' });
         return;
     }
+    const slotBtn = event.target.closest('button[data-slot]');
+    if (slotBtn) {
+        const [roomId, curtainId] = slotBtn.dataset.slot.split(':').map(Number);
+        const key = slotBtn.closest('.finder-slots').dataset.key;
+        closeFinderSlots();
+        finderTarget = { roomId, curtainId };       // 고른 칸이 "넣을 칸"이 됨 → 찾기만 열린 상태면 다른 색을 바로 바꿔 넣을 수 있음
+        finderPut(key);
+        return;
+    }
+    if (event.target.closest('button[data-slot-close]')) { closeFinderSlots(); return; }
     const btn = event.target.closest('button[data-pick]');
     if (!btn) return;
+    if (!finderTargetCurtain()) { openFinderSlots(btn.closest('.finder-card'), btn.dataset.pick); return; }
+    finderPut(btn.dataset.pick);
+}
+// 넣을 칸(finderTarget)에 그 색을 넣음
+function finderPut(key) {
     const t = finderTargetCurtain();
-    const e = finderEntries().find(x => x.key === btn.dataset.pick);
+    const e = finderEntries().find(x => x.key === key);
     if (!t || !e) { finderTarget = null; renderFinder(); showToast('넣을 칸을 찾지 못했어요. 상담 화면에서 "찾기"를 다시 눌러 주세요.', 'error'); return; }
     collapsedRooms.delete(t.room.id);
     updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
@@ -1301,6 +1448,41 @@ function finderClick(event) {
     if (card) card.scrollIntoView({ block: 'center' });
     showToast(`${e.fabName}${colorSuffix(e.color, e.fabricId)} → ${t.room.name} · ${t.c.label} 칸에 넣었어요.`);
 }
+// "어느 칸에 넣을까요?" 판: 넣을 칸이 안 정해졌을 때 그 카드 위에 뜸. 같은 종류 칸(속지 색 → 속지 칸 …)만, 하나뿐이어도 띄움
+//  - 칸 옆에는 지금 들어 있는 원단 이름만 작게 (단가·가격은 넣지 않음 — 고객과 같이 보는 상태에서도 씀)
+const FINDER_KIND_WORDS = { drape: '겉지', sheer: '속지', blind: '블라인드' };
+function openFinderSlots(card, key) {
+    closeFinderSlots();
+    const e = finderEntries().find(x => x.key === key);
+    if (!card || !e) return;
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const slots = [];
+    rooms.forEach(r => r.curtains.forEach(c => { if (finderCurtainKind(c) === e.cat) slots.push({ r, c }); }));
+    const now = c => { const f = FABRIC_DB.find(x => x.id === c.fabricId); return f ? `${f.name}${colorSuffix(c.colorName, f.id)}` : ''; };
+    const box = document.createElement('div');
+    box.className = 'finder-slots';
+    box.dataset.key = key;
+    box.setAttribute('role', 'dialog');
+    box.innerHTML = `<div class="finder-slots-head"><b>어느 칸에 넣을까요?</b><button type="button" data-slot-close>닫기</button></div>`
+        + (slots.length ? '<div class="finder-slots-list">' + slots.map(s => `<button type="button" data-slot="${s.r.id}:${s.c.id}"><span>${esc(s.r.name)} · ${esc(s.c.label)}</span><small>${esc(now(s.c))}</small></button>`).join('') + '</div>'
+            : `<p class="finder-slots-none">이 공간에 ${FINDER_KIND_WORDS[e.cat]} 칸이 없어요. 상담에서 칸을 먼저 추가해 주세요.</p>`);
+    card.appendChild(box);
+    const put = card.querySelector('.finder-acts.is-put');
+    if (put) box.style.bottom = put.offsetHeight + 'px';      // 넣기 버튼 바로 위까지 덮음
+    card.classList.add('is-slots');
+}
+function closeFinderSlots() {
+    const open = document.querySelectorAll('#finderOut .finder-slots');
+    open.forEach(b => { b.closest('.finder-card').classList.remove('is-slots'); b.remove(); });
+    return open.length > 0;
+}
+// 판 밖을 누르면 닫기만 함 (뒤의 카드·버튼은 눌리지 않게)
+document.addEventListener('click', ev => {
+    const box = document.querySelector('#finderOut .finder-slots');
+    if (!box || box.contains(ev.target)) return;
+    ev.stopPropagation(); ev.preventDefault();
+    closeFinderSlots();
+}, true);
 
 // ==============================================================
 // 3. 직원 화면: 데이터 관리 표시
