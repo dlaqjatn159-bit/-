@@ -99,6 +99,7 @@ function handleBack() {
     if (visible('pinModal') && pin.classList.contains('is-lock')) return false;
     // 1. 떠 있는 것 닫기 (위에 있는 것부터)
     if (visible('pinModal')) { RedamAuth.dismiss(); return false; }               // 직원 모드 PIN · 다른 메뉴 열기 PIN 창 = 취소와 같음
+    if (visible('finderShow') && closeFinderShowAsk()) return false;               // 보여 주기의 확인 창 = "다시 고를게요"와 같음
     if (visible('finderShow')) { closeFinderShow(); return false; }              // 후보 보여 주기 (닫는 × 와 같음. 이 화면 동안은 잠긴 상태로 셈)
     if (appMode === 'staff' && staffLocked) return false;                          // 잠긴 상태: 아무것도 안 함
     if (window.concierge && window.concierge.isSeeking && window.concierge.isSeeking()) return false;     // "찾는 중" 화면은 끝날 때까지 기다림
@@ -1269,24 +1270,45 @@ function clearFinderRef() { finderRef = null; finderSort = 'light'; renderFinder
 function finderPlainFabName(e) { return String(e.fabName || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(); }
 function finderPickName(e) { return e.color ? `${e.label ? e.label + ' · ' : ''}${finderPlainFabName(e)} ${e.no}` : finderPlainFabName(e); }
 function clearFinderPicks() { finderPicks = []; renderFinder(); }
-// 고객에게 보여주기: 직원 화면을 통째로 덮는 화면에 큰 색 칸(사진이 있으면 사진) · 색 이름 · 느낌만 나란히 (2~6개)
+// 고객에게 보여주기: 직원 화면을 통째로 덮는 화면에 큰 색 칸(사진이 있으면 사진)을 고객 원단 화면과 같은 띠로 나란히 (2~6개)
+//  - 띠 글자: 세로 큰 글자 = 원단 이름(책자·괄호·끝의 색 낱말 뺌), 오른쪽 세로 작은 글자 = 색 이름(없으면 "3번"). 가격·느낌 없음
+//  - 고르기: 한 번 누르면 강조(흰 밑줄, 나머지 흐리게) → 강조된 칸을 한 번 더 누르면 "○○로 할까요?" 확인 창 → "이걸로 할게요"면 넣을 칸에 넣음(화면은 그대로)
 //  - 보여 주는 동안 직원 화면은 잠근 것으로 침(자동 잠금 창이 끼어들지 않게) → 닫으면 PIN 없이 찾기 화면까지만 열림 (setFinderOnly)
+let finderShowList = [], finderShowSel = -1, finderShowChanged = false, finderShowDoneTimer = 0;
+// 조사: 받침이 있으면 앞 것(을·으로), 없으면 뒤 것(를·로). "으로"는 ㄹ 받침이면 "로". 숫자는 읽는 소리로
+function finderJosa(word, withB, withoutB) {
+    const s = String(word || '').trim(), last = s.slice(-1), c = last.charCodeAt(0);
+    let jong = 0;
+    if (c >= 0xAC00 && c <= 0xD7A3) jong = (c - 0xAC00) % 28;
+    else if (/[0-9]/.test(last)) jong = [21, 8, 0, 16, 0, 0, 1, 8, 8, 0][Number(last)];
+    if (!jong) return s + withoutB;
+    if (withB === '으로' && jong === 8) return s + '로';
+    return s + withB;
+}
+// 보여 줄 이름: { name: 원단 이름, color: 색 이름(없으면 "3번"), full: "오솔로 화이트" }
+function finderShowName(e) {
+    const p = (window.concierge && window.concierge.cardNameParts && window.concierge.cardNameParts(e.fabricId, e.label)) || { name: finderPlainFabName(e), colorTag: e.label };
+    const no = String(e.no || e.color || '');
+    const color = p.colorTag || (e.color ? (/^\d+$/.test(no) ? `${no}번` : no) : '');
+    return { name: p.name, color, full: [p.name, color].filter(Boolean).join(' ') };
+}
 function openFinderShow() {
     const all = finderEntries();
     const picks = finderPicks.map(k => all.find(e => e.key === k)).filter(Boolean).slice(0, FINDER_PICK_MAX);
     const box = document.getElementById('finderShow'), canvas = document.getElementById('finderShowCanvas');
     if (!box || !canvas || !window.concierge) return;
     if (picks.length < 2) { showToast('후보를 2개 이상 별표해 주세요. (6개까지)', 'info'); return; }
+    finderShowList = picks; finderShowSel = -1; finderShowChanged = false;
     canvas.style.setProperty('--items-count', picks.length);
-    canvas.innerHTML = picks.map(e => {
-        const name = (e.label || finderPlainFabName(e)).replace(/[<>&"]/g, '');
-        const mood = e.mood ? MOOD_LABELS[e.mood] : '';
-        // 색 값도 사진도 없는 원단은 지어낸 색을 보여 주지 않음
-        return window.concierge.bookmarkCard(name, e.hex ? mood : [mood, '샘플북으로 보여 드릴게요'].filter(Boolean).join(' · '), '', e.hex || 'var(--brand-panel)', function() {}, '');
+    canvas.innerHTML = picks.map((e, i) => {
+        const n = finderShowName(e), clean = s => String(s).replace(/[<>&"]/g, '');
+        // 색 값도 사진도 없는 원단은 지어낸 색을 보여 주지 않고 "샘플북으로" (가로 글)
+        const look = e.hex || photoFor(e.fabricId, e.color);
+        return window.concierge.bookmarkCard(clean(n.name), clean(look ? n.color : '샘플북으로 보여 드릴게요'), '', e.hex || 'var(--brand-panel)', function() { finderShowTap(i); }, look ? 'vdesc' : '');
     }).join('');
     Array.from(canvas.children).forEach((card, i) => {
         const e = picks[i], img = document.createElement('img');
-        card.style.cursor = 'default';
+        card.insertAdjacentHTML('beforeend', '<span class="finder-show-put" aria-hidden="true">✓ 담음</span>');
         img.className = 'fabric-photo'; img.alt = '';
         img.setAttribute('data-id', e.fabricId); img.setAttribute('data-color', e.color); img.setAttribute('data-i', '0');
         img.style.visibility = 'hidden';                         // 사진을 다 받은 뒤에만 보임 (찾는 동안 깨진 그림 표시가 안 보이게)
@@ -1297,15 +1319,89 @@ function openFinderShow() {
         if (bg) bg.after(img);
         if (i === picks.length - 1) card.insertAdjacentHTML('beforeend', '<div class="card-brand">Re<i class="logo-dot">.</i>dam</div>');
     });
+    finderShowMarks();
+    closeFinderShowAsk();
     box.classList.remove('hidden');
     document.documentElement.style.overflow = 'hidden';         // 뒤의 직원 화면이 밀리지 않게
     if (appMode === 'staff') { staffLocked = true; setStaffLockedUi(true); }
 }
+// 강조(고른 칸) · 담음(넣을 칸에 지금 들어 있는 원단) 표시를 맞춤
+function finderShowMarks() {
+    const canvas = document.getElementById('finderShowCanvas');
+    if (!canvas) return;
+    const t = finderTargetCurtain();
+    canvas.classList.toggle('has-sel', finderShowSel >= 0);
+    Array.from(canvas.children).forEach((card, i) => {
+        const e = finderShowList[i];
+        card.classList.toggle('is-sel', i === finderShowSel);
+        card.classList.toggle('is-put', !!t && !!e && t.c.fabricId === e.fabricId && (t.c.colorName || '') === e.color);
+    });
+}
+function finderShowTap(i) {
+    if (!finderShowList[i]) return;
+    if (finderShowSel !== i) { finderShowSel = i; finderShowMarks(); return; }
+    openFinderShowAsk();
+}
+// 확인 창: "오솔로 화이트로 할까요?" [이걸로 할게요 / 다시 고를게요]. 넣을 칸이 없으면 같은 창이 "어느 칸에 담을까요?"로 바뀜
+const finderShowEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+function openFinderShowAsk() {
+    const e = finderShowList[finderShowSel], ask = document.getElementById('finderShowAsk');
+    if (!e || !ask) return;
+    ask.querySelector('.finder-show-ask-in').innerHTML = `<p class="finder-show-ask-q font-serif-kr">${finderShowEsc(finderJosa(finderShowName(e).full, '으로', '로'))} 할까요?</p>`
+        + '<div class="finder-show-ask-acts"><button type="button" class="is-yes font-serif-kr" data-ask="yes">이걸로 할게요</button><button type="button" class="font-serif-kr" data-ask="no">다시 고를게요</button></div>';
+    ask.classList.remove('hidden');
+}
+function closeFinderShowAsk() {
+    const ask = document.getElementById('finderShowAsk');
+    if (!ask || ask.classList.contains('hidden')) return false;
+    ask.classList.add('hidden');
+    return true;
+}
+// 넣을 칸 고르기: 같은 종류 칸(속지 색 → 속지 칸 …)만, 공간 · 칸 이름만 (지금 들어 있는 원단·가격은 안 보임)
+function finderShowSlots(e) {
+    const ask = document.getElementById('finderShowAsk');
+    const slots = [];
+    rooms.forEach(r => r.curtains.forEach(c => { if (finderCurtainKind(c) === e.cat) slots.push({ r, c }); }));
+    ask.querySelector('.finder-show-ask-in').innerHTML = slots.length
+        ? '<p class="finder-show-ask-q font-serif-kr">어느 칸에 담을까요?</p><div class="finder-show-ask-acts is-slots">'
+            + slots.map(s => `<button type="button" class="font-serif-kr" data-ask-slot="${s.r.id}:${s.c.id}">${finderShowEsc(s.r.name)} · ${finderShowEsc(s.c.label)}</button>`).join('')
+            + '</div><div class="finder-show-ask-acts"><button type="button" class="font-serif-kr" data-ask="no">다시 고를게요</button></div>'
+        : `<p class="finder-show-ask-q font-serif-kr">담을 ${FINDER_KIND_WORDS[e.cat]} 칸이 아직 없어요</p><div class="finder-show-ask-acts"><button type="button" class="font-serif-kr" data-ask="no">닫기</button></div>`;
+}
+function finderShowAskClick(ev) {
+    const btn = ev.target.closest('button');
+    if (!btn) { if (!ev.target.closest('.finder-show-ask-in')) closeFinderShowAsk(); return; }      // 판 밖 = 다시 고를게요
+    const e = finderShowList[finderShowSel];
+    if (btn.dataset.ask === 'no' || !e) { closeFinderShowAsk(); return; }
+    if (btn.dataset.askSlot) {
+        const [roomId, curtainId] = btn.dataset.askSlot.split(':').map(Number);
+        finderTarget = { roomId, curtainId };       // 고른 칸이 "넣을 칸"이 됨 → 다음에 고르면 같은 칸이 바뀜
+    }
+    const t = finderTargetCurtain();
+    if (!t) { finderShowSlots(e); return; }
+    finderApplyPut(t, e);
+    finderShowChanged = true;
+    closeFinderShowAsk();
+    finderShowMarks();
+    // 위에 작은 판으로 1.5초: "거실 · 속지에 오솔로 화이트를 담았어요"
+    const done = document.getElementById('finderShowDone');
+    if (done) {
+        done.textContent = `${t.room.name} · ${t.c.label}에 ${finderJosa(finderShowName(e).full, '을', '를')} 담았어요`;
+        done.classList.add('on');
+        clearTimeout(finderShowDoneTimer);
+        finderShowDoneTimer = setTimeout(() => done.classList.remove('on'), 1500);
+    }
+}
 function closeFinderShow() {
     const box = document.getElementById('finderShow');
     if (box) box.classList.add('hidden');
+    closeFinderShowAsk();
+    const done = document.getElementById('finderShowDone');
+    if (done) done.classList.remove('on');
+    finderShowSel = -1;
     document.documentElement.style.overflow = '';
     if (appMode === 'staff' && staffLocked) { staffLocked = false; setStaffLockedUi(false); lastActivity = Date.now(); setFinderOnly(true); }
+    if (finderShowChanged) { finderShowChanged = false; renderFinder(); }       // 찾기 카드에 "지금 이 칸" 표시
 }
 function setFinderView(view) { finderView = view === 'map' ? 'map' : 'grid'; renderFinder(); }
 // 색 지도: 가로 = 노란기 b(왼쪽 쿨 · 오른쪽 웜), 세로 = 밝기 L(위가 밝음). 지금 조건에 맞는 색은 진하고 크게, 나머지는 흐리게
@@ -1434,11 +1530,7 @@ function finderPut(key) {
     const t = finderTargetCurtain();
     const e = finderEntries().find(x => x.key === key);
     if (!t || !e) { finderTarget = null; renderFinder(); showToast('넣을 칸을 찾지 못했어요. 상담 화면에서 "찾기"를 다시 눌러 주세요.', 'error'); return; }
-    collapsedRooms.delete(t.room.id);
-    updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
-    t.c.colorName = e.color;
-    renderRooms();
-    calculateAll();
+    finderApplyPut(t, e);
     // 찾기만 열린 상태: 상담 화면으로 가지 않고(PIN이 필요) 넣을 칸도 그대로 둠 → 다른 색을 누르면 바로 바뀜
     if (staffFinderOnly) { renderFinder(); showToast(`${e.fabName}${colorSuffix(e.color, e.fabricId)} → ${t.room.name} · ${t.c.label} 칸에 넣었어요. 다른 색을 누르면 바뀝니다.`); return; }
     finderTarget = null;
@@ -1447,6 +1539,14 @@ function finderPut(key) {
     const card = sub && sub.closest('.staff-curtain');
     if (card) card.scrollIntoView({ block: 'center' });
     showToast(`${e.fabName}${colorSuffix(e.color, e.fabricId)} → ${t.room.name} · ${t.c.label} 칸에 넣었어요.`);
+}
+// 칸에 원단 + 색상 번호를 넣음 (찾기 카드의 "이 공간에 넣기"와 "고객에게 보여주기"의 "이걸로 할게요"가 같이 씀)
+function finderApplyPut(t, e) {
+    collapsedRooms.delete(t.room.id);
+    updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
+    t.c.colorName = e.color;
+    renderRooms();
+    calculateAll();
 }
 // "어느 칸에 넣을까요?" 판: 넣을 칸이 안 정해졌을 때 그 카드 위에 뜸. 같은 종류 칸(속지 색 → 속지 칸 …)만, 하나뿐이어도 띄움
 //  - 칸 옆에는 지금 들어 있는 원단 이름만 작게 (단가·가격은 넣지 않음 — 고객과 같이 보는 상태에서도 씀)

@@ -623,6 +623,9 @@
             <div class="bookmark-canvas" id="finderShowCanvas"></div>
         </div>
         <button type="button" class="finder-show-close" onclick="closeFinderShow()" title="닫기" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
+        <!-- 고르기: 강조된 칸을 한 번 더 누르면 뜨는 확인 창 (판 밖을 누르면 "다시 고를게요"), 넣은 뒤 1.5초 알림 -->
+        <div id="finderShowAsk" class="finder-show-ask hidden" role="dialog" aria-modal="true" onclick="finderShowAskClick(event)"><div class="finder-show-ask-in"></div></div>
+        <div id="finderShowDone" class="finder-show-done font-serif-kr" role="status" aria-live="polite"></div>
     </div>
 
     <!-- 직원 PIN 창 -->

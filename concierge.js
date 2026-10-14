@@ -751,12 +751,17 @@
     }
     // 원단 한 칸: 사진(없으면 그 색) 위쪽 + 아래 짙은 띠에 세로 원단 이름 · 세로 색 이름 · 오른쪽 아래 견본 칩(색이 둘 이상일 때)
     // 추천 이유는 칸에 넣지 않음(10-14 사장님 결정. 제안서·견적서에는 그대로)
+    // 품명 끝의 색 이름(예: 오솔로 화이트)은 이름에서 떼어 색 자리로 → 이름 길이가 고르게. 직원 화면 "고객에게 보여주기"도 같은 규칙
+    const NAME_COLOR_WORD = /\s+(오프화이트|퓨어화이트|화이트|아이보리|크림|라이트베이지|베이지|샌드|오트밀|그레이지|라이트그레이|그레이|차콜|모카|토프|카멜|브라운|초콜릿|네이비|블랙)$/;
+    function splitNameColor(f, colorTag) {
+        let name = fabricDisplayName(f);
+        const cw = NAME_COLOR_WORD.exec(name);
+        if (cw && name.length > cw[0].length) { name = name.slice(0, -cw[0].length); colorTag = colorTag || cw[1]; }
+        return { name, colorTag };
+    }
     function fabricCardHtml(f, best, idx, pick, queueItem, targetCategory) {
         const order = colorDeckOrder(best), n = order.length;
-        // 품명 끝의 색 이름(예: 오솔로 화이트)은 이름에서 떼어 색 자리로 → 이름 길이가 고르게
-        let name = fabricDisplayName(f), colorTag = colorTagOf(f, pick, n);
-        const cw = /\s+(오프화이트|퓨어화이트|화이트|아이보리|크림|라이트베이지|베이지|샌드|오트밀|그레이지|라이트그레이|그레이|차콜|모카|토프|카멜|브라운|초콜릿|네이비|블랙)$/.exec(name);
-        if (cw && name.length > cw[0].length) { name = name.slice(0, -cw[0].length); colorTag = colorTag || cw[1]; }
+        const { name, colorTag } = splitNameColor(f, colorTagOf(f, pick, n));
         // 글자 수 세기: 영어·숫자는 눕혀 쓰므로 0.6자(대문자 0.78자)로 셈
         const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&-]/.test(ch) ? 0.6 : 1)), 0) || 1;   // 영어 대문자는 조금 더 넓게
         const isLast = idx === (state.fabPanelCount || 1) - 1;
@@ -1490,6 +1495,11 @@
         },
         // 직원 화면 "원단 찾기"의 후보 보여주기 화면도 고객 화면과 같은 칸(세로 제목 + 짧은 글)을 씀
         bookmarkCard: renderBookmarkCard,
+        // 원단 칸 글자: { name: 원단 이름(책자·괄호·가격·끝의 색 낱말 뺌), colorTag: 색 이름(없으면 끝의 색 낱말) }
+        cardNameParts: function(fabricId, colorTag) {
+            const f = getLiveDb().find(x => x.id === fabricId);
+            return f ? splitNameColor(f, colorTag || '') : null;
+        },
         setClientName: function(v) {
             const el = document.getElementById('custName');
             if (el) el.value = v;
