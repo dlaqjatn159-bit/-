@@ -184,7 +184,7 @@
                     dropPins(0);
                     st.active = 0;
                 }
-                render();
+                if (st.cust) renderCust(); else render();
                 resolve();
             };
             img.onerror = reject;
@@ -378,21 +378,100 @@
         }
     }
 
+    // 누를 자리 순서: 직원 화면은 넷 다, 고객 화면은 고를 부분만 (예: 벽만 다시 재면 회색 카드 · 흰 카드 · 벽)
+    function stepKeys() { return (st && st.keys) || STEPS.map(s2 => s2.key); }
     function onTap(e) {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-        const key = STEPS[st.active].key, pt = { v: st.view, x, y };
+        const keys = stepKeys(), key = keys[st.active], pt = { v: st.view, x, y };
+        if (!key) return;
         const first = !pinsOf(key).length;
         // 카드는 옮기기, 바닥·벽은 한 곳 더 (MAX_POINTS를 넘으면 가장 먼저 누른 곳이 빠짐)
         st.pins[key] = MULTI[key] ? pinsOf(key).concat([pt]).slice(-MAX_POINTS) : [pt];
         // 처음 누른 자리면 다음 비어 있는 자리로. 벽 사진이 있으면 ④ 벽은 그 사진에서
-        const next = STEPS.findIndex(s2 => !pinsOf(s2.key).length);
+        const next = keys.findIndex(k => !pinsOf(k).length);
         if (next >= 0 && (first || !MULTI[key])) {
             st.active = next;
-            if (st.photos[1]) st.view = STEPS[next].key === 'wall' ? 1 : 0;
+            if (st.photos[1]) st.view = keys[next] === 'wall' ? 1 : 0;
         }
-        render();
+        if (st.cust) renderCust(); else render();
+    }
+
+    // ==============================================================
+    // 고객 화면 모양 (작업목록 20번): 공간 추가 · 수정하기에서 씀. 계산은 위와 같고, 숫자(Lab) 없이 색 조각 + 바닥·벽 카드 이름만
+    //  왼쪽 사진, 오른쪽 "회색 카드 · 흰 카드 · 바닥 · 벽" 차례 목록. 다 누르면 "○○ 담기"
+    //  opts: { name, parts: 'both' | 'wall' | 'floor', doneLabel, onDone(mc), onSkip?(), onCancel() }
+    // ==============================================================
+    const CUST_LABEL = { gray: '회색 카드', white: '흰 카드', floor: '바닥', wall: '벽' };
+    const CUST_DESC = { floor: { warm: '밝은 원목', cool: '밝은 타일·대리석', neutral: '회색 마루·타일', deep: '진한 원목 마루' },
+                        wall: { warm: '따뜻한 흰 벽지', cool: '맑은 흰 벽지', neutral: '회색 벽지', deep: '진한 나무 벽' } };
+    const NUM_WORD = ['', '한', '두', '세', '네'];
+    function packResult(res) {
+        const mc = { wall: res.wall ? packColor(res.wall) : null, floor: res.floor ? packColor(res.floor) : null, shadow: Math.round(res.shadow * 10) / 10, at: Date.now() };
+        mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor) : null;
+        return mc;
+    }
+    function renderCust() {
+        const ov = document.getElementById('roomColorCust');
+        if (!ov || !st || !st.cust) return;
+        const o = st.cust, keys = stepKeys(), res = compute(), cv = st.photos[0];
+        const done = keys.every(k => pinsOf(k).length), activeKey = keys[st.active];
+        let h = '<button type="button" class="cm-back" onclick="RoomColor.cancelCustomer()" aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button>';
+        h += '<div class="cm-stage">';
+        // 왼쪽: 사진 (없으면 찍기·불러오기)
+        h += '<div class="cm-photo">';
+        if (cv) {
+            h += `<div class="cm-wrap" id="cmWrap" style="aspect-ratio:${cv.width} / ${cv.height}">`;
+            keys.forEach((k, i) => pinsOf(k).forEach(p => {
+                if (MULTI[k]) h += `<span class="cm-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv) / cv.width * 100).toFixed(2)}%"></span>`;
+                h += `<span class="cm-dot" style="left:${p.x * 100}%;top:${p.y * 100}%">${i + 1}</span>`;
+            }));
+            h += '</div>';
+        } else {
+            h += '<div class="cm-empty"><p class="font-serif-kr">걸레받이에 <b>회색·흰 카드</b>를 기대어 놓고<br>바닥과 벽이 함께 나오게 한 장 찍어 주세요</p>';
+            h += '<label class="cm-go font-serif-kr">사진 찍기 · 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
+            h += '<p class="cm-note">사진은 저장되지 않아요</p></div>';
+        }
+        h += '</div>';
+        // 오른쪽: 차례 목록 → 결과
+        h += '<div class="cm-side">';
+        h += `<span class="q-meta">${esc(o.name)} · 색</span>`;
+        h += `<h2 class="cm-title font-serif-kr">${done ? '이 공간의 색을 찾았어요' : (cv ? `사진 속 ${NUM_WORD[keys.length] || keys.length} 곳을 차례로 눌러 주세요` : '먼저 사진을 찍어 주세요')}</h2>`;
+        h += `<p class="cm-sub">${done ? (o.doneNote || '') : '회색·흰 카드로 사진의 빛을 맞춰서 실제 색을 찾아요.'}</p>`;
+        h += '<ul class="cm-steps">';
+        keys.forEach((k, i) => {
+            const n = pinsOf(k).length, on = cv && i === st.active && !done;
+            const c = n && (k === 'wall' || k === 'floor') ? res[k] : null;
+            h += `<li class="${n ? 'done' : (on ? 'on' : '')}${on && n ? ' on' : ''}" onclick="RoomColor.custStep(${i})"><span class="cm-n">${n ? '✓' : i + 1}</span>${CUST_LABEL[k]}`
+                + (on ? `<small>${n && MULTI[k] ? '다른 곳도 누르면 평균해요' : '사진에서 눌러 주세요'}</small>` : '')
+                + (c ? `<i style="background:${c.hex}"></i>` : '') + '</li>';
+        });
+        h += '</ul>';
+        if (res.cardsSwapped) h += '<p class="cm-alert">흰 카드와 회색 카드를 바꿔 누른 것 같아요. 목록에서 카드를 눌러 다시 찍어 주세요.</p>';
+        else if (res.shadow >= SHADOW_DL) h += '<p class="cm-alert">카드에 그림자가 졌어요. 그대로 써도 되고, 조금 옮겨 다시 찍으면 더 정확해요.</p>';
+        if (done && !res.cardsSwapped) {
+            h += '<div class="cm-res">';
+            ['floor', 'wall'].forEach(k => {
+                const c = res[k];
+                if (!c) return;
+                h += `<div><i style="background:${c.hex}"></i><span><b class="font-serif-kr">${esc(cardName(k, c.cls.tone))}</b><small>${k === 'wall' ? '벽' : '바닥'} · ${CUST_DESC[k][c.cls.tone] || ''}</small></span></div>`;
+            });
+            h += '</div>';
+        }
+        h += '<div class="cm-foot">';
+        h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">지금은 못 재요 · 상담 때 카드로</button>' : '<span></span>';
+        if (cv) h += '<label class="cm-skip">사진 바꾸기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
+        if (done && !res.cardsSwapped) h += `<button type="button" class="cm-go font-serif-kr" onclick="RoomColor.finishCustomer()">${esc(o.doneLabel || '담기')}</button>`;
+        h += '</div></div></div>';
+        ov.innerHTML = h;
+        const wrap = document.getElementById('cmWrap');
+        if (wrap && cv) { wrap.prepend(cv); wrap.onpointerdown = onTap; }
+    }
+    function closeCustomer() {
+        const ov = document.getElementById('roomColorCust');
+        if (ov) { ov.hidden = true; ov.innerHTML = ''; }
+        st = null;      // 사진은 버림
     }
 
     window.RoomColor = {
@@ -437,10 +516,36 @@
                 + `<span class="rc-sum-btns"><button type="button" onclick="openRoomColorFinder(${room.id})">${mc.wall && mc.floor ? '이어주는 원단 보기' : '원단 찾기'}</button>`
                 + `<button type="button" onclick="RoomColor.open(${room.id})">다시 재기</button></span></div>`;
         },
+        // ---- 고객 화면 모양 (20번) ----
+        openCustomer(opts) {
+            const parts = opts.parts === 'wall' ? ['wall'] : (opts.parts === 'floor' ? ['floor'] : ['floor', 'wall']);
+            st = { roomId: null, photos: [null, null], view: 0, active: 0, pins: {}, cust: opts, keys: ['gray', 'white'].concat(parts) };
+            let ov = document.getElementById('roomColorCust');
+            if (!ov) {
+                ov = document.createElement('div');
+                ov.id = 'roomColorCust';
+                ov.className = 'cm-overlay';
+                document.body.appendChild(ov);
+            }
+            ov.hidden = false;
+            renderCust();
+        },
+        isCustomerOpen() { return !!(st && st.cust); },
+        custStep(i) { if (!st || !st.photos[0]) return; st.active = i; renderCust(); },      // 목록을 눌러 그 자리를 다시 찍음
+        cancelCustomer() { const o = st && st.cust; closeCustomer(); if (o && o.onCancel) o.onCancel(); },
+        skipCustomer() { const o = st && st.cust; closeCustomer(); if (o && o.onSkip) o.onSkip(); },
+        finishCustomer() {
+            if (!st || !st.cust) return;
+            const o = st.cust, res = compute();
+            if (!(res.wall || res.floor) || res.cardsSwapped) return;
+            const mc = packResult(res);
+            closeCustomer();
+            o.onDone(mc);
+        },
         file: onFile,
         removeWall: removeWallPhoto,
         _loadImage: (src, which) => loadImage(src, which || 0),      // 미리보기 시험용
         _state: () => st && compute(),
-        rgbToLab, labToHex, classifyLab
+        rgbToLab, labToHex, classifyLab, bridgeOf
     };
 })();

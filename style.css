@@ -101,7 +101,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     overflow: hidden;
 }
 
-#v2FloatingPrevBtn, #v2HomeBtn, .finder-show-close {
+#v2FloatingPrevBtn, #v2HomeBtn, .finder-show-close, .cm-back {
     position: fixed;
     top: 2rem;
     left: 2rem;
@@ -1261,6 +1261,101 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-subacts { display: flex; gap: 1.4rem; }
 .dos-subacts button, .fin-sub button { background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
 
+/* ===== 색 재기 · 고객 화면 모양 (20번, room-color.js): 왼쪽 사진, 오른쪽 차례 목록. 숫자 없이 색 조각 + 바닥·벽 이름 ===== */
+.cm-overlay { position: fixed; inset: 0; z-index: 250; background: #fbf9f5; }
+.cm-overlay[hidden] { display: none; }
+.cm-back { opacity: 1; pointer-events: auto; }
+.cm-stage { height: 100%; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr); }
+.cm-photo { position: relative; min-height: 0; margin: 1.5rem 0 1.5rem 1.5rem; padding-top: 3.6rem; display: flex; align-items: center; justify-content: center; }
+.cm-wrap { position: relative; max-width: 100%; max-height: 100%; width: auto; height: 100%; touch-action: none; cursor: crosshair; border-radius: 6px; overflow: hidden; }
+.cm-wrap canvas { display: block; width: 100%; height: 100%; }
+.cm-dot { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #91401a, 0 2px 8px rgba(0, 0, 0, 0.25); display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; color: #fff; background: #91401a; pointer-events: none; box-sizing: border-box; }
+.cm-area { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); border: 2px dashed rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: 0 0 0 1px rgba(43, 34, 26, 0.35); pointer-events: none; }
+.cm-empty { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6rem; text-align: center; border: 1.5px dashed #d9cdbd; border-radius: 6px; padding: 2rem; box-sizing: border-box; }
+.cm-empty p { margin: 0; font-size: 1.15rem; line-height: 1.7; color: #2b221a; }
+.cm-note { font-size: 0.82rem !important; color: #8a7a6a !important; }
+.cm-side { padding: 3rem 2.6rem 2rem; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; text-align: left; }
+.cm-side .q-meta { margin-bottom: 1rem; }
+.cm-title { margin: 0; font-size: 1.75rem; font-weight: 600; line-height: 1.45; letter-spacing: -0.02em; color: #2b221a; }
+.cm-sub { margin: 0.8rem 0 0; font-size: 0.92rem; line-height: 1.6; color: #6f5f4f; min-height: 1.4em; }
+.cm-steps { margin: 1.6rem 0 0; padding: 0; list-style: none; border-top: 2px solid #2b221a; }
+.cm-steps li { display: flex; align-items: center; gap: 0.9rem; padding: 0.95rem 0; border-bottom: 1px solid #e5dcd0; font-size: 1.05rem; color: #a89a8b; cursor: pointer; }
+.cm-steps li small { font-size: 0.82rem; font-weight: 500; color: #91401a; }
+.cm-n { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid currentColor; display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; box-sizing: border-box; }
+.cm-steps li.on { color: #2b221a; font-weight: 700; }
+.cm-steps li.on .cm-n { background: #91401a; border-color: #91401a; color: #fff; }
+.cm-steps li.done { color: #2b221a; }
+.cm-steps li.done .cm-n { background: #2b221a; border-color: #2b221a; color: #fff; }
+.cm-steps li > i { margin-left: auto; width: 28px; height: 28px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
+.cm-alert { margin: 1rem 0 0; font-size: 0.88rem; line-height: 1.55; color: #91401a; }
+.cm-res { margin-top: 1.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.cm-res > div { display: flex; gap: 0.7rem; align-items: center; }
+.cm-res i { flex: none; width: 44px; height: 54px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
+.cm-res b { display: block; font-size: 1.05rem; color: #2b221a; }
+.cm-res small { font-size: 0.8rem; color: #8a7a6a; }
+.cm-foot { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 0.6rem 1.2rem; padding-top: 1.4rem; }
+.cm-go { background: none; border: none; cursor: pointer; padding: 0.4rem 0.1rem 0.3rem; font-size: 1.3rem; font-weight: 700; color: #91401a; border-bottom: 1.5px solid #91401a; }
+.cm-skip { background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem; font-family: Pretendard, sans-serif; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 760px) {
+    .cm-stage { grid-template-columns: 1fr; grid-template-rows: 46vh auto; overflow-y: auto; }
+    .cm-photo { margin: 1rem; }
+}
+/* "앞 공간과 같나요?" 질문 아래 이 집의 기본 색 (벽 위 · 바닥 아래, 중심 화면과 같은 모양) */
+.ask-house { position: relative; z-index: 10; display: inline-flex; flex-direction: column; gap: 0.35rem; margin-top: 1rem; padding: 0.8rem 1.4rem; border-top: 1px solid #e5dcd0; border-bottom: 1px solid #e5dcd0; text-align: left; }
+.ask-house-k { font-size: 0.8rem; color: #8a7a6a; margin-bottom: 0.15rem; }
+
+/* ===== 중심 화면 (20번): 시작과 끝이 같은 모양. 빈 띠·빈 칸(빗금)이 상담할수록 색으로 채워짐 ===== */
+.dos-stage .dos-sheet { max-width: 760px; }
+.dos-phase { font-family: Pretendard, sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em; color: #91401a; }
+.dos-stage .dos-who { margin: 0.8rem 0 0.3rem; }
+.dos-lead { margin: 1.4rem 0 2rem; font-size: 1.55rem; font-weight: 600; line-height: 1.5; letter-spacing: -0.02em; color: #2b221a; }
+.dos-lead small { display: block; margin-top: 0.35rem; font-family: Pretendard, sans-serif; font-size: 0.92rem; font-weight: 400; letter-spacing: 0; color: #6f5f4f; }
+/* 맨 위 공간 전체 색 띠 + 아래 공간 이름 */
+.dos-house { margin: -0.6rem 0 2.2rem; }
+.dos-house-strip { display: flex; height: 22px; border-radius: 3px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.08); }
+.dos-house-strip i { flex: 1; transition: background-color 0.45s ease; }
+.dos-house-cap { display: flex; margin-top: 0.35rem; font-size: 0.74rem; color: #8a7a6a; }
+.dos-house-cap span { flex: 1; text-align: center; }
+.dos-rmeta { font-family: Pretendard, sans-serif; font-size: 0.85rem; color: #8a7a6a; }
+/* 크기 | 벽 · 바닥 (벽이 위) */
+.dos-prep { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #e5dcd0; }
+.dos-prep > div { padding: 0.95rem 0; }
+.dos-prep > div + div { border-left: 1px solid #e5dcd0; padding-left: 1.2rem; }
+.dos-k { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; color: #8a7a6a; }
+.dos-v { margin-top: 0.1rem; font-size: 1.1rem; font-weight: 700; color: #2b221a; }
+.dos-t { margin-top: 0.1rem; font-size: 0.8rem; color: #6f5f4f; }
+.dos-t.is-warn { color: #91401a; }
+.dos-wf { display: flex; flex-direction: column; gap: 0.35rem; }
+.dos-wfrow { display: flex; align-items: center; gap: 0.7rem; }
+.dos-wfk { width: 2.2rem; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; color: #8a7a6a; }
+.dos-wfrow > i { flex: none; width: 34px; height: 22px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
+.dos-wfn { font-size: 1.05rem; font-weight: 700; color: #2b221a; }
+.dos-wf .dos-t { margin-top: 0.15rem; padding-left: 2.9rem; }
+/* 공간 색 띠: 벽 · 바닥 · 원단 칸 */
+.dos-cband { display: flex; height: 76px; border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.08); }
+.dos-cband > div { position: relative; transition: background-color 0.45s ease; }
+.dos-cband > div span { position: absolute; left: 0.55rem; bottom: 0.4rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; color: rgba(43, 34, 26, 0.55); }
+.dos-cband > div.is-dark span { color: rgba(255, 255, 255, 0.75); }
+.dos-room > .dos-why { margin: 0.7rem 0 0.2rem; font-size: 0.95rem; line-height: 1.55; }
+.dos-why.is-muted { color: #a89a8b; }
+.dos-room > .dos-why + .dos-item { margin-top: 0.6rem; }
+/* 방금 원단을 고른 공간: 띠 칸은 왼쪽에서 오른쪽으로, 원단 조각은 아래에서 위로 0.7초 */
+.dos-house-strip .fill-in, .dos-cband .fill-in { animation: dosFillIn 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: left; }
+.dos-sw.fill-in { animation: dosFillUp 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: bottom; }
+@keyframes dosFillIn { from { transform: scaleX(0); } }
+@keyframes dosFillUp { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) { .dos-house-strip .fill-in, .dos-cband .fill-in, .dos-sw.fill-in { animation: none; } }
+@media (max-width: 760px) { .dos-prep { grid-template-columns: 1fr; } .dos-prep > div + div { border-left: 0; padding-left: 0; border-top: 1px solid #e5dcd0; } }
+/* 수정하기: 크기(실측 화면 모양) + 벽 · 바닥 줄 + 저장 / 이 공간 삭제 */
+.ed-color { width: 100%; max-width: 760px; margin-top: 1.4rem; padding: 1rem 1.2rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; border-bottom: 1px solid #e5dcd0; box-sizing: border-box; text-align: left; }
+.ed-color .dos-wfrow { width: 100%; }
+.ed-color .dos-wfrow > i { width: 40px; height: 28px; }
+.ed-btn { margin-left: auto; background: none; border: none; cursor: pointer; padding: 0 0 0.1rem; font-size: 0.9rem; font-weight: 700; color: #91401a; border-bottom: 1.5px solid #91401a; }
+.ed-sub { background: none; border: none; cursor: pointer; padding: 0.5rem 0.2rem; font-family: Pretendard, sans-serif; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
+.ed-note { margin-top: 1rem; }
+.ed-acts { display: flex; align-items: flex-end; gap: 2.4rem; margin-top: 1.6rem; }
+.ed-acts .msr-add { margin-top: 0; }
+
 /* ===== 최종 제안 (= 견적서): 가운데에 견적서 종이 한 장(저장·인쇄되는 이미지 그대로), 버튼·시공비 입력은 종이 밖 오른쪽 ===== */
 .fin-stage { width: 100vw; height: 100vh; height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fbf9f5; box-sizing: border-box; display: flex; justify-content: center; align-items: flex-start; gap: 3.2rem; padding: 2rem 2rem 2rem 6rem; color: #2b221a; }
 .fin-paper { flex: 0 1 auto; display: flex; flex-direction: column; gap: 1.2rem; }
@@ -1348,6 +1443,12 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     background: rgba(43, 34, 26, 0.74); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
 .bookmark-stage .step-q { color: var(--band-ink); text-shadow: none; }
+/* 질문 판 바로 아래 작은 글자 버튼 (속지 느낌의 "잘 모르겠어요 · 추천대로"). 사진 위에서도 읽히게 같은 갈색 반투명 */
+.bookmark-stage .step-skip { position: absolute; left: 50%; top: 5.3rem; z-index: 40; transform: translateX(-50%); padding: 0.4rem 1.1rem 0.45rem; border: none; border-radius: 999px; cursor: pointer;
+    background: rgba(43, 34, 26, 0.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    font-size: 0.85rem; font-weight: 600; color: var(--band-ink); text-decoration: underline; text-underline-offset: 4px; white-space: nowrap; }
+.bookmark-stage .step-skip:active { background: rgba(43, 34, 26, 0.8); }
+.bookmark-stage .step-skip.was-picked { color: rgba(239, 230, 218, 0.55); }
 .bookmark-stage .step-sub { color: rgba(239, 230, 218, 0.72); text-shadow: none; }
 
 /* 견본 칩: 보이는 칩 22×30, 누르는 자리 44×48 (칩 사이 간격은 누르는 자리로 생김). 아래 한 줄만, 오른쪽 정렬
@@ -1361,12 +1462,13 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fab-more::before { content: ""; position: absolute; left: 11px; top: 9px; width: 22px; height: 30px; box-shadow: inset 0 0 0 1px rgba(239, 230, 218, 0.45); }
 .fab-more::after { content: ""; position: absolute; left: 11px; right: 11px; bottom: 3px; height: 2px; background: var(--band-ink, #efe6da); opacity: 0; }
 .fab-more.on::after { opacity: 1; }
-/* 모든 색 판: 사진 아래쪽(띠 바로 위)에서 올라옴 */
-.fab-allcolors { position: absolute; left: 0; right: 0; bottom: var(--band-h, 205px); z-index: 13; padding: 0.7rem 1rem 0.5rem; background: #2b221a;
-    --band-ink: #efe6da; opacity: 0; transform: translateY(12px); transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1); cursor: default; }
-.fab-allcolors.on { opacity: 1; transform: none; }
-.fab-allcolors-in { display: flex; flex-wrap: wrap; justify-content: flex-start; }
-@media (prefers-reduced-motion: reduce) { .fab-allcolors { transition: none; } }
+/* "+7"을 누르면 띠 안에서 칩을 모두 펼침 (아래 줄부터 위로). 띠 안에 다 들어가면 띠 그대로, 넘칠 때만 넘친 줄이 사진 위로 (띠와 같은 갈색) */
+.bookmark-card.is-allcolors .fab-band { z-index: 13; }
+.bookmark-card.is-allcolors .fab-chips { background: #2b221a; }
+.fab-more.is-fold { font-family: Pretendard, sans-serif; font-size: 0.74rem; }
+.fab-more.is-fold::before { display: none; }
+/* 칩·"+7"을 누를 때는 원단 칸 전체가 밝아지지 않게 (깜빡임) */
+.bookmark-card:has(.fab-chips :active)::before { background: rgba(255, 255, 255, 0); transition: none; }
 .fab-chip > i { display: block; width: 22px; height: 30px; box-shadow: inset 0 0 0 1px rgba(239, 230, 218, 0.3); transition: transform 0.15s ease; }
 .fab-chip:active > i { transform: scale(0.92); }
 .fab-chip::after { content: ""; position: absolute; left: 11px; right: 11px; bottom: 3px; height: 2px; background: var(--band-ink, #efe6da); opacity: 0; transition: opacity 0.15s ease; }

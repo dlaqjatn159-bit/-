@@ -104,6 +104,7 @@ function handleBack() {
     if (appMode === 'staff' && staffLocked) return false;                          // 잠긴 상태: 아무것도 안 함
     if (window.concierge && window.concierge.isSeeking && window.concierge.isSeeking()) return false;     // "찾는 중" 화면은 끝날 때까지 기다림
     if (visible('roomColorOverlay')) { RoomColor.close(); return false; }
+    if (visible('roomColorCust')) { RoomColor.cancelCustomer(); return false; }        // 고객 화면 색 재기 = ← 와 같음
     if (visible('ticketModal')) { closeTicketModal(); return false; }
     if (closeFinderSlots()) return false;
     if (document.querySelector('#finderOut .finder-card.is-open')) { finderOpenCard(null); return false; }
@@ -440,7 +441,8 @@ let __lastDraftJson = '';
 let __historyUnsaved = null;       // 저장에 실패한 이력 목록 (창을 닫기 전까지 기억 → 백업·정리 후 다시 저장)
 
 function collectConsultation() {
-    const src = (appMode === 'staff' || !window.concierge) ? rooms : window.concierge.getRoomsForSave();
+    // 직원 화면: 직원 공간 목록 + 고객 화면에서 공간 추가만 하고 아직 상담 전인 공간
+    const src = !window.concierge ? rooms : (appMode === 'staff' ? rooms.concat(window.concierge.getPendingRoomsForSave ? window.concierge.getPendingRoomsForSave() : []) : window.concierge.getRoomsForSave());
     return {
         name: ((document.getElementById('custName') || {}).value || '').trim(),
         phone: ((document.getElementById('custPhone') || {}).value || '').trim(),
@@ -448,6 +450,7 @@ function collectConsultation() {
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
             roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
             measuredColor: r.measuredColor || null,          // 방 색 재기로 잰 벽·바닥 색 (사진은 저장 안 함)
+            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null,      // 중심 화면: 공간 추가 때 정한 크기·색 출처
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
         installFee: globalInstallFee,
