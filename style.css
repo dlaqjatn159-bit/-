@@ -871,27 +871,16 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 /* 화면 크기 계산이 외부 도구(Tailwind) 없이도 같게 나오도록 */
 .bookmark-stage, .bookmark-canvas, .ambient-stage, .tailor-stage { box-sizing: border-box; }
 
-/* 원단 칸: 앞 색 + 오른쪽에 겹쳐 보이는 다음 색들 (사전 옆면처럼) */
+/* 원단 칸: 한 원단 = 한 칸. 견본 칩으로 색을 바꾸면 새 색이 나오며 이전 색이 위에서 사라짐 */
 .fab-panel { position: relative; overflow: hidden; background: #2b221a; }
 .fab-panel > .bookmark-card.color-top {
-    position: absolute; top: 0; bottom: 0; left: 0;          /* 오른쪽 끝은 뒤 색 띠 폭만큼 비움 (style에서 지정) */
+    position: absolute; top: 0; bottom: 0; left: 0;
     user-select: none; -webkit-user-select: none;
     display: flex; flex-direction: column; justify-content: flex-end;
-    box-shadow: 6px 0 14px rgba(0, 0, 0, 0.28); z-index: 2;  /* 앞장이 뒷장 위에 놓인 느낌 */
+    z-index: 2;
 }
 .fab-panel > .is-leaving { z-index: 15; transition: opacity 0.22s ease; }   /* 이전 색이 위에서 사라지며 새 색이 드러남 */
-.deck-edges { position: absolute; top: 0; bottom: 0; right: 0; display: flex; z-index: 1; }
-.deck-edge {
-    position: relative; height: 100%; border: none; padding: 0; margin: 0; cursor: pointer;
-    background-size: cover; background-position: center;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.22);                /* 한 장씩 겹친 그림자 */
-    border-left: 1px solid rgba(255, 255, 255, 0.35);
-}
-.deck-edge::after { content: ""; position: absolute; inset: 0; background: rgba(20, 14, 10, 0.08); transition: background 0.15s ease; }
-.deck-edge:nth-child(2)::after { background: rgba(20, 14, 10, 0.16); }   /* 뒤로 갈수록 살짝 어둡게 */
-.deck-edge:nth-child(3)::after { background: rgba(20, 14, 10, 0.24); }
-.deck-edge:active::after { background: rgba(255, 255, 255, 0.18); }
-/* 원단 칸 아래 띠 (ㄴ자): 세로 이름(아래 정렬) + 오른쪽 아래 가로 글(색 이름, 짧은 설명). 위계 = 이름 > 색 이름 > 설명 > 1/n */
+/* 카드 아래 글자: 세로 이름(아래 정렬) + 오른쪽 세로 작은 글. 원단 칸은 오른쪽 끝에 견본 칩 */
 .fab-gradient { background: linear-gradient(180deg, rgba(40,28,21,0) 0%, rgba(40,28,21,0.1) 50%, rgba(40,28,21,0.7) 72%, rgba(40,28,21,0.94) 100%) !important; }
 .fab-band {
     position: absolute; left: 0; right: 0; bottom: 2.4rem; z-index: 10;
@@ -927,16 +916,6 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fab-vdesc.vstack > span:first-child { margin-top: 0; }
 .fab-hlabel { font-size: 0.98rem; font-weight: 600; color: rgba(255, 255, 255, 0.92); line-height: 1.2; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45); }
 .fab-hreason { font-size: 0.8rem; font-weight: 500; color: rgba(255, 255, 255, 0.78); line-height: 1.35; margin: 0; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45); }
-/* 1/n: 아래 정렬, 작게. 1은 왼쪽 위, n은 오른쪽 아래, 사이를 사선이 지나감 */
-.deck-count2 {
-    position: relative; margin-left: auto !important; flex-shrink: 0; align-self: flex-end;
-    width: 1.7rem; height: 1.85rem; color: rgba(255, 255, 255, 0.82); font-family: 'Noto Serif KR', Georgia, serif;
-}
-.deck-count2 b { position: absolute; left: 0.05rem; top: -0.05rem; font-size: 0.8rem; font-weight: 700; line-height: 1; }
-.deck-count2 em { position: absolute; right: 0; bottom: 0; font-style: normal; font-size: 0.64rem; font-weight: 500; line-height: 1; opacity: 0.8; }
-.deck-count2 i { position: absolute; left: 50%; top: 50%; width: 1.9rem; height: 1px; background: rgba(255, 255, 255, 0.6); transform: translate(-50%, -50%) rotate(-55deg); }
-.fab-band .deck-count2 { margin-left: auto !important; }
-.fab-side + .deck-count2, .fab-vname + .deck-count2 { margin-left: auto !important; }
 /* 다른 단계 카드도 원단 칸과 같은 ㄴ자 배치 (공간·공간 종류·바닥·벽·채광·분위기·구성 등) */
 .lcard .fab-band { padding-right: 1.1rem; }
 .lcard .fab-hreason { font-size: 0.84rem; }
@@ -945,11 +924,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .space-row .space-del { bottom: 2.1rem; }                                  /* 삭제 버튼도 글자 아래선에 맞춤 */
 /* 원단 화면에서는 Re.dam 표시를 마지막 칸 앞장 오른쪽 아래(뒤 색 띠 왼쪽)에 세로로 */
 .card-brand {
-    position: absolute; right: 0.75rem; bottom: 2.4rem; z-index: 12; writing-mode: vertical-rl; line-height: 1;   /* 이름·1/n과 같은 아래선 */
+    position: absolute; right: 0.75rem; bottom: 2.4rem; z-index: 12; writing-mode: vertical-rl; line-height: 1;   /* 이름·견본 칩과 같은 아래선 */
     font-family: 'Noto Serif KR', Georgia, serif; font-size: 0.85rem; font-weight: 400; letter-spacing: 0.2em;
     color: #fff; opacity: 0.7; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); cursor: pointer; user-select: none; padding: 0.4rem 0.4rem 0;
 }
-.fab-band.is-last { padding-right: 2.7rem; }      /* 마지막 칸: 1/n이 Re.dam 왼쪽에 오도록 */
+.fab-band.is-last { padding-right: 2.7rem; }      /* 마지막 칸: 견본 칩이 Re.dam 왼쪽에 오도록 */
 #trackCurationSection:has(.fab-panel) #brandMark { display: none; }
 .bookmark-name, .bookmark-desc { word-break: keep-all; overflow-wrap: anywhere; }   /* 한글이 글자 중간에서 끊기지 않게 */
 .name-label { font-size: 0.62em; font-weight: 500; opacity: 0.8; margin-left: 0.3em; }
@@ -1200,3 +1179,39 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .key-btn:nth-last-child(-n+3) { border-bottom: none; }
 .key-btn:active { background: #f4ede2; }
 @media (max-width: 700px) { .keypad-sheet, .keypad-sheet.at-left { border-radius: 0; border-left: none; border-right: none; border-bottom: none; } }
+
+/* ==========================================================================
+   고객 카드 화면 글자 띠 (10-14): 사진·색은 칸 위쪽에 그대로(그라데이션 없음),
+   아래 짙은 갈색 띠(205px)에 세로 이름 + 세로 작은 글. 칸마다 따로(칸 사이 선이 띠까지 이어짐)
+   바닥·벽·분위기·구성·속지 느낌·원단 화면과 직원 화면의 "고객에게 보여주기"가 함께 씀
+   ========================================================================== */
+.bookmark-stage { --band-h: 205px; --band-ink: #efe6da; --band-sub: rgba(239, 230, 218, 0.7); }
+.bookmark-stage .bookmark-card { background-color: #2b221a; }
+.bookmark-stage .bookmark-card .fab-gradient { display: none; }
+.bookmark-stage .bookmark-card .bookmark-bg,
+.bookmark-stage .bookmark-card .fabric-photo { bottom: auto; height: calc(100% - var(--band-h)); }
+.bookmark-stage .bookmark-card:hover .bookmark-bg, .bookmark-stage .bookmark-card:hover .fabric-photo { transform: none; }   /* 커지면 띠 위로 넘침 */
+.bookmark-stage .fab-band { bottom: 1.5rem; color: var(--band-ink); }
+.bookmark-stage .fab-vname { text-shadow: none; font-size: min(1.95rem, calc((var(--band-h) - 2.7rem) / var(--len, 3) / 1.14)); }   /* 띠 안에 들어가게 */
+.bookmark-stage .fab-vdesc { color: var(--band-sub); text-shadow: none; }
+.bookmark-stage .fab-hlabel, .bookmark-stage .fab-hreason { text-shadow: none; }
+.bookmark-stage .card-brand { bottom: 1.5rem; color: var(--band-ink); text-shadow: none; }
+.bookmark-stage .fab-band.is-last { padding-right: 3.3rem; }   /* 마지막 칸: 견본 칩과 Re.dam 사이 띄움 */
+#trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { bottom: 0.8rem; text-shadow: none; }   /* 글자 아래선(1.5rem)과 맞춤 */
+.bookmark-stage .bookmark-card.was-picked .fab-vname, .bookmark-stage .bookmark-card.was-picked .fab-vdesc { color: rgba(239, 230, 218, 0.45); }
+
+/* 위 질문: 그라데이션 대신 글자 뒤 작은 판(띠와 같은 갈색, 반투명) */
+.bookmark-stage .step-head {
+    left: 50%; right: auto; top: 1.15rem; transform: translateX(-50%);
+    width: max-content; max-width: 70%; padding: 0.65rem 1.7rem 0.75rem; border-radius: 999px;
+    background: rgba(43, 34, 26, 0.74); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.bookmark-stage .step-q { color: var(--band-ink); text-shadow: none; }
+.bookmark-stage .step-sub { color: rgba(239, 230, 218, 0.72); text-shadow: none; }
+
+/* 견본 칩 (원단 칸): 세로로 긴 각진 조각 12×18, 지금 색은 아래 밑줄. 누르는 자리는 칩보다 넉넉하게 */
+.fab-chips { margin-left: auto !important; display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; align-content: flex-end; max-width: 9.6rem; padding-bottom: 0.05rem; pointer-events: auto; }
+.fab-chip { position: relative; margin: 0; padding: 9px 3px 7px; border: 0; background: none; cursor: pointer; }
+.fab-chip > i { display: block; width: 12px; height: 18px; box-shadow: inset 0 0 0 1px rgba(239, 230, 218, 0.28); }
+.fab-chip::after { content: ""; position: absolute; left: 3px; right: 3px; bottom: 2px; height: 2px; background: var(--band-ink, #efe6da); opacity: 0; transition: opacity 0.15s ease; }
+.fab-chip.on::after { opacity: 1; }
