@@ -145,6 +145,7 @@
             roomType: r.roomType || null,
             lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
             diagnosed: !!r.diagnosed,
+            measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
                 let realFab = liveDb.find(f => f.id === c.fabricId);
@@ -226,8 +227,9 @@
         hideKeypadDirectly();
         const optOv = document.getElementById('optInfoOverlay');
         if (optOv) optOv.style.display = 'none';
+        // 몇 번째 칸(속지·겉지)이었는지도 같이 적어 둠 → 뒤로 가면 겉지에서 속지 고르기로 돌아감
         if (pushHistory !== false && state.step !== nextStep) {
-            stepHistory.push(state.step);
+            stepHistory.push({ step: state.step, idx: state.currentItemIndex });
         }
         state.step = nextStep;
         updatePrevButtonVisibility();
@@ -238,7 +240,8 @@
         hideKeypadDirectly();
         if (stepHistory.length > 0) {
             const prev = stepHistory.pop();
-            goToStep(prev, false);
+            state.currentItemIndex = prev.idx || 0;
+            goToStep(prev.step, false);
         }
     }
 
@@ -1143,6 +1146,7 @@
                 wantMood: target.wantMood || null,
                 roomType: target.roomType || roomTypeOf(target),
                 lightBlock: target.lightBlock || null, privacy: target.privacy || null, sheerFeel: target.sheerFeel || null,
+                measuredColor: target.measuredColor || null,
                 width: 340,
                 height: 235,
                 shapeFee: true,
@@ -1178,6 +1182,7 @@
             if (same && src) {
                 state.editingRoom.floorTone = src.floorTone;
                 state.editingRoom.wallTone = src.wallTone;
+                state.editingRoom.measuredColor = src.measuredColor || null;      // 같은 바닥·벽이면 잰 색도 같이
                 goToStep("2-Base-Light");
             } else {
                 goToStep("2-Base-Floor");
@@ -1312,6 +1317,7 @@
             state.colorPick = {};
 
             if (state.currentItemIndex + 1 < state.pendingItemQueue.length) {
+                stepHistory.push({ step: state.step, idx: state.currentItemIndex });      // 뒤로 가면 이 칸(속지) 원단 화면으로
                 state.currentItemIndex++;
                 goToStep("3.5-Bridge", false);
             } else {
@@ -1374,6 +1380,7 @@
                 roomTarget.privacy = state.editingRoom.privacy || null;
                 roomTarget.sheerFeel = state.editingRoom.sheerFeel || null;
                 roomTarget.roomType = state.editingRoom.roomType || roomTarget.roomType || null;
+                roomTarget.measuredColor = state.editingRoom.measuredColor || null;
                 roomTarget.diagnosed = true;          // 바닥·벽·채광 진단을 거침 → 제안서에 진단 요약·추천 이유 표시
                 roomTarget.curtains = finalizedCurtains;
                 roomTarget.subtotal = roomSubSum;
@@ -1426,6 +1433,7 @@
                     floorTone: r.floorTone || 'warm', wallTone: r.wallTone || 'cool',
                     lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
                     roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
+                    measuredColor: r.measuredColor || null,
                     isConfigured: true,
                     curtains: r.curtains.map(c => ({ ...c })),
                     subtotal: sub
@@ -1464,9 +1472,13 @@
             return state.roomsCart.filter(r => r.isConfigured).map(r => ({
                 name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
                 roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
+                measuredColor: r.measuredColor || null,
                 curtains: r.curtains
             }));
         },
+        // 바닥·벽 카드 이름 (직원 화면 "방 색 재기"가 자동으로 맞춘 카드를 보여 줄 때 씀)
+        floorNames: FLOOR_NAMES,
+        wallNames: WALL_NAMES,
         // 제안서 화면의 "견적서 저장" / "인쇄": 화면과 같은 디자인의 이미지를 만듦 (app.js)
         saveQuote: function() {
             syncToV1MasterRooms();

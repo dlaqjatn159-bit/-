@@ -24,7 +24,7 @@ let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
 const REDAM_BUILD = '20261023';
 function checkFileVersions() {
-    const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js'];
+    const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
     const old = expected.filter(f => reg[f] !== REDAM_BUILD);
     if (old.length === 0) return;
@@ -378,6 +378,7 @@ function collectConsultation() {
         rooms: src.map(r => ({
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
             roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
+            measuredColor: r.measuredColor || null,          // 방 색 재기로 잰 벽·바닥 색 (사진은 저장 안 함)
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
         installFee: globalInstallFee,
@@ -816,6 +817,9 @@ function openFabricFinder(roomId, curtainId) {
     const t = finderTargetCurtain();
     if (t) finderSel.cat = new Set([finderCurtainKind(t.c)]);
     finderRef = null; if (finderSort === 'sim' || finderSort === 'pair') finderSort = 'light';       // 비슷한 색·속지 짝을 찾던 중이었으면 풀고 시작
+    // 방 색을 잰 공간이면 그 공간의 "벽·바닥 이어주기" 순으로 시작
+    const mode = t && ['bridge', 'wall', 'floor'].find(m => finderRoomModeOk(t.room, m));
+    if (mode) finderSort = `room:${mode}:${t.room.id}`;
     finderView = 'grid';
     showFabricTab('find');
     showStaffView('fabric');
@@ -830,6 +834,36 @@ const FINDER_KEYS = ['mood', 'cat', 'tone', 'light', 'hue', 'sat', 'tex', 'bo', 
 // 정렬. 이 밖에 상담에 고객 화면의 질문(바닥·벽·분위기 등)을 거친 공간이 있으면 공간마다 "○○에 어울리는 순"(fit:공간번호)이 생김
 const FINDER_SORTS = { light: '밝은 순', dark: '진한 순', book: '책자 순', vivid: '채도 높은 순', muted: '채도 낮은 순', price: '가격 낮은 순', sim: '고른 색과 비슷한 순' };
 const FINDER_SIM_MAX = 16;     // 비슷한 색은 가까운 순으로 16개까지
+// "방 색 재기"(room-color.js)로 벽·바닥을 잰 공간마다 생기는 정렬 (값은 room:<방식>:<공간 id>)
+//  - 이어주기: 벽~바닥을 잇는 선 가까이(BRIDGE_TUBE 안)의 색 중 "이어주는 색"(벽 쪽에 가까운 점)에 가까운 순
+//  - 벽과 맞추기: 벽과 색 차이가 작은 순 / 바닥과 맞추기: 바닥보다 밝은 색 중 "바닥 + 밝기 14" 근처 순
+const FINDER_ROOM_MODES = { bridge: '벽·바닥 이어주기', wall: '벽과 맞추기', floor: '바닥과 맞추기' };
+const BRIDGE_TUBE = 11.5;      // 임시값 (현장 시험 뒤 확정)
+const FLOOR_LIFT = 14;         // 바닥과 맞추기: 바닥보다 이만큼 밝은 색 근처를 먼저 (밝기 88까지)
+function finderRoomModeOk(room, mode) {
+    const mc = room && room.measuredColor;
+    return !!mc && (mode === 'bridge' ? !!(mc.wall && mc.floor && mc.bridge) : !!mc[mode]);
+}
+// 점에서 벽~바닥 선분까지 거리(line)와 이어주는 색까지 거리(target)
+function bridgeDistances(e, mc) {
+    const w = mc.wall, f = mc.floor;
+    const v = [f.L - w.L, f.a - w.a, f.b - w.b], d = [e.L - w.L, e.a - w.a, e.b - w.b];
+    const len2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] || 1;
+    const t = Math.max(0, Math.min(1, (d[0] * v[0] + d[1] * v[1] + d[2] * v[2]) / len2));
+    const line = Math.hypot(d[0] - t * v[0], d[1] - t * v[1], d[2] - t * v[2]);
+    return { line, target: colorDistance(e, mc.bridge) };
+}
+// 잰 공간의 원단 찾기 열기 (방 색 재기 창의 "반영 후 이어주는 원단 찾기", 공간 카드의 "이어주는 원단 보기")
+function openRoomColorFinder(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    const mode = ['bridge', 'wall', 'floor'].find(m => finderRoomModeOk(room, m));
+    if (!mode) return;
+    finderRef = null;
+    finderSort = `room:${mode}:${roomId}`;
+    finderView = 'grid';
+    showFabricTab('find');
+    showStaffView('fabric');
+}
 let finderSel = {};
 let finderSort = 'light';
 let finderRef = null;          // "비슷한 색"의 기준 색 (카드 key)
@@ -944,6 +978,12 @@ function renderFinder() {
     const fitRooms = rooms.filter(r => r.diagnosed).sort((x, y) => (target ? (y.id === target.room.id) - (x.id === target.room.id) : 0));
     const fitRoom = finderSort.startsWith('fit:') ? fitRooms.find(r => 'fit:' + r.id === finderSort) : null;
     if (finderSort.startsWith('fit:') && !fitRoom) finderSort = 'light';
+    // 방 색을 잰 공간 (넣을 칸의 공간이 먼저)
+    const measuredRooms = rooms.filter(r => ['bridge', 'wall', 'floor'].some(m => finderRoomModeOk(r, m))).sort((x, y) => (target ? (y.id === target.room.id) - (x.id === target.room.id) : 0));
+    const rm = /^room:(bridge|wall|floor):(\d+)$/.exec(finderSort);
+    const mRoom = rm ? measuredRooms.find(r => r.id === Number(rm[2]) && finderRoomModeOk(r, rm[1])) : null;
+    const mMode = mRoom ? rm[1] : null, mc = mRoom ? mRoom.measuredColor : null;
+    if (rm && !mRoom) finderSort = 'light';
     const byBook = (x, y) => `${x.book} ${x.fabName}`.localeCompare(`${y.book} ${y.fabName}`, 'ko') || colorSort({ name: x.color }, { name: y.color });
     // 값이 없는 색은 늘 뒤로 (그 안에서는 책자 · 원단 · 번호 순)
     const by = (key, dir) => (x, y) => (x[key] == null || y[key] == null) ? ((x[key] == null) - (y[key] == null)) || byBook(x, y) : (dir * (x[key] - y[key])) || byBook(x, y);
@@ -961,7 +1001,24 @@ function renderFinder() {
     } else {
         const words = finderQueryWords();
         list = all.filter(e => finderMatch(e, words));
-        if (fitRoom) {
+        if (mMode) {
+            // 색 값(밝기·붉은기·노란기)이 있는 색만. 거름망(종류·빛 가림 등)은 그대로 적용
+            list = list.filter(finderHasLab);
+            if (mMode === 'bridge') {
+                const lowL = Math.min(mc.wall.L, mc.floor.L) - 4;
+                list.forEach(e => { const d = bridgeDistances(e, mc); e.rline = d.line; e.rd = d.target; e.rscore = d.target * 0.65 + d.line * 0.35; });
+                list = list.filter(e => e.rline <= BRIDGE_TUBE && e.L >= lowL);
+                list.sort((x, y) => x.rscore - y.rscore);
+            } else if (mMode === 'wall') {
+                list.forEach(e => { e.rd = colorDistance(e, mc.wall); });
+                list.sort((x, y) => x.rd - y.rd);
+            } else {
+                const goal = { L: Math.min(88, mc.floor.L + FLOOR_LIFT), a: mc.floor.a, b: mc.floor.b };
+                list = list.filter(e => e.L >= mc.floor.L);
+                list.forEach(e => { e.rd = colorDistance(e, goal); });
+                list.sort((x, y) => x.rd - y.rd);
+            }
+        } else if (fitRoom) {
             // 기존 추천 점수 그대로: 색의 톤·밝기를 입힌 원단으로 calculateFabricMatchScore (점수가 같으면 밝은 색 먼저)
             list.forEach(e => { e.fit = calculateFabricMatchScore(e.view, fitRoom, e.fabric.categoryType); });
             list.sort((x, y) => (y.fit - x.fit) || by('L', -1)(x, y));
@@ -971,7 +1028,8 @@ function renderFinder() {
     const showPrice = finderSort === 'price' || finderSel.price.size > 0;       // 가격대 꼬리표는 가격으로 거르거나 줄 세울 때만 보임
     const sortSel = document.getElementById('finderSort');
     if (sortSel) {
-        const sorts = Object.keys(FINDER_SORTS).filter(k => k !== 'sim' && !(k === 'price' && staffFinderOnly)).map(k => [k, FINDER_SORTS[k]]).concat(fitRooms.map(r => ['fit:' + r.id, `${r.name}에 어울리는 순`]), [['sim', FINDER_SORTS.sim]], pair ? [['pair', '겉지에 어울리는 속지']] : []);
+        const sorts = Object.keys(FINDER_SORTS).filter(k => k !== 'sim' && !(k === 'price' && staffFinderOnly)).map(k => [k, FINDER_SORTS[k]]).concat(fitRooms.map(r => ['fit:' + r.id, `${r.name}에 어울리는 순`]),
+            ...measuredRooms.map(r => ['bridge', 'wall', 'floor'].filter(m => finderRoomModeOk(r, m)).map(m => [`room:${m}:${r.id}`, `${r.name} ${FINDER_ROOM_MODES[m]}`])), [['sim', FINDER_SORTS.sim]], pair ? [['pair', '겉지에 어울리는 속지']] : []);
         sortSel.innerHTML = sorts.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
         sortSel.value = finderSort;
     }
@@ -979,7 +1037,8 @@ function renderFinder() {
     const cnt = document.getElementById('finderCount');
     if (cnt) cnt.innerHTML = sim ? `<b class="font-serif-kr">비슷한 색 ${list.length}개</b><small>거름망은 종류(겉지·속지)만 적용</small>`
         : (pair ? `<b class="font-serif-kr">어울리는 속지 ${list.length}개</b><small>${pairRule} · 거름망은 적용 안 함</small>`
-            : `<b class="font-serif-kr">${list.length}색</b><small>${new Set(list.map(e => e.fabricId)).size}개 원단 · 전체 ${all.length}색</small>`);
+            : (mMode ? `<b class="font-serif-kr">${list.length}색</b><small>${esc(mRoom.name)} ${FINDER_ROOM_MODES[mMode]} · ${{ bridge: '벽과 바닥을 잇는 색 가운데 벽 쪽에 가까운 순', wall: '잰 벽 색과 가까운 순', floor: '바닥 색기를 따르고 바닥보다 밝은 순' }[mMode]} · 색 값이 있는 색만</small>`
+            : `<b class="font-serif-kr">${list.length}색</b><small>${new Set(list.map(e => e.fabricId)).size}개 원단 · 전체 ${all.length}색</small>`));
     const rbox = document.getElementById('finderRef');
     if (rbox) {
         rbox.hidden = !ref;
@@ -990,9 +1049,9 @@ function renderFinder() {
     }
     document.querySelectorAll('#finderViewSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === finderView)));
     if (!all.length) { out.innerHTML = '<div class="finder-empty">보여 줄 원단이 없어요.<br>설정에서 단가표나 비공개 팩을 먼저 불러와 주세요.</div>'; return; }
-    if (finderView === 'map') { out.innerHTML = finderMapHtml(all, new Set(list.map(e => e.key)), ref); return; }
+    if (finderView === 'map') { out.innerHTML = finderMapHtml(all, new Set(list.map(e => e.key)), ref, mc); return; }
     if (!list.length) {
-        out.innerHTML = '<div class="finder-empty">' + (sim ? '비슷한 색을 찾지 못했어요.<br>종류(겉지·속지) 조건을 풀어 보세요.'
+        out.innerHTML = '<div class="finder-empty">' + (mMode ? '잰 색에 맞는 원단을 찾지 못했어요.<br>거름망을 풀거나 다른 찾기 방법을 골라 보세요.' : sim ? '비슷한 색을 찾지 못했어요.<br>종류(겉지·속지) 조건을 풀어 보세요.'
             : (pair ? '어울리는 속지를 찾지 못했어요.<br>분류 탭에서 속지의 톤이 정해져 있는지 확인해 보세요.' : '조건에 맞는 색이 없어요.<br>조건을 하나씩 빼 보세요.')) + '</div>';
         return;
     }
@@ -1012,7 +1071,8 @@ function renderFinder() {
             showPrice ? chip('가격 ' + PRICE_TIER_LABELS[e.priceTier]) : ''
         ].join('');
         const title = e.color ? (e.label || `${e.no}번`) : e.fabName;
-        const light = (e.L != null ? `밝기 ${Math.round(e.L)}` : '밝기 미정') + (sim ? ` · ${colorDistanceWord(e.dist)}` : '') + (pair && e.dist == null ? ' · 톤만 맞춤' : '') + (fitRoom ? ` · 어울림 ${e.fit}` : '');
+        const light = (e.L != null ? `밝기 ${Math.round(e.L)}` : '밝기 미정') + (sim ? ` · ${colorDistanceWord(e.dist)}` : '') + (pair && e.dist == null ? ' · 톤만 맞춤' : '') + (fitRoom ? ` · 어울림 ${e.fit}` : '')
+            + (mMode === 'floor' ? ` · 바닥보다 ${Math.round(e.L - mc.floor.L)} 밝음` : (mMode ? ` · ${mMode === 'wall' ? '벽과' : '이어주는 색과'} ${colorDistanceWord(e.rd)}` : ''));
         const meta = e.color ? `${e.book} ${e.fabName} ${e.no} · ${light}` : `${e.book} · ${light}`;
         // 정보판 안: 찾기 버튼 줄(비슷한 색 · 겉지는 어울리는 속지). 넣기 버튼은 넣을 칸을 고르는 중일 때 카드 맨 아래에 늘 보임
         const finds = (finderHasLab(e) ? `<button type="button" data-sim="${esc(e.key)}">비슷한 색</button>` : '') + (e.cat === 'drape' ? `<button type="button" data-pair="${esc(e.key)}">어울리는 속지</button>` : '');
@@ -1067,7 +1127,7 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape') finderOpen
 // 정렬 바꾸기: "고른 색과 비슷한 순"은 카드의 "비슷한 색"을 누른 뒤에만. 다른 정렬을 고르면 비슷한 색 찾기는 끝남
 function finderSortChange(value) {
     if (value === 'sim' && (!finderRef || finderSort === 'pair')) showToast('카드의 "비슷한 색"을 먼저 눌러 주세요.', 'info');
-    else if (value !== 'pair') { finderSort = ((FINDER_SORTS[value] && !(value === 'price' && staffFinderOnly)) || String(value).startsWith('fit:')) ? value : 'light'; if (finderSort !== 'sim') finderRef = null; }
+    else if (value !== 'pair') { finderSort = ((FINDER_SORTS[value] && !(value === 'price' && staffFinderOnly)) || String(value).startsWith('fit:') || String(value).startsWith('room:')) ? value : 'light'; if (finderSort !== 'sim') finderRef = null; }
     renderFinder();
 }
 function clearFinderRef() { finderRef = null; finderSort = 'light'; renderFinder(); }
@@ -1118,7 +1178,8 @@ function closeFinderShow() {
 function setFinderView(view) { finderView = view === 'map' ? 'map' : 'grid'; renderFinder(); }
 // 색 지도: 가로 = 노란기 b(왼쪽 쿨 · 오른쪽 웜), 세로 = 밝기 L(위가 밝음). 지금 조건에 맞는 색은 진하고 크게, 나머지는 흐리게
 // 색 값(밝기·노란기)이 없는 색은 지도에 나오지 않음. 노란기가 눈금 밖(-12 미만 · 30 초과)인 색은 가장자리에 찍힘
-function finderMapHtml(all, on, ref) {
+// mc: 방 색을 잰 공간의 measuredColor면 [벽]·[바닥] 표지, 둘을 잇는 띠, 이어주는 색 동그라미를 같이 그림
+function finderMapHtml(all, on, ref, mc) {
     const W = 720, H = 400, P = { l: 44, r: 16, t: 20, b: 40 };
     const x = b => P.l + (Math.max(-12, Math.min(30, b)) + 12) / 42 * (W - P.l - P.r);
     const y = L => P.t + (100 - L) / 90 * (H - P.t - P.b);
@@ -1137,8 +1198,28 @@ function finderMapHtml(all, on, ref) {
         return `<circle cx="${x(e.b).toFixed(1)}" cy="${y(e.L).toFixed(1)}" r="${r === 2 ? 10 : (r === 1 ? 7.5 : 5)}" fill="${e.hex || '#cccccc'}" opacity="${r ? 1 : 0.22}" stroke="${r === 2 ? 'var(--brand-accent)' : 'var(--brand-dark)'}" stroke-opacity="${r === 2 ? 1 : 0.35}" stroke-width="${r === 2 ? 3 : 1}"><title>${esc(`${e.fabName} ${e.no} ${e.label}`.replace(/\s+/g, ' ').trim())} · 밝기 ${Math.round(e.L)}</title></circle>`;
     }).join('');
     const missing = all.length - pts.length;
-    return `<div class="finder-map"><svg data-map viewBox="0 0 ${W} ${H}" role="img" aria-label="원단 색을 밝기와 웜·쿨로 펼친 지도">${g}${dots}</svg></div>
-        <p class="finder-map-hint">위로 갈수록 밝고, 오른쪽으로 갈수록 노란기(웜)가 많아요. 진한 점이 지금 조건에 맞는 색이고, 점을 누르면 그 색과 비슷한 색을 찾습니다. 점이 비어 있는 곳은 갖고 있는 책자에 없는 색이라, 새 책자를 고를 때도 참고가 됩니다.${missing ? ` (색 값이 없는 ${missing}색은 지도에 나오지 않아요.)` : ''}</p>`;
+    // 우리 집: 띠·점선은 원단 점 아래, 표지·이어주는 색은 위에 (표지 글씨는 점 오른쪽, 오른쪽 끝이면 왼쪽)
+    let under = '', over = '';
+    if (mc) {
+        const mark = (c, label, color) => {
+            const cx = x(c.b), cy = y(c.L), right = cx < W - 110;
+            return `<g class="finder-map-home" pointer-events="none"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="8" fill="${c.hex}" stroke="${color}" stroke-width="3"/>`
+                + `<rect x="${(right ? cx + 13 : cx - 13 - 74).toFixed(1)}" y="${(cy - 10).toFixed(1)}" width="74" height="20" rx="5" fill="${color}"/>`
+                + `<text x="${(right ? cx + 50 : cx - 50).toFixed(1)}" y="${(cy + 4).toFixed(1)}" text-anchor="middle" fill="#fffdf9" font-weight="700">${label} 밝기 ${Math.round(c.L)}</text></g>`;
+        };
+        if (mc.wall && mc.floor) {
+            const l = `x1="${x(mc.wall.b).toFixed(1)}" y1="${y(mc.wall.L).toFixed(1)}" x2="${x(mc.floor.b).toFixed(1)}" y2="${y(mc.floor.L).toFixed(1)}"`;
+            under = `<g class="finder-map-bridge" pointer-events="none"><line class="band" ${l} stroke-width="38" stroke-linecap="round"/><line class="axis" ${l} stroke-width="2" stroke-dasharray="5 4"/></g>`;
+        }
+        if (mc.bridge) {
+            const bx = x(mc.bridge.b), by = y(mc.bridge.L);
+            over += `<g class="finder-map-bridge" pointer-events="none"><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="12" fill="none" stroke="#91401a" stroke-width="2.5"/><text x="${(bx - 16).toFixed(1)}" y="${(by + 4).toFixed(1)}" text-anchor="end" fill="#91401a" font-weight="700">이어주는 색</text></g>`;
+        }
+        if (mc.wall) over += mark(mc.wall, '벽', '#2b221a');
+        if (mc.floor) over += mark(mc.floor, '바닥', '#8a4a22');
+    }
+    return `<div class="finder-map"><svg data-map viewBox="0 0 ${W} ${H}" role="img" aria-label="원단 색을 밝기와 웜·쿨로 펼친 지도">${g}${under}${dots}${over}</svg></div>
+        <p class="finder-map-hint">위로 갈수록 밝고, 오른쪽으로 갈수록 노란기(웜)가 많아요. 진한 점이 지금 조건에 맞는 색이고, 점을 누르면 그 색과 비슷한 색을 찾습니다. 점이 비어 있는 곳은 갖고 있는 책자에 없는 색이라, 새 책자를 고를 때도 참고가 됩니다.${missing ? ` (색 값이 없는 ${missing}색은 지도에 나오지 않아요.)` : ''}${mc ? '<br>짙은 표지가 잰 벽, 흙빛 표지가 잰 바닥이에요. 둘을 잇는 띠 안이 벽과 바닥을 이어주는 색이고, 동그라미(벽 6.5 : 바닥 3.5, 임시)에 가까울수록 벽 쪽에 어울려요.' : ''}</p>`;
 }
 // 지도에서 누른 자리와 가장 가까운 점 (손가락으로 눌러도 잡히게). 조건에 맞는 진한 점이 가까이 있으면 그 점이 먼저
 function finderMapPick(event, svg) {
@@ -1820,6 +1901,7 @@ function renderRooms() {
                     <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="staff-room-name font-serif-kr outline-none border rounded px-1.5 py-0.5 w-full min-w-0">
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button type="button" onclick="RoomColor.open(${room.id})" class="staff-btn accent whitespace-nowrap">방 색 재기</button>
                     <button onclick="addCurtainToRoom(${room.id})" class="staff-btn whitespace-nowrap flex items-center gap-1">
                         + 추가
                     </button>
@@ -1831,6 +1913,7 @@ function renderRooms() {
                     </button>
                 </div>
             </div>
+            ${window.RoomColor ? RoomColor.summaryHtml(room) : ''}
             <div class="staff-curtains">${curtainsHtml}</div>
             <div class="staff-room-sum">
                 <span class="truncate mr-2">${room.name} 소계</span>
@@ -2494,6 +2577,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 roomType: r.roomType || null,
                 lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
+                measuredColor: r.measuredColor || null,
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";
                     return {
