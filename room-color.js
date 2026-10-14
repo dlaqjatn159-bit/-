@@ -254,6 +254,9 @@
         };
         mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor) : null;
         room.measuredColor = mc;
+        // 중심 화면 색 출처: 직원 화면에서 다시 쟀으면 "이 공간에서 잰 색"(한쪽만 쟀으면 출처는 비우고 부분별로 적음). 잰 부분은 카드 표시를 지움
+        room.colorSrc = mc.wall && mc.floor ? 'measured' : null;
+        if (room.cardParts) { if (res.wall) delete room.cardParts.wall; if (res.floor) delete room.cardParts.floor; }
         if (mc.wall) room.wallTone = mc.wall.tone;          // 고객 화면 바닥·벽 카드에 자동으로 맞춤 → 원단 추천에 바로 쓰임
         if (mc.floor) room.floorTone = mc.floor.tone;
         const name = room.name;

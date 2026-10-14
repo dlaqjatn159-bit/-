@@ -528,10 +528,12 @@ function archiveConsultation(snap, updatedAt) {
 function applySnapshot(snap) {
     roomIdCounter = 1; curtainIdCounter = 100;
     collapsedRooms.clear(); openCurtainDetails.clear();
-    rooms = snap.rooms.map(r => Object.assign({}, r, {
+    // 직원 화면 공간 목록에는 커튼이 있는 공간만. 공간 추가만 하고 아직 상담 전인 공간(커튼 없음)은 고객 화면에만 (견적서·발주서에 빈 공간이 나오지 않게)
+    const ordered = snap.rooms.map(r => r.curtains.length ? Object.assign({}, r, {
         id: roomIdCounter++,
         curtains: r.curtains.map(c => Object.assign({}, c, { id: curtainIdCounter++ }))
-    }));
+    }) : Object.assign({}, r, { curtains: [] }));
+    rooms = ordered.filter(r => r.curtains.length);
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
     finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
@@ -541,7 +543,8 @@ function applySnapshot(snap) {
     set('expressInstallFee', globalInstallFee); set('expressVatOption', globalVatOption);
     renderSideCust();
     calculateAll();
-    if (window.concierge) window.concierge.loadFromMaster(rooms, globalInstallFee);
+    // 고객 화면은 순서 그대로 모든 공간으로 통째로 바꿈 (앞 상담의 상담 전 공간이 남지 않게)
+    if (window.concierge) window.concierge.loadFromMaster(ordered, globalInstallFee, { replace: true });
 }
 
 function restoreDraftOnLoad() {
@@ -3066,6 +3069,8 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 measuredColor: r.measuredColor || null,
+                // 중심 화면(20번): 공간 추가 때 적은 크기 · 색 출처 · 카드로 고른 부분 · 색 잇기 (직원 화면을 거쳐도 빠지지 않게)
+                width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";
                     return {

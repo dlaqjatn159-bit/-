@@ -1980,8 +1980,12 @@
             render();
         },
         // 직원 화면(B)에서 바꾼 공간·품목·시공비를 고객 화면에 반영 (B가 기준)
-        loadFromMaster: function(masterRooms, installFee) {
-            const inProgress = state.roomsCart.filter(r => !r.isConfigured);
+        // opts.replace: 상담을 통째로 바꿈(앱을 다시 열어 되살리기 · 상담 기록 불러오기) → 지금 목록의 상담 전 공간·집 기본 색은 버림
+        // 아니면(직원 화면에서 돌아올 때 등) 직원 목록에 없는 상담 전 공간을 뒤에 그대로 둠
+        loadFromMaster: function(masterRooms, installFee, opts) {
+            const replace = !!(opts && opts.replace);
+            if (replace) state.house = null;
+            const inProgress = replace ? [] : state.roomsCart.filter(r => !r.isConfigured && !masterRooms.some(m => m.name === r.name));
             const mapped = masterRooms.map((r, i) => {
                 const sub = r.curtains.reduce((acc, c) => acc + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
                 return {
