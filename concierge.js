@@ -818,7 +818,7 @@
                 const ed = state.editingRoom, wall = roomPart(ed, 'wall'), floor = roomPart(ed, 'floor');
                 const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 안 쟀어요'}</b></span>`;
                 const chip = ed.askCards ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
-                    + `<button type="button" onclick="window.concierge.fixRoomColors()">${wall && floor ? '다르면 고치기' : '카드로 고르기'}</button></div>`;
+                    + `<button type="button" onclick="window.concierge.fixRoomColors()">${wall && floor ? '다르면 수정' : '카드로 고르기'}</button></div>`;
                 html += askStage('창으로 햇빛은 얼마나 들어오나요?', '', [
                     { label: '풍부해요', desc: '남향·고층, 눈부신 직사광', on: "window.concierge.selectLightLevel('high')", was: was('lightLevel', 'high') },
                     { label: '은은해요', desc: '동향·서향, 부드러운 햇살', on: "window.concierge.selectLightLevel('mid')", was: was('lightLevel', 'mid') },
@@ -833,7 +833,7 @@
                 const ed = state.editingRoom, mc = ed.measuredColor;
                 ed.backHome = false;
                 const steps = diagnosisSteps(), at = steps.indexOf(state.step);
-                const heard = (stepName, text) => `<button type="button" class="heard-row" onclick="window.concierge.fixHeard('${stepName}')"><span class="font-serif-kr">${text}</span><i aria-hidden="true">고치기</i></button>`;
+                const heard = (stepName, text) => `<button type="button" class="heard-row" onclick="window.concierge.fixHeard('${stepName}')"><span class="font-serif-kr">${text}</span><i aria-hidden="true">수정</i></button>`;
                 const dot = c => `<i class="heard-dot" style="background:${c.hex}"></i>`;
                 let rows = '';
                 if (HEARD.lightLevel[ed.lightLevel]) rows += heard('2-Base-Light', HEARD.lightLevel[ed.lightLevel]);
@@ -850,7 +850,7 @@
                 html += '<div class="step-dots ask-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
                 html += `<span class="q-meta">${ed.name}</span>`;
                 html += '<h2 class="q-title font-serif-kr">이렇게 들었어요. 맞나요?</h2>';
-                html += '<p class="q-sub">커튼은 이 이야기 안에서 방향을 찾아요<br>다르게 들렸다면 눌러서 고쳐 주세요</p>';
+                html += '<p class="q-sub">커튼은 이 이야기 안에서 방향을 찾아요<br>다른 점이 있다면 눌러서 수정해 주세요</p>';
                 html += `<div class="heard-list">${rows}</div>`;
                 html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.goLinkStep()">맞아요, 다음</button>';
                 html += '</div>';
@@ -1398,7 +1398,14 @@
                 if (!canvas || canvas.classList.contains('has-pick')) return;
                 // 'expand-pick' 칸(분위기 화면, 22-2): 첫 터치는 그 칸이 옆으로 넓어지기만 하고, 넓어진 칸을 한 번 더 누르면 선택
                 if (/\bexpand-pick\b/.test(extraClass || '') && !el.classList.contains('is-expanded')) { expandMoodCard(canvas, el); return; }
-                collapseMoodCards(canvas);
+                // 넓어진 칸을 한 번 더 누름: 접지 않고 넓어진 그대로 바로 다음 화면으로 (접히면서 넘어가 덜컥거리던 것, 10-15 사장님)
+                if (el.classList.contains('is-expanded')) {
+                    const hint = el.querySelector('.expand-hint');
+                    if (hint) hint.remove();
+                    canvas.classList.add('has-pick');
+                    onClickFn();
+                    return;
+                }
                 canvas.classList.add('has-pick');
                 el.classList.add('is-picked');
                 setTimeout(onClickFn, PICK_PAUSE_MS);

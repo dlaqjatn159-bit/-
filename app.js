@@ -58,38 +58,51 @@ window.onload = function() {
 
 // ---- 뒤로 버튼 ----
 // 앱은 한 페이지 안에서 화면만 바꾸므로, 그대로 두면 탭의 뒤로(버튼·가장자리 밀기)가 앱을 통째로 닫음
-// → 열 때 방문 기록에 "앱 안" 표시를 하나 넣어 두고(pushState), 뒤로가 눌리면(popstate) 앱 안에서 처리한 뒤 표시를 다시 넣음
+// → 방문 기록에 "앱 안" 표시(guard)를 몇 개 쌓아 두고, 뒤로가 눌리면(popstate) 표시 하나를 쓰고 앱 안에서 처리함
 //   1 떠 있는 것 닫기 → 2 잠금 화면이면 아무것도 안 함 → 3 고객 화면은 ← 와 같게(맨 처음이면 아무 일 없음)
 //   → 4 직원 화면은 원단의 다른 탭 → 찾기 탭, 다른 메뉴 → 상담 → 5 상담에서는 "한 번 더 누르면 앱이 닫혀요"(2초 안에 또 누르면 닫힘)
+// 크롬은 사람이 화면을 누르지 않은 채 넣은 표시를 뒤로 버튼이 건너뛰게 함(탭에서 뒤로가 안 먹던 이유, 10-15)
+// → 표시는 화면을 누를 때(click) 채워 넣고, 뒤로 한 번에 하나씩 씀. 표시가 바닥나도 다음에 누르면 다시 채워짐
 const BACK_EXIT_MS = 2000;
+const BACK_GUARDS = 3;          // 한 번 누른 뒤 화면을 다시 안 눌러도 앱 안에서 처리되는 뒤로 횟수
 let backExitTimer = 0;
-function pushBackGuard() { history.pushState({ redam: 'guard' }, ''); }
+let backLeaving = false;
+function backGuardLevel() { const s = history.state; return (s && s.redam === 'guard') ? (s.n || 1) : 0; }
+function fillBackGuards() {
+    if (backLeaving || backExitTimer) return;
+    const s = history.state;
+    if (!(s && (s.redam === 'guard' || s.redam === 'base'))) history.replaceState({ redam: 'base' }, '');
+    for (let n = backGuardLevel() + 1; n <= BACK_GUARDS; n++) history.pushState({ redam: 'guard', n }, '');
+}
 function initBackButton() {
     const s = history.state;
-    if (!(s && s.redam === 'guard')) {
-        if (!(s && s.redam === 'base')) history.replaceState({ redam: 'base' }, '');
-        pushBackGuard();
-    }
-    window.addEventListener('popstate', ev => {
-        if (ev.state && ev.state.redam === 'guard') return;      // (앞으로 가기로 표시 쪽으로 돌아온 경우) 할 일 없음
-        if (backExitTimer) { clearTimeout(backExitTimer); backExitTimer = 0; }
+    if (!(s && (s.redam === 'guard' || s.redam === 'base'))) history.replaceState({ redam: 'base' }, '');
+    window.addEventListener('popstate', () => {
+        if (backLeaving) return;
+        const level = backGuardLevel();
         const exit = handleBack();
         if (exit) {
-            // 이번에는 표시를 다시 넣지 않음 → 2초 안에 한 번 더 누르면 정말로 앱이 닫힘. 2초가 지나면 표시를 되돌려 둠
+            if (backExitTimer) {                          // 2초 안에 또 누름 → 정말로 닫기 (남은 표시를 모두 건너뜀)
+                clearTimeout(backExitTimer); backExitTimer = 0;
+                backLeaving = true;
+                saveDraftTick();
+                history.go(-(level + 1));
+                return;
+            }
             saveDraftTick();
             showToast('한 번 더 누르면 앱이 닫혀요', 'info');
-            backExitTimer = setTimeout(rearmBackGuard, BACK_EXIT_MS);
+            backExitTimer = setTimeout(() => { backExitTimer = 0; }, BACK_EXIT_MS);
+            if (level < 1) history.pushState({ redam: 'guard', n: 1 }, '');      // 마지막 표시였다면 하나는 남겨 둠
             return;
         }
-        pushBackGuard();
+        if (backExitTimer) { clearTimeout(backExitTimer); backExitTimer = 0; }
+        if (level < 1) history.pushState({ redam: 'guard', n: 1 }, '');          // 표시가 바닥남: 누르지 않고 넣는 것이라 건너뛰어질 수 있어도 넣어 둠
     });
-    // 2초를 기다리는 동안 화면을 누르면(다른 메뉴로 가는 등) 바로 표시를 되돌림 → 그다음 뒤로는 다시 앱 안에서 처리
-    document.addEventListener('pointerdown', () => { if (backExitTimer) rearmBackGuard(); }, true);
-}
-function rearmBackGuard() {
-    clearTimeout(backExitTimer);
-    backExitTimer = 0;
-    pushBackGuard();
+    // 화면을 누를 때마다 표시를 채움(누른 순간에 넣어야 크롬이 건너뛰지 않음). 2초 기다리는 중에 누르면 닫기를 취소
+    document.addEventListener('click', () => {
+        if (backExitTimer) { clearTimeout(backExitTimer); backExitTimer = 0; }
+        fillBackGuards();
+    }, true);
 }
 // 뒤로 한 번을 앱 안에서 처리. 앱을 닫아도 되는 자리(직원 화면 상담)면 true
 function handleBack() {

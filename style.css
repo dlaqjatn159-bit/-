@@ -767,7 +767,13 @@ body[data-finder-only] .staff-nav .badge { display: none; }
 .rc-foot-btns .staff-btn { padding: 0.55rem 1rem; font-size: 0.82rem; }
 .rc-foot-btns .staff-btn:disabled { opacity: 0.4; }
 .rc-summary .rc-sum-btns { display: flex; gap: 0.9rem; margin-left: auto; }
-.rc-summary button { font-size: 0.75rem; font-weight: 600; color: var(--brand-accent); text-decoration: underline; text-underline-offset: 3px; }
+.rc-adj { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.7rem; padding: 0.35rem 0 0; font-size: 0.75rem; color: var(--brand-muted); }
+.rc-adj .rc-sum-lbl { padding: 0.05rem 0.45rem; background: var(--brand-light); border-radius: 0.3rem; font-size: 0.7rem; font-weight: 700; color: var(--brand-accent); }
+.rc-adj input[type="range"] { flex: 1 1 10rem; min-width: 8rem; max-width: 22rem; height: 8px; margin: 0.6rem 0; border-radius: 999px; -webkit-appearance: none; appearance: none; background: linear-gradient(90deg, var(--wall), var(--mid), var(--floor)); border: 1px solid rgba(43, 34, 26, 0.12); }
+.rc-adj input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--mid); border: 3px solid var(--brand-accent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+.rc-adj input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--mid); border: 3px solid var(--brand-accent); }
+.rc-adj b { font-weight: 600; color: var(--brand-dark); }
+.rc-summary button {font-size: 0.75rem; font-weight: 600; color: var(--brand-accent); text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 760px) { .rc-body { grid-template-columns: 1fr; } }
 /* 공간 이름 · 커튼 이름: 평소에는 글자처럼 보이고, 누르면 입력칸 테두리가 나타남 */
 input[type="text"].staff-room-name:not(:focus), input[type="text"].staff-curtain-name:not(:focus) { background-color: transparent !important; border-color: transparent !important; }
