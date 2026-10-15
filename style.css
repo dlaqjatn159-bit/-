@@ -718,7 +718,7 @@ body[data-finder-only] .staff-nav .badge { display: none; }
 .rc-tabs button.on { background: var(--brand-dark); color: var(--brand-bg); }
 .rc-canvas-wrap { position: relative; margin: 0 auto; cursor: crosshair; user-select: none; touch-action: none; overflow: hidden; background: #e9e2d8; }
 .rc-canvas-wrap .rc-photo { display: block; width: 100%; height: 100%; }
-.rc-pin { position: absolute; width: 26px; height: 26px; transform: translate(-50%, -50%); display: grid; place-items: center; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); font-size: 11px; font-weight: 700; color: #fff; pointer-events: none; }
+.rc-pin { position: absolute; min-width: 26px; height: 26px; padding: 0 6px; box-sizing: border-box; transform: translate(-50%, -50%); display: grid; place-items: center; border: 2px solid #fff; border-radius: 13px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); font-size: 11px; font-weight: 700; color: #fff; pointer-events: none; }
 .rc-pin.on { outline: 3px solid var(--brand-accent); }
 .rc-area { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); border: 2px dashed; border-radius: 50%; background: rgba(255, 253, 249, 0.12); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6); pointer-events: none; }
 .rc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.7rem; min-height: 22rem; padding: 2rem 1.5rem; text-align: center; }
@@ -1281,6 +1281,10 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .cm-wrap { position: relative; max-width: 100%; max-height: 100%; width: auto; height: 100%; touch-action: none; cursor: crosshair; border-radius: 6px; overflow: hidden; }
 .cm-wrap canvas { display: block; width: 100%; height: 100%; }
 .cm-dot { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #91401a, 0 2px 8px rgba(0, 0, 0, 0.25); display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; color: #fff; background: #91401a; pointer-events: none; box-sizing: border-box; }
+.cm-dot-gray { background: #6b6b6b; box-shadow: 0 0 0 2px #6b6b6b, 0 2px 8px rgba(0, 0, 0, 0.25); }
+.cm-dot-white { background: #fffdf9; color: #2b221a; box-shadow: 0 0 0 2px #8a7a6a, 0 2px 8px rgba(0, 0, 0, 0.25); }
+.cm-dot-wall { background: #2b221a; box-shadow: 0 0 0 2px #2b221a, 0 2px 8px rgba(0, 0, 0, 0.25); }
+.cm-dot:not(.on) { opacity: 0.75; }      /* 지금 찍는 자리의 점만 또렷하게 */
 .cm-area { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); border: 2px dashed rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: 0 0 0 1px rgba(43, 34, 26, 0.35); pointer-events: none; }
 .cm-empty { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6rem; text-align: center; border: 1.5px dashed #d9cdbd; border-radius: 6px; padding: 2rem; box-sizing: border-box; }
 .cm-empty p { margin: 0; font-size: 1.15rem; line-height: 1.7; color: #2b221a; }
@@ -1292,6 +1296,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .cm-steps { margin: 1.6rem 0 0; padding: 0; list-style: none; border-top: 2px solid #2b221a; }
 .cm-steps li { display: flex; align-items: center; gap: 0.9rem; padding: 0.95rem 0; border-bottom: 1px solid #e5dcd0; font-size: 1.05rem; color: #a89a8b; cursor: pointer; }
 .cm-steps li small { font-size: 0.82rem; font-weight: 500; color: #91401a; }
+.cm-steps li small.cm-redo { margin-left: auto; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
+.cm-steps li small.cm-redo + i { margin-left: 0.6rem; }
 .cm-n { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid currentColor; display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; box-sizing: border-box; }
 .cm-steps li.on { color: #2b221a; font-weight: 700; }
 .cm-steps li.on .cm-n { background: #91401a; border-color: #91401a; color: #fff; }
