@@ -286,6 +286,7 @@
     }
 
     function prevStep() {
+        if (collapseMoodCards(document.querySelector(".bookmark-canvas.has-expand"))) return;
         hideKeypadDirectly();
         if (stepHistory.length > 0) {
             const prev = stepHistory.pop();
@@ -907,12 +908,12 @@
                 state.__recMoods = ld ? LINK_MOODS[ld] : [];
                 html += stepHead('원하시는 분위기를 골라 주세요', ld ? (ld === 'bridge' ? '그 중간으로 잇는 색 안에서 골라 드려요' : LINK_WORD[ld] + ' 안에서 골라 드려요') : '듣고 나니 어울릴 색이 보여요. 이제 취향을 골라 볼까요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
-                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
-                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc pause-pick' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
-                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc pause-pick' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
-                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc pause-pick' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
-                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc pause-pick' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
+                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
+                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
+                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
+                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
+                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
+                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
                 html += '</div></div>';
                 break;
 
@@ -1367,6 +1368,22 @@
             });
     }
 
+    // 분위기 칸 넓히기(22-2): 누른 칸은 2.4배로 넓어지고 나머지는 좁아짐. 넓어진 칸에 "한 번 더 누르면 선택돼요" 안내
+    function expandMoodCard(canvas, el) {
+        const cards = Array.from(canvas.children);
+        canvas.classList.add('has-expand');
+        cards.forEach(c => c.classList.toggle('is-expanded', c === el));
+        if (!el.querySelector(".expand-hint")) { const h = document.createElement("span"); h.className = "expand-hint"; h.textContent = "한 번 더 누르면 선택돼요"; el.appendChild(h); }
+        canvas.style.gridTemplateColumns = cards.map(c => c === el ? '2.4fr' : '1fr').join(' ');
+    }
+    function collapseMoodCards(canvas) {
+        if (!canvas || !canvas.classList.contains('has-expand')) return false;
+        canvas.classList.remove('has-expand');
+        Array.from(canvas.children).forEach(c => c.classList.remove('is-expanded'));
+        canvas.style.gridTemplateColumns = '';
+        return true;
+    }
+
     function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass) {
         const id = "bk_" + Math.random().toString(36).substr(2, 9);
         // 'pause-pick' 칸: 누르면 고른 칸만 남기고 나머지는 어두워진 뒤 PICK_PAUSE_MS 만큼 쉬었다가 다음 화면으로 (10-15)
@@ -1379,6 +1396,9 @@
             el.onclick = () => {
                 const canvas = el.closest('.bookmark-canvas');
                 if (!canvas || canvas.classList.contains('has-pick')) return;
+                // 'expand-pick' 칸(분위기 화면, 22-2): 첫 터치는 그 칸이 옆으로 넓어지기만 하고, 넓어진 칸을 한 번 더 누르면 선택
+                if (/\bexpand-pick\b/.test(extraClass || '') && !el.classList.contains('is-expanded')) { expandMoodCard(canvas, el); return; }
+                collapseMoodCards(canvas);
                 canvas.classList.add('has-pick');
                 el.classList.add('is-picked');
                 setTimeout(onClickFn, PICK_PAUSE_MS);
@@ -1563,6 +1583,8 @@
             if (pad && pad.classList.contains("active")) { hideKeypadDirectly(); return true; }
             const ov = document.getElementById('optInfoOverlay');
             if (ov && getComputedStyle(ov).display !== 'none') { ov.style.display = 'none'; return true; }
+            // 분위기 화면에서 넓어진 칸은 "떠 있는 것"처럼 뒤로를 누르면 먼저 접힘 (22-2)
+            if (collapseMoodCards(document.querySelector('.bookmark-canvas.has-expand'))) return true;
             return closeAllColors();
         },
         // "찾는 중" 화면이 떠 있으면 뒤로를 무시 (끝나면 원단 화면이 열림)

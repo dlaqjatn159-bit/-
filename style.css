@@ -1618,3 +1618,9 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .fab-seek-found i { transition: opacity 0.35s ease; transform: none; }
 }
 @keyframes seekFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* 분위기 칸 넓히기 (22-2): 첫 터치는 넓어지기만, 한 번 더 누르면 선택 */
+.bookmark-canvas.has-expand { transition: grid-template-columns 0.35s ease; }
+.bookmark-canvas.has-expand .bookmark-card:not(.is-expanded) { filter: brightness(0.7); }
+.bookmark-card .expand-hint { display: none; position: absolute; left: 0; right: 0; bottom: calc(var(--band-h, 205px) + 1rem); z-index: 14; text-align: center; font-size: 0.85rem; color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55); pointer-events: none; }
+.bookmark-card.is-expanded .expand-hint { display: block; }
