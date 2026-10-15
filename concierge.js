@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261029';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261030';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -425,9 +425,21 @@
     const kindOf = c => c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : (c.presetType === 'drape' ? '겉지' : '커튼'));
     // 이 집의 기본 색: 첫 공간에서 잰 벽·바닥 색 (state.house). 없으면 벽·바닥을 둘 다 잰 첫 공간에서 가져옴 (예전 상담·직원 화면에서 잰 공간)
     function houseColor() {
-        if (state.house && (state.house.wall || state.house.floor)) return state.house;
+        if (state.house && (state.house.wall || state.house.floor)) {
+            // 첫 공간의 비율을 직원 화면 막대로 바꿨으면 그 값을 씀
+            const hr = state.house.roomId != null && state.roomsCart.find(x => x.id === state.house.roomId);
+            const k = hr && hr.measuredColor && hr.measuredColor.bridgeK;
+            return typeof k === 'number' ? Object.assign({}, state.house, { bridgeK: k }) : state.house;
+        }
         const r = state.roomsCart.find(x => x.measuredColor && x.measuredColor.wall && x.measuredColor.floor);
-        return r ? { wall: r.measuredColor.wall, floor: r.measuredColor.floor } : null;
+        return r ? houseOf(r.measuredColor, null) : null;
+    }
+    // 집 기본 색으로 둘 모양: 벽·바닥 + 이어주는 색 비율(bridgeK, 30번 — "같아요"면 이어받음)
+    function houseOf(mc, roomId) {
+        const h = { wall: mc.wall || null, floor: mc.floor || null };
+        if (roomId != null) h.roomId = roomId;
+        if (typeof mc.bridgeK === 'number') h.bridgeK = mc.bridgeK;
+        return h;
     }
     // 공간 번호: 같은 순간에 두 공간이 생겨도 겹치지 않게
     let lastRoomId = 0;
@@ -438,17 +450,20 @@
         if (mc && mc.wall) room.wallTone = mc.wall.tone;
         if (mc && mc.floor) room.floorTone = mc.floor.tone;
     }
-    function withBridge(wall, floor) {
+    // k: 이어주는 색 비율(벽 쪽 무게). 없으면 기본
+    function withBridge(wall, floor, k) {
         const mc = { wall: wall || null, floor: floor || null, at: Date.now() };
+        if (typeof k === 'number') mc.bridgeK = k;
         mc.bridge = null;
-        if (mc.wall && mc.floor && window.RoomColor && window.RoomColor.bridgeOf) mc.bridge = window.RoomColor.bridgeOf(mc.wall, mc.floor);
+        if (mc.wall && mc.floor && window.RoomColor && window.RoomColor.bridgeOf) mc.bridge = window.RoomColor.bridgeOf(mc.wall, mc.floor, mc.bridgeK);
         return mc;
     }
     // 색 재기 화면(고객 화면 모양, room-color.js)을 띄움
-    function openMeasure(name, parts, doneLabel, doneNote, onDone, onSkip) {
+    // bridgeK: 바닥·벽을 둘 다 잴 때 나오는 이어주는 색 막대의 처음 값 (30번, 없으면 기본)
+    function openMeasure(name, parts, doneLabel, doneNote, onDone, onSkip, bridgeK) {
         if (!window.RoomColor || !window.RoomColor.openCustomer) { if (onSkip) onSkip(); return; }
         hideKeypadDirectly();
-        window.RoomColor.openCustomer({ name, parts, doneLabel, doneNote, onDone, onSkip, onCancel: function() {} });
+        window.RoomColor.openCustomer({ name, parts, doneLabel, doneNote, onDone, onSkip, onCancel: function() {}, bridgeK });
     }
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
     // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
@@ -1675,10 +1690,11 @@
         measureNewRoom: function(parts) {
             const d = state.editingRoom;
             if (!d || !d.addDraft) return;
-            const first = !houseColor();
+            const house = houseColor(), first = !house;
             openMeasure(d.name, parts, `${d.name} 담기`, first ? '이 색을 집의 기본 색으로 둘게요. 다음 공간은 "같아요"만 누르면 돼요.' : '',
                 function(mc) { window.concierge.finishAddRoom(first ? 'first' : (parts === 'both' ? 'measured' : parts), mc); },
-                function() { window.concierge.finishAddRoom('none'); });
+                function() { window.concierge.finishAddRoom('none'); },
+                house ? house.bridgeK : undefined);      // 둘 다 다시 잴 때 막대는 집 기본 비율부터
         },
         // src: 'first'(첫 공간에서 잼 → 집 기본 색) · 'measured'(둘 다 다시 잼) · 'wall' · 'floor'(한쪽만 다시 잼) · 'house'(같아요) · 'none'(못 잼)
         finishAddRoom: function(src, mc) {
@@ -1693,10 +1709,10 @@
                 colorSrc: src === 'first' ? 'measured' : (src === 'none' ? null : src)
             };
             if (src === 'first' || src === 'measured') setRoomColor(room, mc);
-            else if (src === 'house' && house) setRoomColor(room, withBridge(house.wall, house.floor));
-            else if (src === 'wall' && mc) setRoomColor(room, withBridge(mc.wall, house && house.floor));
-            else if (src === 'floor' && mc) setRoomColor(room, withBridge(house && house.wall, mc.floor));
-            if (src === 'first' && mc && (mc.wall || mc.floor)) state.house = { roomId: room.id, wall: mc.wall, floor: mc.floor };
+            else if (src === 'house' && house) setRoomColor(room, withBridge(house.wall, house.floor, house.bridgeK));      // "같아요": 비율도 첫 공간 것
+            else if (src === 'wall' && mc) setRoomColor(room, withBridge(mc.wall, house && house.floor, house && house.bridgeK));
+            else if (src === 'floor' && mc) setRoomColor(room, withBridge(house && house.wall, mc.floor, house && house.bridgeK));
+            if (src === 'first' && mc && (mc.wall || mc.floor)) state.house = houseOf(mc, room.id);
             state.roomsCart.push(room);
             state.editingRoom = null;
             // 공간 추가 단계(종류·크기·같나요)는 뒤로 가기 목록에서 지움 → 중심 화면에서 ← 는 공간 추가 전 화면으로
@@ -1851,7 +1867,7 @@
             if (!ed || !ed.editOnly) return;
             openMeasure(ed.name, part, '이 색으로', '', function(mc) {
                 const old = ed.measuredColor || {};
-                const next = withBridge(part === 'wall' ? mc.wall : old.wall, part === 'floor' ? mc.floor : old.floor);
+                const next = withBridge(part === 'wall' ? mc.wall : old.wall, part === 'floor' ? mc.floor : old.floor, old.bridgeK);      // 한쪽만 다시 재도 비율은 그대로
                 setRoomColor(ed, next);
                 if (ed.cardParts) delete ed.cardParts[part];      // 이제 그 부분은 잰 색
                 // 집 기본 색에서 한쪽만 다시 쟀으면 "벽만/바닥만 따로 잰 색", 아니면 "이 공간에서 잰 색"
@@ -1862,7 +1878,7 @@
         editRoomUseHouse: function() {
             const ed = state.editingRoom, house = houseColor();
             if (!ed || !house) return;
-            setRoomColor(ed, withBridge(house.wall, house.floor));
+            setRoomColor(ed, withBridge(house.wall, house.floor, house.bridgeK));
             ed.colorSrc = 'house';
             ed.cardParts = null;
             render();
@@ -1875,7 +1891,7 @@
             r.cardParts = ed.cardParts || null;
             r.colorSrc = ed.colorSrc || null;
             // 첫 공간(집 기본 색을 잰 공간)을 다시 쟀으면 집 기본 색도 따라감
-            if (state.house && state.house.roomId === r.id && r.measuredColor && r.measuredColor.wall && r.measuredColor.floor) state.house = { roomId: r.id, wall: r.measuredColor.wall, floor: r.measuredColor.floor };
+            if (state.house && state.house.roomId === r.id && r.measuredColor && r.measuredColor.wall && r.measuredColor.floor) state.house = houseOf(r.measuredColor, r.id);
             // 상담을 마친 공간: 커튼 크기도 같이 바꾸고 금액을 다시 셈 (고른 원단·옵션은 그대로)
             if (r.isConfigured) {
                 r.curtains.forEach(c => { c.width = r.width; c.height = r.height; c.calc = calculateV1ItemPrice(c); });

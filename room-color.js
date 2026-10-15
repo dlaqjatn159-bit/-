@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261029';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261030';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -465,17 +465,40 @@
     // ==============================================================
     // 고객 화면 모양 (작업목록 20번): 공간 추가 · 수정하기에서 씀. 계산은 위와 같고, 숫자(Lab) 없이 색 조각 + 바닥·벽 카드 이름만
     //  왼쪽 사진, 오른쪽 "회색 카드 · 흰 카드 · 바닥 · 벽" 차례 목록. 다 누르면 "○○ 담기"
-    //  opts: { name, parts: 'both' | 'wall' | 'floor', doneLabel, onDone(mc), onSkip?(), onCancel() }
+    //  opts: { name, parts: 'both' | 'wall' | 'floor', doneLabel, onDone(mc), onSkip?(), onCancel(), bridgeK?(막대 처음 값) }
+    //  바닥·벽을 둘 다 찍으면 결과 아래에 이어주는 색 막대 → mc.bridgeK (30번)
     // ==============================================================
     const CUST_LABEL = { gray: '회색 카드', white: '흰 카드', floor: '바닥', wall: '벽' };
     const CUST_DESC = { floor: { warm: '밝은 원목', cool: '밝은 타일·대리석', neutral: '회색 마루·타일', deep: '진한 원목 마루' },
                         wall: { warm: '따뜻한 흰 벽지', cool: '맑은 흰 벽지', neutral: '회색 벽지', deep: '진한 나무 벽' } };
     const CUST_ASK = { gray: '<b>회색 카드</b> 가운데를 눌러 주세요', white: '<b>흰 카드</b> 가운데를 눌러 주세요',
                        floor: `<b>바닥</b>을 ${AREA_POINTS}곳 눌러 주세요`, wall: `<b>벽</b>을 ${AREA_POINTS}곳 눌러 주세요` };
-    function packResult(res) {
+    function packResult(res, k) {
         const mc = { wall: res.wall ? packColor(res.wall) : null, floor: res.floor ? packColor(res.floor) : null, shadow: Math.round(res.shadow * 10) / 10, at: Date.now() };
-        mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor) : null;
+        if (typeof k === 'number') mc.bridgeK = k;
+        mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor, mc.bridgeK) : null;
         return mc;
+    }
+    // 바닥·벽을 다 찍은 뒤 나오는 이어주는 색 막대 (30번): 직원 화면 공간 카드 막대와 같은 모양·같은 값(bridgeK). 밀면 색 칸만 바뀜
+    function custBridgeHtml(res) {
+        const k = custK(), br = bridgeOf(res.wall, res.floor, k);
+        return `<div class="cm-adj" id="cmAdj"><span class="cm-adj-lbl">이 방은 어디가 더 많이 보이나요?</span>`
+            + `<div class="cm-adj-row"><span class="rc-adj-end">벽</span>`
+            + `<input type="range" min="${Math.round((1 - BRIDGE_K_MAX) * 100)}" max="${Math.round((1 - BRIDGE_K_MIN) * 100)}" step="5" value="${Math.round((1 - k) * 100)}" style="--wall:${res.wall.hex};--floor:${res.floor.hex};--mid:${br.hex}" aria-label="벽과 바닥 중 많이 보이는 쪽" oninput="RoomColor.custBridge(+this.value)">`
+            + `<span class="rc-adj-end">바닥</span></div>`
+            + `<div class="cm-adj-val"><i style="background:${br.hex}"></i><span><b class="font-serif-kr">이어주는 색</b><small class="cm-adj-ratio">${bridgeRatioText(k)}${Math.abs(k - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : ''}</small></span></div></div>`;
+    }
+    function custK() { return (st && typeof st.custK === 'number') ? st.custK : BRIDGE_WALL_WEIGHT; }
+    function custBridge(pos) {
+        if (!st || !st.cust) return;
+        const res = compute();
+        if (!res.wall || !res.floor) return;
+        st.custK = Math.round(Math.min(BRIDGE_K_MAX, Math.max(BRIDGE_K_MIN, 1 - pos / 100)) * 100) / 100;
+        const br = bridgeOf(res.wall, res.floor, st.custK), box = document.getElementById('cmAdj');
+        if (!box) return;
+        box.querySelector('.cm-adj-val i').style.background = br.hex;
+        box.querySelector('.cm-adj-ratio').textContent = bridgeRatioText(st.custK) + (Math.abs(st.custK - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : '');
+        box.querySelector('input').style.setProperty('--mid', br.hex);
     }
     function renderCust() {
         const ov = document.getElementById('roomColorCust');
@@ -523,6 +546,7 @@
                 h += `<div><i style="background:${c.hex}"></i><span><b class="font-serif-kr">${esc(cardName(k, c.cls.tone))}</b><small>${k === 'wall' ? '벽' : '바닥'} · ${CUST_DESC[k][c.cls.tone] || ''}</small></span></div>`;
             });
             h += '</div>';
+            if (res.wall && res.floor) h += custBridgeHtml(res);
         }
         h += '<div class="cm-foot">';
         h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">지금은 못 재요 · 상담 때 카드로</button>' : '<span></span>';
@@ -590,7 +614,8 @@
         // ---- 고객 화면 모양 (20번) ----
         openCustomer(opts) {
             const parts = opts.parts === 'wall' ? ['wall'] : (opts.parts === 'floor' ? ['floor'] : ['floor', 'wall']);
-            st = { roomId: null, photos: [null, null], view: 0, active: 0, pins: {}, seq: 0, cust: opts, keys: ['gray', 'white'].concat(parts) };
+            st = { roomId: null, photos: [null, null], view: 0, active: 0, pins: {}, seq: 0, cust: opts, keys: ['gray', 'white'].concat(parts),
+                   custK: typeof opts.bridgeK === 'number' ? opts.bridgeK : null };      // 막대 처음 값 (없으면 기본)
             let ov = document.getElementById('roomColorCust');
             if (!ov) {
                 ov = document.createElement('div');
@@ -603,13 +628,14 @@
         },
         isCustomerOpen() { return !!(st && st.cust); },
         custStep: pickStep,      // 목록을 눌러 그 자리를 다시 찍음
+        custBridge,              // 이어주는 색 막대 (30번)
         cancelCustomer() { const o = st && st.cust; closeCustomer(); if (o && o.onCancel) o.onCancel(); },
         skipCustomer() { const o = st && st.cust; closeCustomer(); if (o && o.onSkip) o.onSkip(); },
         finishCustomer() {
             if (!st || !st.cust) return;
             const o = st.cust, res = compute();
             if (!(res.wall || res.floor) || res.cardsSwapped) return;
-            const mc = packResult(res);
+            const mc = packResult(res, (res.wall && res.floor) ? custK() : undefined);
             closeCustomer();
             o.onDone(mc);
         },
