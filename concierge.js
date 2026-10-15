@@ -28,6 +28,20 @@
     function moodBg(name, fallback) {
         return `url('photos/mood/${name}.jpg') center / cover no-repeat, ${fallback}`;
     }
+
+    // 분위기 사진 6장 미리 받기: 앱을 켜면 뒤에서 받아 두고 decode(그릴 준비)까지 끝내 둠
+    // → 분위기 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15)
+    const PICK_PAUSE_MS = 450;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 길게 느껴지면 300~350, 더 여유를 주려면 600
+    const MOOD_PHOTOS = ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'];
+    (function preloadMoodPhotos() {
+        const run = () => MOOD_PHOTOS.forEach(n => {
+            const im = new Image();
+            im.src = `photos/mood/${n}.jpg`;
+            if (im.decode) im.decode().catch(() => {});
+        });
+        // 첫 화면 그리기를 방해하지 않게 한가할 때 받음 (구형 브라우저는 1초 뒤)
+        if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2000 }); else setTimeout(run, 1000);
+    })();
     // 사진 6장은 895×2130(가로:세로 약 0.42)으로 잘라 둠: 바닥과 벽이 만나는 선이 위에서 85% 지점(벽:바닥 = 8.5:1.5)으로 모두 같고, 사물은 가운데에서 아주 조금 오른쪽.
     // 칸(약 0.34)이 더 좁으니 세로가 칸에 딱 맞고 좌우만 조금 잘림 → 바닥선 높이가 칸마다 같음 (10-15 사장님)
 
@@ -306,7 +320,8 @@
         const ed = state.editingRoom || {}, items = ed.items || [];
         const steps = ed.askCards ? ["2-Base-Floor", "2-Base-Wall"] : [];
         steps.push("2-Base-Light", "2-Base-Block", "2-Base-Privacy", "3-Config-Style");
-        if (canLink(ed)) steps.push("2-Base-Home", "2-Base-Link");
+        steps.push("2-Base-Home");          // "이렇게 들었어요. 맞나요?" — 모든 공간 (23번)
+        if (canLink(ed)) steps.push("2-Base-Link");
         steps.push("2-Base-Mood");
         if (state.step === "2-Base-SheerFeel" || items.some(i => i.presetType === 'sheer')) steps.push("2-Base-SheerFeel");
         return steps;
@@ -315,6 +330,29 @@
     function canLink(ed) {
         const mc = ed && ed.measuredColor;
         return !!(mc && mc.wall && mc.floor && mc.bridge) && !(ed.items || []).some(i => i.presetType === 'blind');
+    }
+    // "이렇게 들었어요" 화면에서 줄을 눌러 그 질문으로 가서 고치면, 답한 뒤 이 화면으로 돌아옴 (뒤로 가기 목록에 같은 화면이 쌓이지 않게 정리)
+    function returnHomeIfFixing() {
+        const ed = state.editingRoom;
+        if (!ed || !ed.backHome) return false;
+        ed.backHome = false;
+        if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "2-Base-Home") stepHistory.pop();
+        goToStep("2-Base-Home", false);
+        return true;
+    }
+    const HEARD = {
+        lightLevel: { high: '햇빛이 풍부해요 · 낮엔 눈부실 수 있어요', mid: '햇빛이 은은해요 · 부드럽게 들어와요', low: '햇빛이 차분해요 · 낮에도 조금 어두울 수 있어요' },
+        lightBlock: { light: '빛은 들어와도 좋아요', soft: '눈부심만 줄이고 싶어요', dark: '빛을 거의 막고 싶어요' },
+        privacy: { open: '밖의 시선은 신경 쓰이지 않아요', some: '낮엔 적당히 가려지면 좋아요', high: '밖에서 잘 안 보였으면 해요' }
+    };
+    const HEARD_COMP = { double: '이중 커튼 · 호텔처럼', sheer_only: '속지 커튼 · 은은한 채광', drape_only: '겉지 커튼 · 빛 차단', blind_only: '블라인드 · 빛 각도 조절' };
+    function compKeyOf(ed) {
+        const t = (ed.items || []).map(i => i.presetType);
+        if (t.includes('blind')) return 'blind_only';
+        if (t.includes('sheer') && t.includes('drape')) return 'double';
+        if (t.includes('sheer')) return 'sheer_only';
+        if (t.includes('drape')) return 'drape_only';
+        return null;
     }
     const LINK_WORD = { wall: '벽과 이어지는 색', bridge: '벽과 바닥 사이를 잇는 색', floor: '바닥 톤을 따르는 색' };
     const LINK_WHY = { wall: '창이 벽에 녹아들어 공간이 넓어 보여요.', bridge: '벽과 바닥을 이어 주어 공간이 차분하게 하나로 보여요.', floor: '바닥과 같은 결이라 따뜻하고 안정감 있어요.' };
@@ -790,17 +828,30 @@
 
             // [우리 집 색] 질문 아님: 잰 바닥·벽 색이 아래에서 차오름 → "다음" (잰 공간 · 커튼 구성만)
             case "2-Base-Home": {
+                // 숨 고르기 화면 (23번): 손님이 한 답을 한 줄씩 되받음. 줄을 누르면 그 질문으로 가서 고침. 자동으로 넘기지 않음
                 const ed = state.editingRoom, mc = ed.measuredColor;
-                const field = (k, c, names, descs) => `<div class="home-f"><div class="home-fill" style="background:${c.hex}"></div><span class="home-k">${k}</span><b class="font-serif-kr">${names[c.tone] || ''}</b><small>${descs[c.tone] || ''}</small></div>`;
+                ed.backHome = false;
                 const steps = diagnosisSteps(), at = steps.indexOf(state.step);
+                const heard = (stepName, text) => `<button type="button" class="heard-row" onclick="window.concierge.fixHeard('${stepName}')"><span class="font-serif-kr">${text}</span><i aria-hidden="true">고치기</i></button>`;
+                const dot = c => `<i class="heard-dot" style="background:${c.hex}"></i>`;
+                let rows = '';
+                if (HEARD.lightLevel[ed.lightLevel]) rows += heard('2-Base-Light', HEARD.lightLevel[ed.lightLevel]);
+                if (HEARD.lightBlock[ed.lightBlock]) rows += heard('2-Base-Block', HEARD.lightBlock[ed.lightBlock]);
+                if (HEARD.privacy[ed.privacy]) rows += heard('2-Base-Privacy', HEARD.privacy[ed.privacy]);
+                if (HEARD_COMP[compKeyOf(ed)]) rows += heard('3-Config-Style', HEARD_COMP[compKeyOf(ed)]);
+                if (mc && (mc.floor || mc.wall)) {
+                    const parts = [];
+                    if (mc.floor) parts.push(`${dot(mc.floor)}바닥 <b>${FLOOR_NAMES[mc.floor.tone] || ''}</b>`);
+                    if (mc.wall) parts.push(`${dot(mc.wall)}벽 <b>${WALL_NAMES[mc.wall.tone] || ''}</b>`);
+                    rows += `<div class="heard-row is-static"><span class="font-serif-kr">${parts.join(' · ')}</span></div>`;
+                }
                 html += '<div class="ambient-stage ask-stage home-stage">';
                 html += '<div class="step-dots ask-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
                 html += `<span class="q-meta">${ed.name}</span>`;
-                html += '<h2 class="q-title font-serif-kr">재어 보니 이런 색이에요</h2>';
-                html += '<p class="q-sub">커튼은 이 두 색 사이에서 자리를 찾아요</p>';
-                html += '<div class="home-fields">' + field('바닥', mc.floor, FLOOR_NAMES, { warm: '밝은 원목', cool: '밝은 타일·대리석', neutral: '회색 마루·타일', deep: '진한 원목 마루' })
-                    + field('벽', mc.wall, WALL_NAMES, { warm: '따뜻한 흰 벽지', cool: '맑은 흰 벽지', neutral: '회색 벽지', deep: '진한 나무 벽' }) + '</div>';
-                html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.goLinkStep()">다음</button>';
+                html += '<h2 class="q-title font-serif-kr">이렇게 들었어요. 맞나요?</h2>';
+                html += '<p class="q-sub">커튼은 이 이야기 안에서 방향을 찾아요<br>다르게 들렸다면 눌러서 고쳐 주세요</p>';
+                html += `<div class="heard-list">${rows}</div>`;
+                html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.goLinkStep()">맞아요, 다음</button>';
                 html += '</div>';
                 break;
             }
@@ -809,7 +860,7 @@
             case "2-Base-Link": {
                 const mc = state.editingRoom.measuredColor;
                 const bar = pos => `<span class="link-prev" aria-hidden="true"><span class="link-bar" style="background:linear-gradient(90deg, ${mc.wall.hex}, ${mc.bridge.hex} 35%, ${mc.floor.hex})"></span><span class="link-mk" style="left:${pos}%"></span><span class="link-ends"><em>벽</em><em>바닥</em></span></span>`;
-                html += askStage('커튼을 어떻게 이어 줄까요?', '', [
+                html += askStage('커튼을 어떻게 이어 줄까요?', '듣고 나니 어울릴 색이 보여요. 이제 취향을 골라 볼까요?', [
                     { label: '넓어 보이게', desc: '벽과 이어지는 색', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) },
                     { label: '그 중간으로', desc: '벽과 바닥 사이를 잇는 색', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) },
                     { label: '바닥과 어울리게', desc: '바닥 톤을 따르는 색', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
@@ -842,9 +893,9 @@
                 // "추천대로"는 사진 칸 대신 질문 판 아래 작은 글자 버튼 (10-15 사장님: 큰 색 칸이 네 번째 원단처럼 보임)
                 html += `<button type="button" class="step-skip${was('sheerFeel', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectSheerFeel('any')">잘 모르겠어요 · 추천대로</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", sheerFeelBg('데미안_쉬폰', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc' + was('sheerFeel', 'smooth'));
-                html += renderBookmarkCard("결 있는", "린넨처럼", "", sheerFeelBg('데미안_오솔로', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc' + was('sheerFeel', 'textured'));
-                html += renderBookmarkCard("도톰한", "보송하게", "", sheerFeelBg('데미안_부클', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc' + was('sheerFeel', 'cozy'));
+                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", sheerFeelBg('데미안_쉬폰', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc pause-pick' + was('sheerFeel', 'smooth'));
+                html += renderBookmarkCard("결 있는", "린넨처럼", "", sheerFeelBg('데미안_오솔로', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc pause-pick' + was('sheerFeel', 'textured'));
+                html += renderBookmarkCard("도톰한", "보송하게", "", sheerFeelBg('데미안_부클', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc pause-pick' + was('sheerFeel', 'cozy'));
                 html += '</div></div>';
                 break;
 
@@ -854,14 +905,14 @@
                 // 색 잇기를 골랐으면 위 작은 글로 보여 주고, 그 방향과 어울리는 분위기 카드에 추천 표시 (점수는 그대로)
                 const ld = state.editingRoom && state.editingRoom.linkDir;
                 state.__recMoods = ld ? LINK_MOODS[ld] : [];
-                html += stepHead('원하시는 분위기를 골라 주세요', ld ? (ld === 'bridge' ? '그 중간으로 잇는 색 안에서 골라 드려요' : LINK_WORD[ld] + ' 안에서 골라 드려요') : '');
+                html += stepHead('원하시는 분위기를 골라 주세요', ld ? (ld === 'bridge' ? '그 중간으로 잇는 색 안에서 골라 드려요' : LINK_WORD[ld] + ' 안에서 골라 드려요') : '듣고 나니 어울릴 색이 보여요. 이제 취향을 골라 볼까요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
-                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
-                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
-                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
-                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
-                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
+                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
+                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
+                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc pause-pick' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
+                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc pause-pick' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
+                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc pause-pick' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
+                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc pause-pick' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
                 html += '</div></div>';
                 break;
 
@@ -1318,9 +1369,20 @@
 
     function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass) {
         const id = "bk_" + Math.random().toString(36).substr(2, 9);
+        // 'pause-pick' 칸: 누르면 고른 칸만 남기고 나머지는 어두워진 뒤 PICK_PAUSE_MS 만큼 쉬었다가 다음 화면으로 (10-15)
+        //  - 고객이 "내가 이걸 골랐구나" 느낄 틈을 줌. 쉬는 동안 다시 누르는 건 무시
+        const pausePick = /\bpause-pick\b/.test(extraClass || '');
         setTimeout(() => {
             const el = document.getElementById(id);
-            if (el) el.onclick = onClickFn;
+            if (!el) return;
+            if (!pausePick) { el.onclick = onClickFn; return; }
+            el.onclick = () => {
+                const canvas = el.closest('.bookmark-canvas');
+                if (!canvas || canvas.classList.contains('has-pick')) return;
+                canvas.classList.add('has-pick');
+                el.classList.add('is-picked');
+                setTimeout(onClickFn, PICK_PAUSE_MS);
+            };
         }, 0);
 
         // 원단 칸과 같은 ㄴ자 배치: 왼쪽 아래 세로 제목(아래 정렬) + 그 오른쪽 아래 가로 설명 (extraClass에 'vdesc'가 있으면 설명도 제목 옆에 작게 세로로)
@@ -1636,7 +1698,16 @@
             goToStep("2-Base-Floor");
         },
         // 우리 집 색 → 색 잇기
-        goLinkStep: function() { goToStep("2-Base-Link"); },
+        goLinkStep: function() {
+            if (canLink(state.editingRoom)) { goToStep("2-Base-Link"); return; }
+            state.editingRoom.linkDir = null;
+            goToStep("2-Base-Mood");
+        },
+        // "이렇게 들었어요" 줄을 눌러 그 질문으로: 답하면 다시 이 화면으로 돌아옴
+        fixHeard: function(stepName) {
+            state.editingRoom.backHome = true;
+            goToStep(stepName);
+        },
         selectLink: function(dir) {
             state.editingRoom.linkDir = dir;
             goToStep("2-Base-Mood");
@@ -1750,14 +1821,17 @@
         },
         selectLightLevel: function(level) {
             state.editingRoom.lightLevel = level;
+            if (returnHomeIfFixing()) return;
             goToStep("2-Base-Block");          // 모든 공간: 빛 가림 → 바깥 시선 → 구성
         },
         selectLightBlock: function(level) {
             state.editingRoom.lightBlock = level;
+            if (returnHomeIfFixing()) return;
             goToStep("2-Base-Privacy");
         },
         selectPrivacy: function(level) {
             state.editingRoom.privacy = level;
+            if (returnHomeIfFixing()) return;
             goToStep("3-Config-Style");        // 빛 가림·바깥 시선을 근거로 구성 추천
         },
         selectSheerFeel: function(feel) {
@@ -1792,10 +1866,11 @@
             }
             state.pendingItemQueue = state.editingRoom.items;
             state.currentItemIndex = 0;
-            // 구성 다음: 잰 공간·커튼이면 우리 집 색 → 색 잇기, 아니면 바로 취향(분위기). 블라인드로 바꾸면 고른 잇기 방향은 지움
-            if (canLink(state.editingRoom)) { goToStep("2-Base-Home"); return; }
-            state.editingRoom.linkDir = null;
-            goToStep("2-Base-Mood");
+            // 구성 다음: 모든 공간이 "이렇게 들었어요. 맞나요?" (23번). 블라인드로 바꾸면 고른 잇기 방향은 지움
+            if (!canLink(state.editingRoom)) state.editingRoom.linkDir = null;
+            state.editingRoom.backHome = false;
+            if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "2-Base-Home") { stepHistory.pop(); goToStep("2-Base-Home", false); return; }
+            goToStep("2-Base-Home");
         },
         // "원단 보기": "찾는 중" 화면에서 사진을 미리 받은 뒤 원단 화면으로 (두 번 눌러도 한 번만)
         proceedToFabricQueue: function() {
