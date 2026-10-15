@@ -24,6 +24,13 @@
         return url ? `url('${url}') center / cover no-repeat, ${fallback}` : fallback;
     }
 
+    // 분위기 카드 배경: photos/mood/ 의 분위기용 사진(원단·시공 사진 아님). 사진이 안 뜨면 예전 색 질감이 보임
+    function moodBg(name, fallback) {
+        return `url('photos/mood/${name}.jpg') center / cover no-repeat, ${fallback}`;
+    }
+    // 사진 6장은 895×2130(가로:세로 약 0.42)으로 잘라 둠: 바닥과 벽이 만나는 선이 위에서 85% 지점(벽:바닥 = 8.5:1.5)으로 모두 같고, 사물은 가운데에서 아주 조금 오른쪽.
+    // 칸(약 0.34)이 더 좁으니 세로가 칸에 딱 맞고 좌우만 조금 잘림 → 바닥선 높이가 칸마다 같음 (10-15 사장님)
+
     // 바닥·벽 카드의 큰 글씨(색 이름). "같은 바닥·벽인가요?" 설명도 손님이 카드에서 본 이 이름으로 씀
     const FLOOR_NAMES = { warm: "오크·베이지", cool: "화이트·그레이", neutral: "그레이지·회색", deep: "월넛·브라운" };
     const WALL_NAMES = { warm: "크림·아이보리", cool: "화이트·그레이", neutral: "그레이지", deep: "체리·우드" };
@@ -849,12 +856,12 @@
                 state.__recMoods = ld ? LINK_MOODS[ld] : [];
                 html += stepHead('원하시는 분위기를 골라 주세요', ld ? (ld === 'bridge' ? '그 중간으로 잇는 색 안에서 골라 드려요' : LINK_WORD[ld] + ' 안에서 골라 드려요') : '');
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("포근한", "아이보리·베이지", "", SOLID_TEXTURES.l1, function() { window.concierge.selectMood('soft_warm'); }, 'vdesc' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
-                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectMood('urban_clean'); }, 'vdesc' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
-                html += renderBookmarkCard("은은한", "그레이지", "", SOLID_TEXTURES.greige, function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
-                html += renderBookmarkCard("자연스러운", "린넨의 결", "", SOLID_TEXTURES.oak, function() { window.concierge.selectMood('textured_linen'); }, 'vdesc' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
-                html += renderBookmarkCard("아늑한", "차콜·브라운", "", SOLID_TEXTURES.l4, function() { window.concierge.selectMood('deep_private'); }, 'vdesc' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
-                html += renderBookmarkCard("화사한", "밝고 가벼운", "", SOLID_TEXTURES.cream, function() { window.concierge.selectMood('airy_bright'); }, 'vdesc' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
+                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
+                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
+                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
+                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
+                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
+                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
                 html += '</div></div>';
                 break;
 
