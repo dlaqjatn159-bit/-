@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261030';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261031';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261030';
+const REDAM_BUILD = '20261031';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -277,8 +277,9 @@ function startNewConsultation() {
 }
 
 // ==============================================================
-// 2. 직원 PIN (로고 5번 연속 탭 → PIN 입력)
+// 2. 직원 PIN (로고 2초 누르고 있기 → PIN 입력)
 // ==============================================================
+const STAFF_HOLD_MS = 2000;
 const RedamAuth = (function() {
     let taps = 0, tapTimer = null;
     let mode = 'verify';        // 'verify' | 'setup' | 'change' | 'unlock'(잠금 화면) | 'gate'(찾기만 열린 상태에서 다른 메뉴로 갈 때)
@@ -319,14 +320,24 @@ const RedamAuth = (function() {
     function closeModal() { mode = 'verify'; gateNext = null; el('pinModal').classList.add('hidden'); el('pinModal').classList.remove('is-lock'); el('pinInput').value = ''; el('pinInput2').value = ''; }
 
     return {
-        // 로고를 2초 안에 5번 탭하면 PIN 창을 연다 (고객이 우연히 누르는 것을 방지)
-        tap: function() {
-            if (appMode === 'staff') return;
-            taps++;
+        // 로고(data-staff-hold)를 2초 동안 누르고 있으면 PIN 창을 연다 (10-16 사장님: 5번 탭 대신). 손가락이 움직이거나 일찍 떼면 취소
+        //  누르고 있다가 PIN 창이 열린 뒤 손을 떼도 그 아래 카드가 눌리지 않게 바로 다음 click 한 번은 막음
+        holdStart: function(ev) {
+            if (appMode === 'staff' || (ev.button !== undefined && ev.button > 0)) return;
+            const x0 = ev.clientX, y0 = ev.clientY, self = this;
             clearTimeout(tapTimer);
-            tapTimer = setTimeout(() => { taps = 0; }, 2000);
-            if (taps >= 5) { taps = 0; this.requestStaff(); }
+            const stop = () => { clearTimeout(tapTimer); document.removeEventListener('pointerup', stop, true); document.removeEventListener('pointercancel', stop, true); document.removeEventListener('pointermove', move, true); };
+            const move = e => { if (Math.hypot(e.clientX - x0, e.clientY - y0) > 12) stop(); };
+            document.addEventListener('pointerup', stop, true);
+            document.addEventListener('pointercancel', stop, true);
+            document.addEventListener('pointermove', move, true);
+            tapTimer = setTimeout(() => {
+                stop();
+                taps = Date.now();      // 이 뒤 잠깐 동안의 click은 막음
+                self.requestStaff();
+            }, STAFF_HOLD_MS);
         },
+        swallowClick: function(ev) { if (taps && Date.now() - taps < 1500) { taps = 0; ev.preventDefault(); ev.stopPropagation(); } },
         requestStaff: function() { openModal(loadStored() ? 'verify' : 'setup'); },
         changePin: function() { openModal('change'); },
         requestUnlock: function() { openModal('unlock'); },
@@ -366,6 +377,10 @@ const RedamAuth = (function() {
     };
 })();
 window.RedamAuth = RedamAuth;
+// 고객 화면 로고(data-staff-hold)를 누르기 시작하면 2초 재기. 길게 눌러도 탭의 글자 고르기·메뉴가 뜨지 않게 (style.css [data-staff-hold])
+document.addEventListener('pointerdown', ev => { if (ev.target.closest && ev.target.closest('[data-staff-hold]')) RedamAuth.holdStart(ev); }, true);
+document.addEventListener('click', ev => RedamAuth.swallowClick(ev), true);
+document.addEventListener('contextmenu', ev => { if (ev.target.closest && ev.target.closest('[data-staff-hold]')) ev.preventDefault(); });
 
 // 자동 잠금: 일정 시간 손대지 않으면 고객 화면으로 나가지 않고, 하던 화면 위에 잠금 화면(PIN)을 덮음. PIN을 넣으면 그 자리에서 이어서 씀
 //  - 잠금 시간은 기기마다 따로 (5분 / 15분 / 30분 / 끄기, 처음 값 15분). 이 브라우저에만 저장하고 비공개 팩에는 넣지 않음

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261030';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261031';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -539,7 +539,7 @@
         state.justFilledRoomId = null; state.justFilledIdx = null;
         const fillCls = (r, i) => (r.id === fresh && (freshIdx == null || freshIdx === i)) ? ' fill-in' : '';
         let h = '<div class="dos-stage"><div class="dos-sheet">';
-        h += '<div class="dos-top font-serif-kr"><h1 onclick="window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</h1><span class="dos-phase">공간에 담을 색</span></div>';
+        h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>Re<i class="logo-dot">.</i>dam</h1><span class="dos-phase">공간에 담을 색</span></div>';
         h += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${esc(currentCust)} 고객님` : '고객님'}의 공간</p>`;
         h += doneN ? '<h2 class="dos-lead font-serif-kr">공간에 담을 색이에요<small>한 톤씩 바꿔 보거나, 더 보기에서 다른 색을 찾아볼 수 있어요</small></h2>'
                    : '<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴볼게요</h2>';
@@ -747,7 +747,7 @@
             case "0-Welcome": {
                 const esc = v => String(v || '').replace(/"/g, '&quot;');
                 html += '<div class="ambient-stage ask-stage wel-stage">';
-                html += '<h1 class="wel-brand font-serif-kr" onclick="window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</h1>';
+                html += '<h1 class="wel-brand font-serif-kr" data-staff-hold>Re<i class="logo-dot">.</i>dam</h1>';
                 html += '<p class="wel-sub font-serif-kr">빛을,<br>다시 담습니다</p>';
                 html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)">`;
                 html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)">`;
@@ -1218,8 +1218,8 @@
             }).join('') + '</div>';
         }
         h += '</div>';
-        // 마지막 칸에만 Re.dam 표시 (오른쪽 아래). 5번 누르면 직원 화면
-        if (isLast) h += '<div class="card-brand" onclick="event.stopPropagation(); window.concierge.staffTap()">Re<i class="logo-dot">.</i>dam</div>';
+        // 마지막 칸에만 Re.dam 표시 (오른쪽 아래). 2초 누르고 있으면 직원 화면
+        if (isLast) h += '<div class="card-brand" data-staff-hold onclick="event.stopPropagation()">Re<i class="logo-dot">.</i>dam</div>';
         h += '</div>';
         return h;
     }
@@ -2100,9 +2100,6 @@
             const i = parseInt(el.getAttribute('data-i') || '0', 10) + 1;
             const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(el.getAttribute('data-id'), el.getAttribute('data-color') || '') : [];
             if (i < urls.length) { el.setAttribute('data-i', i); el.src = urls[i]; } else { el.remove(); }
-        },
-        staffTap: function() {
-            if (window.RedamAuth) window.RedamAuth.tap();
         },
         // 직원 화면 "원단 찾기"의 후보 보여주기 화면도 고객 화면과 같은 칸(세로 제목 + 짧은 글)을 씀
         bookmarkCard: renderBookmarkCard,

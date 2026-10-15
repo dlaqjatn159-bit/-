@@ -961,6 +961,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .staff-set h2 { font-size: 1rem; font-weight: 500; color: var(--brand-dark); }
 .staff-set p { font-size: 0.78rem; line-height: 1.55; color: var(--brand-muted); }
 .staff-field { display: grid; gap: 0.25rem; }
+/* 직원 화면 열기: 로고를 2초 누르고 있기 — 길게 눌러도 글자 고르기·탭 메뉴가 뜨지 않게 */
+[data-staff-hold] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
 /* 설정 › 가공·부자재 단가 (29번): 줄마다 이름 · 판매가 · 원가 · 남는 돈 */
 .opt-price { display: grid; gap: 0.9rem; }
 .opt-group { display: grid; gap: 0.35rem; }
