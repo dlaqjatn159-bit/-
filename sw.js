@@ -44,6 +44,9 @@ async function precache() {
     // index.html에 적혀 있지 않지만 꼭 미리 받아 둘 사진: 분위기 카드 6장 (현장에서 인터넷이 느려도 첫 화면부터 바로 뜨게)
     ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright']
         .forEach(n => urls.add(new URL('photos/mood/' + n + '.jpg', SCOPE).href));
+    // 속지 느낌 장면 3장도 같이 (10-15)
+    ['feel_smooth', 'feel_textured', 'feel_cozy']
+        .forEach(n => urls.add(new URL('photos/feel/' + n + '.jpg', SCOPE).href));
 
     await Promise.allSettled([...urls].map(async href => {
         const local = href.startsWith(self.location.origin);

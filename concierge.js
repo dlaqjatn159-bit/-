@@ -18,10 +18,9 @@
         l4: "linear-gradient(135deg, #3e2c21 0%, #201711 100%)"
     };
 
-    // 속지 느낌 카드 배경: 그 느낌의 대표 원단 사진(1번 색)을 그라데이션 위에 깔고, 사진이 없으면 그라데이션만 보임
-    function sheerFeelBg(fabricId, fallback) {
-        const url = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabricId, '1')[0] : '';
-        return url ? `url('${url}') center / cover no-repeat, ${fallback}` : fallback;
+    // 속지 느낌 카드 배경: photos/feel/ 의 속지 장면 사진(분위기 사진과 같은 세트, 실제 원단 사진 아님). 사진이 안 뜨면 색 질감이 보임 (10-15)
+    function sheerFeelBg(name, fallback) {
+        return `url('photos/feel/${name}.jpg') center / cover no-repeat, ${fallback}`;
     }
 
     // 분위기 카드 배경: photos/mood/ 의 분위기용 사진(원단·시공 사진 아님). 사진이 안 뜨면 예전 색 질감이 보임
@@ -33,10 +32,11 @@
     // → 분위기 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15)
     const PICK_PAUSE_MS = 450;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 길게 느껴지면 300~350, 더 여유를 주려면 600
     const MOOD_PHOTOS = ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'];
+    const FEEL_PHOTOS = ['feel_smooth', 'feel_textured', 'feel_cozy'];   // 속지 느낌 3장도 같이 미리 받음 (10-15)
     (function preloadMoodPhotos() {
-        const run = () => MOOD_PHOTOS.forEach(n => {
+        const run = () => MOOD_PHOTOS.map(n => `photos/mood/${n}.jpg`).concat(FEEL_PHOTOS.map(n => `photos/feel/${n}.jpg`)).forEach(src => {
             const im = new Image();
-            im.src = `photos/mood/${n}.jpg`;
+            im.src = src;
             if (im.decode) im.decode().catch(() => {});
         });
         // 첫 화면 그리기를 방해하지 않게 한가할 때 받음 (구형 브라우저는 1초 뒤)
@@ -894,9 +894,9 @@
                 // "추천대로"는 사진 칸 대신 질문 판 아래 작은 글자 버튼 (10-15 사장님: 큰 색 칸이 네 번째 원단처럼 보임)
                 html += `<button type="button" class="step-skip${was('sheerFeel', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectSheerFeel('any')">잘 모르겠어요 · 추천대로</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", sheerFeelBg('데미안_쉬폰', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc pause-pick' + was('sheerFeel', 'smooth'));
-                html += renderBookmarkCard("결 있는", "린넨처럼", "", sheerFeelBg('데미안_오솔로', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc pause-pick' + was('sheerFeel', 'textured'));
-                html += renderBookmarkCard("도톰한", "보송하게", "", sheerFeelBg('데미안_부클', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc pause-pick' + was('sheerFeel', 'cozy'));
+                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", sheerFeelBg('feel_smooth', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc pause-pick' + was('sheerFeel', 'smooth'));
+                html += renderBookmarkCard("결 있는", "린넨처럼", "", sheerFeelBg('feel_textured', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc pause-pick' + was('sheerFeel', 'textured'));
+                html += renderBookmarkCard("도톰한", "보송하게", "", sheerFeelBg('feel_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc pause-pick' + was('sheerFeel', 'cozy'));
                 html += '</div></div>';
                 break;
 
