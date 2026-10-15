@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261024';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261025';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -30,7 +30,8 @@
 
     // 분위기 사진 6장 미리 받기: 앱을 켜면 뒤에서 받아 두고 decode(그릴 준비)까지 끝내 둠
     // → 분위기 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15)
-    const PICK_PAUSE_MS = 450;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 길게 느껴지면 300~350, 더 여유를 주려면 600
+    let finalPage = 0, finalCardCount = 0, lastRenderedStep = null;      // 최종 제안의 쪽 넘기기 (원단을 고른 이유 → 견적서)
+    const PICK_PAUSE_MS = 220;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 450일 때 "렉 같다"는 말이 있어 줄임(10-15). 더 여유를 주려면 300~350
     const MOOD_PHOTOS = ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'];
     const FEEL_PHOTOS = ['feel_smooth', 'feel_textured', 'feel_cozy'];   // 속지 느낌 3장도 같이 미리 받음 (10-15)
     (function preloadMoodPhotos() {
@@ -286,6 +287,7 @@
     }
 
     function prevStep() {
+        if (state.step === "7-Final-Dossier" && finalPage > 0) { setFinalPage(finalPage - 1); return; }      // 견적서 쪽에서 ← 는 먼저 앞 쪽으로
         if (collapseMoodCards(document.querySelector(".bookmark-canvas.has-expand"))) return;
         hideKeypadDirectly();
         if (stepHistory.length > 0) {
@@ -356,7 +358,7 @@
         return null;
     }
     const LINK_WORD = { wall: '벽과 이어지는 색', bridge: '벽과 바닥 사이를 잇는 색', floor: '바닥 톤을 따르는 색' };
-    const LINK_WHY = { wall: '창이 벽에 녹아들어 공간이 넓어 보여요.', bridge: '벽과 바닥을 이어 주어 공간이 차분하게 하나로 보여요.', floor: '바닥과 같은 결이라 따뜻하고 안정감 있어요.' };
+    const LINK_WHY = { wall: '커튼이 벽에 녹아들어 공간이 넓어 보여요.', bridge: '벽과 바닥을 이어 주어 공간이 차분하게 하나로 보여요.', floor: '바닥과 같은 계열의 색이라 따뜻하고 안정감 있어요.' };      // 24번(10-15): "창"→"커튼", "결"→"계열의 색"
     // 색 잇기 방향과 어울리는 분위기 카드 (추천 표시만, 점수는 그대로 — 사장님이 써 보며 정함)
     const LINK_MOODS = { wall: ['urban_clean', 'airy_bright'], bridge: ['balanced_neutral'], floor: ['soft_warm', 'textured_linen'] };
     // 글 질문 화면 ("제안합니다" 화면과 같은 분위기): 큰 질문 + 글자 선택지. 사진이 필요 없는 질문에 사용
@@ -1046,12 +1048,14 @@
             // [Step 7: 최종 제안 = 견적서] 저장·인쇄되는 견적서 이미지(app.js drawTicket)를 종이 한 장처럼 가운데에 그대로 보여 줌
             // 공간 화면(고치고 더하는 화면)과 일부러 다른 모양: 여기는 "발행된 문서". 버튼과 시공비 입력은 종이 밖 오른쪽
             case "7-Final-Dossier": {
+                if (lastRenderedStep !== "7-Final-Dossier") finalPage = 0;      // 최종 제안에 새로 들어오면 첫 쪽(원단을 고른 이유)부터
                 html += '<div class="fin-stage">';
                 html += '<div class="fin-paper" id="finPaper"><p class="fin-wait font-serif-kr">견적서를 준비하고 있어요</p></div>';
                 html += '<aside class="fin-side">';
                 html += `<p class="fin-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${currentCust} 고객님` : '고객님'}<br>맞춤 제안</p>`;
+                html += '<div class="fin-pager font-serif-kr" id="finPager"></div>';
                 html += '<div class="fin-main font-serif-kr">';
-                html += '<button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button>';
+                html += '<button type="button" class="dos-act is-main" id="finSave" onclick="window.concierge.saveQuote()">견적서 저장</button>';
                 html += '<button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button>';
                 html += '</div>';
                 html += '<label class="fin-fee"><span>시공 및 설치비</span>';
@@ -1067,6 +1071,7 @@
 
         html += '</div>';
         main.innerHTML = html;
+        lastRenderedStep = state.step;
         if (state.step === "4-Fabric-Queue") {
             bindColorDecks();     // 색상 카드 밀어 넘기기 연결
             // "찾는 중" 화면을 거치지 않고 열렸을 때(뒤로 가기 등): 사진 주소를 찾은 뒤 넣음
@@ -1078,22 +1083,46 @@
         if (state.step === "7-Final-Dossier") renderFinalPaper();
     }
 
-    // ---- 최종 제안의 종이: 저장·인쇄되는 견적서 이미지를 그대로 그려 넣음 (app.js makeTicketBlobs). 여러 장이면 아래로 이어짐 ----
+    // ---- 최종 제안의 종이: 저장·인쇄되는 이미지를 한 쪽씩 보여 줌 (app.js makeTicketBlobs) ----
+    //  1쪽 = "원단을 고른 이유" 카드(고객 답이 있을 때만), 다음 쪽 = 견적서. 위아래로 이어 붙이면 한 장처럼 느껴져서 "다음"을 눌러 넘김 (10-15 사장님)
     let finalPaperSeq = 0, finalPaperTimer = null;
+    function setFinalPage(i) {
+        const box = document.getElementById('finPaper');
+        if (!box) return;
+        const imgs = box.querySelectorAll('img');
+        if (!imgs.length) return;
+        finalPage = Math.max(0, Math.min(i, imgs.length - 1));
+        imgs.forEach((im, k) => im.classList.toggle('is-on', k === finalPage));
+        const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
+        const pager = document.getElementById('finPager');
+        if (pager) {
+            let h = '';
+            if (n > 1) h += `<span class="fin-pg">${finalPage + 1} / ${n}</span>`;
+            if (finalPage < n - 1) h += `<button type="button" class="dos-act is-main" onclick="window.concierge.finalNext()">${finalPage === finalCardCount - 1 && finalCardCount ? '견적서 보기' : '다음'} →</button>`;
+            if (finalPage > 0) h += `<button type="button" class="fin-prev" onclick="window.concierge.finalPrev()">← ${finalPage === finalCardCount && finalCardCount ? '원단을 고른 이유' : '이전'}</button>`;
+            pager.innerHTML = h;
+        }
+        const save = document.getElementById('finSave');
+        if (save) save.classList.toggle('is-main', !onCard);        // 카드 쪽에서는 "견적서 보기"가 주 버튼
+        const stage = document.querySelector('.fin-stage');
+        if (stage) stage.classList.toggle('on-card', onCard);       // 카드 쪽에서는 시공비 칸을 감춤(자리는 그대로, 화면이 덜컥하지 않게) (견적서에만 들어가는 금액)
+    }
     async function renderFinalPaper() {
         const seq = ++finalPaperSeq;
         if (typeof window.makeTicketBlobs !== 'function') return;
         try {
-            const { canvases } = await window.makeTicketBlobs({ canvasOnly: true, pixelRatio: 1.5 });
+            const { canvases, cardCount } = await window.makeTicketBlobs({ canvasOnly: true, pixelRatio: 1.5 });
             const box = document.getElementById('finPaper');
             if (seq !== finalPaperSeq || !box || state.step !== "7-Final-Dossier") return;      // 그리는 사이 화면이 바뀌었으면 버림
             box.innerHTML = '';
-            canvases.forEach(c => {
+            finalCardCount = cardCount || 0;
+            canvases.forEach((c, k) => {
                 const img = document.createElement('img');
-                img.alt = '견적서';
+                img.alt = (k < finalCardCount) ? '원단을 고른 이유' : '견적서';
                 img.src = c.toDataURL('image/png');
                 box.appendChild(img);
             });
+            setFinalPage(finalPage);
         } catch (e) {
             console.error(e);
             const box = document.getElementById('finPaper');
@@ -1204,7 +1233,7 @@
     }
     // "+7"을 누르면: 판을 따로 띄우지 않고 그 띠 안에서 숨은 칩을 모두 펼침 (아래 줄부터 위로 쌓임)
     //  - 띠 안에 다 들어가면 띠 크기 그대로, 넘칠 때만 넘친 줄이 사진 위로 올라감(띠와 같은 갈색). 줄 끝 "접기"로 다시 한 줄
-    //  - 색을 누르면 그 색으로 바뀌고 한 줄로 돌아감. 칸 밖을 눌러도 접힘
+    //  - 색을 눌러도 펼친 채로 유지(그 색으로만 바뀜). "접기" · 칸 밖 누르기 · 뒤로를 누르면 접힘
     function openAllColors(panel) {
         closeAllColors();
         const card = panel.querySelector('.bookmark-card'), box = panel.querySelector('.fab-chips');
@@ -1588,6 +1617,7 @@
         closeTopLayer: function() {
             const pad = document.getElementById("v2VirtualKeypadSheet");
             if (pad && pad.classList.contains("active")) { hideKeypadDirectly(); return true; }
+            if (state.step === "7-Final-Dossier" && finalPage > 0) { setFinalPage(finalPage - 1); return true; }
             const ov = document.getElementById('optInfoOverlay');
             if (ov && getComputedStyle(ov).display !== 'none') { ov.style.display = 'none'; return true; }
             // 분위기 화면에서 넓어진 칸은 "떠 있는 것"처럼 뒤로를 누르면 먼저 접힘 (22-2)
@@ -1939,7 +1969,7 @@
             if (!panel) { render(); return; }
             const idx = parseInt(panel.getAttribute('data-idx') || '0', 10);
             swapFabricPanel(panel, fabricCardHtml(fabric, best, idx, colorName, item, cat), fabric.id, colorName);
-            if (panel.querySelector('.bookmark-card.is-allcolors')) closeAllColors();      // 펼친 칩에서 골랐으면 한 줄로 접음
+            // 펼친 상태에서 색을 골라도 접지 않음 — "접기" 버튼(또는 칸 밖 누르기·뒤로)을 눌러야만 접힘 (10-15 사장님)
         },
         handleQueueFabricClick: function(fabId) {
             const item = state.pendingItemQueue[state.currentItemIndex];
@@ -2065,6 +2095,12 @@
             if (e) swapCurtain(roomId, idx, e.fabricId, e.color);
         },
         shortFabName: shortFabName,
+        // 색 잇기 방향의 말 ("원단을 고른 이유" 카드, app.js가 씀): linkSay = "벽과 이어지는 색", linkWhy = 이유 한 문장
+        linkSay: function(dir) { return LINK_WORD[dir] || ''; },
+        linkWhy: function(dir) { return LINK_WHY[dir] || ''; },
+        // 최종 제안 화면의 쪽 넘기기 (원단을 고른 이유 → 견적서)
+        finalNext: function() { setFinalPage(finalPage + 1); },
+        finalPrev: function() { setFinalPage(finalPage - 1); },
         linkWord: function(dir) { return { wall: '넓어 보이게', bridge: '그 중간으로', floor: '바닥과 어울리게' }[dir] || ''; },
         cardNameParts: function(fabricId, colorTag) {
             const f = getLiveDb().find(x => x.id === fabricId);

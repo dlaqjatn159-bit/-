@@ -344,9 +344,9 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     filter: grayscale(25%);
 }
 /* 고른 뒤 잠깐 쉼(pause-pick): 고른 칸은 그대로, 나머지는 어두워짐 (concierge.js PICK_PAUSE_MS 동안) */
-.bookmark-canvas .bookmark-card.pause-pick { transition: filter 0.3s ease, transform 0.3s ease; }
+.bookmark-canvas .bookmark-card.pause-pick { transition: filter 0.16s ease-out, transform 0.16s ease-out; }
 .bookmark-canvas.has-pick { pointer-events: none; }
-.bookmark-canvas.has-pick .bookmark-card.pause-pick:not(.is-picked) { filter: brightness(0.45) saturate(0.7); }
+.bookmark-canvas.has-pick .bookmark-card.pause-pick:not(.is-picked) { filter: brightness(0.72) saturate(0.85); }
 .bookmark-canvas.has-pick .bookmark-card.is-picked { transform: scale(1.012); z-index: 5; }
 
 .confirm-pill {
@@ -1357,7 +1357,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .ask-house-k { font-size: 0.8rem; color: #8a7a6a; margin-bottom: 0.15rem; }
 
 /* ===== 중심 화면 (20번): 시작과 끝이 같은 모양. 빈 띠·빈 칸(빗금)이 상담할수록 색으로 채워짐 ===== */
-.dos-stage .dos-sheet { max-width: 760px; }
+.dos-stage .dos-sheet { max-width: 760px; border-left: 1px solid #e5dcd0; border-right: 1px solid #e5dcd0; }      /* 10-15: 배경과 같은 색이라 경계가 없던 것 → 1px 선 (별로면 이 두 줄만 지우기) */
 .dos-phase { font-family: Pretendard, sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em; color: #91401a; }
 .dos-stage .dos-who { margin: 0.8rem 0 0.3rem; }
 .dos-lead { margin: 1.4rem 0 2rem; font-size: 1.55rem; font-weight: 600; line-height: 1.5; letter-spacing: -0.02em; color: #2b221a; }
@@ -1461,6 +1461,10 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .more-sub { padding: 0.4rem 0.2rem; border: none; background: none; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
 .more-foot { position: absolute; left: 50%; bottom: 1.6rem; z-index: 5; display: flex; align-items: center; gap: 1rem; padding: 0.55rem 0.9rem 0.55rem 1rem; transform: translateX(-50%); border: 1px solid #e5dcd0; border-radius: 999px; background: #fffdf9; box-shadow: 0 8px 30px rgba(43, 34, 26, 0.15); white-space: nowrap; font-size: 0.92rem; color: #6f5f4f; }
 .more-foot-sw { display: flex; }
+.more-foot-x { position: relative; padding: 0; border: none; background: none; cursor: pointer; }
+.more-foot-x::after { content: '×'; position: absolute; top: -6px; right: -4px; width: 14px; height: 14px; border-radius: 50%; background: #2b221a; color: #fff; font-size: 11px; line-height: 14px; text-align: center; }
+.more-foot small { font-size: 0.75rem; color: #8a7a6a; }
+.more-overlay.has-foot .more-sheet { bottom: 6.2rem; }
 .more-foot-sw i { width: 18px; height: 26px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
 .more-note { position: absolute; left: 50%; bottom: 6rem; z-index: 6; padding: 0.5rem 1.1rem; transform: translateX(-50%); border-radius: 999px; background: #2b221a; color: #efe6da; font-size: 0.85rem; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
 .more-note.on { opacity: 1; }
@@ -1482,10 +1486,16 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-stage { width: 100vw; height: 100vh; height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fbf9f5; box-sizing: border-box; display: flex; justify-content: center; align-items: flex-start; gap: 3.2rem; padding: 2rem 2rem 2rem 6rem; color: #2b221a; }
 .fin-paper { flex: 0 1 auto; display: flex; flex-direction: column; gap: 1.2rem; }
 /* 종이: A4 세로 한 장이 화면 높이에 꼭 맞게. 그림자 없이 가는 테두리만 */
+.fin-paper img:not(.is-on) { display: none; }      /* 한 쪽씩 보여 줌: 원단을 고른 이유 → 견적서 */
 .fin-paper img { display: block; height: calc(100vh - 4rem); height: calc(100dvh - 4rem); width: auto; max-width: 100%; border: 1px solid #ddd3c6; box-sizing: border-box; }
 .fin-wait { width: calc((100vh - 4rem) / 1.414); max-width: 100%; height: calc(100vh - 4rem); display: flex; align-items: center; justify-content: center; border: 1px solid #ddd3c6; background: #fffdf9; box-sizing: border-box; font-size: 1rem; color: #8a7a6a; }
 .fin-side { position: sticky; top: 0; flex: 0 0 13.5rem; min-height: calc(100vh - 4rem); min-height: calc(100dvh - 4rem); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
 .fin-who { font-size: 1.05rem; line-height: 1.6; color: #6f5f4f; margin-bottom: 2.2rem; }
+.fin-pager { display: flex; flex-direction: column; align-items: flex-start; gap: 0.9rem; margin-bottom: 2.2rem; }
+.fin-pager:empty { display: none; }
+.fin-pg { font-size: 0.85rem; letter-spacing: 0.14em; color: #8a7a6a; }
+.fin-prev { background: none; border: none; cursor: pointer; padding: 0.4rem 0.2rem; font-size: 0.82rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; font-family: inherit; }
+.fin-stage.on-card .fin-fee { visibility: hidden; }
 .fin-main { display: flex; flex-direction: column; align-items: flex-start; gap: 1.3rem; }
 .fin-fee { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 2.6rem; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; color: #8a7a6a; }
 .fin-fee > span:last-child { font-family: 'Noto Serif KR', Georgia, serif; font-size: 1.05rem; font-weight: 600; letter-spacing: 0; color: #2b221a; }

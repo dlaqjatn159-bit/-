@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261024';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261025';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -424,8 +424,10 @@ function calculateFabricMatchScore(fabric, room, category) {
 }
 
 // 추천 이유 한 줄 (짧은 말) (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
-function recommendReason(fabric, room, category, maxParts) {
+function recommendReason(fabric, room, category, maxParts, onlySaid) {
+    // onlySaid(원단을 고른 이유 카드, 24번): 손님이 답한 조건(바깥 시선·빛 가림·강한 햇빛)과 원단이 맞는 점만, 있으면 하나만 돌려줌
     if (!isManualTagged(fabric)) return '';
+    const said = [];
     const floorT = room.floorTone || 'warm', wallT = room.wallTone || 'warm';
     const targetMood = room.wantMood || deriveRoomMood(room);
     const parts = [];
@@ -433,7 +435,7 @@ function recommendReason(fabric, room, category, maxParts) {
     if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽을 잇는 톤' : '어디에나 어울리는 톤');
     else if (fabric.tone === floorT) parts.push(`바닥과 어울리는 ${TONE_LABELS[floorT]} 톤`);
     else if (fabric.tone === wallT) parts.push(`벽과 어울리는 ${TONE_LABELS[wallT]} 톤`);
-    if (category === '속지' && room.lightLevel === 'high' && (fabric.density === 'heavy' || fabric.density === 'day')) parts.push('강한 햇빛을 거르는 비침');
+    if (category === '속지' && room.lightLevel === 'high' && (fabric.density === 'heavy' || fabric.density === 'day')) { parts.push('강한 햇빛을 거르는 비침'); said.push('강한 햇빛을 거르는 비침'); }
     if (category === '속지' && room.sheerFeel && fabric.texture) {
         const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
             : room.sheerFeel === 'textured' && fabric.texture === 'natural' ? '자연스럽게 살아 있는 결'
@@ -445,7 +447,7 @@ function recommendReason(fabric, room, category, maxParts) {
         const msg = room.privacy === 'high' && (d === 'heavy' || d === 'day') ? '낮에도 안이 보이지 않는 비침'
             : room.privacy === 'some' && (d === 'day' || d === 'medium') ? '적당히 가리는 은은한 비침'
             : room.privacy === 'open' && d === 'light' ? '풍경과 햇살을 살리는 맑은 비침' : '';
-        if (msg) parts.unshift(msg);       // 고객이 직접 고른 조건이라 맨 앞에
+        if (msg) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
     if (category === '겉지' && room.lightBlock) {
         const b = blackoutLevel(fabric);
@@ -453,15 +455,16 @@ function recommendReason(fabric, room, category, maxParts) {
             : room.lightBlock === 'soft' && b === 'life' ? '눈부심만 줄이는 생활 암막'
             : room.lightBlock === 'soft' && b === 'mid' ? '빛을 살짝 거르는 원단'
             : room.lightBlock === 'light' && (b === 'none' || b === 'mid') ? '햇빛이 은은히 스미는 원단' : '';
-        if (msg) parts.unshift(msg);       // 고객이 직접 고른 조건이라 맨 앞에
+        if (msg) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
     if (category === '블라인드' && room.lightBlock) {
         const bl = blindLight(fabric), kind = blindKind(fabric);
         const msg = room.lightBlock === 'dark' && bl === 'full' ? '빛을 거의 막는 암막'
             : room.lightBlock === 'light' && bl === 'see' ? '풍경은 살리고 햇빛만 거르는 투시'
             : room.lightBlock !== 'dark' && kind === 'combi' ? '각도로 빛을 맞추는 콤비' : '';
-        if (msg) parts.unshift(msg);
+        if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
+    if (onlySaid) return said[0] || '';
     // 짧은 말로 끝냄(예: 깔끔하고 매끈한 결). 원단 고르는 칸은 1개만, 제안서는 2개까지
     return parts.slice(0, maxParts || 2).join(' · ');
 }

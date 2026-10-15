@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261024';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261025';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261024';
+const REDAM_BUILD = '20261025';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1487,9 +1487,10 @@ function renderSpaceMore() {
     h += `<div class="more-body">${spaceMore.view === 'map' ? spaceMoreMapHtml(d) : spaceMoreCardsHtml(d)}</div>`;
     h += spaceMoreSheetHtml(d);
     const n = spaceMore.stars.length;
-    if (n && !spaceMore.sheet) {
-        const sw = spaceMore.stars.map(k => { const e = d.all.find(x => x.key === k); return `<i style="background:${(e && e.hex) || 'var(--brand-panel)'}"></i>`; }).join('');
-        h += `<div class="more-foot"><span class="more-foot-sw">${sw}</span><span>후보 ${n}개</span><button type="button" class="more-go font-serif-kr" data-mside>지금 원단과 나란히 보기 →</button></div>`;
+    ov.classList.toggle('has-foot', n > 0);      // 후보가 있으면 아래 바가 늘 보임(점 판이 열려 있어도) — 판은 그만큼 위로
+    if (n) {
+        const sw = spaceMore.stars.map(k => { const e = d.all.find(x => x.key === k); return `<button type="button" class="more-foot-x" data-mstar="${moreEsc(k)}" aria-label="후보에서 빼기"><i style="background:${(e && e.hex) || 'var(--brand-panel)'}"></i></button>`; }).join('');
+        h += `<div class="more-foot"><span class="more-foot-sw">${sw}</span><span>후보 ${n}개 <small>(색을 누르면 빠져요)</small></span><button type="button" class="more-go font-serif-kr" data-mside>지금 원단과 나란히 보기 →</button></div>`;
     }
     ov.innerHTML = h;
     const body = ov.querySelector('.more-body');
@@ -1599,6 +1600,7 @@ function spaceMoreClick(ev) {
         if (st.includes(k)) spaceMore.stars = st.filter(x => x !== k);
         else if (st.length >= MORE_STAR_MAX) { showMoreNote('후보는 4개까지예요'); return; }
         else st.push(k);
+        if (b.closest('.more-sheet')) spaceMore.sheet = null;      // 점 판에서 담기·빼기를 누르면 판이 닫힘 (10-15 사장님)
         renderSpaceMore(); return;
     }
     if ((b = by('[data-mfocus]'))) { spaceMore.focus = b.dataset.mfocus; spaceMore.sheet = null; spaceMore.view = 'cards'; renderSpaceMore(); return; }
@@ -2579,6 +2581,16 @@ function ticketItemReason(r, c) {
     const view = (col && col.tone) ? Object.assign({}, f, { tone: col.tone, manual: Object.assign({}, f.manual, { tone: true }) }) : f;
     try { return recommendReason(view, r, cat) || ''; } catch (e) { return ''; }
 }
+// "원단을 고른 이유" 카드 셋째 줄: 손님이 답한 조건(바깥 시선·빛 가림·강한 햇빛)을 이 원단이 지켜 주는 점 하나. 없으면 빈칸(그 줄만 생략)
+function ticketKeepWord(r, c) {
+    if (!r || !r.diagnosed || !c || !c.fabricId) return '';
+    const f = FABRIC_DB.find(x => x.id === c.fabricId);
+    if (!f) return '';
+    const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
+    const col = c.colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(c.colorName)) : null;
+    const view = (col && col.tone) ? Object.assign({}, f, { tone: col.tone, manual: Object.assign({}, f.manual, { tone: true }) }) : f;
+    try { return recommendReason(view, r, cat, 1, true) || ''; } catch (e) { return ''; }
+}
 // 고객에게 보여 줄 원단 이름: 괄호(폭·암막률·단가 등)·가격·앞의 책자 이름을 빼고, 색 표시(예: 3번 (그레이지))는 붙임
 function ticketFabricName(c, calc) {
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
@@ -2663,6 +2675,7 @@ function ticketData() {
     const pad = n => String(n).padStart(2, '0');
     return {
         recipient: custName ? `${custName} 고객님 귀하` : '고객님 귀하',
+        proposalFor: custName ? `${custName} 고객님 맞춤 제안` : '고객님 맞춤 제안',      // "원단을 고른 이유" 카드 머리글
         date: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`,
         rooms: rooms.map(r => {
             const items = r.curtains.map(c => {
@@ -2676,10 +2689,14 @@ function ticketData() {
                     fill: fabricToneFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0,
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
-                    photoKey: (c.fabricId || '') + '__' + (c.colorName || '')
+                    photoKey: (c.fabricId || '') + '__' + (c.colorName || ''),
+                    kindKey: c.presetType || '', colorDesc: (c.fabricId && c.colorName && typeof colorLabelOf === 'function') ? colorLabelOf(c.fabricId, c.colorName) : '',
+                    keep: ticketKeepWord(r, c)      // 원단을 고른 이유 카드용
                 };
             });
-            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '' };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
+            // 카드용 손님 답: 빛 양은 기본값이 들어 있으니 상담을 거친(diagnosed) 공간만 씀
+            const ans = { privacy: r.privacy || null, block: r.lightBlock || null, light: r.diagnosed ? (r.lightLevel || null) : null };
+            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
         }),
         install: globalInstallFee,
         total: document.getElementById('totalGrandPrice').textContent,
@@ -2887,6 +2904,184 @@ function planTicket(data, s) {
     const fitsOnePage = pages.length === 1 && last.y + F.h <= PAGE_H;
     return { s, W, PAGE_H, BOTTOM, F, pages, fitsOnePage };
 }
+// ==============================================================
+// 〈원단을 고른 이유〉 카드 (작업목록 24번): 제안서 맨 앞장. 가격 없음. 견적서와 한 쌍(머리글·글꼴·선·쪽 표시 같음)
+//  공간마다 [원단 사진 + 손님이 한 말 + 원단 이름·색 설명 + 색 잇기 이유 + 원단이 말을 지켜 주는 점].
+//  손님이 상담에서 실제로 답한 공간(diagnosed)만. 앞 공간과 같은 원단·같은 답이면 "○○과 같은 이유예요."
+//  모양 시안: Claude outputs/시안/원단고른이유_시안.html (A4 두 장)
+// ==============================================================
+const WHY_SAY = {
+    light: { high: '햇빛이 풍부해요', mid: '햇빛이 은은해요', low: '햇빛이 차분해요' },
+    block: { light: '빛은 들어와도 괜찮아요', soft: '빛은 적당히 가려 주세요', dark: '빛은 완전히 어둡게 하고 싶어요' },
+    privacy: { open: '밖에서 안이 보이는 게 괜찮아요', some: '밖에서 안이 보이는 게 조금 신경 쓰여요', high: '밖에서 안이 보이는 게 많이 신경 쓰여요' }
+};
+const whyQuote = (k, ans) => '“' + WHY_SAY[k][ans[k]] + '”';
+function whyJosa(name) {      // "거실과" / "안방과" / "방 2와" 처럼 받침에 따라
+    const ch = String(name).slice(-1), code = ch.charCodeAt(0);
+    if (code >= 0xAC00 && code <= 0xD7A3) return (code - 0xAC00) % 28 ? '과' : '와';
+    return '013678'.includes(ch) ? '과' : '와';
+}
+// 카드에 들어갈 공간·원단 묶음 (비어 있으면 카드 없음)
+function whySetsOf(data) {
+    const out = [], seen = [];
+    const linkSay = d => (window.concierge && window.concierge.linkSay && window.concierge.linkSay(d)) || '';
+    const linkWhy = d => (window.concierge && window.concierge.linkWhy && window.concierge.linkWhy(d)) || '';
+    data.rooms.forEach(room => {
+        if (!room.diagnosed) return;
+        const sets = [];
+        room.items.forEach(it => {
+            if (!it.fabricId) return;
+            const order = it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light'];      // 속지: 바깥 시선 → 빛 양 / 겉지·블라인드: 빛 가림 → 빛 양
+            const keys = order.filter(k => room.ans[k] && WHY_SAY[k][room.ans[k]]);
+            const link = (room.linkDir && linkSay(room.linkDir)) ? room.linkDir : null;
+            if (!keys.length && !link && !it.keep) return;
+            const prev = seen.find(p => p.fabricId === it.fabricId && p.kindKey === it.kindKey && p.link === link
+                && keys.some(k => p.ans[k]) && keys.every(k => !room.ans[k] || !p.ans[k] || p.ans[k] === room.ans[k] || k === 'light'));
+            const set = { room: room.name, it, keys, link, keep: it.keep || '', ans: room.ans, prevName: prev ? prev.room : '', diffKeys: prev ? keys.filter(k => room.ans[k] && room.ans[k] !== prev.ans[k]) : [] };
+            seen.push({ room: room.name, fabricId: it.fabricId, kindKey: it.kindKey, link, ans: room.ans });
+            sets.push(set);
+        });
+        if (sets.length) out.push({ name: room.name, sets });
+    });
+    return { rooms: out, linkSay, linkWhy };
+}
+function drawWhy(ctx, data, W) {
+    const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
+    const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    const DARK = '#2b221a', MUTED = '#6f5f4f', SOFT = '#8a7a6a';
+    const PAD = 96, CX = PAD, RX = W - PAD, HEAD_Y = 262, START_Y = HEAD_Y;      // 첫 공간의 윗선이 머리글 굵은 선과 겹침
+    const PH_W = 168, PH_H = 224, TX = CX + PH_W + 40, TW = RX - TX;
+    const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
+    const canSpace = 'letterSpacing' in ctx;
+    const spacing = v => { if (canSpace) ctx.letterSpacing = v; };
+    const hline = (x1, x2, y, color, lw) => { ctx.strokeStyle = color; ctx.lineWidth = lw || 2; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke(); };
+    const text = (str, x, y, align, color) => { ctx.textAlign = align; ctx.fillStyle = color; ctx.fillText(str, x, y); };
+    const label = (str, x, y, align, gap) => { spacing(gap + 'px'); text(str, x + ((align === 'right' && canSpace) ? gap : 0), y, align, SOFT); spacing('0px'); };
+    const wrap = (str, maxW) => {
+        const lines = []; let cur = '';
+        for (const word of String(str).split(' ')) {
+            const test = cur ? cur + ' ' + word : word;
+            if (ctx.measureText(test).width <= maxW) { cur = test; continue; }
+            if (cur) lines.push(cur);
+            cur = '';
+            if (ctx.measureText(word).width <= maxW) { cur = word; continue; }
+            let chunk = '';
+            for (const ch of word) { if (ctx.measureText(chunk + ch).width > maxW) { lines.push(chunk); chunk = ch; } else chunk += ch; }
+            cur = chunk;
+        }
+        if (cur) lines.push(cur);
+        return lines;
+    };
+    // 머리글: 견적서(drawTicket hdr)와 같은 자리·같은 모양. 오른쪽 제목만 "원단을 고른 이유"
+    function hdr() {
+        setFont(400, 66, SERIF); spacing('2.3px');
+        const wRe = ctx.measureText('Re').width, wDot = ctx.measureText('Re.').width;
+        text('Re', CX, 158, 'left', DARK); text('.', CX + wRe, 158, 'left', '#8a4a22'); text('dam', CX + wDot, 158, 'left', DARK);
+        spacing('0px');
+        setFont(600, 32, SERIF);
+        if (canSpace) { spacing('6px'); text('원단을 고른 이유', RX + 6, 152, 'right', DARK); spacing('0px'); }
+        else text('원단을 고른 이유', RX, 152, 'right', DARK);
+        setFont(400, 30, SERIF); text(data.proposalFor, CX, 214, 'left', MUTED);
+        setFont(400, 24, SANS); label(data.date, RX, 214, 'right', 2);
+        hline(CX, RX, HEAD_Y, DARK, 3);
+    }
+    // 원단 한 묶음의 글(손님 말 → 원단 → 이유)을 미리 배치
+    function layoutSet(set, W2) {
+        const ops = []; let cy = 36;
+        if (!set.prevName && set.keys.length) {
+            setFont(600, 34, SERIF);
+            set.keys.forEach(k => wrap(whyQuote(k, set.ans), TW).forEach(ln => { ops.push({ t: ln, f: [600, 34, SERIF], c: DARK, y: cy }); cy += 50; }));
+            cy -= 50;
+            ops.push({ t: '하셨어요', f: [400, 22, SANS], c: SOFT, y: cy + 40 });
+            cy += 40 + 52;
+        }
+        // 원단 줄: "속지 · 데미안 몽크 1번" 굵게 + 색 설명
+        const head = `${set.it.kind} · ${set.it.name}`;
+        setFont(700, 23, SANS);
+        const hl = wrap(head, TW);
+        hl.forEach((ln, i) => { ops.push({ t: ln, f: [700, 23, SANS], c: DARK, y: cy }); if (i < hl.length - 1) cy += 34; });
+        if (set.it.colorDesc) {
+            const lastW = ctx.measureText(hl[hl.length - 1]).width;
+            setFont(400, 22, SANS);
+            if (lastW + 16 + ctx.measureText(set.it.colorDesc).width <= TW) ops.push({ t: set.it.colorDesc, f: [400, 22, SANS], c: MUTED, y: cy, x: TX + lastW + 16 });
+            else { cy += 34; ops.push({ t: set.it.colorDesc, f: [400, 22, SANS], c: MUTED, y: cy }); }
+        }
+        cy += 44;
+        const para = (str, color) => {
+            setFont(400, 22, SANS);
+            wrap(str, TW).forEach(ln => { ops.push({ t: ln, f: [400, 22, SANS], c: color, y: cy }); cy += 35; });
+            cy += 6;
+        };
+        if (set.prevName) {
+            let s = `${set.prevName}${whyJosa(set.prevName)} 같은 이유예요.`;
+            if (set.diffKeys.length) s += ` 다만 ${set.diffKeys.map(k => whyQuote(k, set.ans)).join(', ')} 하셨어요.`;
+            para(s, MUTED);
+        } else {
+            if (set.link) para(`${set.linkSay}으로 골랐어요. ${set.linkWhy}`, MUTED);
+            if (set.keep) para(/[.!?]$/.test(set.keep) ? set.keep : set.keep + '.', MUTED);
+        }
+        const textH = cy - 20;
+        return { set, ops, h: Math.max(PH_H, textH) + 34 };
+    }
+    function layoutRoom(R) {
+        const sets = R.sets.map(s => layoutSet(s));
+        return { R, sets, h: 66 + sets.reduce((a, b) => a + b.h, 0) + 10 };
+    }
+    function drawRoom(L, y) {
+        hline(CX, RX, y, DARK, 2);
+        setFont(600, 23, SANS); label(L.R.name, CX, y + 42, 'left', 4);
+        let sy = y + 66;
+        L.sets.forEach(b => {
+            const it = b.set.it, photo = (data.photos && data.photos[it.photoKey]) || null;
+            ctx.fillStyle = it.fill || '#d9cdbb'; ctx.fillRect(CX, sy, PH_W, PH_H);
+            if (photo) {
+                const sw = photo.naturalWidth, sh = photo.naturalHeight, k = Math.max(PH_W / sw, PH_H / sh), cw = PH_W / k, ch = PH_H / k;
+                ctx.drawImage(photo, (sw - cw) / 2, (sh - ch) / 2, cw, ch, CX, sy, PH_W, PH_H);
+            }
+            b.ops.forEach(o => { setFont(o.f[0], o.f[1], o.f[2]); text(o.t, o.x || TX, sy + o.y, 'left', o.c); });
+            sy += b.h;
+        });
+    }
+    function pageLabel(i, n, H) { if (n < 2) return; setFont(500, 22, SANS); text(`${i + 1} / ${n}`, W / 2, H - 34, 'center', SOFT); }
+    return { START_Y, hdr, layoutRoom, drawRoom, pageLabel };
+}
+// 카드 쪽(들) 만들기: 한 장에 안 들어가면 글자·간격을 줄이고(견적서와 같은 방식), 그래도 안 되면 공간 단위로 다음 쪽에
+function buildWhyCanvases(data, opts, totalAfter) {
+    const info = whySetsOf(data);
+    if (!info.rooms.length) return [];
+    info.rooms.forEach(R => R.sets.forEach(s => { s.linkSay = info.linkSay(s.link); s.linkWhy = info.linkWhy(s.link); }));
+    const plan = s => {
+        const W = Math.round(TICKET_W / s), PAGE_H = Math.round(TICKET_PAGE_H / s), BOTTOM = 90;
+        const T = drawWhy(document.createElement('canvas').getContext('2d'), data, W);
+        const pages = []; let cur = { items: [], y: T.START_Y };
+        info.rooms.forEach(R => {
+            const L = T.layoutRoom(R);
+            if (cur.items.length && cur.y + L.h > PAGE_H - BOTTOM) { pages.push(cur); cur = { items: [], y: T.START_Y }; }
+            cur.items.push({ L, y: cur.y }); cur.y += L.h + 6;
+        });
+        pages.push(cur);
+        return { s, W, PAGE_H, pages };
+    };
+    let p = null;
+    for (const s of TICKET_SCALES) { const q = plan(s); if (q.pages.length === 1) { p = q; break; } }
+    if (!p) p = plan(1);
+    const pr = opts.pixelRatio || 1, n = p.pages.length;
+    return p.pages.map((pg, pi) => {
+        const H = Math.max(p.PAGE_H, Math.ceil(pg.y + 90));
+        const canvas = document.createElement('canvas');
+        canvas.width = TICKET_W * pr; canvas.height = Math.round(H * p.s * pr);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(p.s * pr, p.s * pr);
+        ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, p.W, H);
+        ctx.textBaseline = 'alphabetic';
+        const t = drawWhy(ctx, data, p.W);
+        t.hdr();
+        pg.items.forEach(it => t.drawRoom(it.L, it.y));
+        t.pageLabel(pi, totalAfter(n), H);
+        return canvas;
+    });
+}
+
 function buildTicketCanvases(opts, preparedData) {
     opts = opts || {};
     const data = preparedData || ticketData();
@@ -2895,8 +3090,11 @@ function buildTicketCanvases(opts, preparedData) {
     if (!plan) plan = planTicket(data, 1);
     const { s, W, PAGE_H, BOTTOM, F, pages } = plan;
     const pr = opts.pixelRatio || 1;      // 화면에 띄울 때는 더 선명하게(저장·인쇄는 1 = 1080px)
+    // 맨 앞에 "원단을 고른 이유" 카드 (손님이 답한 공간이 있을 때만). 쪽 표시는 카드+견적서 전체로 셈
+    const whyPages = opts.noCard ? [] : buildWhyCanvases(data, opts, n => n + pages.length);
+    const off = whyPages.length;
 
-    return pages.map((p, pi) => {
+    const ticketPages = pages.map((p, pi) => {
         const isLast = pi === pages.length - 1;
         const H = Math.max(PAGE_H, Math.ceil(p.y + (isLast ? F.h : BOTTOM)));   // 아주 긴 방 하나일 때만 늘어남 (화면 좌표)
         const canvas = document.createElement('canvas');
@@ -2909,9 +3107,12 @@ function buildTicketCanvases(opts, preparedData) {
         t.hdr();
         p.items.forEach(it => t.drawRoom(it.L, it.y));
         if (isLast) t.drawFooter(F, Math.max(p.y, H - F.h));
-        t.pageLabel(pi, pages.length, H);
+        t.pageLabel(pi + off, pages.length + off, H);
         return canvas;
     });
+    const all = whyPages.concat(ticketPages);
+    all.cardCount = off;
+    return all;
 }
 
 // 글꼴·원단 사진을 준비한 뒤 견적서 이미지(여러 장일 수 있음)를 만듦
@@ -2932,10 +3133,10 @@ async function makeTicketBlobs(opts) {
     } catch (e) {}
     const data = await loadTicketPhotos(ticketData());
     const canvases = buildTicketCanvases(opts, data);
-    if (opts.canvasOnly) return { canvases, blobs: [], type: null };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
+    if (opts.canvasOnly) return { canvases, blobs: [], type: null, cardCount: canvases.cardCount || 0 };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
     const type = opts.type || 'image/png';
     const blobs = await Promise.all(canvases.map(c => new Promise(res => c.toBlob(res, type, 0.95))));
-    return { canvases, blobs, type };
+    return { canvases, blobs, type, cardCount: canvases.cardCount || 0 };
 }
 // 파일 이름. asciiOnly는 휴대폰 공유 창이 한글 이름을 못 읽는 경우를 피하기 위한 영문 이름
 function ticketFileNames(count, ext, asciiOnly) {
@@ -3034,14 +3235,58 @@ function restorePrintIsolation(clearSheet) {
 }
 
 // 견적서 인쇄 / PDF 저장: 저장되는 이미지와 똑같은 모양을 한 장으로 출력
+// (10-15) 앱 화면을 숨겼다 되돌리는 방식은 탭에서 ← ⌂ 버튼이 비치고 전체가 반투명하게 나왔음
+//  → 이제 견적서 이미지만 든 "빈 인쇄 전용 창(iframe)"을 만들어 그것만 인쇄함. 앱 화면은 건드리지 않아 섞일 수 없음.
+//  (iframe이 안 되는 기기에서만 예전 방식으로 인쇄)
+let __printFrame = null;
+function removePrintFrame() {
+    if (__printFrame) { try { __printFrame.remove(); } catch (e) {} __printFrame = null; }
+}
 async function printTicket() {
-    await preparePrintSheet();
+    let canvases;
+    try { ({ canvases } = await makeTicketBlobs()); }
+    catch (err) { console.error(err); showToast("견적서 인쇄 준비 중 오류가 발생했습니다.", "error"); return; }
     const prevTitle = document.title;
     const custName = (document.getElementById('custName').value || '').trim();
-    document.title = `${custName ? custName + '_' : ''}맞춤견적서`;      // PDF 기본 파일명
+    const title = `${custName ? custName + '_' : ''}맞춤견적서`;      // PDF 기본 파일명
+    let done = false;
+    const finish = () => { if (done) return; done = true; document.title = prevTitle; };      // 인쇄 창이 아직 인쇄물을 만드는 중일 수 있어 창(iframe)은 바로 지우지 않음
+    try {
+        removePrintFrame();
+        const fr = document.createElement('iframe');
+        fr.setAttribute('aria-hidden', 'true');
+        fr.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(fr);
+        __printFrame = fr;
+        const doc = fr.contentDocument;
+        const pages = canvases.map(c => `<div class="pg"><img alt="견적서" src="${c.toDataURL('image/png')}"></div>`).join('');
+        doc.open();
+        doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>
+            @page { size: A4 portrait; margin: 10mm; }
+            html, body { margin: 0; padding: 0; background: #ffffff; }
+            .pg { text-align: center; break-after: page; page-break-after: always; }
+            .pg:last-child { break-after: auto; page-break-after: auto; }
+            .pg img { display: inline-block; max-width: 100%; max-height: 270mm; width: auto; height: auto; object-fit: contain; }
+        </style></head><body>${pages}</body></html>`);
+        doc.close();
+        await Promise.all(Array.from(doc.images).map(img => img.decode ? img.decode().catch(() => {}) : Promise.resolve()));
+        document.title = title;
+        fr.contentWindow.addEventListener('afterprint', finish, { once: true });
+        window.addEventListener('afterprint', finish, { once: true });
+        setTimeout(finish, 120000);      // 어떤 이유로 afterprint가 안 와도 2분 뒤 제목 되돌림
+        setTimeout(removePrintFrame, 600000);      // 인쇄 전용 창은 10분 뒤(또는 다음 인쇄 때) 정리
+        fr.contentWindow.focus();
+        fr.contentWindow.print();
+        return;
+    } catch (err) {
+        console.error('iframe 인쇄 실패, 예전 방식으로 인쇄합니다', err);
+        removePrintFrame();
+    }
+    // 예전 방식 (비상용)
+    await preparePrintSheet();
+    document.title = title;
     window.addEventListener('afterprint', () => { document.title = prevTitle; }, { once: true });
     isolatePrintSheet();
-    // 화면이 바뀐 뒤 인쇄 창을 열어야 안정적입니다.
     setTimeout(() => window.print(), 120);
 }
 
