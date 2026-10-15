@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261027';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261029';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -16,6 +16,7 @@ const STORE_KEYS = {
     tags: 'redam_tags_v1',           // 사장님이 직접 지정한 원단 분류(언더톤·무드)
     colors: 'redam_colors_v1',       // 원단별 색상 번호와 색상별 톤
     installFee: 'redam_default_install_fee_v1',   // 새 상담에 들어가는 기본 시공·출장비 (직원 화면 설정)
+    optionPrices: 'redam_option_prices_v1',      // 가공·부자재 단가(형상기억·리드밴드·레일·패널 가공비)와 그 원가 (직원 화면 설정, 29번)
     photoList: 'redam_photo_list_v1',  // 실제로 있는 원단 사진 주소 목록 (사진 확인 결과. 다음에 열 때 바로 쓰려고)
     legacy: 'curtain_fabric_db_v23'  // 구버전 앱이 남긴 데이터 (원가 포함 → 삭제 권장)
 };
@@ -55,6 +56,68 @@ function saveDefaultInstallFee(v) {
         if (v === '' || v === null || !Number.isFinite(n) || n < 0) localStorage.removeItem(STORE_KEYS.installFee);      // 비우면 처음 값(30,000원)으로
         else localStorage.setItem(STORE_KEYS.installFee, String(Math.round(n)));
     } catch (e) {}
+}
+
+// ---- 가공·부자재 단가 (29번) ----
+// 직원 화면 "설정"에서 바꾸면 이 기기에 저장되고 비공개 팩(prices)으로 옮겨짐. 정한 적 없는 칸은 아래 처음 값(예전 금액)
+// 원가 칸(cost)은 이 기기·비공개 팩에만 있음. 정한 적 없으면 레일·패널 가공비는 비공개 팩 원가 규칙으로 셈, 형상기억은 0
+// 품목을 만들 때 그때 단가를 품목 안 rates에 적어 둠 → 나중에 단가를 바꿔도 이미 만든 견적 금액은 그대로 (A안)
+const HW_TYPES = ['rail', 'rod25', 'rod35', 'rail_2line', 'rail_3line'];
+const HW_NAMES = { rail: '기본 레일', rod25: '25파이 봉', rod35: '35파이 봉', rail_2line: '2줄 패널 레일', rail_3line: '3줄 패널 레일' };
+const OPTION_PRICE_DEFAULTS = {
+    shapeW: 3000, shapeY: 3000, shapeH: 0, shapeHW: 0, shapeHY: 0,      // 형상기억: 폭당 · 마당 / 제작 높이 shapeH cm 이상이면 단위마다 추가 (0 = 꺼짐)
+    leadW: 1000, leadY: 1000,                                           // 리드밴드: 폭당 · 마당
+    rail: { rail: 1000, rod25: 1500, rod35: 2000, rail_2line: 17000, rail_3line: 20000 },      // 레일·봉 자당(30cm)
+    panelBase: 50000, panelStep: 15000                                  // 패널 가공비: 기본 + 90cm 넘는 30cm마다
+};
+function storedOptionPrices() {
+    try { const o = JSON.parse(localStorage.getItem(STORE_KEYS.optionPrices)); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; }
+}
+function saveOptionPricesStore(o) {
+    try { localStorage.setItem(STORE_KEYS.optionPrices, JSON.stringify(o || {})); } catch (e) {}
+}
+const optNum = v => (typeof v === 'number' && Number.isFinite(v) && v >= 0) ? v : null;
+// 판매 단가 (정한 값 → 처음 값)
+function optionPrices() {
+    const s = storedOptionPrices(), d = OPTION_PRICE_DEFAULTS, out = { rail: {} };
+    ['shapeW', 'shapeY', 'shapeH', 'shapeHW', 'shapeHY', 'leadW', 'leadY', 'panelBase', 'panelStep'].forEach(k => { const n = optNum(s[k]); out[k] = n === null ? d[k] : n; });
+    HW_TYPES.forEach(t => { const n = optNum(s.rail && s.rail[t]); out.rail[t] = n === null ? d.rail[t] : n; });
+    return out;
+}
+// 원가 (정한 값 → 비공개 팩 원가 규칙 → 없으면 null). 직원 화면 설정·원가 계산에서만 씀
+function optionCosts() {
+    const s = storedOptionPrices().cost || {}, rules = (typeof Costing !== 'undefined' && Costing.state.rules) || null, out = { rail: {} };
+    const hw = (rules && rules.hardwareCost) || null, mult = (rules && Number(rules.specialRailMult)) || 1;
+    HW_TYPES.forEach(t => {
+        const n = optNum(s.rail && s.rail[t]);
+        if (n !== null) { out.rail[t] = n; return; }
+        const base = hw ? (hw[t] !== undefined ? hw[t] : hw.rail) : undefined;
+        out.rail[t] = (typeof base === 'number') ? Math.round(base * ((t === 'rail_2line' || t === 'rail_3line') ? mult : 1)) : null;
+    });
+    const pf = (rules && rules.panelFactory) || {};
+    out.panelBase = optNum(s.panelBase) !== null ? s.panelBase : (typeof pf.base === 'number' ? pf.base : null);
+    out.panelStep = optNum(s.panelStep) !== null ? s.panelStep : (typeof pf.perExtraUnit === 'number' ? pf.perExtraUnit : null);
+    ['shapeW', 'shapeY', 'shapeHW', 'shapeHY'].forEach(k => { out[k] = optNum(s[k]) !== null ? s[k] : 0; });
+    return out;
+}
+// 설정 칸 하나 저장 (path 예: 'shapeW', 'rail.rod25', 'cost.rail.rail_2line'). 비우면 처음 값으로
+function saveOptionPriceField(path, v) {
+    const o = storedOptionPrices(), keys = String(path).split('.');
+    let t = o;
+    keys.slice(0, -1).forEach(k => { if (!t[k] || typeof t[k] !== 'object') t[k] = {}; t = t[k]; });
+    const n = Number(v), last = keys[keys.length - 1];
+    if (v === '' || v === null || !Number.isFinite(n) || n < 0) delete t[last]; else t[last] = Math.round(n);
+    saveOptionPricesStore(o);
+}
+function hwPriceOf(installType) { return optionPrices().rail[installType] ?? optionPrices().rail.rail; }
+// 품목에 적어 둘 지금 단가 (cost.hw는 그 품목의 설치 기구 원가)
+function optionRatesNow(installType) {
+    const p = optionPrices(), k = optionCosts();
+    return {
+        shapeW: p.shapeW, shapeY: p.shapeY, shapeH: p.shapeH, shapeHW: p.shapeHW, shapeHY: p.shapeHY,
+        leadW: p.leadW, leadY: p.leadY, panelBase: p.panelBase, panelStep: p.panelStep,
+        cost: { shapeW: k.shapeW, shapeY: k.shapeY, shapeHW: k.shapeHW, shapeHY: k.shapeHY, panelBase: k.panelBase, panelStep: k.panelStep, hw: installType === 'none' ? 0 : (k.rail[installType] ?? k.rail.rail) }
+    };
 }
 
 let globalInstallFee = loadDefaultInstallFee();
@@ -1056,6 +1119,8 @@ function applyPrivatePack(pack) {
     if (pack.tags && typeof pack.tags === 'object') saveTagOverrides(pack.tags);
     if (pack.colors && typeof pack.colors === 'object') replaceColorsStore(pack.colors);
     if (pack.ticket && typeof applyTicketTextsFromPack === 'function') applyTicketTextsFromPack(pack.ticket);
+    if (pack.prices && typeof pack.prices === 'object' && Object.keys(pack.prices).length) saveOptionPricesStore(pack.prices);      // 가공·부자재 단가와 원가 (29번)
+    if (typeof renderOptionPriceSettings === 'function') renderOptionPriceSettings();      // 원가 칸의 팩 값도 새로
     if (Array.isArray(pack.history) && typeof mergeHistoryFromPack === 'function') mergeHistoryFromPack(pack.history);      // 상담 기록은 덮어쓰지 않고 합침
     if (Array.isArray(pack.fabrics) && pack.fabrics.length > 0) {
         FABRIC_DB = pack.fabrics.map(f => autoTagFabricAttributes(f));
@@ -1089,6 +1154,7 @@ function exportPrivatePack() {
     const pack = { type: 'redam-private-pack', version: 1, savedAt: new Date().toISOString(),
         rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides(), colors: colorsStore(),
         ticket: (typeof ticketTextsForPack === 'function') ? ticketTextsForPack() : undefined,        // 견적서 글(안내 문구·결제 조건·맞춤 제작 안내·공급자 정보)
+        prices: storedOptionPrices(),                                                                 // 가공·부자재 단가와 원가 (이 기기에서 정한 칸만)
         history: (typeof loadHistory === 'function') ? loadHistory() : undefined };                    // 상담 기록(고객 이름·연락처 포함)
     const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
     const d = new Date();

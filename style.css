@@ -961,6 +961,23 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .staff-set h2 { font-size: 1rem; font-weight: 500; color: var(--brand-dark); }
 .staff-set p { font-size: 0.78rem; line-height: 1.55; color: var(--brand-muted); }
 .staff-field { display: grid; gap: 0.25rem; }
+/* 설정 › 가공·부자재 단가 (29번): 줄마다 이름 · 판매가 · 원가 · 남는 돈 */
+.opt-price { display: grid; gap: 0.9rem; }
+.opt-group { display: grid; gap: 0.35rem; }
+.opt-group h3 { font-size: 0.82rem; font-weight: 700; color: var(--brand-dark); }
+.opt-group h3 small { margin-left: 0.4rem; font-size: 0.7rem; font-weight: 500; color: var(--brand-muted); }
+.opt-row { display: grid; grid-template-columns: 8.5rem 1fr 1fr 1.2fr; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--brand-muted); }
+.opt-row label { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.opt-row em { font-style: normal; font-size: 0.68rem; font-weight: 600; white-space: nowrap; }
+.opt-row i { font-style: normal; white-space: nowrap; }
+.opt-row input { width: 100%; min-width: 0; padding: 0.3rem 0.5rem; border: 1px solid var(--brand-border); border-radius: 0.6rem; background: #f8fafc; font-size: 0.75rem; font-weight: 700; text-align: right; color: var(--brand-dark); outline: none; }
+.opt-name { font-weight: 600; color: var(--brand-dark); }
+.opt-gain { font-weight: 700; color: var(--brand-dark); white-space: nowrap; }
+.opt-gain.is-minus { color: #b42318; }
+.opt-same { font-size: 0.7rem; }
+.opt-high .opt-wide { grid-column: 2 / -1; }
+.opt-high .opt-wide input { width: 5.5rem; flex: none; }
+@media (max-width: 640px) { .opt-row { grid-template-columns: 1fr 1fr; } .opt-name { grid-column: 1 / -1; } .opt-high .opt-wide { grid-column: 1 / -1; } }
 .staff-field > span { font-size: 0.72rem; font-weight: 600; color: var(--brand-muted); }
 
 /* 태블릿 세로 · 폰: 사이드바가 화면 아래 탭바로 바뀌고, 사이드바 아래 버튼은 위 띠로 옮겨 감 */
@@ -1432,6 +1449,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .more-clear { background: none; border: none; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: #91401a; text-decoration: underline; text-underline-offset: 3px; }
 .more-body { position: relative; min-height: 0; overflow-y: auto; padding: 0 2.5rem 6rem; }
 .more-hint { margin: 0.4rem 0 1rem; text-align: center; font-size: 0.85rem; color: #8a7a6a; }
+.more-dirwhy { margin: 0.55rem 0 0; font-size: 0.82rem; color: #6f5f4f; }      /* 잇는 방향의 이유 한 문장 (28번) */
 .more-grid { max-width: 1200px; margin: 0 auto; }
 .more-card .more-fbody { padding: 0.6rem 0.75rem 0.7rem; }
 .more-card .more-fbody b { display: block; font-size: 1.02rem; color: #2b221a; }

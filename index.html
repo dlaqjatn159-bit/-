@@ -478,6 +478,12 @@
                     </div>
 
                     <div class="staff-set">
+                        <h2 class="font-serif-kr">가공·부자재 단가</h2>
+                        <p>상담에서 형상기억·리드밴드·설치 기구·패널을 고르면 이 금액이 들어갑니다. 원가와 남는 돈은 이 화면에만 보여요. 이 기기에 저장되고 백업 파일(비공개 팩)로 옮겨집니다.<br><b>바꾼 단가는 새로 넣는 품목부터 들어가요. 이미 만든 견적 금액은 그대로예요.</b></p>
+                        <div id="optionPriceBox" class="opt-price"></div>
+                    </div>
+
+                    <div class="staff-set">
                         <h2 class="font-serif-kr">자동 잠금</h2>
                         <p>손대지 않고 이 시간이 지나면 하던 화면 위에 잠금 화면이 덮입니다. PIN을 넣으면 그 자리에서 이어서 할 수 있어요. 기기마다 따로 정합니다.</p>
                         <div>
@@ -644,13 +650,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261027"></script>
-    <script src="costing.js?v=20261027"></script>
-    <script src="data.js?v=20261027"></script>
-    <script src="calculator.js?v=20261027"></script>
-    <script src="concierge.js?v=20261027"></script>
-    <script src="app.js?v=20261027"></script>
-    <script src="room-color.js?v=20261027"></script>
+    <script src="pricing.js?v=20261029"></script>
+    <script src="costing.js?v=20261029"></script>
+    <script src="data.js?v=20261029"></script>
+    <script src="calculator.js?v=20261029"></script>
+    <script src="concierge.js?v=20261029"></script>
+    <script src="app.js?v=20261029"></script>
+    <script src="room-color.js?v=20261029"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

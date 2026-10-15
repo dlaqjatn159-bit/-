@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261027';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261029';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261027';
+const REDAM_BUILD = '20261029';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1426,17 +1426,24 @@ const MORE_FILTERS = {
     block: { label: '빛 가림', kind: 'drape', opts: { life: '생활 암막', full: '완전 암막' }, of: e => (e.blackout === 'life' || e.blackout === 'full') ? e.blackout : null }
 };
 const MORE_SORTS = { fit: '우리 집에 어울리는 순', light: '밝은 순', dark: '진한 순' };
-let spaceMore = null;       // { roomId, idx, view: 'cards' | 'map', stars: [키], focus: 키, sel: { 묶음: Set }, sort, sheet: 키 }
+const MORE_DIRS = ['wall', 'bridge', 'floor'];      // 잇는 방향 (28번): 넓어 보이게 / 그 중간으로 / 바닥과 어울리게 — 색 잇기 화면과 같은 말
+let spaceMore = null;       // { roomId, idx, view: 'cards' | 'map', stars: [키], focus: 키, sel: { 묶음: Set }, sort, sheet: 키, dir: 잇는 방향(이 화면에서만) }
 function openSpaceMore(roomId, idx) {
-    if (!window.concierge || !window.concierge.spaceSlot(roomId, idx)) return;
-    spaceMore = { roomId, idx, view: 'cards', stars: [], focus: null, sel: { bright: new Set(), tex: new Set(), see: new Set(), block: new Set() }, sort: 'fit', sheet: null };
+    const slot = window.concierge && window.concierge.spaceSlot(roomId, idx);
+    if (!slot) return;
+    // 잇는 방향 처음 값 = 그 칸에서 고른 방향 → 공간의 색 잇기 답 → 그 중간으로. 바꿔도 공간의 답(room.linkDir)은 그대로
+    const mc = slot.room.measuredColor, dir = (mc && mc.wall && mc.floor) ? (slot.curtain.pickDir || slot.room.linkDir || 'bridge') : null;
+    spaceMore = { roomId, idx, view: 'cards', stars: [], focus: null, sel: { bright: new Set(), tex: new Set(), see: new Set(), block: new Set() }, sort: 'fit', sheet: null, dir };
     let ov = document.getElementById('spaceMore');
     if (!ov) {
         ov = document.createElement('div');
         ov.id = 'spaceMore';
         ov.className = 'more-overlay';
         ov.addEventListener('click', spaceMoreClick);
-        ov.addEventListener('change', ev => { if (ev.target.matches('select[data-msort]')) { spaceMore.sort = ev.target.value; renderSpaceMore(); } });
+        ov.addEventListener('change', ev => {
+            if (ev.target.matches('select[data-msort]')) { spaceMore.sort = ev.target.value; renderSpaceMore(); }
+            if (ev.target.matches('select[data-mdir]')) { spaceMore.dir = ev.target.value; spaceMore.focus = null; renderSpaceMore(); }
+        });
         document.body.appendChild(ov);
     }
     ov.hidden = false;
@@ -1456,10 +1463,11 @@ function spaceMoreData() {
     return { slot, all, cur: all.find(e => e.key === curKey) || null, curKey };
 }
 function spaceMoreOk(e) { return Object.keys(MORE_FILTERS).every(k => !spaceMore.sel[k].size || spaceMore.sel[k].has(MORE_FILTERS[k].of(e))); }
-// 우리 집에 어울리는 점수: 고객 원단 화면 추천과 같은 계산 (기존 추천 점수 + 색 잇기 점수)
+// 우리 집에 어울리는 점수: 고객 원단 화면 추천과 같은 계산 (기존 추천 점수 + 색 잇기 점수). 색 잇기는 이 화면에서 고른 잇는 방향으로
 function spaceMoreFit(e, room) {
     const cat = e.cat === 'sheer' ? '속지' : '겉지';
-    return calculateFabricMatchScore(e.view, room, cat) + roomLinkBonus({ light: e.L, a: e.a, b: e.b }, room);
+    const linkRoom = spaceMore.dir ? Object.assign({}, room, { linkDir: spaceMore.dir }) : room;
+    return calculateFabricMatchScore(e.view, room, cat) + roomLinkBonus({ light: e.L, a: e.a, b: e.b }, linkRoom);
 }
 const moreEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 function renderSpaceMore() {
@@ -1480,10 +1488,15 @@ function renderSpaceMore() {
     h += `<span class="q-meta">${moreEsc(room.name)} · ${kindWord} · 더 보기</span>`;
     h += `<h2 class="more-title font-serif-kr">${measured ? '우리 집 색 사이에서 더 찾아볼까요' : '다른 색을 더 찾아볼까요'}</h2>`;
     h += `<div class="more-seg"><button type="button" class="${spaceMore.view === 'cards' ? 'on' : ''}" data-mview="cards">카드로 보기</button><button type="button" class="${spaceMore.view === 'map' ? 'on' : ''}" data-mview="map">색 지도로 보기</button></div>`;
-    h += '<div class="more-fbar">' + grp('bright') + grp('tex') + grp('see') + grp('block');
+    h += '<div class="more-fbar">';
+    // 잇는 방향 (벽·바닥을 둘 다 잰 공간만, 카드·지도 둘 다): 카드 "우리 집에 어울리는 순"과 지도 점선 원이 따라 바뀜
+    if (measured) h += '<span class="more-fg"><em>잇는 방향</em><select data-mdir>' + MORE_DIRS.map(k => `<option value="${k}"${spaceMore.dir === k ? ' selected' : ''}>${window.concierge.linkWord(k)}</option>`).join('') + '</select></span>';
+    h += grp('bright') + grp('tex') + grp('see') + grp('block');
     if (spaceMore.view === 'cards') h += '<span class="more-fg"><em>순서</em><select data-msort>' + Object.keys(MORE_SORTS).map(k => `<option value="${k}"${spaceMore.sort === k ? ' selected' : ''}>${MORE_SORTS[k]}</option>`).join('') + '</select></span>';
     if (any) h += '<button type="button" class="more-clear" data-mclear>조건 풀기</button>';
-    h += '</div></div>';
+    h += '</div>';
+    if (measured) h += `<p class="more-dirwhy">${moreEsc(window.concierge.linkWhy(spaceMore.dir))}</p>`;
+    h += '</div>';
     h += `<div class="more-body">${spaceMore.view === 'map' ? spaceMoreMapHtml(d) : spaceMoreCardsHtml(d)}</div>`;
     h += spaceMoreSheetHtml(d);
     const n = spaceMore.stars.length;
@@ -1548,7 +1561,7 @@ function spaceMoreMapHtml(d) {
     // 고른 잇기 자리(점선 원)와 우리 집 벽·바닥 표지는 점 위에 그림 (가려지지 않게)
     let top = '';
     if (measured) {
-        const dir = room.linkDir;
+        const dir = spaceMore.dir;      // 이 화면의 잇는 방향 (28번)
         const tgt = dir === 'bridge' ? mc.bridge : (dir === 'wall' ? mc.wall : (dir === 'floor' ? { L: Math.min(88, mc.floor.L + FLOOR_LIFT), b: mc.floor.b } : null));
         if (tgt) { const tx = X(tgt.b), ty = Y(tgt.L); top += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="26" fill="none" stroke="#b8714a" stroke-width="2" stroke-dasharray="4 4"/><text class="more-lbl more-halo" x="${(tx + 32).toFixed(1)}" y="${(ty - 18).toFixed(1)}">${window.concierge.linkWord(dir)}</text>`; }
         const home = (c, txt) => `<g class="more-home"><rect x="${(X(c.b) - 15).toFixed(1)}" y="${(Y(c.L) - 15).toFixed(1)}" width="30" height="30" rx="3" fill="${c.hex}"/><text class="more-halo" x="${(X(c.b) + 22).toFixed(1)}" y="${(Y(c.L) + 5).toFixed(1)}">${txt}</text></g>`;
@@ -1623,9 +1636,12 @@ function openSpaceSide() {
     if (!d) return;
     const list = [d.cur].concat(spaceMore.stars.map(k => d.all.find(e => e.key === k))).filter(Boolean);
     const { roomId, idx } = spaceMore;
+    // 이 화면의 잇는 방향이 공간의 색 잇기 답과 다르면 그 칸에 pickDir로 적음 (원단을 고른 이유 카드가 칸마다 따름, 28번)
+    const base = d.slot.room.linkDir || 'bridge', dir = spaceMore.dir;
+    const pickDir = (dir && dir !== base) ? dir : null;
     openFinderShow({ list, curKey: d.curKey, onPick: e => {
         closeSpaceMore();
-        if (e.key !== d.curKey) window.concierge.swapCurtain(roomId, idx, e.fabricId, e.color);      // 바꾸면 중심 화면에 "되돌리기" 알림
+        if (e.key !== d.curKey) window.concierge.swapCurtain(roomId, idx, e.fabricId, e.color, { pickDir });      // 바꾸면 중심 화면에 "되돌리기" 알림
     } });
 }
 // 색 지도: 가로 = 노란기 b(왼쪽 쿨 · 오른쪽 웜), 세로 = 밝기 L(위가 밝음). 지금 조건에 맞는 색은 진하고 크게, 나머지는 흐리게
@@ -1769,6 +1785,7 @@ function finderApplyPut(t, e) {
     collapsedRooms.delete(t.room.id);
     updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
     t.c.colorName = e.color;
+    delete t.c.toneStep; delete t.c.pickDir;      // 다른 방법으로 바꾸면 이유 카드의 한 톤·잇는 방향 표시는 지움 (28번)
     renderRooms();
     calculateAll();
 }
@@ -1912,7 +1929,7 @@ function addRoom() {
         wallTone: "cool",
         mood: "soft_warm",
         curtains: [
-            { id: curtainIdCounter++, label: "속지", presetType: "sheer", width: 200, height: 200, pleat: "2.0", pleatType: "나비주름", bookFilter: "ALL", fabricId: defFab, installType: "rail", floorGap: 0, hwName: "기본 레일", hwPrice: 1000, shapeFee: 0, leadBand: true, hotelFit: false }
+            { id: curtainIdCounter++, label: "속지", presetType: "sheer", width: 200, height: 200, pleat: "2.0", pleatType: "나비주름", bookFilter: "ALL", fabricId: defFab, installType: "rail", floorGap: 0, hwName: "기본 레일", hwPrice: hwPriceOf('rail'), shapeFee: 0, leadBand: true, hotelFit: false, rates: optionRatesNow('rail') }
         ]
     };
     rooms.push(newRoom);
@@ -1959,7 +1976,7 @@ function addCurtainToRoom(roomId, presetType = "") {
     let pleatType = "나비주름";
     let installType = "rail";
     let hwName = "기본 레일";
-    let hwPrice = 1000;
+    let hwPrice = hwPriceOf('rail');
     let appliedPreset = presetType;
     let newLabel = getNextCurtainLabel(room, presetType);
 
@@ -1970,7 +1987,7 @@ function addCurtainToRoom(roomId, presetType = "") {
     } else if (presetType === "drape") {
         const drapeFab = FABRIC_DB.find(f => f.categoryType === "겉지");
         if (drapeFab) targetFabId = drapeFab.id;
-        shapeFee = 3000;
+        shapeFee = 1;      // 켜짐 표시 (금액은 rates의 설정 단가)
     } else if (presetType === "blind") {
         const blindFab = FABRIC_DB.find(f => f.categoryType === "블라인드");
         if (blindFab) targetFabId = blindFab.id;
@@ -1979,9 +1996,9 @@ function addCurtainToRoom(roomId, presetType = "") {
         if (panelFab) targetFabId = panelFab.id;
         pleat = "panel";
         pleatType = "패널";
-        c.installType = "rail_2line";
-        c.hwName = "2줄 패널 레일";
-        c.hwPrice = 17000;
+        installType = "rail_2line";
+        hwName = HW_NAMES.rail_2line;
+        hwPrice = hwPriceOf('rail_2line');
     }
 
     const refW = room.curtains[0] ? room.curtains[0].width : 250;
@@ -2003,7 +2020,8 @@ function addCurtainToRoom(roomId, presetType = "") {
         hwPrice: hwPrice,
         shapeFee: shapeFee,
         leadBand: leadBand,
-        hotelFit: false
+        hotelFit: false,
+        rates: optionRatesNow(installType)      // 지금 설정의 가공·부자재 단가 (29번, 나중에 단가를 바꿔도 이 품목 금액은 그대로)
     });
 
     renderRooms();
@@ -2064,25 +2082,15 @@ function updateCurtainData(roomId, curtainId, key, val) {
         }
         renderRooms();
     } else if (key === 'installType') {
-        if (val === 'rod35') {
-            c.hwName = "35파이 봉";
-            c.hwPrice = 2000;
-        } else if (val === 'rod25') {
-            c.hwName = "25파이 봉";
-            c.hwPrice = 1500;
-        } else if (val === 'rail_2line') {
-            c.hwName = "2줄 패널 레일";
-            c.hwPrice = 17000;
-        } else if (val === 'rail_3line') {
-            c.hwName = "3줄 패널 레일";
-            c.hwPrice = 20000;
-        } else {
-            c.hwName = "기본 레일";
-            c.hwPrice = 1000;
-        }
+        // 기구를 고르면 설정의 자당 단가가 들어감 (29번). rates가 있는 품목은 그 기구의 원가도 같이 바꿔 적음
+        const t = HW_TYPES.includes(val) ? val : 'rail';
+        c.hwName = HW_NAMES[t];
+        c.hwPrice = hwPriceOf(t);
+        if (c.rates && c.rates.cost) c.rates.cost.hw = optionCosts().rail[t];
         renderRooms();
     }
     if (c.fabricId !== prevFabricId) c.colorName = '';
+    if (c.fabricId !== prevFabricId || key === 'colorName') { delete c.toneStep; delete c.pickDir; }      // 직원 화면에서 원단·색을 바꾸면 한 톤·잇는 방향 표시는 지움 (28번)
     const optEl = document.getElementById(`curtainOpt_${c.id}`);
     if (optEl) optEl.textContent = curtainOptionSummary(c);
     calculateAll();
@@ -2096,6 +2104,7 @@ function changeCurtainCategoryPreset(roomId, curtainId, preset) {
 
     c.presetType = preset;
     c.label = getNextCurtainLabel(room, preset);
+    delete c.toneStep; delete c.pickDir;
 
     if (preset === 'sheer') {
         const f = FABRIC_DB.find(item => item.categoryType === '속지') || FABRIC_DB[0];
@@ -2104,7 +2113,7 @@ function changeCurtainCategoryPreset(roomId, curtainId, preset) {
         c.pleatType = "나비주름";
         c.installType = "rail";
         c.hwName = "기본 레일";
-        c.hwPrice = 1000;
+        c.hwPrice = hwPriceOf('rail');
         c.leadBand = true;
         c.shapeFee = 0;
         c.hotelFit = false;
@@ -2115,8 +2124,8 @@ function changeCurtainCategoryPreset(roomId, curtainId, preset) {
         c.pleatType = "나비주름";
         c.installType = "rail";
         c.hwName = "기본 레일";
-        c.hwPrice = 1000;
-        c.shapeFee = 3000;
+        c.hwPrice = hwPriceOf('rail');
+        c.shapeFee = 1;
         c.leadBand = false;
         c.hotelFit = false;
     } else if (preset === 'blind') {
@@ -2132,11 +2141,12 @@ function changeCurtainCategoryPreset(roomId, curtainId, preset) {
         c.pleatType = "패널";
         c.installType = "rail_2line";
         c.hwName = "2줄 패널 레일";
-        c.hwPrice = 17000;
+        c.hwPrice = hwPriceOf('rail_2line');
         c.shapeFee = 0;
         c.leadBand = false;
         c.hotelFit = false;
     }
+    c.rates = optionRatesNow(c.installType);      // 종류를 바꾸면 새 품목처럼 지금 설정 단가로 (29번)
 
     renderRooms();
     calculateAll();
@@ -2155,7 +2165,7 @@ function setAllRoomsCollapsed(on) {
     renderRooms();
     calculateAll();
 }
-// 커튼 카드의 "세부 옵션"(가공 형태·설치 기구·바닥 간격·부자재 품명·자당 단가·형상기억·리드밴드·호텔핏): 자주 안 바꾸는 칸이라 접어 둠
+// 커튼 카드의 "세부 옵션"(가공 형태·설치 기구·바닥 간격·부자재 품명·형상기억·리드밴드·호텔핏): 자주 안 바꾸는 칸이라 접어 둠
 // 펼쳐 둔 커튼은 화면을 다시 그려도 펼쳐진 채로 두고, 접힌 줄에는 지금 값(설치 기구 + 추가한 옵션)을 짧게 보여 줌
 const openCurtainDetails = new Set();
 function setCurtainDetailsOpen(curtainId, open) { if (open) openCurtainDetails.add(curtainId); else openCurtainDetails.delete(curtainId); }
@@ -2352,20 +2362,16 @@ function renderRooms() {
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
                                 <div class="min-w-0">
                                     <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">부자재 품명</label>
                                     <input type="text" value="${isBlind ? '미사용' : c.hwName}" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwName', this.value)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs outline-none min-w-0 bg-white">
                                 </div>
                                 <div class="min-w-0">
-                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">자당 단가</label>
-                                    <input type="number" value="${isBlind ? 0 : c.hwPrice}" step="100" ${isBlind ? 'disabled' : ''} oninput="updateCurtainData(${room.id}, ${c.id}, 'hwPrice', parseFloat(this.value)||0)" class="w-full px-1.5 sm:px-2 py-1 border rounded-lg text-xs font-bold outline-none min-w-0 bg-white">
-                                </div>
-                                <div class="min-w-0">
                                     <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">형상기억 가공</label>
-                                    <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'shapeFee', parseFloat(this.value))" class="w-full px-1 py-1 border rounded-lg text-xs font-semibold outline-none min-w-0 bg-white">
-                                        <option value="3000" ${!isBlind && c.shapeFee===3000?"selected":""}>적용</option>
-                                        <option value="0" ${isBlind || c.shapeFee===0?"selected":""}>미적용</option>
+                                    <select ${isBlind ? 'disabled' : ''} onchange="updateCurtainData(${room.id}, ${c.id}, 'shapeFee', this.value === 'on' ? ${c.rates ? 1 : 3000} : 0)" class="w-full px-1 py-1 border rounded-lg text-xs font-semibold outline-none min-w-0 bg-white">
+                                        <option value="on" ${!isBlind && c.shapeFee > 0 ? "selected" : ""}>적용</option>
+                                        <option value="off" ${isBlind || !(c.shapeFee > 0) ? "selected" : ""}>미적용</option>
                                     </select>
                                 </div>
                                 <div class="min-w-0">
@@ -2626,6 +2632,48 @@ function initTicketNoteInput() {
     const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote();
     Object.keys(TICKET_TEXT_INPUTS).forEach(k => { const t = document.getElementById(TICKET_TEXT_INPUTS[k]); if (t) t.value = loadTicketText(k); });
     const fee = document.getElementById('defaultInstallFeeInput'); if (fee) fee.value = loadDefaultInstallFee();
+    renderOptionPriceSettings();
+}
+// 설정 › 가공·부자재 단가 (29번): 줄마다 판매가 · 원가 · 남는 돈. 칸을 고치면 바로 저장되고 그 줄의 남는 돈만 다시 씀
+//  원가 칸이 비면 레일·패널은 비공개 팩 원가 규칙으로 셈한 값이 들어 있음. 리드밴드 원가는 판매가와 같음
+function renderOptionPriceSettings() {
+    const box = document.getElementById('optionPriceBox');
+    if (!box) return;
+    const p = optionPrices(), k = optionCosts();
+    const inp = (path, v, ph) => `<input type="number" min="0" step="100" inputmode="numeric" data-opt="${path}" value="${v === null || v === undefined ? '' : v}" placeholder="${ph || ''}">`;
+    const row = (name, sale, salePath, cost, costPath) => `<div class="opt-row" data-row><span class="opt-name">${name}</span>`
+        + `<label><em>판매가</em>${inp(salePath, sale)}<i>원</i></label>`
+        + (costPath ? `<label><em>원가</em>${inp(costPath, cost, '비어 있음')}<i>원</i></label><span class="opt-gain" data-gain></span>` : `<span class="opt-same">원가 = 판매가</span><span></span>`)
+        + '</div>';
+    let h = '<div class="opt-group"><h3>형상기억 <small>폭당 원단은 폭 수, 마당 원단은 마 수만큼</small></h3>';
+    h += row('폭당', p.shapeW, 'shapeW', k.shapeW, 'cost.shapeW') + row('마당', p.shapeY, 'shapeY', k.shapeY, 'cost.shapeY');
+    h += `<div class="opt-row opt-high"><span class="opt-name">높이 추가</span><label class="opt-wide">제작 높이 ${inp('shapeH', p.shapeH || '', '없음')}<i>cm 이상이면 단위마다 더함</i></label></div>`;
+    h += row('높이 추가 · 폭당', p.shapeHW, 'shapeHW', k.shapeHW, 'cost.shapeHW') + row('높이 추가 · 마당', p.shapeHY, 'shapeHY', k.shapeHY, 'cost.shapeHY') + '</div>';
+    h += '<div class="opt-group"><h3>리드밴드 <small>폭당 원단은 폭 수, 마당 원단은 마 수만큼</small></h3>' + row('폭당', p.leadW, 'leadW') + row('마당', p.leadY, 'leadY') + '</div>';
+    h += '<div class="opt-group"><h3>레일·봉 <small>자당 (30cm)</small></h3>' + HW_TYPES.map(t => row(HW_NAMES[t], p.rail[t], 'rail.' + t, k.rail[t], 'cost.rail.' + t)).join('') + '</div>';
+    h += '<div class="opt-group"><h3>패널 가공비 <small>기본 + 90cm 넘는 30cm마다</small></h3>' + row('기본', p.panelBase, 'panelBase', k.panelBase, 'cost.panelBase') + row('30cm마다', p.panelStep, 'panelStep', k.panelStep, 'cost.panelStep') + '</div>';
+    box.innerHTML = h;
+    box.querySelectorAll('[data-row]').forEach(optionGainUpdate);
+    if (!box.dataset.wired) {
+        box.dataset.wired = '1';
+        box.addEventListener('input', ev => {
+            const el = ev.target.closest('input[data-opt]');
+            if (!el) return;
+            saveOptionPriceField(el.dataset.opt, el.value);
+            optionGainUpdate(el.closest('[data-row]'));
+        });
+        // 칸을 비우고 나가면 처음 값(또는 팩 원가)을 다시 보여 줌
+        box.addEventListener('change', ev => { if (ev.target.matches('input[data-opt]') && ev.target.value === '') renderOptionPriceSettings(); });
+    }
+}
+function optionGainUpdate(row) {
+    const g = row && row.querySelector('[data-gain]');
+    if (!g) return;
+    const [s, c] = Array.from(row.querySelectorAll('input[data-opt]')).map(i => i.value === '' ? null : Number(i.value));
+    if (s === null || c === null || !Number.isFinite(s) || !Number.isFinite(c)) { g.textContent = '남는 돈 —'; g.classList.remove('is-minus'); return; }
+    const d = s - c;
+    g.textContent = `남는 돈 ${d.toLocaleString('ko-KR')}원${s > 0 ? ` (${Math.round(d / s * 100)}%)` : ''}`;
+    g.classList.toggle('is-minus', d < 0);
 }
 // 비공개 팩에 함께 담는 견적서 글 (불러올 때는 팩에 적힌 것만 덮어씀 — 비어 있으면 이 기기 것을 그대로 둠)
 function ticketTextsForPack() {
@@ -2691,7 +2739,8 @@ function ticketData() {
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || ''),
                     kindKey: c.presetType || '', colorDesc: (c.fabricId && c.colorName && typeof colorLabelOf === 'function') ? colorLabelOf(c.fabricId, c.colorName) : '',
-                    keep: ticketKeepWord(r, c)      // 원단을 고른 이유 카드용
+                    keep: ticketKeepWord(r, c),      // 원단을 고른 이유 카드용
+                    pickDir: c.pickDir || null, toneStep: Number(c.toneStep) || 0      // 칸마다의 잇는 방향 · 한 톤 바꿈 (28번)
                 };
             });
             // 카드용 손님 답: 빛 양은 기본값이 들어 있으니 상담을 거친(diagnosed) 공간만 씀
@@ -2939,8 +2988,9 @@ function whySetsOf(data) {
             if (!it.fabricId) return;
             const order = it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light'];      // 속지: 바깥 시선 → 빛 양 / 겉지·블라인드: 빛 가림 → 빛 양
             const keys = order.filter(k => room.ans[k] && WHY_SAY[k][room.ans[k]]);
-            const link = (room.linkDir && linkSay(room.linkDir)) ? room.linkDir : null;
-            if (!keys.length && !link && !it.keep) return;
+            const dir = it.pickDir || room.linkDir;      // 칸마다 다를 수 있음: 더 보기에서 다른 방향으로 고른 칸 (28번)
+            const link = (dir && linkSay(dir)) ? dir : null;
+            if (!keys.length && !link && !it.keep && !it.toneStep) return;
             const prev = seen.find(p => p.fabricId === it.fabricId && p.kindKey === it.kindKey && p.link === link
                 && keys.some(k => p.ans[k]) && keys.every(k => !room.ans[k] || !p.ans[k] || p.ans[k] === room.ans[k] || k === 'light'));
             const set = { room: room.name, it, keys, link, keep: it.keep || '', ans: room.ans, prevName: prev ? prev.room : '', diffKeys: prev ? keys.filter(k => room.ans[k] && room.ans[k] !== prev.ans[k]) : [] };
@@ -3015,12 +3065,15 @@ function drawWhy(ctx, data, W, compact) {
             wrap(str, TW).forEach(ln => { ops.push({ t: ln, f: [400, B_SIZE, SANS], c: MUTED, y: cy }); cy += B_LH; });
             cy += 4;
         };
+        // 한 톤 밝게/진하게를 누른 칸: 색 잇기 문장 바로 뒤에 한 문장 (28번)
+        const tone = set.it.toneStep > 0 ? '여기서 한 톤 밝게 바꿔 빛을 더 환하게 받도록 했어요.' : (set.it.toneStep < 0 ? '여기서 한 톤 진하게 바꿔 차분한 무게를 더했어요.' : '');
         if (set.prevName) {
             let s = `${set.prevName}${whyJosa(set.prevName)} 같은 이유예요.`;
             if (set.diffKeys.length) s += ` 다만 ${set.diffKeys.map(k => whyQuote(k, set.ans)).join(', ')} 하셨어요.`;
-            para(s);
+            para(tone ? s + ' ' + tone : s);
         } else {
-            if (set.link) para(`${set.linkSay}으로 골랐어요. ${set.linkWhy}`);
+            if (set.link) para(`${set.linkSay}으로 골랐어요. ${set.linkWhy}${tone ? ' ' + tone : ''}`);
+            else if (tone) para(tone);
             if (set.keep) para(/[.!?]$/.test(set.keep) ? set.keep : set.keep + '.');
         }
         return { set, ops, h: Math.max(PH_H, cy - B_LH - 4 + 8) };
@@ -3396,6 +3449,8 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                         leadBand: isBlind ? false : Boolean(c.leadBand),
                         hotelFit: isBlind ? false : Boolean(c.hotelFit),
                         colorName: c.colorName || '',
+                        pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
+                        rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
                         calc: c.calc
                     };
                 })

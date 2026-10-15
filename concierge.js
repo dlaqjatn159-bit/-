@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261027';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261029';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -199,6 +199,8 @@
                     leadBand: isBlind ? false : Boolean(c.leadBand),
                     hotelFit: isBlind ? false : Boolean(c.hotelFit),
                     colorName: c.colorName || '',
+                    pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
+                    rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
             calc: c.calc
                 };
             })
@@ -476,11 +478,16 @@
         return [p.name, p.colorTag].filter(Boolean).join(' ');
     }
     // 공간의 원단 한 칸을 다른 색(다른 원단일 수도)으로 바꿈. 금액은 다시 셈, 옵션은 그대로. 알림에 "되돌리기"
-    function swapCurtain(roomId, idx, fabricId, color, silent) {
+    // why: 원단을 고른 이유 카드용 칸 표시 (28번) — { toneStep: 한 톤 밝게 +1·진하게 −1을 더한 값, pickDir: 더 보기에서 고른 잇는 방향 }
+    //  없는 값은 지움 (다른 방법으로 바꾸면 둘 다 지워짐). 되돌리기는 바꾸기 전 값으로
+    function swapCurtain(roomId, idx, fabricId, color, silent, why) {
         const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[idx];
         if (!c) return;
-        const prev = { fabricId: c.fabricId, colorName: c.colorName || '' };
+        const prev = { fabricId: c.fabricId, colorName: c.colorName || '', toneStep: c.toneStep || 0, pickDir: c.pickDir || null };
         c.fabricId = fabricId; c.colorName = color || '';
+        const w = why || {};
+        if (w.toneStep) c.toneStep = w.toneStep; else delete c.toneStep;
+        if (w.pickDir) c.pickDir = w.pickDir; else delete c.pickDir;
         c.calc = calculateV1ItemPrice(c);
         r.subtotal = r.curtains.reduce((s, x) => s + ((x.calc && x.calc.curtainSubtotal) || 0), 0);
         syncToV1MasterRooms();
@@ -489,7 +496,7 @@
         if (silent) return;
         const name = shortFabName(fabricId, color);
         spaceToast(`${r.name} ${kindOf(c)}: ${typeof finderJosa === 'function' ? finderJosa(name, '으로', '로') : name + '(으)로'} 바꿨어요`,
-            () => swapCurtain(roomId, idx, prev.fabricId, prev.colorName, true));
+            () => swapCurtain(roomId, idx, prev.fabricId, prev.colorName, true, { toneStep: prev.toneStep, pickDir: prev.pickDir }));
     }
     // 고객 화면 알림 (아래 가운데, 짙은 갈색). 되돌리기가 있으면 3.5초, 없으면 1.8초
     let spaceToastTimer = 0;
@@ -559,14 +566,14 @@
                 if (c.leadBand) opts.push('리드밴드');
                 if (c.hotelFit) opts.push('호텔핏');
                 const tones = c.presetType === 'blind' ? null : toneNeighbors(c);
-                const toneBtn = (e, word) => `<button type="button"${e ? ` onclick="window.concierge.toneSwap(${r.id}, ${i}, '${e.key.replace(/'/g, "\\'")}')"` : ' disabled'}><i style="background:${e ? e.hex : '#eee8df'}"></i><span>${word}</span></button>`;
+                const toneBtn = (e, word, step) => `<button type="button"${e ? ` onclick="window.concierge.toneSwap(${r.id}, ${i}, '${e.key.replace(/'/g, "\\'")}', ${step})"` : ' disabled'}><i style="background:${e ? e.hex : '#eee8df'}"></i><span>${word}</span></button>`;
                 h += '<div class="dos-item">';
                 h += `<div class="dos-sw${fillCls(r, i)}" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
                 h += `<div class="dos-txt"><div class="dos-kind">${kindOf(c)}</div>`;
                 h += `<div class="dos-fab font-serif-kr">${(typeof ticketFabricName === 'function') ? ticketFabricName(c, c.calc || {}) : ((c.calc && c.calc.fabName) || c.label || '원단')}${opts.length ? `<em>${opts.join(' · ')}</em>` : ''}</div>`;
                 if (c.presetType !== 'blind') h += `<button type="button" class="dos-more" onclick="openSpaceMore(${r.id}, ${i})">더 보기</button>`;
                 h += '</div>';
-                if (tones) h += `<div class="dos-tone">${toneBtn(tones.lighter, '한 톤 밝게')}<span class="dos-tone-cur"></span>${toneBtn(tones.darker, '한 톤 진하게')}</div>`;
+                if (tones) h += `<div class="dos-tone">${toneBtn(tones.lighter, '한 톤 밝게', 1)}<span class="dos-tone-cur"></span>${toneBtn(tones.darker, '한 톤 진하게', -1)}</div>`;
                 h += '</div>';
             });
             h += '</section>';
@@ -2031,11 +2038,12 @@
                         installType: isBlind ? 'none' : (item.presetType === 'panel' ? 'rail_2line' : 'rail'),
                         floorGap: item.floorGap || 0,
                         hwName: isBlind ? '블라인드 일체형' : (item.presetType === 'panel' ? '2줄 패널 레일' : '기본 레일'),
-                        hwPrice: isBlind ? 0 : 1000,
-                        shapeFee: isBlind ? 0 : ((item.presetType === 'drape' && state.editingRoom.shapeFee) ? 3000 : 0),
+                        hwPrice: isBlind ? 0 : hwPriceOf(item.presetType === 'panel' ? 'rail_2line' : 'rail'),      // 설정의 자당 단가 (29번)
+                        shapeFee: isBlind ? 0 : ((item.presetType === 'drape' && state.editingRoom.shapeFee) ? 1 : 0),      // 켜짐 표시 (금액은 rates)
                         leadBand: isBlind ? false : Boolean(item.presetType === 'sheer' && state.editingRoom.leadBand),
                         hotelFit: isBlind ? false : Boolean(item.presetType === 'drape' && state.editingRoom.hotelFit)
                     };
+                    cObj.rates = optionRatesNow(cObj.installType);      // 지금 설정의 가공·부자재 단가를 품목에 적어 둠 (나중에 단가를 바꿔도 이 견적은 그대로)
                     
                     cObj.calc = calculateV1ItemPrice(cObj);
                     roomSubSum += (cObj.calc.curtainSubtotal || cObj.calc.sellingPrice || 0);
@@ -2089,10 +2097,12 @@
             const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[idx];
             return c ? { room: r, curtain: c, kind: c.presetType === 'sheer' ? 'sheer' : 'drape' } : null;
         },
-        swapCurtain: function(roomId, idx, fabricId, color) { swapCurtain(roomId, idx, fabricId, color); },
-        toneSwap: function(roomId, idx, key) {
+        swapCurtain: function(roomId, idx, fabricId, color, why) { swapCurtain(roomId, idx, fabricId, color, false, why); },
+        // 한 톤 밝게(step +1) / 진하게(−1): 그 칸의 toneStep에 더함(0이면 지움). 더 보기에서 고른 잇는 방향(pickDir)은 그대로
+        toneSwap: function(roomId, idx, key, step) {
             const e = (spaceEntries || []).find(x => x.key === key);
-            if (e) swapCurtain(roomId, idx, e.fabricId, e.color);
+            const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[idx];
+            if (e && c) swapCurtain(roomId, idx, e.fabricId, e.color, false, { toneStep: (c.toneStep || 0) + (Number(step) || 0), pickDir: c.pickDir || null });
         },
         shortFabName: shortFabName,
         // 색 잇기 방향의 말 ("원단을 고른 이유" 카드, app.js가 씀): linkSay = "벽과 이어지는 색", linkWhy = 이유 한 문장

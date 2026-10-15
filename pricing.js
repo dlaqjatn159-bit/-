@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261027';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261029';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -33,11 +33,16 @@
 
     /**
      * 커튼/블라인드 1개 품목의 판매가 계산
-     * @param c   품목 { width, height, pleat, pleatType, installType, floorGap, hotelFit, leadBand, shapeFee, hwPrice, label }
+     * @param c   품목 { width, height, pleat, pleatType, installType, floorGap, hotelFit, leadBand, shapeFee, hwPrice, label, rates }
+     *            rates: 품목을 만들 때 적어 둔 가공·부자재 단가(29번). 없으면(예전 저장본) 예전 계산 그대로
+     *            shapeFee: 0보다 크면 형상기억 켜짐 (rates가 없는 예전 저장본은 폭당 금액이기도 함)
      * @param fab 원단 { calcType, specCm, price, extra, categoryType, name, book }
      */
     function priceItem(c, fab) {
         fab = fab || {};
+        const r = (c.rates && typeof c.rates === 'object') ? c.rates : null;
+        const rn = v => Number(v) || 0;
+        const byWidth = fab.calcType === 'width';      // 폭당 원단은 폭 수 × 폭당 단가, 마당 원단(대폭 무이음·소폭 이음)은 마 수 × 마당 단가
         const width = c.width || 0;
         const height = c.height || 0;
         const label = c.label || '';
@@ -74,7 +79,7 @@
                 isPanel = true;
                 const extraWidth = Math.max(0, width - 90);
                 panelExtraUnits = Math.ceil(extraWidth / 30);
-                const panelConsumerLabor = 50000 + (panelExtraUnits * 15000);
+                const panelConsumerLabor = r ? rn(r.panelBase) + (panelExtraUnits * rn(r.panelStep)) : 50000 + (panelExtraUnits * 15000);
 
                 totalYards = Math.ceil((width + 20) / 90) || 1;
                 numWidths = Math.ceil(width / fabricSpec) || 1;
@@ -120,16 +125,29 @@
                 }
             }
 
-            leadBandCost = c.leadBand ? (totalYards * 1000) : 0;
+            leadBandCost = c.leadBand ? (totalYards * (r ? rn(byWidth ? r.leadW : r.leadY) : 1000)) : 0;      // 폭당 원단은 마 수 = 폭 수
             const railSellingPrice = (c.hwPrice !== undefined) ? c.hwPrice : 1000;
             hwSellingTotal = numJa * railSellingPrice;
         }
 
-        const extraShapeFee = fab.calcType === 'hebe' ? 0 : (numWidths * (c.shapeFee || 0));
+        // 형상기억: rates가 있으면 폭당·마당 따로 + 제작 높이가 기준 이상이면 단위마다 추가 (패널·블라인드는 없음)
+        let extraShapeFee = 0, shapeUnits = 0, shapeHigh = false;
+        if (fab.calcType !== 'hebe' && c.shapeFee > 0) {
+            if (r) {
+                if (!isPanel) {
+                    shapeUnits = byWidth ? numWidths : totalYards;
+                    shapeHigh = rn(r.shapeH) > 0 && actualH >= rn(r.shapeH);
+                    extraShapeFee = shapeUnits * (rn(byWidth ? r.shapeW : r.shapeY) + (shapeHigh ? rn(byWidth ? r.shapeHW : r.shapeHY) : 0));
+                }
+            } else {
+                shapeUnits = numWidths;
+                extraShapeFee = numWidths * c.shapeFee;
+            }
+        }
         const rawSubtotal = fabricSellingCost + extraShapeFee + leadBandCost + hwSellingTotal;
         const curtainSubtotal = Math.ceil(rawSubtotal / 1000) * 1000;
 
-        Object.assign(q, { isPanel, panelExtraUnits, isSheer, isWideFabric, numWidths, totalYards, numJa, calcType: fab.calcType });
+        Object.assign(q, { isPanel, panelExtraUnits, isSheer, isWideFabric, numWidths, totalYards, numJa, calcType: fab.calcType, shapeUnits, shapeHigh });
 
         return {
             fabName: fab.name, fabBook: fab.book, calcType: fab.calcType,
