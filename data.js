@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261038';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261039';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -769,11 +769,14 @@ function normalizeColorName(v) {
 }
 // 견적서·카드에 붙는 색 표시. 번호는 그대로 두고(공급처 주문·사진 파일 이름 기준), 색 이름이 있으면 괄호로 덧붙임
 // 예) " 1번 (그레이지)"
+// 색이 하나뿐인 원단(포아 POA1처럼 번호마다 다른 원단)은 번호를 빼고 색 이름만: "POA1 (화이트)" (10-17, "POA1 1번" 겹침 고침)
 function colorSuffix(name, fabricId) {
     const n = normalizeColorName(name);
     if (!n) return '';
-    const base = /^\d+$/.test(n) ? ` ${n}번` : ` ${n}`;
     const label = fabricId ? colorLabelOf(fabricId, n) : '';
+    const isNo = /^\d+$/.test(n);
+    if (isNo && fabricId && getFabricColors(fabricId).length < 2) return label ? ` (${label})` : '';      // 번호일 때만 뺌 (글자로 된 색은 그대로)
+    const base = isNo ? ` ${n}번` : ` ${n}`;
     return label ? `${base} (${label})` : base;
 }
 // 색 이름(예: 그레이지). 고객에게 보여주는 이름일 뿐, 색을 구분하는 기준은 번호

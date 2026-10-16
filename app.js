@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261038';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261039';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261038';
+const REDAM_BUILD = '20261039';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -160,6 +160,7 @@ function switchMainTrack(track) {
         renderSideCust();
         renderRooms();
         renderDbTable();
+        updateBookFilterOptions();      // 책자 고르기에 공급처(회사) 이름 (10-17)
         updatePrivateStatus();
         renderHistory();
         warnHistoryFull();
@@ -2603,7 +2604,7 @@ function renderDbTable() {
         tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition text-xs">
                 <td class="p-2.5 font-bold text-amber-900">
-                    <div class="text-[10px] text-slate-400 font-normal">${f.book} [${f.id}]</div>
+                    <div class="text-[10px] text-slate-400 font-normal">${f.book}${pv && pv.supplier ? ` · ${pv.supplier}` : ''} [${f.id}]</div>
                     <div class="text-slate-800 font-semibold">${f.name}</div>
                 </td>
                 <td class="p-2.5 font-mono">${calcBadge}</td>
@@ -2622,11 +2623,17 @@ function updateBookFilterOptions() {
 
     if (filterSelect) {
         filterSelect.innerHTML = `<option value="ALL">전체 책자 보기 (${FABRIC_DB.length}개)</option>`;
+        // 직원 화면이면 책자 옆에 공급처(회사)를 붙임: "데미안 · 대명 (28개)" (10-17). 공급처는 비공개 팩에만 있음
+        const supOf = b => {
+            if (typeof Costing === 'undefined' || !Costing.costOf) return '';      // 이 목록은 직원 화면(원단 탭)에만 있음
+            const s = [...new Set(FABRIC_DB.filter(f => f.book === b).map(f => (Costing.costOf(f.id) || {}).supplier).filter(Boolean))];
+            return s.length ? ` · ${s.join('·')}` : '';
+        };
         books.forEach(b => {
             const count = FABRIC_DB.filter(f => f.book === b).length;
             const opt = document.createElement('option');
             opt.value = b;
-            opt.textContent = `${b} (${count}개)`;
+            opt.textContent = `${b}${supOf(b)} (${count}개)`;
             filterSelect.appendChild(opt);
         });
         if (books.includes(currentVal)) filterSelect.value = currentVal;
