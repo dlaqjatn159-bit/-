@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261035';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261036';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -19,27 +19,29 @@
     };
 
     // 속지 느낌 카드 배경: photos/feel/ 의 속지 장면 사진(분위기 사진과 같은 세트, 실제 원단 사진 아님). 사진이 안 뜨면 색 질감이 보임 (10-15)
+    //  기기에 같은 이름의 사진을 넣었으면 그것을 먼저 (34번 덧붙임, data.js scenePhotoUrl)
     function sheerFeelBg(name, fallback) {
-        return `url('photos/feel/${name}.jpg') center / cover no-repeat, ${fallback}`;
+        return `url('${scenePhotoUrl('feel', name)}') center / cover no-repeat, ${fallback}`;
     }
 
     // 분위기 카드 배경: photos/mood/ 의 분위기용 사진(원단·시공 사진 아님). 사진이 안 뜨면 예전 색 질감이 보임
     function moodBg(name, fallback) {
-        return `url('photos/mood/${name}.jpg') center / cover no-repeat, ${fallback}`;
+        return `url('${scenePhotoUrl('mood', name)}') center / cover no-repeat, ${fallback}`;
     }
 
     // 분위기 사진 6장 미리 받기: 앱을 켜면 뒤에서 받아 두고 decode(그릴 준비)까지 끝내 둠
     // → 분위기 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15)
     let finalPage = 0, finalCardCount = 0, lastRenderedStep = null;      // 최종 제안의 쪽 넘기기 (원단을 고른 이유 → 견적서)
     const PICK_PAUSE_MS = 220;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 450일 때 "렉 같다"는 말이 있어 줄임(10-15). 더 여유를 주려면 300~350
-    const MOOD_PHOTOS = ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'];
-    const FEEL_PHOTOS = ['feel_smooth', 'feel_textured', 'feel_cozy'];   // 속지 느낌 3장도 같이 미리 받음 (10-15)
+    const MOOD_PHOTOS = SCENE_PHOTOS.mood;
+    const FEEL_PHOTOS = SCENE_PHOTOS.feel;   // 속지 느낌 3장도 같이 미리 받음 (10-15)
     (function preloadMoodPhotos() {
-        const run = () => MOOD_PHOTOS.map(n => `photos/mood/${n}.jpg`).concat(FEEL_PHOTOS.map(n => `photos/feel/${n}.jpg`)).forEach(src => {
+        // 기기 사진을 다 읽은 뒤, 기기에 있는 것은 기기 사진을 (34번 덧붙임)
+        const run = () => DevicePhotos.ready.then(() => MOOD_PHOTOS.map(n => scenePhotoUrl('mood', n)).concat(FEEL_PHOTOS.map(n => scenePhotoUrl('feel', n))).forEach(src => {
             const im = new Image();
             im.src = src;
             if (im.decode) im.decode().catch(() => {});
-        });
+        }));
         // 첫 화면 그리기를 방해하지 않게 한가할 때 받음 (구형 브라우저는 1초 뒤)
         if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2000 }); else setTimeout(run, 1000);
     })();

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261035';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261036';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261035';
+const REDAM_BUILD = '20261036';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -941,14 +941,24 @@ function renderDevicePhotos() {
     if (clearBtn) clearBtn.hidden = !keys.length;
     if (!listEl) return;
     const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    const groups = {};
-    keys.forEach(k => { const at = k.lastIndexOf('__'); const id = at > 0 ? k.slice(0, at) : k; (groups[id] = groups[id] || []).push({ key: k, color: at > 0 ? k.slice(at + 2) : '' }); });
+    const groups = {}, scenes = { mood: [], feel: [] };
+    keys.forEach(k => {
+        const sl = k.indexOf('/');
+        if (sl > 0 && scenes[k.slice(0, sl)]) { scenes[k.slice(0, sl)].push(k); return; }      // 분위기·속지 느낌 사진 (34번 덧붙임)
+        const at = k.lastIndexOf('__'); const id = at > 0 ? k.slice(0, at) : k; (groups[id] = groups[id] || []).push({ key: k, color: at > 0 ? k.slice(at + 2) : '' });
+    });
     const num = s => /^\d+$/.test(s) ? Number(s) : Infinity;
-    listEl.innerHTML = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })).map(id => {
+    const chip = (key, label) => `<button type="button" class="dev-photo-chip" title="이 사진 지우기" onclick="removeDevicePhoto('${esc(key)}')">${esc(label)}<i aria-hidden="true">×</i></button>`;
+    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진' };
+    const sceneRows = Object.keys(scenes).filter(k => scenes[k].length).map(k => {
+        const order = SCENE_PHOTOS[k];
+        const chips = scenes[k].sort((a, b) => order.indexOf(a.split('/')[1]) - order.indexOf(b.split('/')[1])).map(key => chip(key, key.split('/')[1])).join('');
+        return `<div class="dev-photo-row"><span>${SCENE_LABEL[k]}</span><span class="dev-photo-chips">${chips}</span></div>`;
+    }).join('');
+    listEl.innerHTML = sceneRows + Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })).map(id => {
         const f = FABRIC_DB.find(x => x.id === id);
         const name = f ? `${f.book || ''} ${f.name}`.trim() : id;
-        const chips = groups[id].sort((a, b) => num(a.color) - num(b.color) || a.color.localeCompare(b.color)).map(e =>
-            `<button type="button" class="dev-photo-chip" title="이 사진 지우기" onclick="removeDevicePhoto('${esc(e.key)}')">${e.color ? esc(e.color) + '번' : '대표'}<i aria-hidden="true">×</i></button>`).join('');
+        const chips = groups[id].sort((a, b) => num(a.color) - num(b.color) || a.color.localeCompare(b.color)).map(e => chip(e.key, e.color ? e.color + '번' : '대표')).join('');
         return `<div class="dev-photo-row"><span>${esc(name)}</span><span class="dev-photo-chips">${chips}</span></div>`;
     }).join('');
 }

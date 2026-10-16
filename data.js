@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261035';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261036';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -622,7 +622,16 @@ function repoPhotoUrls(id, color) {
     return [cb + '.jpg', cb + '.webp', cb + '.png'].concat(generic);
 }
 
-// 기기에 넣은 원단 사진 (34번: 원단 사진은 공개 저장소에 두지 않고 기기에만)
+// 분위기·속지 느낌 장면 사진 이름 (photos/mood/, photos/feel/의 기본값. 같은 이름으로 기기에 넣으면 그것이 먼저 — 34번 덧붙임)
+const SCENE_PHOTOS = {
+    mood: ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'],
+    feel: ['feel_smooth', 'feel_textured', 'feel_cozy']
+};
+// 장면 사진 주소: 기기 사진 → 저장소 기본값
+function scenePhotoUrl(folder, name) {
+    return DevicePhotos.sceneUrl(folder, name) || `photos/${folder}/${name}.jpg`;
+}
+// 기기에 넣은 원단 사진 (34번: 원단 사진은 공개 저장소에 두지 않고 기기에만. 분위기·속지 느낌 사진도 넣으면 먼저 씀)
 //  - 이 브라우저 주소의 IndexedDB "redam_photos"에 파일 그대로 저장. 비공개 팩·상담 저장과는 따로라 팩을 불러와도 지워지지 않음
 //  - 키 = 원단ID(대표 사진) 또는 원단ID__번호(색 사진). 같은 키면 덮어씀
 //  - 앱을 켜면 한 번 읽어 주소(blob:)를 만들어 둠 → fabricPhotoUrls가 바로(동기로) 씀. 읽기가 끝나면 ready가 풀림
@@ -668,12 +677,16 @@ const DevicePhotos = (() => {
             cur.continue();
         };
     }).catch(() => {});
-    // 파일 이름 → { id, color } (원단ID__번호.jpg / 원단ID.jpg, 포아는 포아_POA번호.jpg). 규칙에 안 맞거나 없는 원단이면 { why }
+    // 파일 이름 → { id, color } (원단ID__번호.jpg / 원단ID.jpg, 포아는 포아_POA번호.jpg) 또는 { scene } (mood_01_cozy.jpg 등). 규칙에 안 맞거나 없는 원단이면 { why }
     function parseName(fileName) {
         const raw = String(fileName || '').normalize('NFC').trim();
         const m = /^(.+?)\.(jpe?g|png|webp)$/i.exec(raw);
         if (!m) return { why: 'jpg·png·webp 사진이 아님' };
         const stem = m[1].trim();
+        // 분위기·속지 느낌 장면 사진(34번 덧붙임): 이름이 정해진 9장. 키는 "mood/mood_01_cozy"처럼 폴더/이름
+        const folder = Object.keys(SCENE_PHOTOS).find(k => SCENE_PHOTOS[k].includes(stem.toLowerCase()));
+        if (folder) return { scene: folder + '/' + stem.toLowerCase() };
+        if (/^(mood|feel)_/i.test(stem)) return { why: '분위기·속지 느낌 사진 이름이 아님(mood_01_cozy~mood_06_bright, feel_smooth·feel_textured·feel_cozy)' };
         const at = stem.lastIndexOf('__');
         const id = (at > 0 ? stem.slice(0, at) : stem).trim();
         const color = at > 0 ? normalizeColorName(stem.slice(at + 2)) : '';
@@ -690,7 +703,7 @@ const DevicePhotos = (() => {
             const f = list[i], p = parseName(f.name);
             if (p.why) { bad.push({ name: f.name, why: p.why }); }
             else {
-                const key = keyOf(p.id, p.color);
+                const key = p.scene || keyOf(p.id, p.color);
                 const rec = { blob: f, name: f.name, size: f.size, date: new Date().toISOString().slice(0, 10) };
                 try { await tx('readwrite', st => { st.put(rec, key); }); setUrl(key, rec); ok.push(key); }
                 catch (e) { bad.push({ name: f.name, why: (e && e.message) || '저장 실패' }); }
@@ -707,6 +720,7 @@ const DevicePhotos = (() => {
     return {
         ready, parseName, importFiles, remove, clearAll, keyOf,
         urlOf: (id, color) => urls[keyOf(id, color)] || '',
+        sceneUrl: (folder, name) => urls[folder + '/' + name] || '',      // 분위기(mood)·속지 느낌(feel) 사진: 기기에 넣은 것이 있으면 그 주소
         keys: () => Object.keys(urls),
         info: key => info[key] || null,
         totalSize: () => Object.values(info).reduce((a, x) => a + (x.size || 0), 0)
