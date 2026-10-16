@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261036';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261037';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -96,7 +96,7 @@
             else if (L >= 88) name = cool ? '쿨 화이트' : C < 3 ? '퓨어 화이트' : C < 6.5 ? '오프 화이트' : C < 12 ? (h >= 82 ? '아이보리' : '크림') : '버터 크림';
             else if (L >= 78) name = C < 3 ? '라이트 그레이' : cool ? '라이트 쿨 그레이' : C < 6.5 ? '라이트 그레이지' : C < 13 ? '라이트 베이지' : '샌드 베이지';
             else if (L >= 60) name = C < 3 ? '그레이' : cool ? '쿨 그레이' : C < 7 ? '그레이지' : C < 14 ? '베이지' : '카멜';
-            else name = C < 4 ? '다크 그레이' : C < 10 ? '토프' : '모카';
+            else name = C < 4 ? '다크 그레이' : C < 10 ? '딥 그레이지' : '모카';
         }
         const light = L >= 88 ? '아주 밝고' : L >= 75 ? '밝고' : L >= 55 ? '중간 밝기에' : L >= 38 ? '조금 어둡고' : '어둡고';
         const famWord = { pink: '분홍', red: '붉은', yellow: '노란', olive: '초록', mint: '푸른 초록', blue: '푸른', lavender: '보랏' }[fam];
@@ -583,6 +583,8 @@
             });
             h += '</div>';
             if (res.wall && res.floor) h += custBridgeHtml(res);
+            // 공간 추가 때: 결과 아래 창 방향 버튼 (35번, concierge.js가 그리고 값을 가짐)
+            if (o.dirPick && window.concierge && window.concierge.dirPickerHtml) h += window.concierge.dirPickerHtml();
         }
         h += '<div class="cm-foot">';
         h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">지금은 못 재요 · 상담 때 카드로</button>' : '<span></span>';

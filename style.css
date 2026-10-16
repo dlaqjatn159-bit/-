@@ -1694,3 +1694,23 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .bookmark-canvas.has-expand .bookmark-card:not(.is-expanded) { filter: brightness(0.7); }
 .bookmark-card .expand-hint { display: none; position: absolute; left: 0; right: 0; bottom: calc(var(--band-h, 205px) + 1rem); z-index: 14; text-align: center; font-size: 0.85rem; color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55); pointer-events: none; }
 .bookmark-card.is-expanded .expand-hint { display: block; }
+
+/* 창 방향 버튼 (35번): 공간 추가의 색 단계(색 재기 결과 아래 · "같나요?" · 따로 한 화면)와 수정하기. 최대 2개, 반대쪽은 흐려짐 */
+.dir-pick { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: flex-start; gap: 0.55rem; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid #e5dcd0; text-align: left; }
+.ask-stage > .dir-pick { align-items: center; border-top: none; padding-top: 0; margin: 1.2rem 0 0.6rem; }
+.dir-pick-k { font-size: 0.85rem; font-weight: 600; color: #6f5f4f; }
+.dir-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.dir-btn { min-width: 3.4rem; padding: 0.55rem 0.9rem; border: 1px solid #d8ccbc; border-radius: 3px; background: #fffdf9; font-size: 1.05rem; color: #2b221a; cursor: pointer; transition: background 0.15s, color 0.15s, opacity 0.15s; }
+.dir-btn.on { background: #91401a; border-color: #91401a; color: #fffdf9; }
+.dir-btn:disabled { opacity: 0.3; cursor: default; }
+.dir-btn.dir-none { font-family: inherit; font-size: 0.85rem; color: #6f5f4f; }
+.dir-btn.dir-none.on { background: #6f5f4f; border-color: #6f5f4f; color: #fffdf9; }
+.dir-pick-val { font-size: 0.8rem; color: #8a7a6a; }
+.dir-pick-val b { font-size: 1rem; font-weight: 600; color: #91401a; }
+.ed-color + .dir-pick { width: 100%; max-width: 760px; padding: 0 1.2rem 1rem; border-top: none; border-bottom: 1px solid #e5dcd0; box-sizing: border-box; }
+/* 직원 화면 공간 카드 */
+.staff-dir { gap: 0.35rem 0.4rem; }
+.staff-dir .staff-dir-btn { min-width: 2rem; padding: 0.1rem 0.45rem; border: 1px solid var(--brand-border); border-radius: 0.3rem; background: #fff; font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); text-decoration: none; }
+.staff-dir .staff-dir-btn.on { background: var(--brand-accent); border-color: var(--brand-accent); color: #fff; }
+.staff-dir .staff-dir-btn:disabled { opacity: 0.3; }
+.staff-dir .staff-dir-val { margin-left: 0.3rem; font-weight: 600; color: var(--brand-dark); }

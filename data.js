@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261036';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261037';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -550,6 +550,27 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     if (onlySaid) return said[0] || '';
     // 짧은 말로 끝냄(예: 깔끔하고 매끈한 결). 원단 고르는 칸은 1개만, 제안서는 2개까지
     return parts.slice(0, maxParts || 2).join(' · ');
+}
+
+// ---- 창 방향 (35번): 공간마다 동·서·남·북 최대 2개(반대쪽끼리는 같이 못 고름). 원단을 고른 이유 문장에만 쓰고 추천 점수에는 쓰지 않음 ----
+const WINDOW_DIR_WORD = { E: '동', W: '서', S: '남', N: '북' };
+const WINDOW_DIR_OPP = { E: 'W', W: 'E', S: 'N', N: 'S' };
+function windowDirOf(v) {
+    const out = [];
+    if (Array.isArray(v)) v.forEach(d => { if (WINDOW_DIR_WORD[d] && !out.includes(d) && !out.includes(WINDOW_DIR_OPP[d]) && out.length < 2) out.push(d); });
+    return out;
+}
+// "남동" · "북서" · "남" (남·북을 앞에). 없으면 빈칸
+function windowDirText(v) {
+    return windowDirOf(v).sort((a, b) => 'SNEW'.indexOf(a) - 'SNEW'.indexOf(b)).map(d => WINDOW_DIR_WORD[d]).join('');
+}
+// 맞은편 창: 같은 이름 공간(거실 · 거실 2)의 방향이 서로 반대. 따로 묻지 않고 계산 → 그 공간 이름(없으면 빈칸)
+function oppositeRoomOf(room, list) {
+    const base = r => (r && (r.roomType || String(r.name || '').replace(/\s*\d+$/, ''))) || '';
+    const p = windowDirOf(room && room.windowDir);
+    if (!p.length) return '';
+    const o = (list || []).find(r => r && r.name !== room.name && base(r) === base(room) && (q => q.length && !p.some(d => q.includes(d)) && p.some(d => q.includes(WINDOW_DIR_OPP[d])))(windowDirOf(r.windowDir)));
+    return o ? o.name : '';
 }
 
 // 공간 종류(+빛 차단 희망)로 창 구성 추천: 카드 순서는 그대로 두고 "추천" 표시만 붙임

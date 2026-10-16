@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261036';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261037';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -170,7 +170,7 @@
             lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
             diagnosed: !!r.diagnosed,
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
-            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
+            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
                 let realFab = liveDb.find(f => f.id === c.fabricId);
@@ -471,10 +471,24 @@
     }
     // 색 재기 화면(고객 화면 모양, room-color.js)을 띄움
     // bridgeK: 바닥·벽을 둘 다 잴 때 나오는 이어주는 색 막대의 처음 값 (30번, 없으면 기본)
-    function openMeasure(name, parts, doneLabel, doneNote, onDone, onSkip, bridgeK) {
+    // dirPick: 결과 아래에 창 방향 버튼 (공간 추가 때만, 35번)
+    function openMeasure(name, parts, doneLabel, doneNote, onDone, onSkip, bridgeK, dirPick) {
         if (!window.RoomColor || !window.RoomColor.openCustomer) { if (onSkip) onSkip(); return; }
         hideKeypadDirectly();
-        window.RoomColor.openCustomer({ name, parts, doneLabel, doneNote, onDone, onSkip, onCancel: function() {}, bridgeK });
+        window.RoomColor.openCustomer({ name, parts, doneLabel, doneNote, onDone, onSkip, onCancel: function() {}, bridgeK, dirPick: !!dirPick });
+    }
+    // ---- 창 방향 버튼 (35번): 동·서·남·북 최대 2개, 하나를 누르면 반대쪽은 흐려져 못 누름, 다시 누르면 꺼짐 ----
+    //  공간 추가의 색 단계(색 재기 결과 아래 · "같나요?" · 못 재면 따로 한 화면)와 수정하기에 같은 모양. 값은 state.editingRoom.windowDir
+    function dirPickerHtml(noTitle) {
+        const ed = state.editingRoom || {}, cur = windowDirOf(ed.windowDir), txt = windowDirText(cur);
+        let h = '<div class="dir-pick">' + (noTitle ? '' : '<span class="dir-pick-k">창은 어느 쪽을 보나요?</span>') + '<div class="dir-btns">';
+        ['E', 'W', 'S', 'N'].forEach(d => {
+            const on = cur.includes(d), off = !on && (cur.includes(WINDOW_DIR_OPP[d]) || cur.length >= 2);
+            h += `<button type="button" class="dir-btn font-serif-kr${on ? ' on' : ''}"${off ? ' disabled' : ''} aria-pressed="${on}" onclick="event.stopPropagation(); window.concierge.toggleDir('${d}')">${WINDOW_DIR_WORD[d]}</button>`;
+        });
+        h += `<button type="button" class="dir-btn dir-none${ed.dirUnknown && !cur.length ? ' on' : ''}" onclick="event.stopPropagation(); window.concierge.toggleDir('')">잘 모르겠어요</button></div>`;
+        h += `<span class="dir-pick-val">${txt ? `<b class="font-serif-kr">${txt}쪽 창</b>` : (ed.dirUnknown ? '방향은 몰라도 괜찮아요' : '두 곳까지 고를 수 있어요 · 남쪽과 동쪽이면 남동쪽')}</span></div>`;
+        return h;
     }
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
     // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
@@ -642,7 +656,7 @@
         h += '<div class="msr-grid">' + measureBox('width', '넓이', [-10, -1, 1, 10]) + measureBox('height', '높이', [-5, -1, 1, 5]) + '</div>';
         h += `<div class="ed-color">${row('벽', 'wall')}${row('바닥', 'floor')}`;
         if (house) h += '<button type="button" class="ed-sub" onclick="window.concierge.editRoomUseHouse()">집 기본 색으로 맞추기</button>';
-        h += '</div>';
+        h += '</div>' + dirPickerHtml();
         if (r.isConfigured) h += '<p class="q-sub ed-note">고른 원단은 그대로 두고, 바뀐 색으로 어울림만 다시 살펴요.</p>';
         h += '<div class="ed-acts font-serif-kr"><button type="button" class="msr-add" onclick="window.concierge.saveRoomEdit()">저장</button>';
         h += `<button type="button" class="ed-sub" onclick="window.concierge.deleteRoom(${r.id})">이 공간 삭제</button></div>`;
@@ -805,7 +819,7 @@
             case "1.7-Add-Same": {
                 const hc = houseColor();
                 const wf = (k, c, part) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? measuredName(part, c) : '아직 안 쟀어요'}</span>${hexCode(c && { hex: c.hex, src: 'measured' })}</div>`;
-                const extra = hc ? `<div class="ask-house"><span class="ask-house-k">이 집의 기본 색</span>${wf('벽', hc.wall, 'wall')}${wf('바닥', hc.floor, 'floor')}</div>` : '';
+                const extra = (hc ? `<div class="ask-house"><span class="ask-house-k">이 집의 기본 색</span>${wf('벽', hc.wall, 'wall')}${wf('바닥', hc.floor, 'floor')}</div>` : '') + dirPickerHtml();      // 창 방향은 공간마다 (이어받지 않음)
                 html += askStage('앞 공간과 바닥 · 벽이 같나요?', '', [
                     { label: '같아요', desc: '집 기본 색 그대로', rec: true, on: "window.concierge.finishAddRoom('house')" },
                     { label: '벽만 달라요', desc: '벽만 다시 재요', on: "window.concierge.measureNewRoom('wall')" },
@@ -813,6 +827,19 @@
                     { label: '둘 다 달라요', desc: '바닥·벽 다시 재요', on: "window.concierge.measureNewRoom('both')" },
                     { label: '지금은 못 재요', desc: '상담 때 카드로 골라요', on: "window.concierge.finishAddRoom('none')" }
                 ], { extra });
+                break;
+            }
+
+            // [창 방향 (35번)] 첫 공간에서 색을 못 쟀을 때(공간 추가) · "이렇게 들었어요"에서 방향 줄을 눌렀을 때
+            case "1.8-Add-Dir": {
+                const ed = state.editingRoom;
+                html += '<div class="ambient-stage ask-stage">';
+                html += `<span class="q-meta">${ed.name} · 창</span>`;
+                html += '<h2 class="q-title font-serif-kr">창은 어느 쪽을 보나요?</h2>';
+                html += '<p class="q-sub">해가 드는 때와 빛의 색을 원단을 고른 이유에 담아 드려요</p>';
+                html += dirPickerHtml(true);
+                html += `<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.dirDone()">${ed.addDraft ? `${ed.name} 담기` : '다음'}</button>`;
+                html += '</div>';
                 break;
             }
 
@@ -860,9 +887,9 @@
                 const chip = ed.askCards ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
                     + `<button type="button" onclick="window.concierge.fixRoomColors()">${wall && floor ? '다르면 수정' : '카드로 고르기'}</button></div>`;
                 html += askStage('창으로 햇빛은 얼마나 들어오나요?', '', [
-                    { label: '풍부해요', desc: '남향·고층, 눈부신 직사광', on: "window.concierge.selectLightLevel('high')", was: was('lightLevel', 'high') },
-                    { label: '은은해요', desc: '동향·서향, 부드러운 햇살', on: "window.concierge.selectLightLevel('mid')", was: was('lightLevel', 'mid') },
-                    { label: '차분해요', desc: '북향·저층, 낮은 채광', on: "window.concierge.selectLightLevel('low')", was: was('lightLevel', 'low') }
+                    { label: '풍부해요', desc: '눈부신 직사광', on: "window.concierge.selectLightLevel('high')", was: was('lightLevel', 'high') },
+                    { label: '은은해요', desc: '부드러운 햇살', on: "window.concierge.selectLightLevel('mid')", was: was('lightLevel', 'mid') },
+                    { label: '차분해요', desc: '낮은 채광', on: "window.concierge.selectLightLevel('low')", was: was('lightLevel', 'low') }
                 ], { top: chip });
                 break;
             }
@@ -880,6 +907,10 @@
                 if (HEARD.lightBlock[ed.lightBlock]) rows += heard('2-Base-Block', HEARD.lightBlock[ed.lightBlock]);
                 if (HEARD.privacy[ed.privacy]) rows += heard('2-Base-Privacy', HEARD.privacy[ed.privacy]);
                 if (HEARD_COMP[compKeyOf(ed)]) rows += heard('3-Config-Style', HEARD_COMP[compKeyOf(ed)]);
+                // 창 방향 (35번): 누르면 방향 화면에서 고침. 같은 이름 공간과 방향이 반대면 맞은편 창 줄
+                const wd = windowDirText(ed.windowDir), opp = oppositeRoomOf(ed, state.roomsCart);
+                rows += heard('1.8-Add-Dir', wd ? `창은 ${wd}쪽이에요` : '창 방향은 잘 모르겠어요');
+                if (opp) rows += `<div class="heard-row is-static"><span class="font-serif-kr">${withGwa(opp)} 맞은편 창이에요</span></div>`;
                 if (mc && (mc.floor || mc.wall)) {
                     const parts = [];
                     if (mc.floor) parts.push(`${dot(mc.floor)}바닥 <b>${measuredName('floor', mc.floor)}</b>`);
@@ -1705,7 +1736,7 @@
             const sameTypeCount = state.roomsCart.filter(r => r.name.startsWith(selectedName)).length;
             const displayName = sameTypeCount === 0 ? selectedName : `${selectedName} ${sameTypeCount + 1}`;
             state.editingRoomId = null;
-            state.editingRoom = { name: displayName, roomType: selectedName, addDraft: true, width: 340, height: 235, items: [] };
+            state.editingRoom = { name: displayName, roomType: selectedName, addDraft: true, width: 340, height: 235, items: [], windowDir: [] };
             goToStep("1.6-Add-Size");
         },
         // 크기 다음 색: 집 기본 색이 아직 없으면 색 재기, 있으면 "앞 공간과 같나요?"
@@ -1720,8 +1751,8 @@
             const house = houseColor(), first = !house;
             openMeasure(d.name, parts, `${d.name} 담기`, first ? '이 색을 집의 기본 색으로 둘게요. 다음 공간은 "같아요"만 누르면 돼요.' : '',
                 function(mc) { window.concierge.finishAddRoom(first ? 'first' : (parts === 'both' ? 'measured' : parts), mc); },
-                function() { window.concierge.finishAddRoom('none'); },
-                house ? house.bridgeK : undefined);      // 둘 다 다시 잴 때 막대는 집 기본 비율부터
+                function() { if (first) goToStep("1.8-Add-Dir"); else window.concierge.finishAddRoom('none'); },      // 첫 공간을 못 재면 창 방향만 따로 물음 (두 번째부터는 "같나요?" 화면에 있음)
+                house ? house.bridgeK : undefined, true);      // 둘 다 다시 잴 때 막대는 집 기본 비율부터 · 결과 아래 창 방향 (35번)
         },
         // src: 'first'(첫 공간에서 잼 → 집 기본 색) · 'measured'(둘 다 다시 잼) · 'wall' · 'floor'(한쪽만 다시 잼) · 'house'(같아요) · 'none'(못 잼)
         finishAddRoom: function(src, mc) {
@@ -1733,7 +1764,8 @@
                 width: Number(d.width) || 340, height: Number(d.height) || 235,
                 floorTone: "warm", wallTone: "cool", lightLevel: "mid", mood: "soft_warm",
                 isConfigured: false, curtains: [], subtotal: 0,
-                colorSrc: src === 'first' ? 'measured' : (src === 'none' ? null : src)
+                colorSrc: src === 'first' ? 'measured' : (src === 'none' ? null : src),
+                windowDir: windowDirOf(d.windowDir)      // 색 단계에서 고른 창 방향 (35번, "같아요"여도 이어받지 않음)
             };
             if (src === 'first' || src === 'measured') setRoomColor(room, mc);
             else if (src === 'house' && house) setRoomColor(room, withBridge(house.wall, house.floor, house.bridgeK));      // "같아요": 비율도 첫 공간 것
@@ -1766,6 +1798,7 @@
                 cardParts: target.cardParts ? Object.assign({}, target.cardParts) : null,
                 diagnosed: !!target.diagnosed,
                 linkDir: target.linkDir || null,
+                windowDir: windowDirOf(target.windowDir),      // 창 방향 (35번)
                 width: Number(target.width) || 340,          // 수정하기·공간 추가에서 적은 크기가 있으면 그것부터
                 height: Number(target.height) || 235,
                 sizeKnown: !!(Number(target.width) && Number(target.height)),      // 공간 추가 때 크기를 적었으면 원단 뒤에는 옵션(마무리)만
@@ -1811,6 +1844,25 @@
             if (canLink(state.editingRoom)) { goToStep("2-Base-Link"); return; }
             state.editingRoom.linkDir = null;
             goToStep("2-Base-Mood");
+        },
+        // 창 방향 버튼 (35번): 그 자리의 버튼만 다시 그림 (색 재기 화면이 위에 떠 있어도 같은 값)
+        toggleDir: function(d) {
+            const ed = state.editingRoom;
+            if (!ed) return;
+            let cur = windowDirOf(ed.windowDir);
+            if (!d) { cur = []; ed.dirUnknown = true; }
+            else if (cur.includes(d)) cur = cur.filter(x => x !== d);
+            else if (!cur.includes(WINDOW_DIR_OPP[d]) && cur.length < 2) { cur.push(d); ed.dirUnknown = false; }
+            ed.windowDir = cur;
+            document.querySelectorAll('.dir-pick').forEach(el => { el.outerHTML = dirPickerHtml(!el.querySelector('.dir-pick-k')); });
+        },
+        dirPickerHtml: function() { return dirPickerHtml(); },
+        // 창 방향 화면의 버튼: 공간 추가면 공간을 담고, "이렇게 들었어요"에서 왔으면 그 화면으로
+        dirDone: function() {
+            const ed = state.editingRoom;
+            if (!ed) return;
+            if (ed.addDraft) { window.concierge.finishAddRoom('none'); return; }
+            if (!returnHomeIfFixing()) prevStep();
         },
         // "이렇게 들었어요" 줄을 눌러 그 질문으로: 답하면 다시 이 화면으로 돌아옴
         fixHeard: function(stepName) {
@@ -1884,7 +1936,8 @@
                 id: r.id, name: r.name, editOnly: true, items: [],
                 width: size.w, height: size.h,
                 floorTone: r.floorTone, wallTone: r.wallTone, diagnosed: r.diagnosed, cardParts: r.cardParts ? Object.assign({}, r.cardParts) : null, colorSrc: r.colorSrc || null,
-                measuredColor: r.measuredColor ? JSON.parse(JSON.stringify(r.measuredColor)) : null
+                measuredColor: r.measuredColor ? JSON.parse(JSON.stringify(r.measuredColor)) : null,
+                windowDir: windowDirOf(r.windowDir)
             };
             goToStep("1-Space-Edit");
         },
@@ -1917,6 +1970,7 @@
             r.floorTone = ed.floorTone; r.wallTone = ed.wallTone; r.measuredColor = ed.measuredColor || null;
             r.cardParts = ed.cardParts || null;
             r.colorSrc = ed.colorSrc || null;
+            r.windowDir = windowDirOf(ed.windowDir);
             // 첫 공간(집 기본 색을 잰 공간)을 다시 쟀으면 집 기본 색도 따라감
             if (state.house && state.house.roomId === r.id && r.measuredColor && r.measuredColor.wall && r.measuredColor.floor) state.house = houseOf(r.measuredColor, r.id);
             // 상담을 마친 공간: 커튼 크기도 같이 바꾸고 금액을 다시 셈 (고른 원단·옵션은 그대로)
@@ -2106,7 +2160,8 @@
                 roomTarget.measuredColor = state.editingRoom.measuredColor || null;
                 roomTarget.colorSrc = state.editingRoom.colorSrc || null;
                 roomTarget.cardParts = state.editingRoom.cardParts || null;
-                roomTarget.linkDir = state.editingRoom.linkDir || null;          // 색 잇기 답 (원단 추천·중심 화면 이유 한 줄)
+                roomTarget.linkDir = state.editingRoom.linkDir || null;
+                roomTarget.windowDir = windowDirOf(state.editingRoom.windowDir);      // 창 방향 (35번)          // 색 잇기 답 (원단 추천·중심 화면 이유 한 줄)
                 roomTarget.diagnosed = true;          // 바닥·벽·채광 진단을 거침 → 제안서에 진단 요약·추천 이유 표시
                 roomTarget.curtains = finalizedCurtains;
                 roomTarget.subtotal = roomSubSum;
@@ -2192,7 +2247,7 @@
                     lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
                     roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
                     measuredColor: r.measuredColor || null,
-                    width: Number(r.width) || null, height: Number(r.height) || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,
+                    width: Number(r.width) || null, height: Number(r.height) || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                     isConfigured: r.curtains.length > 0,          // 공간 추가만 하고 아직 상담 전인 공간(커튼 없음)은 "상담하기"로
                     curtains: r.curtains.map(c => ({ ...c })),
                     subtotal: sub
@@ -2237,7 +2292,7 @@
                 name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
                 roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
                 measuredColor: r.measuredColor || null,
-                width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null,
+                width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                 curtains: r.isConfigured ? r.curtains : []
             }));
         },
