@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261031';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261032';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261031';
+const REDAM_BUILD = '20261032';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2760,7 +2760,13 @@ function ticketData() {
             });
             // 카드용 손님 답: 빛 양은 기본값이 들어 있으니 상담을 거친(diagnosed) 공간만 씀
             const ans = { privacy: r.privacy || null, block: r.lightBlock || null, light: r.diagnosed ? (r.lightLevel || null) : null };
-            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
+            // 잰 벽·바닥 색 (32번): 이유 카드 공간 줄 아래 "■ 벽 라이트 베이지 #D8CEBF · ■ 바닥 허니 오크 #B38A5E". 잰 공간만
+            const mc = r.measuredColor || {}, nameOf = window.RoomColor && window.RoomColor.colorName;
+            const colors = ['wall', 'floor'].filter(k => mc[k] && /^#[0-9a-f]{6}$/i.test(mc[k].hex || '') && nameOf)
+                .map(k => ({ k: k === 'wall' ? '벽' : '바닥', hex: mc[k].hex.toUpperCase(), name: (nameOf(k, mc[k]) || {}).name || '' }));
+            // 잇는 색: 이 공간에서 "벽과 바닥 사이를 잇는 색"으로 고른 원단이 있을 때만 카드에 나옴(whySetsOf)
+            if (colors.length === 2 && mc.bridge && /^#[0-9a-f]{6}$/i.test(mc.bridge.hex || '')) colors.push({ k: '잇는 색', hex: mc.bridge.hex.toUpperCase(), name: '', bridge: true });
+            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null, colors };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
         }),
         install: globalInstallFee,
         total: document.getElementById('totalGrandPrice').textContent,
@@ -3012,7 +3018,8 @@ function whySetsOf(data) {
             seen.push({ room: room.name, fabricId: it.fabricId, kindKey: it.kindKey, link, ans: room.ans });
             sets.push(set);
         });
-        if (sets.length) out.push({ name: room.name, sets });
+        const useBridge = sets.some(s => s.link === 'bridge');
+        if (sets.length) out.push({ name: room.name, sets, colors: (room.colors || []).filter(c => !c.bridge || useBridge) });
     });
     return { rooms: out, linkSay, linkWhy };
 }
@@ -3025,6 +3032,7 @@ function drawWhy(ctx, data, W, compact) {
     const PH_W = compact ? 100 : 132, PH_H = Math.round(PH_W * 4 / 3), PH_GAP = 24, COL_GAP = 44;
     const Q_SIZE = compact ? 24 : 27, Q_LH = compact ? 36 : 40;              // 손님 말 (명조)
     const B_SIZE = compact ? 20 : 21, B_LH = compact ? 30 : 32;              // 원단 이름·이유 (고딕)
+    const C_SIZE = compact ? 19 : 20, C_LH = compact ? 32 : 34, C_SW = compact ? 20 : 22;      // 잰 벽·바닥 색 줄 (32번)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
     const canSpace = 'letterSpacing' in ctx;
     const spacing = v => { if (canSpace) ctx.letterSpacing = v; };
@@ -3121,13 +3129,33 @@ function drawWhy(ctx, data, W, compact) {
             saidInline = lastW + 12 + ctx.measureText('하셨어요').width <= QW;
         }
         const qn = qLines.length + (qLines.length && !saidInline ? 1 : 0);
-        const headH = 44 + Math.max(0, qn - 1) * Q_LH + 26;
+        let headH = 44 + Math.max(0, qn - 1) * Q_LH + 26;
+        // 잰 벽·바닥 색 한 줄 (32번): 손님 말 아래. 한 줄에 안 들어가면 벽·바닥 두 줄
+        setFont(400, C_SIZE, SANS);
+        const cRows = []; let cRowW = 0;      // 들어가는 만큼 한 줄에, 넘치면 다음 줄
+        (R.colors || []).forEach(c => {
+            const w = C_SW + 10 + ctx.measureText(`${c.k} ${c.name} ${c.hex}`).width + 20;      // 대략 폭 (그릴 때 글꼴별로 다시 잼)
+            if (cRows.length && cRowW + w <= QW) { cRows[cRows.length - 1].push(c); cRowW += w + 28; }
+            else { cRows.push([c]); cRowW = w + 28; }
+        });
+        const cY = qn ? 44 + (qn - 1) * Q_LH + 44 : 44;      // 첫 색 줄의 글자 아랫선 (공간 이름 줄 기준)
+        if (cRows.length) headH = Math.max(headH, cY + (cRows.length - 1) * C_LH + 30);
         const two = R.sets.length === 2;
         const colW = two ? (CW - COL_GAP) / 2 : CW;
         const sets = R.sets.map(s => layoutSet(s, colW));
         const rows = two ? [Math.max(sets[0].h, sets[1].h)] : sets.map(s => s.h);
         const bodyH = rows.reduce((a, b) => a + b, 0) + (rows.length - 1) * 22;
-        return { R, nameW, QX, qLines, saidInline, headH, two, colW, sets, rows, h: headH + bodyH + 30 };
+        return { R, nameW, QX, qLines, saidInline, headH, two, colW, sets, rows, cRows, cY, h: headH + bodyH + 30 };
+    }
+    // "■ 벽 라이트 베이지 #D8CEBF" 한 칸: 색 조각 · 벽/바닥(작게) · 이름(굵게) · 코드(작게). 다음 칸이 시작할 x를 돌려줌
+    function drawColorPart(c, x, base) {
+        ctx.fillStyle = c.hex; ctx.fillRect(x, base - C_SW + 3, C_SW, C_SW);
+        ctx.strokeStyle = 'rgba(43,34,26,0.18)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, base - C_SW + 3.5, C_SW - 1, C_SW - 1);
+        x += C_SW + 10;
+        setFont(500, C_SIZE - 2, SANS); text(c.k, x, base, 'left', SOFT); x += ctx.measureText(c.k).width + 8;
+        if (c.name) { setFont(700, C_SIZE, SANS); text(c.name, x, base, 'left', DARK); x += ctx.measureText(c.name).width + 8; }
+        setFont(500, C_SIZE - 3, 'ui-monospace,Menlo,Consolas,monospace'); text(c.hex, x, base, 'left', SOFT); x += ctx.measureText(c.hex).width;
+        return x + 28;
     }
     function drawRoom(L, y) {
         hline(CX, RX, y, DARK, 2);
@@ -3141,6 +3169,7 @@ function drawWhy(ctx, data, W, compact) {
             if (L.saidInline) text('하셨어요', L.QX + lastW + 12, lastY, 'left', SOFT);
             else text('하셨어요', L.QX, lastY + Q_LH, 'left', SOFT);
         }
+        L.cRows.forEach((row, i) => { let x = L.QX; row.forEach(c => { x = drawColorPart(c, x, y + L.cY + i * C_LH); }); });
         const top = y + L.headH;
         L.sets.forEach((b, i) => {
             const sx = CX + (L.two ? i * (L.colW + COL_GAP) : 0);

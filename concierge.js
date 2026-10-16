@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261031';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261032';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -395,10 +395,19 @@
     const HATCH = 'repeating-linear-gradient(135deg, #fffdf9 0 6px, #efe7da 6px 12px)';
     const COMP_NAMES = { double: '이중 커튼', sheer_only: '속지 커튼', drape_only: '겉지 커튼', blind_only: '블라인드' };
     // 공간의 벽(part='wall') · 바닥(part='floor') 색: { hex, name, src: 'measured' | 'card' } 또는 null(아직 모름)
+    // 잰 색의 이름: 자세한 이름(room-color.js colorName, 예: 라이트 베이지 · 내추럴 오크). 카드로 고른 색만 카드 이름(크림·아이보리 등)
+    function measuredName(part, c) {
+        const nm = c && window.RoomColor && window.RoomColor.colorName && window.RoomColor.colorName(part, c);
+        return nm ? nm.name : ((part === 'wall' ? WALL_NAMES : FLOOR_NAMES)[c && c.tone] || '');
+    }
+    // 잰 색 옆 색상 코드 (방마다 실제로 다른 색임을 보여 줌). 카드로 고른 색은 잰 값이 아니라 안 띄움
+    function hexCode(p) {
+        return p && p.src === 'measured' && /^#[0-9a-f]{6}$/i.test(p.hex || '') ? `<span class="hex-code">${p.hex.toUpperCase()}</span>` : '';
+    }
     function roomPart(r, part) {
         const names = part === 'wall' ? WALL_NAMES : FLOOR_NAMES, sw = part === 'wall' ? WALL_SW : FLOOR_SW;
         const tone = r[part + 'Tone'], mc = r.measuredColor && r.measuredColor[part];
-        if (mc && mc.hex) return { hex: mc.hex, name: names[mc.tone || tone] || '', src: 'measured' };
+        if (mc && mc.hex) return { hex: mc.hex, name: measuredName(part, mc) || names[tone] || '', src: 'measured' };
         if ((r.diagnosed || (r.cardParts && r.cardParts[part])) && names[tone]) return { hex: sw[tone], name: names[tone], src: 'card' };
         return null;
     }
@@ -557,11 +566,14 @@
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}<span class="dos-racts"><button type="button" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></span>`
                 + (r.isConfigured ? `<span class="dos-rmeta">${COMP_NAMES[comp] || ''}</span>` : `<button type="button" class="dos-todo" onclick="window.concierge.openRoomCart(${r.id})">상담하기</button>`) + '</div>';
             // 크기 | 벽 · 바닥 (벽이 위)
-            const wf = (k, p) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 안 쟀어요'}</span></div>`;
+            const wf = (k, p) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 안 쟀어요'}</span>${hexCode(p)}</div>`;
             const src = roomColorSrc(wall, floor, r);
             h += '<div class="dos-prep">';
             h += `<div><div class="dos-k">크기</div><div class="dos-v">${size ? `${size.w} × ${size.h}` : '—'}</div><div class="dos-t">넓이 × 높이 (cm)</div></div>`;
-            h += `<div class="dos-wf">${wf('벽', wall)}${wf('바닥', floor)}<div class="dos-t${src ? '' : ' is-warn'}">${src || '상담 때 카드로 골라요'}</div></div>`;
+            // 잇는 색 (벽·바닥을 둘 다 잰 공간): 색 조각 + 코드만
+            const br = r.measuredColor && r.measuredColor.bridge && r.measuredColor.wall && r.measuredColor.floor ? r.measuredColor.bridge : null;
+            const brRow = br ? `<div class="dos-wfrow is-bridge"><span class="dos-wfk">잇는 색</span><i style="background:${br.hex}"></i>${hexCode({ hex: br.hex, src: 'measured' })}</div>` : '';
+            h += `<div class="dos-wf">${wf('벽', wall)}${wf('바닥', floor)}${brRow}<div class="dos-t${src ? '' : ' is-warn'}">${src || '상담 때 카드로 골라요'}</div></div>`;
             h += '</div>';
             // 공간 색 띠: 벽 · 바닥은 처음부터, 원단 칸은 빗금으로 비어 있다가 고르면 채워짐
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
@@ -618,7 +630,7 @@
             '<span class="msr-hint">숫자를 누르면 직접 입력</span>' + nudgeRowHtml(target, steps) + '</div>';
         const row = (k, part) => {
             const p = roomPart(ed, part);
-            return `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 안 쟀어요'}</span>`
+            return `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 안 쟀어요'}</span>${hexCode(p)}`
                 + `<button type="button" class="ed-btn" onclick="window.concierge.editRoomColor('${part}')">${p ? '다시 재기' : '재기'}</button></div>`;
         };
         const house = houseColor();
@@ -790,8 +802,8 @@
             // [공간 추가 ③ 색, 두 번째 공간부터] 이 집의 기본 색과 같은지. 다른 부분만 다시 잼
             case "1.7-Add-Same": {
                 const hc = houseColor();
-                const wf = (k, c, names) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? (names[c.tone] || '') : '아직 안 쟀어요'}</span></div>`;
-                const extra = hc ? `<div class="ask-house"><span class="ask-house-k">이 집의 기본 색</span>${wf('벽', hc.wall, WALL_NAMES)}${wf('바닥', hc.floor, FLOOR_NAMES)}</div>` : '';
+                const wf = (k, c, part) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? measuredName(part, c) : '아직 안 쟀어요'}</span>${hexCode(c && { hex: c.hex, src: 'measured' })}</div>`;
+                const extra = hc ? `<div class="ask-house"><span class="ask-house-k">이 집의 기본 색</span>${wf('벽', hc.wall, 'wall')}${wf('바닥', hc.floor, 'floor')}</div>` : '';
                 html += askStage('앞 공간과 바닥 · 벽이 같나요?', '', [
                     { label: '같아요', desc: '집 기본 색 그대로', rec: true, on: "window.concierge.finishAddRoom('house')" },
                     { label: '벽만 달라요', desc: '벽만 다시 재요', on: "window.concierge.measureNewRoom('wall')" },
@@ -805,7 +817,9 @@
             // [Step 2-0: 앞 공간과 같은 바닥·벽인지 (두 번째 공간부터)]
             case "2-Base-Copy": {
                 const src = copySourceRoom();
-                const srcDesc = src ? [FLOOR_NAMES[src.floorTone] && `바닥 ${FLOOR_NAMES[src.floorTone]}`, WALL_NAMES[src.wallTone] && `벽 ${WALL_NAMES[src.wallTone]}`].filter(Boolean).join(' / ') : '';
+                const sp = src && { floor: roomPart(src, 'floor'), wall: roomPart(src, 'wall') };
+                const srcDesc = src ? [sp.floor ? `바닥 ${sp.floor.name}` : (FLOOR_NAMES[src.floorTone] && `바닥 ${FLOOR_NAMES[src.floorTone]}`),
+                    sp.wall ? `벽 ${sp.wall.name}` : (WALL_NAMES[src.wallTone] && `벽 ${WALL_NAMES[src.wallTone]}`)].filter(Boolean).join(' / ') : '';
                 html += askStage(src ? `${withGwa(src.name)} 바닥·벽이 같은가요?` : '바닥·벽을 골라 주세요', srcDesc, [
                     { label: '네, 같아요', desc: '바닥·벽 선택을 건너뛰어요', on: 'window.concierge.copyBaseFromPrev(true)' },
                     { label: '아니요, 새로 고를게요', desc: '이 공간의 톤을 직접 골라요', on: 'window.concierge.copyBaseFromPrev(false)' }
@@ -866,8 +880,8 @@
                 if (HEARD_COMP[compKeyOf(ed)]) rows += heard('3-Config-Style', HEARD_COMP[compKeyOf(ed)]);
                 if (mc && (mc.floor || mc.wall)) {
                     const parts = [];
-                    if (mc.floor) parts.push(`${dot(mc.floor)}바닥 <b>${FLOOR_NAMES[mc.floor.tone] || ''}</b>`);
-                    if (mc.wall) parts.push(`${dot(mc.wall)}벽 <b>${WALL_NAMES[mc.wall.tone] || ''}</b>`);
+                    if (mc.floor) parts.push(`${dot(mc.floor)}바닥 <b>${measuredName('floor', mc.floor)}</b>`);
+                    if (mc.wall) parts.push(`${dot(mc.wall)}벽 <b>${measuredName('wall', mc.wall)}</b>`);
                     rows += `<div class="heard-row is-static"><span class="font-serif-kr">${parts.join(' · ')}</span></div>`;
                 }
                 html += '<div class="ambient-stage ask-stage home-stage">';

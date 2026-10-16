@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261031';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261032';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -67,6 +67,42 @@
         const light = c.L >= LIGHT_HI ? 'light' : (c.L >= LIGHT_LO ? 'mid' : 'dark');
         const lightWord = { light: '밝은', mid: '중간', dark: '어두운' }[light];
         return { tone, toneWord, light, lightWord, text: `${lightWord} ${toneWord}` };
+    }
+
+    // 잰 색의 자세한 이름 (32번): 고객 화면에서 잰 색은 카드 이름(크림·아이보리 등 4가지) 대신 이걸 씀. 카드로 고른 색만 카드 이름
+    //  { name: '라이트 베이지', note: '밝고 노란 기운이 은은해요' }. 원단 색 이름 규칙처럼 쉬운 계열 이름 + 라이트/딥
+    function colorName(kind, c) {
+        if (!c || c.L == null) return null;
+        const L = c.L, a = c.a || 0, b = c.b || 0, C = Math.hypot(a, b);
+        let h = Math.atan2(b, a) * 180 / Math.PI; if (h < 0) h += 360;
+        // 색 기운: 0 붉은 · 90 노란 · 180 초록 · 270 푸른
+        const fam = C < 3 ? 'none' : (h < 30 || h >= 330) ? 'pink' : h < 62 ? 'red' : h < 110 ? 'yellow' : h < 150 ? 'olive' : h < 215 ? 'mint' : h < 290 ? 'blue' : 'lavender';
+        const cool = C >= 2 && (fam === 'mint' || fam === 'blue' || fam === 'lavender');
+        let name;
+        if (kind === 'floor') {
+            if (C < 5 || fam === 'blue' || fam === 'mint' || fam === 'lavender') {
+                name = L >= 82 ? '화이트 그레이' : L >= 68 ? '라이트 그레이' : L >= 50 ? '그레이' : L >= 35 ? '다크 그레이' : '차콜';
+            } else if ((fam === 'red' && h < 52) || fam === 'pink') {          // 붉은 기운이 뚜렷한 나무 (보통 오크는 65~75°)
+                name = L >= 65 ? '로즈 메이플' : L >= 50 ? '체리 오크' : L >= 35 ? '체리' : '마호가니';
+            } else if (C < 11) {          // 색이 옅은 나무·타일: 회색 기운이 섞임
+                name = L >= 75 ? '화이트 오크' : L >= 60 ? '그레이 오크' : L >= 45 ? '스모크 오크' : L >= 32 ? '그레이 월넛' : '다크 월넛';
+            } else {
+                name = L >= 72 ? '메이플' : L >= 60 ? (C >= 22 ? '허니 오크' : '내추럴 오크') : L >= 48 ? '티크' : L >= 35 ? '월넛' : '다크 월넛';
+            }
+        } else {
+            const tint = { pink: '핑크', red: '살구', olive: '세이지', mint: '민트', blue: '블루', lavender: '라벤더' }[fam];
+            if (L < 40) name = C < 4 ? '차콜' : (fam === 'blue' ? '네이비' : fam === 'olive' ? '올리브' : '다크 브라운');
+            else if (tint && C >= (fam === 'red' ? 12 : 5)) name = (L >= 85 ? '라이트 ' : L < 62 ? '딥 ' : '') + tint + (C < 9 ? ' 그레이' : '');
+            else if (L >= 88) name = cool ? '쿨 화이트' : C < 3 ? '퓨어 화이트' : C < 6.5 ? '오프 화이트' : C < 12 ? (h >= 82 ? '아이보리' : '크림') : '버터 크림';
+            else if (L >= 78) name = C < 3 ? '라이트 그레이' : cool ? '라이트 쿨 그레이' : C < 6.5 ? '라이트 그레이지' : C < 13 ? '라이트 베이지' : '샌드 베이지';
+            else if (L >= 60) name = C < 3 ? '그레이' : cool ? '쿨 그레이' : C < 7 ? '그레이지' : C < 14 ? '베이지' : '카멜';
+            else name = C < 4 ? '다크 그레이' : C < 10 ? '토프' : '모카';
+        }
+        const light = L >= 88 ? '아주 밝고' : L >= 75 ? '밝고' : L >= 55 ? '중간 밝기에' : L >= 38 ? '조금 어둡고' : '어둡고';
+        const famWord = { pink: '분홍', red: '붉은', yellow: '노란', olive: '초록', mint: '푸른 초록', blue: '푸른', lavender: '보랏' }[fam];
+        const note = fam === 'none' ? `${light} 색 기운이 거의 없어요`
+            : `${light} ${famWord} 기운이 ${C < 6 ? '살짝 돌아요' : C < 13 ? '은은해요' : '또렷해요'}`;
+        return { name, note };
     }
 
     // 누른 자리 주변 평균색(Lab)과 카드 안 밝기 차이(위아래·좌우 중 큰 쪽)
@@ -234,7 +270,7 @@
         if (!c) return h + `<p class="rc-res-empty">${emptyText || '사진에서 이 자리를 눌러 주세요'}</p></div>`;
         const cls = c.cls || classifyLab(c);
         h += `<div class="rc-res-row"><i class="rc-swatch" style="background:${c.hex}"></i><div class="rc-res-info">`;
-        h += `<div class="rc-res-tone font-serif-kr">${cls.text}</div>`;
+        h += `<div class="rc-res-tone font-serif-kr">${esc(colorName(kind, c).name)} <small>(${cls.text})</small></div>`;
         h += `<div class="rc-res-match">→ ${kind === 'wall' ? '벽' : '바닥'} 카드: ${esc(cardName(kind, cls.tone))}</div>`;
         h += `<div class="rc-res-lab">밝기 L ${c.L.toFixed(1)} · a ${fmt(c.a)} · b ${fmt(c.b)}</div>`;
         return h + '</div></div></div>';
@@ -469,8 +505,6 @@
     //  바닥·벽을 둘 다 찍으면 결과 아래에 이어주는 색 막대 → mc.bridgeK (30번)
     // ==============================================================
     const CUST_LABEL = { gray: '회색 카드', white: '흰 카드', floor: '바닥', wall: '벽' };
-    const CUST_DESC = { floor: { warm: '밝은 원목', cool: '밝은 타일·대리석', neutral: '회색 마루·타일', deep: '진한 원목 마루' },
-                        wall: { warm: '따뜻한 흰 벽지', cool: '맑은 흰 벽지', neutral: '회색 벽지', deep: '진한 나무 벽' } };
     const CUST_ASK = { gray: '<b>회색 카드</b> 가운데를 눌러 주세요', white: '<b>흰 카드</b> 가운데를 눌러 주세요',
                        floor: `<b>바닥</b>을 ${AREA_POINTS}곳 눌러 주세요`, wall: `<b>벽</b>을 ${AREA_POINTS}곳 눌러 주세요` };
     function packResult(res, k) {
@@ -486,7 +520,7 @@
             + `<div class="cm-adj-row"><span class="rc-adj-end">벽</span>`
             + `<input type="range" min="${Math.round((1 - BRIDGE_K_MAX) * 100)}" max="${Math.round((1 - BRIDGE_K_MIN) * 100)}" step="5" value="${Math.round((1 - k) * 100)}" style="--wall:${res.wall.hex};--floor:${res.floor.hex};--mid:${br.hex}" aria-label="벽과 바닥 중 많이 보이는 쪽" oninput="RoomColor.custBridge(+this.value)">`
             + `<span class="rc-adj-end">바닥</span></div>`
-            + `<div class="cm-adj-val"><i style="background:${br.hex}"></i><span><b class="font-serif-kr">이어주는 색</b><small class="cm-adj-ratio">${bridgeRatioText(k)}${Math.abs(k - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : ''}</small></span></div></div>`;
+            + `<div class="cm-adj-val"><i style="background:${br.hex}"></i><span><b class="font-serif-kr">이어주는 색<em class="hex-code">${br.hex.toUpperCase()}</em></b><small class="cm-adj-ratio">${bridgeRatioText(k)}${Math.abs(k - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : ''}</small></span></div></div>`;
     }
     function custK() { return (st && typeof st.custK === 'number') ? st.custK : BRIDGE_WALL_WEIGHT; }
     function custBridge(pos) {
@@ -497,6 +531,7 @@
         const br = bridgeOf(res.wall, res.floor, st.custK), box = document.getElementById('cmAdj');
         if (!box) return;
         box.querySelector('.cm-adj-val i').style.background = br.hex;
+        box.querySelector('.cm-adj-val .hex-code').textContent = br.hex.toUpperCase();
         box.querySelector('.cm-adj-ratio').textContent = bridgeRatioText(st.custK) + (Math.abs(st.custK - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : '');
         box.querySelector('input').style.setProperty('--mid', br.hex);
     }
@@ -543,7 +578,8 @@
             ['floor', 'wall'].forEach(k => {
                 const c = res[k];
                 if (!c) return;
-                h += `<div><i style="background:${c.hex}"></i><span><b class="font-serif-kr">${esc(cardName(k, c.cls.tone))}</b><small>${k === 'wall' ? '벽' : '바닥'} · ${CUST_DESC[k][c.cls.tone] || ''}</small></span></div>`;
+                const nm = colorName(k, c);
+                h += `<div><i style="background:${c.hex}"></i><span><b class="font-serif-kr">${esc(nm.name)}<em class="hex-code">${esc(String(c.hex).toUpperCase())}</em></b><small>${k === 'wall' ? '벽' : '바닥'} · ${esc(nm.note)}</small></span></div>`;
             });
             h += '</div>';
             if (res.wall && res.floor) h += custBridgeHtml(res);
@@ -594,7 +630,7 @@
                 if (!c) return '';
                 const cur = kind === 'wall' ? room.wallTone : room.floorTone;
                 const label = kind === 'wall' ? '벽' : '바닥';
-                return `<span class="rc-sum-part">${label} <i class="rc-dot" style="background:${c.hex}"></i> <b>${classifyLab(c).text}</b> → ${esc(cardName(kind, c.tone))}`
+                return `<span class="rc-sum-part">${label} <i class="rc-dot" style="background:${c.hex}"></i> <b>${esc(colorName(kind, c).name)}</b> ${classifyLab(c).text} → ${esc(cardName(kind, c.tone))}`
                     + (cur && cur !== c.tone ? ` <em>(지금 카드: ${esc(cardName(kind, cur))})</em>` : '') + '</span>';
             };
             return `<div class="rc-summary"><span class="rc-sum-lbl">잰 색</span>${part('wall', mc.wall)}${part('floor', mc.floor)}`
@@ -643,6 +679,6 @@
         removeWall: removeWallPhoto,
         _loadImage: (src, which) => loadImage(src, which || 0),      // 미리보기 시험용
         _state: () => st && compute(),
-        rgbToLab, labToHex, classifyLab, bridgeOf
+        rgbToLab, labToHex, classifyLab, bridgeOf, colorName
     };
 })();

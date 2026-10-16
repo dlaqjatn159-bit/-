@@ -1412,6 +1412,13 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-wfk { width: 2.2rem; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; color: #8a7a6a; }
 .dos-wfrow > i { flex: none; width: 34px; height: 22px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
 .dos-wfn { font-size: 1.05rem; font-weight: 700; color: #2b221a; }
+/* 잰 색의 색상 코드 (32번): 이름 옆에 작고 조용하게 */
+.hex-code { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-style: normal; font-weight: 500; font-size: 0.78rem; letter-spacing: 0.05em; color: #8a7a6a; }
+.dos-wfrow .hex-code { margin-left: -0.2rem; }
+.dos-wfrow.is-bridge .dos-wfk { white-space: nowrap; }
+.dos-wfrow.is-bridge .hex-code { margin-left: 0; }
+.cm-res b .hex-code { display: block; margin: 0.1rem 0 0.15rem; }
+.cm-adj-val b .hex-code { margin-left: 0.6rem; }
 .dos-wf .dos-t { margin-top: 0.15rem; padding-left: 2.9rem; }
 /* 공간 색 띠: 벽 · 바닥 · 원단 칸 */
 .dos-cband { display: flex; height: 76px; border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.08); }
