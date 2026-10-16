@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261037';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261038';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261037';
+const REDAM_BUILD = '20261038';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3251,7 +3251,7 @@ function whyItemNote(F, R) {
     if (F.kind === 'drape' && R.block === 'dark') return '다른 창에서도 빛이 들어, 그쪽도 가려야 방이 완전히 어두워져요.';
     return '';
 }
-// 카드에 들어갈 공간·원단 묶음 (비어 있으면 카드 없음). 같은 재료는 카드 안에서 한 번만: 두 번째는 "나" 말, 세 번째부터는 건너뜀
+// 카드에 들어갈 공간·원단 묶음 (비어 있으면 카드 없음). 같은 재료는 카드 안에서 한 번만: 두 번째는 "나" 말, 세 번째부터는 건너뜀 (손님 말 F만은 공간마다 다시 씀)
 function whySetsOf(data) {
     const out = [], seen = [], used = {}, shown = [];
     const nFab = data.rooms.reduce((a, r) => a + (r.diagnosed ? r.items.filter(i => i.fabricId).length : 0), 0);
@@ -3280,7 +3280,7 @@ function whySetsOf(data) {
             [1, 2].forEach(pass => pool.forEach((x, i) => {
                 if (lines.length + picked.length >= MAX || picked.some(p => p.i === i)) return;
                 if ((per[x.g] || 0) >= (pass === 1 ? 1 : (x.g === 'C' || x.g === 'T' ? 2 : 1))) return;
-                const t = say(x);
+                const t = x.g === 'F' ? x.t[0] : say(x);      // 손님 말(F)은 공간마다 다시 씀 (사장님 10-16: 빠지면 그 공간 답이 안 보임)
                 if (t) { picked.push({ i, t }); per[x.g] = (per[x.g] || 0) + 1; }
             }));
             picked.sort((a, b) => a.i - b.i).forEach(p => lines.push(p.t));
