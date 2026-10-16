@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261040';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261041';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261040';
+const REDAM_BUILD = '20261041';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1461,14 +1461,15 @@ function renderColorDict() {
     const grouped = dictSort === 'name';      // 이름별 묶음이면 카드 제목은 원단·번호 (이름은 묶음 머리줄에 있으니 되풀이하지 않음)
     const card = e => {
         const p = e.pro, hex = e.hex || (e.lab && window.RoomColor ? RoomColor.labToHex(e.lab.L, e.lab.a, e.lab.b) : '');
-        const where = (e.color && getFabricColors(e.fabricId).length > 1) ? `${e.book} ${e.fabName} ${e.no}` : `${e.book} ${e.fabName}`;      // 색이 하나뿐인 원단(포아 POA1 등)은 번호를 붙이지 않음
-        const bookName = e.label ? `책자 이름 ${e.label}` : '';
+        // 원단 한 줄: "코아 풀달 01 (화이트)" — 괄호 안은 책자에 적힌 색 이름 (견적서 "풀달 1번 (화이트)"와 같은 모양, 10-17 사장님: "책자 이름 ○○"이 헷갈림)
+        //  색이 하나뿐인 원단(포아 POA1 등)은 번호를 붙이지 않음
+        const where = ((e.color && getFabricColors(e.fabricId).length > 1) ? `${e.book} ${e.fabName} ${e.no}` : `${e.book} ${e.fabName}`) + (e.label ? ` (${e.label})` : '');
         const code = e.lab ? `${(hex || '').toUpperCase()} · L ${num(e.lab.L)} a ${num(e.lab.a)} b ${num(e.lab.b)}` : '색 값 없음';
         return `<article class="finder-card dict-card">
             <div class="finder-sw"><div class="finder-sw-track"><div class="finder-sw-page${hex ? '' : ' is-none'}"${hex ? ` style="background:${hex}"` : ''}>${hex ? '' : '<span>색 값 없음</span>'}</div></div></div>
             <div class="finder-head"><span class="finder-head-txt">
                 <span class="finder-name">${grouped ? esc(where) : (p ? `${esc(p.ko)} <em class="dict-en">${esc(p.en)}</em>` : '이름 없음')}</span>
-                <span class="finder-meta">${grouped ? '' : esc(where) + '<br>'}${bookName ? `${esc(bookName)}<br>` : ''}<span class="dict-code">${esc(code)}</span></span>
+                <span class="finder-meta">${grouped ? '' : esc(where) + '<br>'}<span class="dict-code">${esc(code)}</span></span>
             </span></div>
         </article>`;
     };
