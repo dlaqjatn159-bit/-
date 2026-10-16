@@ -955,6 +955,17 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .finder-slots-none { padding: 0.8rem 0.75rem; font-size: 0.8rem; line-height: 1.5; color: var(--brand-muted); word-break: keep-all; }
 .finder-card.is-slots .finder-acts.is-put button { background: var(--brand-dark); }
 @media (prefers-reduced-motion: reduce) { .finder-info, .finder-card.is-open .finder-info, .finder-chev { transition: none; } }
+/* 색 사전 (직원 전용, 10-17): 찾기와 같은 판·카드 모양. 색 칸은 낮게, 이름별 묶음마다 머리줄 */
+.dict-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.dict-grid .finder-sw { height: 6.5rem; }
+.dict-en { font-style: normal; font-size: 0.72rem; font-weight: 500; color: var(--brand-muted); }
+.dict-code { font-size: 0.68rem; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+.dict-group { margin-bottom: 1.4rem; }
+.dict-group-h { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.55rem; margin: 0 0 0.55rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--brand-border); }
+.dict-group-h i { flex-shrink: 0; width: 1.4rem; height: 1.4rem; border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 0.35rem; }
+.dict-group-h b { font-size: 1.05rem; font-weight: 500; color: var(--brand-dark); }
+.dict-group-h em { font-style: normal; font-size: 0.78rem; color: var(--brand-muted); }
+.dict-group-h small { margin-left: auto; font-size: 0.74rem; color: var(--brand-muted); }
 .finder-empty { padding: 2rem; border: 1px dashed var(--brand-border); border-radius: 0.75rem; background: #fffdf9; text-align: center; font-size: 0.85rem; line-height: 1.6; color: var(--brand-muted); }
 /* 설정 메뉴의 묶음 */
 .staff-set { display: grid; gap: 0.75rem; margin-bottom: 0.9rem; padding: 1.1rem 1.25rem; background: #fff; border: 1px solid var(--brand-border); border-radius: 1rem; max-width: 760px; }
