@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261033';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261035';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -964,7 +964,9 @@
                 html += stepHead('창을 어떻게 구성할까요?', recComp ? '빛과 시선 답에 맞는 구성을 표시했어요' : '');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard("이중 커튼", "호텔처럼", "", SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
-                html += renderBookmarkCard("속지 커튼", "은은한 채광", "", SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'));
+                // 바깥 시선이 신경 쓰이는 공간: 속지만이면 밤에는 그림자가 비칠 수 있다고 솔직하게 (33번, 이중커튼은 겉지가 가려 줌)
+                const sheerNight = (state.editingRoom.privacy === 'high' || state.editingRoom.privacy === 'some') ? SHEER_NIGHT_NOTE : '';
+                html += renderBookmarkCard("속지 커튼", "은은한 채광", "", SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'), sheerNight);
                 html += renderBookmarkCard("겉지 커튼", "빛 차단", "", SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
                 html += renderBookmarkCard("블라인드", "빛 각도 조절", "", SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
                 html += '</div></div>';
@@ -1333,6 +1335,12 @@
             let urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabId, color) : [];
             if (listed) urls = [listed].concat(urls.filter(u => u !== listed));
             photoSeek[key] = (async () => {
+                // 기기에 넣은 사진(34번)을 다 읽기 전이면 기다렸다가 그 주소부터
+                if (typeof DevicePhotos !== 'undefined') {
+                    await DevicePhotos.ready;
+                    const dev = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabId, color) : [];
+                    urls = dev.concat(urls.filter(u => !dev.includes(u)));
+                }
                 for (const u of urls) {
                     const im = new Image();
                     im.src = u;
@@ -1345,6 +1353,8 @@
         return photoSeek[key];
     }
     function knownPhoto(fabId, color) { return photoKnown[fabId + '__' + (color || '')]; }
+    // 기기 사진을 넣거나 지운 뒤 (34번): 기억해 둔 주소를 잊고 다음에 다시 찾음
+    function forgetPhotos() { Object.keys(photoSeek).forEach(k => delete photoSeek[k]); Object.keys(photoKnown).forEach(k => delete photoKnown[k]); }
 
     // 견본 칩으로 색을 바꿈: 칸은 그대로 두고 사진만 바꿈 (칸 전체를 새로 그리면 글자·칩까지 깜빡여서)
     //  - 뒤 장에 새 사진을 넣고 decode가 끝난 뒤 0.25초 겹쳐 바꿈. 사진이 없는 색은 앞 장만 사라져 바탕색이 보임
@@ -1449,7 +1459,7 @@
         return true;
     }
 
-    function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass) {
+    function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass, note) {
         const id = "bk_" + Math.random().toString(36).substr(2, 9);
         // 'pause-pick' 칸: 누르면 고른 칸만 남기고 나머지는 어두워진 뒤 PICK_PAUSE_MS 만큼 쉬었다가 다음 화면으로 (10-15)
         //  - 고객이 "내가 이걸 골랐구나" 느낄 틈을 줌. 쉬는 동안 다시 누르는 건 무시
@@ -1489,6 +1499,7 @@
             '<div class="bookmark-gradient fab-gradient" style="pointer-events: none;"></div>' +
             '<div class="fab-band">' + nameHtml +
             (desc ? (vdesc ? `<p class="fab-vdesc vstack">${stack(desc)}</p>` : `<div class="fab-side"><p class="fab-hreason">${desc}</p></div>`) : '') +
+            (note ? `<div class="fab-side"><p class="fab-note">${note}</p></div>` : '') +     // 차분한 작은 안내 (33번 속지만 밤 안내)
             '</div></div>';
     }
 
@@ -2109,6 +2120,7 @@
             syncToV1MasterRooms();
             goToStep("7-Final-Dossier");
         },
+        forgetPhotos: forgetPhotos,
         // 원단 사진 불러오기 실패 시 다음 확장자(.jpg → .webp → .png)를 시도하고, 모두 없으면 사진 칸을 없앰
         imgFallback: function(el) {
             const i = parseInt(el.getAttribute('data-i') || '0', 10) + 1;

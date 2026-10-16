@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261033';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261035';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -261,6 +261,8 @@ const MOOD_ALIASES = {
 // 속지 비침 4단계 (창문 테스트: 낮에 한 겹을 창에 대고 안에서 밖을 봄)
 //  light=많이 비침(풍경 또렷) / medium=은은한 비침(형태는 보이나 흐림) / day=낮 가림(밝기만, 낮에는 밖에서 안 보임) / heavy=거의 안 비침(저녁 조명에도 흐릿)
 const DENSITY_LABELS = { light: '많이 비침', medium: '은은한 비침', day: '낮 가림', heavy: '거의 안 비침' };
+// 속지만 + 바깥 시선이 신경 쓰이는 공간에 붙이는 밤 안내 (33번: 구성 화면 속지 커튼 칸, 원단을 고른 이유 카드)
+const SHEER_NIGHT_NOTE = '밤에 불을 켜면 어떤 속지든 안의 그림자가 비칠 수 있어요. 밤 가림이 필요하면 겉커튼이나 블라인드를 더할 수 있어요.';
 const DENSITY_ORDER = ['light', 'medium', 'day', 'heavy'];
 const DENSITY_FACTS = { light: '#맑은비침', medium: '#은은한비침', day: '#낮시간가림', heavy: '#비침적음' };
 // 고객 사생활 질문 (속지가 들어가는 구성에서 한 번)
@@ -450,6 +452,19 @@ function calculateFabricMatchScore(fabric, room, category) {
             open: { heavy: 0, day: 1, medium: 2, light: 3 }
         }[room.privacy];
         if (table) score += table[fabric.density] || 0;
+        // 채광 차분 × 바깥 시선(33번): 해가 덜 드는 창은 밖이 안보다 밝아 속지가 잘 비침 → 촘촘한 원단을 더 우선
+        // (낮에 속지를 쓰는 건 겉지를 안 치려는 것이라 이중커튼·속지만 구분 없이 똑같이)
+        if (room.lightLevel === 'low') {
+            const cross = {
+                high: { heavy: 4, day: 1, medium: -3, light: -4 },
+                some: { heavy: 2, day: 2, medium: -1, light: -2 }
+            }[room.privacy];
+            if (cross) {
+                score += cross[fabric.density] || 0;
+                // 거의 안 비침 중 밝은 색(밝기 L ≥ 80)은 어두운 집이 더 답답해지지 않게 +1
+                if (fabric.density === 'heavy' && typeof fabric.light === 'number' && fabric.light >= 80) score += 1;
+            }
+        }
         // 이중커튼: 낮에는 속지만 쳐 두고 지내므로 덜 비치는 속지를 우대 (겉지는 필요할 때만)
         if (dbl && (fabric.density === 'day' || fabric.density === 'heavy')) score += 2;
         // 질감 취향: 매끈한(쉬폰) / 결 있는(린넨·네프) / 도톰한(보송한 혼방)이 확연히 나뉨 → 고른 질감과 같으면 +8, 다르면 -4 (질감 미입력 원단은 0)
@@ -498,7 +513,11 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽을 잇는 톤' : '어디에나 어울리는 톤');
     else if (fabric.tone === floorT) parts.push(`바닥과 어울리는 ${TONE_LABELS[floorT]} 톤`);
     else if (fabric.tone === wallT) parts.push(`벽과 어울리는 ${TONE_LABELS[wallT]} 톤`);
-    if (category === '속지' && room.lightLevel === 'high' && (fabric.density === 'heavy' || fabric.density === 'day')) { parts.push('강한 햇빛을 거르는 비침'); said.push('강한 햇빛을 거르는 비침'); }
+    // 채광별 이유(33번): 맞으면 바깥 시선 문구 대신 맨 앞에
+    let lightSay = '';
+    if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'day') lightSay = '햇살이 강한 창이라, 낮에는 밖에서 안이 잘 보이지 않아요';
+    else if (category === '속지' && room.lightLevel === 'low' && (room.privacy === 'high' || room.privacy === 'some') && fabric.density === 'heavy') lightSay = '해가 덜 드는 창이라, 촘촘한 원단으로 골랐어요';
+    else if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') { parts.push('강한 햇빛을 거르는 비침'); said.push('강한 햇빛을 거르는 비침'); }
     if (category === '속지' && room.sheerFeel && fabric.texture) {
         const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
             : room.sheerFeel === 'textured' && fabric.texture === 'natural' ? '자연스럽게 살아 있는 결'
@@ -510,8 +529,9 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
         const msg = room.privacy === 'high' && (d === 'heavy' || d === 'day') ? '낮에도 안이 보이지 않는 비침'
             : room.privacy === 'some' && (d === 'day' || d === 'medium') ? '적당히 가리는 은은한 비침'
             : room.privacy === 'open' && d === 'light' ? '풍경과 햇살을 살리는 맑은 비침' : '';
-        if (msg) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
+        if (msg && !lightSay) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
+    if (lightSay) { parts.unshift(lightSay); said.unshift(lightSay); }   // 채광·시선을 함께 말해 주는 문장이라 바깥 시선 문구보다 먼저
     if (category === '겉지' && room.lightBlock) {
         const b = blackoutLevel(fabric);
         const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막는 완전 암막'
@@ -580,7 +600,20 @@ function customerFacts(fabric) {
 }
 
 // ---- 원단 사진: photos/원단ID.jpg, 색상별은 photos/원단ID__번호.jpg (없으면 .webp, .png 순서로 찾고, 없으면 원단 대표 사진 → 색상 배경) ----
-function fabricPhotoUrls(id, color) {
+// 34번: 기기에 넣은 사진(직원 화면 › 사진 › 사진 불러오기, IndexedDB)이 있으면 그것을 먼저 씀 → 없으면 photos/ 주소 → 없으면 색 질감
+//  colorOnly: 색 사진 주소만 (대표 사진은 빼고)
+function fabricPhotoUrls(id, color, colorOnly) {
+    const col = normalizeColorName(color);
+    const repo = repoPhotoUrls(id, col);
+    const dev = DevicePhotos.urlOf(id, col);
+    if (!col) return dev ? [dev].concat(repo) : repo;
+    const colorUrls = (dev ? [dev] : []).concat(repo.slice(0, 3));
+    if (colorOnly) return colorUrls;
+    const devG = DevicePhotos.urlOf(id, '');
+    return colorUrls.concat(devG ? [devG] : [], repo.slice(3));
+}
+// 저장소(photos/) 주소만: 사진 확인하기(있는지 HEAD로 확인)가 씀
+function repoPhotoUrls(id, color) {
     const base = 'photos/' + encodeURIComponent(id);
     const generic = [base + '.jpg', base + '.webp', base + '.png'];
     const col = normalizeColorName(color);
@@ -588,6 +621,97 @@ function fabricPhotoUrls(id, color) {
     const cb = base + '__' + encodeURIComponent(col);
     return [cb + '.jpg', cb + '.webp', cb + '.png'].concat(generic);
 }
+
+// 기기에 넣은 원단 사진 (34번: 원단 사진은 공개 저장소에 두지 않고 기기에만)
+//  - 이 브라우저 주소의 IndexedDB "redam_photos"에 파일 그대로 저장. 비공개 팩·상담 저장과는 따로라 팩을 불러와도 지워지지 않음
+//  - 키 = 원단ID(대표 사진) 또는 원단ID__번호(색 사진). 같은 키면 덮어씀
+//  - 앱을 켜면 한 번 읽어 주소(blob:)를 만들어 둠 → fabricPhotoUrls가 바로(동기로) 씀. 읽기가 끝나면 ready가 풀림
+const DevicePhotos = (() => {
+    const DB = 'redam_photos', STORE = 'photos';
+    const urls = {}, info = {};       // 키 → blob: 주소 / { name, size, date }
+    let dbp = null;
+    function open() {
+        if (dbp) return dbp;
+        dbp = new Promise((res, rej) => {
+            if (typeof indexedDB === 'undefined') return rej(new Error('이 브라우저는 기기 저장소를 쓸 수 없어요'));
+            const rq = indexedDB.open(DB, 1);
+            rq.onupgradeneeded = () => { if (!rq.result.objectStoreNames.contains(STORE)) rq.result.createObjectStore(STORE); };
+            rq.onsuccess = () => res(rq.result);
+            rq.onerror = () => rej(rq.error);
+        });
+        dbp.catch(() => { dbp = null; });
+        return dbp;
+    }
+    function tx(mode, fn) {
+        return open().then(db => new Promise((res, rej) => {
+            const t = db.transaction(STORE, mode), st = t.objectStore(STORE);
+            let out;
+            Promise.resolve(fn(st, v => { out = v; })).catch(rej);
+            t.oncomplete = () => res(out);
+            t.onerror = () => rej(t.error);
+            t.onabort = () => rej(t.error || new Error('저장이 취소되었어요(기기 공간이 부족할 수 있어요)'));
+        }));
+    }
+    function keyOf(id, color) { const c = normalizeColorName(color); return c ? id + '__' + c : id; }
+    function setUrl(key, rec) {
+        if (urls[key]) URL.revokeObjectURL(urls[key]);
+        urls[key] = URL.createObjectURL(rec.blob);
+        info[key] = { name: rec.name || key, size: rec.size || rec.blob.size || 0, date: rec.date || '' };
+    }
+    function dropUrl(key) { if (urls[key]) URL.revokeObjectURL(urls[key]); delete urls[key]; delete info[key]; }
+    const ready = tx('readonly', (st, done) => {
+        const rq = st.openCursor();
+        rq.onsuccess = () => {
+            const cur = rq.result;
+            if (!cur) return done();
+            if (cur.value && cur.value.blob) setUrl(cur.key, cur.value);
+            cur.continue();
+        };
+    }).catch(() => {});
+    // 파일 이름 → { id, color } (원단ID__번호.jpg / 원단ID.jpg, 포아는 포아_POA번호.jpg). 규칙에 안 맞거나 없는 원단이면 { why }
+    function parseName(fileName) {
+        const raw = String(fileName || '').normalize('NFC').trim();
+        const m = /^(.+?)\.(jpe?g|png|webp)$/i.exec(raw);
+        if (!m) return { why: 'jpg·png·webp 사진이 아님' };
+        const stem = m[1].trim();
+        const at = stem.lastIndexOf('__');
+        const id = (at > 0 ? stem.slice(0, at) : stem).trim();
+        const color = at > 0 ? normalizeColorName(stem.slice(at + 2)) : '';
+        const fab = FABRIC_DB.find(f => String(f.id).normalize('NFC') === id);
+        if (!fab) return { why: '없는 원단 이름' };
+        if (color && !getFabricColors(fab.id).some(c => c.name === color)) return { why: `${color}번 색이 원단 색상 목록에 없음` };
+        return { id: fab.id, color };
+    }
+    // 여러 장을 한 장씩 차례로 저장 (탭이 멈추지 않게). onProgress(지금까지, 전체)
+    async function importFiles(files, onProgress) {
+        await ready;
+        const list = Array.from(files || []), ok = [], bad = [];
+        for (let i = 0; i < list.length; i++) {
+            const f = list[i], p = parseName(f.name);
+            if (p.why) { bad.push({ name: f.name, why: p.why }); }
+            else {
+                const key = keyOf(p.id, p.color);
+                const rec = { blob: f, name: f.name, size: f.size, date: new Date().toISOString().slice(0, 10) };
+                try { await tx('readwrite', st => { st.put(rec, key); }); setUrl(key, rec); ok.push(key); }
+                catch (e) { bad.push({ name: f.name, why: (e && e.message) || '저장 실패' }); }
+            }
+            if (onProgress) onProgress(i + 1, list.length);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        // 브라우저가 공간이 모자랄 때 지우지 않게 부탁 (안 되어도 그대로 씀)
+        try { if (ok.length && navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+        return { ok, bad };
+    }
+    async function remove(key) { await tx('readwrite', st => { st.delete(key); }); dropUrl(key); }
+    async function clearAll() { await tx('readwrite', st => { st.clear(); }); Object.keys(urls).forEach(dropUrl); }
+    return {
+        ready, parseName, importFiles, remove, clearAll, keyOf,
+        urlOf: (id, color) => urls[keyOf(id, color)] || '',
+        keys: () => Object.keys(urls),
+        info: key => info[key] || null,
+        totalSize: () => Object.values(info).reduce((a, x) => a + (x.size || 0), 0)
+    };
+})();
 
 // 사진 파일을 못 찾으면 다음 확장자를 시도하고, 모두 없으면 사진 칸을 없앰
 function photoFallback(el) {

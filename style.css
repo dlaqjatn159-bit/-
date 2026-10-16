@@ -1620,6 +1620,16 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .bookmark-stage .step-skip:active { background: rgba(43, 34, 26, 0.8); }
 .bookmark-stage .step-skip.was-picked { color: rgba(239, 230, 218, 0.55); }
 .bookmark-stage .step-sub { color: rgba(239, 230, 218, 0.72); text-shadow: none; }
+/* 직원 화면 › 사진: 기기에 넣은 원단 사진 목록 (34번). 색 번호 칩을 누르면 그 사진만 지움 */
+.dev-photo-row { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.35rem 0; border-top: 1px solid #f1ede6; font-size: 0.72rem; color: #334155; }
+.dev-photo-row > span:first-child { flex: 0 0 9.5rem; font-weight: 700; word-break: keep-all; }
+.dev-photo-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.dev-photo-chip { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.1rem 0.45rem; border: 1px solid #e2e8f0; border-radius: 999px; background: #f8fafc; font-size: 0.68rem; color: #475569; cursor: pointer; }
+.dev-photo-chip i { font-style: normal; color: #94a3b8; }
+.dev-photo-chip:hover { border-color: #fca5a5; color: #b91c1c; }
+.dev-photo-chip:hover i { color: #b91c1c; }
+/* 차분한 작은 안내 (33번 속지만 밤 안내): 경고색 없이 띠 글자보다 옅게 */
+.fab-note { margin: 0; font-size: 0.72rem; font-weight: 400; line-height: 1.45; color: var(--band-sub, rgba(255, 255, 255, 0.7)); word-break: keep-all; }
 
 /* 견본 칩: 보이는 칩 22×30, 누르는 자리 44×48 (칩 사이 간격은 누르는 자리로 생김). 아래 한 줄만, 오른쪽 정렬
    칩 칸은 세로 이름·색 이름 오른쪽에 남은 폭을 다 씀 (탭 가로 화면이면 한 줄에 8개). 넘치면 concierge.js가 줄 끝을 "+7" 칩으로 바꿈 */

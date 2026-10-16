@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261033';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261035';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261033';
+const REDAM_BUILD = '20261035';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -844,8 +844,11 @@ function loadPhotoList() {
 function savePhotoList() {
     try { localStorage.setItem(STORE_KEYS.photoList, JSON.stringify({ ver: (window.REDAM_FILES || {})['app.js'] || '', date: new Date().toISOString().slice(0, 10), found: __photoFound })); } catch (e) {}
 }
-// 그 원단·색의 사진 주소 (색 사진이 없으면 원단 대표 사진, 없으면 '')
-function photoFor(fabricId, color) { return (color && __photoFound[fabricId + '__' + color]) || __photoFound[fabricId] || ''; }
+// 그 원단·색의 사진 주소 (색 사진이 없으면 원단 대표 사진, 없으면 ''). 기기에 넣은 사진이 먼저 (34번)
+function photoFor(fabricId, color) {
+    return (color && (DevicePhotos.urlOf(fabricId, color) || __photoFound[fabricId + '__' + color]))
+        || DevicePhotos.urlOf(fabricId, '') || __photoFound[fabricId] || '';
+}
 // 고객 원단 화면(concierge.js)이 쓰는 같은 목록: 주소 / '' (이번 실행에서 확인했는데 없음) / undefined (모름 → 직접 찾음)
 function knownPhotoFor(fabricId, color) {
     const u = photoFor(fabricId, color);
@@ -855,8 +858,8 @@ function knownPhotoFor(fabricId, color) {
 function photoTargets() {
     const list = [];
     FABRIC_DB.forEach(f => {
-        list.push({ key: f.id, fabric: f, color: '', urls: fabricPhotoUrls(f.id) });
-        getFabricColors(f.id).forEach(cl => list.push({ key: f.id + '__' + cl.name, fabric: f, color: cl.name, urls: fabricPhotoUrls(f.id, cl.name).slice(0, 3) }));
+        list.push({ key: f.id, fabric: f, color: '', urls: repoPhotoUrls(f.id) });      // 저장소(photos/) 주소만 확인. 기기 사진은 따로 (DevicePhotos)
+        getFabricColors(f.id).forEach(cl => list.push({ key: f.id + '__' + cl.name, fabric: f, color: cl.name, urls: repoPhotoUrls(f.id, cl.name).slice(0, 3) }));
     });
     return list;
 }
@@ -891,16 +894,80 @@ async function checkPhotos() {
     const statusEl = document.getElementById('photoCount');
     const missEl = document.getElementById('photoMissing');
     if (statusEl) statusEl.textContent = '확인 중...';
+    await DevicePhotos.ready;
     const r = await scanPhotos((done, total) => { if (statusEl && done % 10 === 0) statusEl.textContent = `확인 중... ${done}/${total}`; });
-    if (r.offline) { if (statusEl) statusEl.textContent = '확인 실패'; showToast('인터넷에 연결된 상태에서 확인해 주세요.', 'error'); return; }
+    // 인터넷이 없어도 기기 사진은 셀 수 있음 (저장소 사진은 지난번 확인 목록 그대로)
+    if (r.offline) showToast('인터넷이 없어 photos/ 폴더는 지난번 확인 그대로예요. 기기 사진만 새로 셌어요.', 'info');
     refreshFinderPhotos();
-    const found = Object.keys(__photoFound).length;
-    if (statusEl) statusEl.textContent = `${found} / ${r.total}장`;
+    const targets = photoTargets();
+    const has = t => !!(DevicePhotos.urlOf(t.fabric.id, t.color) || __photoFound[t.key]);
+    const found = targets.filter(has).length;
+    if (statusEl) statusEl.textContent = `${found} / ${targets.length}장`;
     if (missEl) {
-        const miss = photoTargets().filter(t => !__photoFound[t.key]).map(t => `${t.fabric.book} ${t.fabric.name}${colorSuffix(t.color, t.fabric.id)}`);
+        const miss = targets.filter(t => !has(t)).map(t => `${t.fabric.book} ${t.fabric.name}${colorSuffix(t.color, t.fabric.id)}`);
         missEl.textContent = miss.length ? `사진이 없는 커튼 원단 ${miss.length}개: ${miss.slice(0, 12).join(', ')}${miss.length > 12 ? ' …' : ''}` : '커튼 원단 사진이 모두 준비되었습니다.';
     }
 }
+
+// ---- 기기에 넣은 원단 사진 (34번) ----
+// "사진 불러오기": 여러 장을 골라 파일 이름(원단ID__번호.jpg / 원단ID.jpg)으로 원단·색을 알아보고 기기 저장소에 넣음 (같은 이름이면 덮어씀)
+async function importDevicePhotos(event) {
+    const files = event.target.files;
+    if (!files || !files.length) return;
+    const statusEl = document.getElementById('devicePhotoStatus');
+    const r = await DevicePhotos.importFiles(files, (done, total) => { if (statusEl) statusEl.textContent = `넣는 중... ${done}/${total}`; });
+    event.target.value = '';
+    forgetPhotoLookups();
+    renderDevicePhotos();
+    const out = document.getElementById('devicePhotoResult');
+    if (out) {
+        const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        out.innerHTML = `<b>${r.ok.length}장 넣음</b>` + (r.bad.length ? ` · 못 넣은 것 ${r.bad.length}장: ${r.bad.map(b => `${esc(b.name)}(${esc(b.why)})`).join(', ')}` : '');
+    }
+    showToast(r.bad.length ? `${r.ok.length}장 넣음, ${r.bad.length}장은 못 넣었어요` : `사진 ${r.ok.length}장을 기기에 넣었어요`, r.bad.length ? 'info' : undefined);
+}
+// 사진을 넣거나 지운 뒤: 원단 찾기·고객 화면이 기억해 둔 사진 주소를 잊고 다시 찾게
+function forgetPhotoLookups() {
+    if (window.concierge && window.concierge.forgetPhotos) window.concierge.forgetPhotos();
+    refreshFinderPhotos();
+}
+// 기기 사진 표시: "기기에 있는 사진 ○장 · ○MB" + 원단별 목록(색 번호를 누르면 그 사진만 지움)
+function renderDevicePhotos() {
+    const statusEl = document.getElementById('devicePhotoStatus'), listEl = document.getElementById('devicePhotoList');
+    const keys = DevicePhotos.keys();
+    const mb = DevicePhotos.totalSize() / 1048576;
+    if (statusEl) statusEl.textContent = keys.length ? `기기에 있는 사진 ${keys.length}장 · ${mb < 10 ? mb.toFixed(1) : Math.round(mb)}MB` : '기기에 넣은 사진이 아직 없어요';
+    const clearBtn = document.getElementById('devicePhotoClear');
+    if (clearBtn) clearBtn.hidden = !keys.length;
+    if (!listEl) return;
+    const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const groups = {};
+    keys.forEach(k => { const at = k.lastIndexOf('__'); const id = at > 0 ? k.slice(0, at) : k; (groups[id] = groups[id] || []).push({ key: k, color: at > 0 ? k.slice(at + 2) : '' }); });
+    const num = s => /^\d+$/.test(s) ? Number(s) : Infinity;
+    listEl.innerHTML = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })).map(id => {
+        const f = FABRIC_DB.find(x => x.id === id);
+        const name = f ? `${f.book || ''} ${f.name}`.trim() : id;
+        const chips = groups[id].sort((a, b) => num(a.color) - num(b.color) || a.color.localeCompare(b.color)).map(e =>
+            `<button type="button" class="dev-photo-chip" title="이 사진 지우기" onclick="removeDevicePhoto('${esc(e.key)}')">${e.color ? esc(e.color) + '번' : '대표'}<i aria-hidden="true">×</i></button>`).join('');
+        return `<div class="dev-photo-row"><span>${esc(name)}</span><span class="dev-photo-chips">${chips}</span></div>`;
+    }).join('');
+}
+async function removeDevicePhoto(key) {
+    try { await DevicePhotos.remove(key); } catch (e) { showToast('지우지 못했어요: ' + e.message, 'error'); return; }
+    forgetPhotoLookups();
+    renderDevicePhotos();
+}
+async function clearDevicePhotos() {
+    const n = DevicePhotos.keys().length;
+    if (!n || !confirm(`기기에 넣은 원단 사진 ${n}장을 모두 지울까요?\n(PC·탭에 있는 사진 파일은 그대로예요. 다시 넣으려면 "사진 불러오기")`)) return;
+    try { await DevicePhotos.clearAll(); } catch (e) { showToast('지우지 못했어요: ' + e.message, 'error'); return; }
+    forgetPhotoLookups();
+    renderDevicePhotos();
+    const out = document.getElementById('devicePhotoResult');
+    if (out) out.textContent = '';
+    showToast('기기 사진을 모두 지웠어요');
+}
+DevicePhotos.ready.then(() => { renderDevicePhotos(); forgetPhotoLookups(); });
 
 function downloadPhotoNameList() {
     const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
@@ -2716,6 +2783,7 @@ function loadImage(url, timeoutMs) {
     });
 }
 async function loadTicketPhotos(data) {
+    await DevicePhotos.ready;      // 기기에 넣은 사진(34번)부터 쓰도록
     const jobs = [];
     data.rooms.forEach(room => room.items.forEach(it => {
         if (!it.fabricId || data.photos[it.photoKey] !== undefined) return;
@@ -2765,7 +2833,9 @@ function ticketData() {
             const colors = ['wall', 'floor'].filter(k => mc[k] && /^#[0-9a-f]{6}$/i.test(mc[k].hex || '') && nameOf)
                 .map(k => ({ k: k === 'wall' ? '벽' : '바닥', hex: mc[k].hex.toUpperCase(), name: (nameOf(k, mc[k]) || {}).name || '' }));
             // 잇는 색은 넣지 않음 (사장님 10-16: 최종 제안에서는 고른 원단 자체가 잇는 색)
-            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null, colors };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
+            // 속지만 + 바깥 시선이 신경 쓰이는 공간 (33번): 이유 카드 공간 아래 밤 안내 한 줄
+            const night = (r.privacy === 'high' || r.privacy === 'some') && r.curtains.length > 0 && r.curtains.every(c => c.presetType === 'sheer');
+            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null, colors, night };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
         }),
         install: globalInstallFee,
         total: document.getElementById('totalGrandPrice').textContent,
@@ -3017,7 +3087,7 @@ function whySetsOf(data) {
             seen.push({ room: room.name, fabricId: it.fabricId, kindKey: it.kindKey, link, ans: room.ans });
             sets.push(set);
         });
-        if (sets.length) out.push({ name: room.name, sets, colors: room.colors || [] });
+        if (sets.length) out.push({ name: room.name, sets, colors: room.colors || [], night: !!room.night });
     });
     return { rooms: out, linkSay, linkWhy };
 }
@@ -3031,6 +3101,7 @@ function drawWhy(ctx, data, W, compact) {
     const Q_SIZE = compact ? 24 : 27, Q_LH = compact ? 36 : 40;              // 손님 말 (명조)
     const B_SIZE = compact ? 20 : 21, B_LH = compact ? 30 : 32;              // 원단 이름·이유 (고딕)
     const C_SIZE = compact ? 19 : 20, C_LH = compact ? 32 : 34, C_SW = compact ? 20 : 22;      // 잰 벽·바닥 색 줄 (32번)
+    const N_SIZE = compact ? 17 : 18, N_LH = compact ? 26 : 28;              // 속지만 밤 안내 (33번)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
     const canSpace = 'letterSpacing' in ctx;
     const spacing = v => { if (canSpace) ctx.letterSpacing = v; };
@@ -3143,7 +3214,11 @@ function drawWhy(ctx, data, W, compact) {
         const sets = R.sets.map(s => layoutSet(s, colW));
         const rows = two ? [Math.max(sets[0].h, sets[1].h)] : sets.map(s => s.h);
         const bodyH = rows.reduce((a, b) => a + b, 0) + (rows.length - 1) * 22;
-        return { R, nameW, QX, qLines, saidInline, headH, two, colW, sets, rows, cRows, cY, h: headH + bodyH + 30 };
+        // 속지만 밤 안내 (33번): 원단 아래 차분한 작은 회색 글 (사진과 같은 왼쪽선)
+        let nLines = [];
+        if (R.night && typeof SHEER_NIGHT_NOTE === 'string') { setFont(400, N_SIZE, SANS); nLines = wrap(SHEER_NIGHT_NOTE, CW); }
+        const noteH = nLines.length ? 18 + nLines.length * N_LH : 0;
+        return { R, nameW, QX, qLines, saidInline, headH, two, colW, sets, rows, cRows, cY, nLines, bodyH, h: headH + bodyH + noteH + 30 };
     }
     // "■ 벽 라이트 베이지 #D8CEBF" 한 칸: 색 조각 · 벽/바닥(작게) · 이름(굵게) · 코드(작게). 다음 칸이 시작할 x를 돌려줌
     function drawColorPart(c, x, base) {
@@ -3181,6 +3256,10 @@ function drawWhy(ctx, data, W, compact) {
             const tx = sx + PH_W + PH_GAP;
             b.ops.forEach(o => { setFont(o.f[0], o.f[1], o.f[2]); text(o.t, tx + (o.x || 0), sy + o.y, 'left', o.c); });
         });
+        if (L.nLines.length) {
+            setFont(400, N_SIZE, SANS);
+            L.nLines.forEach((ln, i) => text(ln, CX, top + L.bodyH + 18 + (i + 1) * N_LH - 8, 'left', SOFT));
+        }
     }
     function pageLabel(i, n, H) { if (n < 2) return; setFont(500, 20, SANS); text(`${i + 1} / ${n}`, W / 2, H - 30, 'center', SOFT); }
     return { START_Y, hdr, layoutRoom, drawRoom, pageLabel };
