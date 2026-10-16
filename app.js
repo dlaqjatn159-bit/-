@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261032';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261033';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261032';
+const REDAM_BUILD = '20261033';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2764,8 +2764,7 @@ function ticketData() {
             const mc = r.measuredColor || {}, nameOf = window.RoomColor && window.RoomColor.colorName;
             const colors = ['wall', 'floor'].filter(k => mc[k] && /^#[0-9a-f]{6}$/i.test(mc[k].hex || '') && nameOf)
                 .map(k => ({ k: k === 'wall' ? '벽' : '바닥', hex: mc[k].hex.toUpperCase(), name: (nameOf(k, mc[k]) || {}).name || '' }));
-            // 잇는 색: 이 공간에서 "벽과 바닥 사이를 잇는 색"으로 고른 원단이 있을 때만 카드에 나옴(whySetsOf)
-            if (colors.length === 2 && mc.bridge && /^#[0-9a-f]{6}$/i.test(mc.bridge.hex || '')) colors.push({ k: '잇는 색', hex: mc.bridge.hex.toUpperCase(), name: '', bridge: true });
+            // 잇는 색은 넣지 않음 (사장님 10-16: 최종 제안에서는 고른 원단 자체가 잇는 색)
             return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null, colors };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
         }),
         install: globalInstallFee,
@@ -3018,8 +3017,7 @@ function whySetsOf(data) {
             seen.push({ room: room.name, fabricId: it.fabricId, kindKey: it.kindKey, link, ans: room.ans });
             sets.push(set);
         });
-        const useBridge = sets.some(s => s.link === 'bridge');
-        if (sets.length) out.push({ name: room.name, sets, colors: (room.colors || []).filter(c => !c.bridge || useBridge) });
+        if (sets.length) out.push({ name: room.name, sets, colors: room.colors || [] });
     });
     return { rooms: out, linkSay, linkWhy };
 }
