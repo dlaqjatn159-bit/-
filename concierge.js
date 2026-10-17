@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261041';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261042';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -31,7 +31,7 @@
 
     // 분위기 사진 6장 미리 받기: 앱을 켜면 뒤에서 받아 두고 decode(그릴 준비)까지 끝내 둠
     // → 분위기 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15)
-    let finalPage = 0, finalCardCount = 0, lastRenderedStep = null;      // 최종 제안의 쪽 넘기기 (원단을 고른 이유 → 견적서)
+    let finalPage = 0, finalCardCount = 0, finalHouseCount = 0, lastRenderedStep = null;      // 최종 제안의 쪽 넘기기 (우리 집 색 → 원단을 고른 이유 → 견적서). cardCount = 견적서 앞 쪽 수(우리 집 색 포함)
     const PICK_PAUSE_MS = 220;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 450일 때 "렉 같다"는 말이 있어 줄임(10-15). 더 여유를 주려면 300~350
     const MOOD_PHOTOS = SCENE_PHOTOS.mood;
     const FEEL_PHOTOS = SCENE_PHOTOS.feel;   // 속지 느낌 3장도 같이 미리 받음 (10-15)
@@ -266,7 +266,7 @@
     // 수정하기에서 카드로 벽·바닥을 고른 뒤: 그 부분의 잰 색은 카드로 바뀌므로 지우고, 수정하기 화면으로 돌아감
     function pickInEdit(part) {
         const ed = state.editingRoom, mc = ed.measuredColor;
-        if (mc) { mc[part] = null; mc.bridge = null; if (!mc.wall && !mc.floor) ed.measuredColor = null; }
+        if (mc) { mc[part] = null; mc.bridge = null; if (!mc.wall && !mc.floor && !hasFurniture(mc)) ed.measuredColor = null; }      // 가구 색(37번)은 남김
         ed.cardParts = Object.assign({}, ed.cardParts, { [part]: true });      // 카드로 고른 부분 (벽·바닥 따로)
         ed.colorSrc = null;           // 잰 색과 카드가 섞이면 "벽은 잰 색 · 바닥은 카드로"처럼 따로 적음
         if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "1-Space-Edit") stepHistory.pop();
@@ -278,7 +278,7 @@
         if (mc && mc[part]) {
             if (mc[part].tone === tone) return;
             mc[part] = null; mc.bridge = null;
-            if (!mc.wall && !mc.floor) ed.measuredColor = null;
+            if (!mc.wall && !mc.floor && !hasFurniture(mc)) ed.measuredColor = null;
             ed.colorSrc = null;
         }
         ed.cardParts = Object.assign({}, ed.cardParts, { [part]: true });
@@ -457,16 +457,19 @@
     function newRoomId() { lastRoomId = Math.max(Date.now(), lastRoomId + 1); return lastRoomId; }
     // 잰 색(measuredColor)을 공간에 넣고 바닥·벽 톤도 맞춤 (원단 추천은 톤 값을 읽음)
     function setRoomColor(room, mc) {
-        room.measuredColor = mc && (mc.wall || mc.floor) ? mc : null;
+        room.measuredColor = mc && (mc.wall || mc.floor || hasFurniture(mc)) ? mc : null;
         if (mc && mc.wall) room.wallTone = mc.wall.tone;
         if (mc && mc.floor) room.floorTone = mc.floor.tone;
     }
-    // k: 이어주는 색 비율(벽 쪽 무게). 없으면 기본
-    function withBridge(wall, floor, k) {
+    // 가구 색 (37번): measuredColor.furniture = [{ n: '소파', L, a, b, hex }]. 벽·바닥과 달리 공간마다 달라 "같아요"로 이어받지 않음
+    function hasFurniture(mc) { return !!(mc && mc.furniture && mc.furniture.length); }
+    // k: 이어주는 색 비율(벽 쪽 무게). 없으면 기본. furniture: 그 공간의 가구 색 (있으면 그대로 붙임)
+    function withBridge(wall, floor, k, furniture) {
         const mc = { wall: wall || null, floor: floor || null, at: Date.now() };
         if (typeof k === 'number') mc.bridgeK = k;
         mc.bridge = null;
         if (mc.wall && mc.floor && window.RoomColor && window.RoomColor.bridgeOf) mc.bridge = window.RoomColor.bridgeOf(mc.wall, mc.floor, mc.bridgeK);
+        if (furniture && furniture.length) mc.furniture = furniture;
         return mc;
     }
     // 색 재기 화면(고객 화면 모양, room-color.js)을 띄움
@@ -1156,7 +1159,7 @@
     }
 
     // ---- 최종 제안의 종이: 저장·인쇄되는 이미지를 한 쪽씩 보여 줌 (app.js makeTicketBlobs) ----
-    //  1쪽 = "원단을 고른 이유" 카드(고객 답이 있을 때만), 다음 쪽 = 견적서. 위아래로 이어 붙이면 한 장처럼 느껴져서 "다음"을 눌러 넘김 (10-15 사장님)
+    //  우리 집 색(원단을 담은 공간 2곳 이상, 37번) → "원단을 고른 이유" 카드(고객 답이 있을 때만) → 견적서. 위아래로 이어 붙이면 한 장처럼 느껴져서 "다음"을 눌러 넘김 (10-15 사장님)
     let finalPaperSeq = 0, finalPaperTimer = null;
     function setFinalPage(i) {
         const box = document.getElementById('finPaper');
@@ -1166,12 +1169,21 @@
         finalPage = Math.max(0, Math.min(i, imgs.length - 1));
         imgs.forEach((im, k) => im.classList.toggle('is-on', k === finalPage));
         const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
+        // 쪽 묶음 (37번): [0, house) = 우리 집 색 · [house, card) = 원단을 고른 이유 · [card, n) = 견적서
+        const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : 'ticket');
+        const nextWord = { why: '원단을 고른 이유', ticket: '견적서 보기' }, prevWord = { house: '우리 집 색', why: '원단을 고른 이유' };
         const pager = document.getElementById('finPager');
         if (pager) {
             let h = '';
             if (n > 1) h += `<span class="fin-pg">${finalPage + 1} / ${n}</span>`;
-            if (finalPage < n - 1) h += `<button type="button" class="dos-act is-main" onclick="window.concierge.finalNext()">${finalPage === finalCardCount - 1 && finalCardCount ? '견적서 보기' : '다음'} →</button>`;
-            if (finalPage > 0) h += `<button type="button" class="fin-prev" onclick="window.concierge.finalPrev()">← ${finalPage === finalCardCount && finalCardCount ? '원단을 고른 이유' : '이전'}</button>`;
+            if (finalPage < n - 1) {
+                const g = groupOf(finalPage + 1);
+                h += `<button type="button" class="dos-act is-main" onclick="window.concierge.finalNext()">${g !== groupOf(finalPage) ? nextWord[g] : '다음'} →</button>`;
+            }
+            if (finalPage > 0) {
+                const g = groupOf(finalPage - 1);
+                h += `<button type="button" class="fin-prev" onclick="window.concierge.finalPrev()">← ${g !== groupOf(finalPage) ? prevWord[g] : '이전'}</button>`;
+            }
             pager.innerHTML = h;
         }
         const save = document.getElementById('finSave');
@@ -1183,14 +1195,15 @@
         const seq = ++finalPaperSeq;
         if (typeof window.makeTicketBlobs !== 'function') return;
         try {
-            const { canvases, cardCount } = await window.makeTicketBlobs({ canvasOnly: true, pixelRatio: 1.5 });
+            const { canvases, cardCount, houseCount } = await window.makeTicketBlobs({ canvasOnly: true, pixelRatio: 1.5 });
             const box = document.getElementById('finPaper');
             if (seq !== finalPaperSeq || !box || state.step !== "7-Final-Dossier") return;      // 그리는 사이 화면이 바뀌었으면 버림
             box.innerHTML = '';
             finalCardCount = cardCount || 0;
+            finalHouseCount = houseCount || 0;
             canvases.forEach((c, k) => {
                 const img = document.createElement('img');
-                img.alt = (k < finalCardCount) ? '원단을 고른 이유' : '견적서';
+                img.alt = k < finalHouseCount ? '우리 집 색' : ((k < finalCardCount) ? '원단을 고른 이유' : '견적서');
                 img.src = c.toDataURL('image/png');
                 box.appendChild(img);
             });
@@ -1770,8 +1783,8 @@
             };
             if (src === 'first' || src === 'measured') setRoomColor(room, mc);
             else if (src === 'house' && house) setRoomColor(room, withBridge(house.wall, house.floor, house.bridgeK));      // "같아요": 비율도 첫 공간 것
-            else if (src === 'wall' && mc) setRoomColor(room, withBridge(mc.wall, house && house.floor, house && house.bridgeK));
-            else if (src === 'floor' && mc) setRoomColor(room, withBridge(house && house.wall, mc.floor, house && house.bridgeK));
+            else if (src === 'wall' && mc) setRoomColor(room, withBridge(mc.wall, house && house.floor, house && house.bridgeK, mc.furniture));
+            else if (src === 'floor' && mc) setRoomColor(room, withBridge(house && house.wall, mc.floor, house && house.bridgeK, mc.furniture));
             if (src === 'first' && mc && (mc.wall || mc.floor)) state.house = houseOf(mc, room.id);
             state.roomsCart.push(room);
             state.editingRoom = null;
@@ -1879,7 +1892,11 @@
             if (same && src) {
                 state.editingRoom.floorTone = src.floorTone;
                 state.editingRoom.wallTone = src.wallTone;
-                state.editingRoom.measuredColor = src.measuredColor || null;      // 같은 바닥·벽이면 잰 색도 같이
+                // 같은 바닥·벽이면 잰 색도 같이. 가구(37번)는 이어받지 않고 이 공간 것 그대로
+                const own = state.editingRoom.measuredColor && state.editingRoom.measuredColor.furniture;
+                const mc = src.measuredColor ? JSON.parse(JSON.stringify(src.measuredColor)) : null;
+                if (mc) { delete mc.furniture; if (own && own.length) mc.furniture = own; }
+                state.editingRoom.measuredColor = mc && (mc.wall || mc.floor || hasFurniture(mc)) ? mc : (own && own.length ? { wall: null, floor: null, bridge: null, furniture: own } : null);
                 goToStep("2-Base-Light");
             } else {
                 goToStep("2-Base-Floor");
@@ -1948,7 +1965,8 @@
             if (!ed || !ed.editOnly) return;
             openMeasure(ed.name, part, '이 색으로', '', function(mc) {
                 const old = ed.measuredColor || {};
-                const next = withBridge(part === 'wall' ? mc.wall : old.wall, part === 'floor' ? mc.floor : old.floor, old.bridgeK);      // 한쪽만 다시 재도 비율은 그대로
+                const next = withBridge(part === 'wall' ? mc.wall : old.wall, part === 'floor' ? mc.floor : old.floor, old.bridgeK,
+                    hasFurniture(mc) ? mc.furniture : old.furniture);      // 한쪽만 다시 재도 비율은 그대로 · 가구는 새로 찍었으면 새것, 아니면 그대로 (37번)
                 setRoomColor(ed, next);
                 if (ed.cardParts) delete ed.cardParts[part];      // 이제 그 부분은 잰 색
                 // 집 기본 색에서 한쪽만 다시 쟀으면 "벽만/바닥만 따로 잰 색", 아니면 "이 공간에서 잰 색"
@@ -1959,7 +1977,7 @@
         editRoomUseHouse: function() {
             const ed = state.editingRoom, house = houseColor();
             if (!ed || !house) return;
-            setRoomColor(ed, withBridge(house.wall, house.floor, house.bridgeK));
+            setRoomColor(ed, withBridge(house.wall, house.floor, house.bridgeK, ed.measuredColor && ed.measuredColor.furniture));      // 벽·바닥만 집 기본 색으로, 이 공간 가구는 그대로
             ed.colorSrc = 'house';
             ed.cardParts = null;
             render();

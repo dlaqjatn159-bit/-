@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261041';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261042';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261041';
+const REDAM_BUILD = '20261042';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1795,10 +1795,11 @@ function spaceMoreMapHtml(d) {
     const pool = d.all.filter(e => e.L != null && e.b != null && e.hex);
     if (!pool.length) return '<p class="more-hint">색 값이 들어온 원단이 아직 없어요.</p>';
     const W = 900, H = 500, P = { l: 70, r: 70, t: 30, b: 44 };
+    const fur = (mc && Array.isArray(mc.furniture) ? mc.furniture : []).filter(f => typeof f.L === 'number' && typeof f.b === 'number');      // 가구 색 (37번)
     const Ls = pool.map(e => e.L).concat(measured ? [mc.wall.L, mc.floor.L] : []), bs = pool.map(e => e.b).concat(measured ? [mc.wall.b, mc.floor.b] : []);
-    // 눈금은 색 대부분(위아래 3%를 뺀 범위)과 우리 집 벽·바닥에 맞춤. 멀리 떨어진 몇 색은 가장자리에 붙여 찍음 (가운데가 뭉치지 않게)
+    // 눈금은 색 대부분(위아래 3%를 뺀 범위)과 우리 집 벽·바닥·가구에 맞춤. 멀리 떨어진 몇 색은 가장자리에 붙여 찍음 (가운데가 뭉치지 않게)
     const q = (arr, p) => { const s = arr.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.max(0, Math.round((s.length - 1) * p)))]; };
-    const homeL = measured ? [mc.wall.L, mc.floor.L] : [], homeB = measured ? [mc.wall.b, mc.floor.b] : [];
+    const homeL = (measured ? [mc.wall.L, mc.floor.L] : []).concat(fur.map(f => f.L)), homeB = (measured ? [mc.wall.b, mc.floor.b] : []).concat(fur.map(f => f.b));
     const Lmin = Math.min(q(Ls, 0.03), ...homeL) - 3, Lmax = Math.max(q(Ls, 0.97), ...homeL) + 2, bmin = Math.min(q(bs, 0.03), ...homeB) - 2, bmax = Math.max(q(bs, 0.97), ...homeB) + 2;
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     const X = b => P.l + (clamp(b, bmin, bmax) - bmin) / ((bmax - bmin) || 1) * (W - P.l - P.r);
@@ -1820,6 +1821,11 @@ function spaceMoreMapHtml(d) {
         const home = (c, txt) => `<g class="more-home"><rect x="${(X(c.b) - 15).toFixed(1)}" y="${(Y(c.L) - 15).toFixed(1)}" width="30" height="30" rx="3" fill="${c.hex}"/><text class="more-halo" x="${(X(c.b) + 22).toFixed(1)}" y="${(Y(c.L) + 5).toFixed(1)}">${txt}</text></g>`;
         top += home(mc.wall, '벽') + home(mc.floor, '바닥');
     }
+    // 가구: 작은 마름모(18px, 45° 돌린 네모) + 이름 ("소파"). 점 위에 그림
+    fur.forEach(f => {
+        const fx = X(f.b), fy = Y(f.L);
+        top += `<g class="more-home"><rect x="${(fx - 9).toFixed(1)}" y="${(fy - 9).toFixed(1)}" width="18" height="18" fill="${f.hex}" stroke="#fff" stroke-width="2" transform="rotate(45 ${fx.toFixed(1)} ${fy.toFixed(1)})"/><text class="more-halo" x="${(fx + 18).toFixed(1)}" y="${(fy + 5).toFixed(1)}">${moreEsc(f.n)}</text></g>`;
+    });
     // 겹친 점은 서로 밀어 살짝 띄움 (위치는 보기용, 색 값은 그대로)
     const pts = pool.map(e => ({ e, x: X(e.b), y: Y(e.L) }));
     for (let k = 0; k < 40; k++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
@@ -3463,7 +3469,7 @@ function whySetsOf(data) {
     return { rooms: out };
 }
 // compact: 원단이 4개 이상이면 글자를 한 단계 작게 (출력 2장에 맞추려고, 제미나이 출력 화면 제안 10-15). 문장 수는 줄이지 않음 (35번)
-function drawWhy(ctx, data, W, compact) {
+function drawWhy(ctx, data, W, compact, title) {
     const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
     const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
     const MONO = 'ui-monospace,Menlo,Consolas,monospace';
@@ -3496,15 +3502,15 @@ function drawWhy(ctx, data, W, compact) {
         if (cur) lines.push(cur);
         return lines;
     };
-    // 머리글: 견적서(drawTicket hdr)와 같은 자리·같은 모양. 오른쪽 제목만 "원단을 고른 이유"
+    // 머리글: 견적서(drawTicket hdr)와 같은 자리·같은 모양. 오른쪽 제목만 "원단을 고른 이유" (우리 집 색 쪽은 title로 바꿔 씀, 37번)
     function hdr() {
         setFont(400, 48, SERIF); spacing('1.7px');
         const wRe = ctx.measureText('Re').width, wDot = ctx.measureText('Re.').width;
         text('Re', CX, 112, 'left', DARK); text('.', CX + wRe, 112, 'left', '#8a4a22'); text('dam', CX + wDot, 112, 'left', DARK);
         spacing('0px');
         setFont(600, 26, SERIF);
-        if (canSpace) { spacing('5px'); text('원단을 고른 이유', RX + 5, 108, 'right', DARK); spacing('0px'); }
-        else text('원단을 고른 이유', RX, 108, 'right', DARK);
+        if (canSpace) { spacing('5px'); text(title || '원단을 고른 이유', RX + 5, 108, 'right', DARK); spacing('0px'); }
+        else text(title || '원단을 고른 이유', RX, 108, 'right', DARK);
         setFont(400, 24, SERIF); text(data.proposalFor, CX, 154, 'left', MUTED);
         setFont(400, 20, SANS); label(data.date, RX, 154, 'right', 2);
         hline(CX, RX, HEAD_Y, DARK, 3);
@@ -3650,7 +3656,7 @@ function drawWhy(ctx, data, W, compact) {
     return { START_Y, hdr, layoutRoom, drawRoom, pageLabel };
 }
 // 카드 쪽(들) 만들기: 한 장에 안 들어가면 글자·간격을 줄이고(견적서와 같은 방식), 그래도 안 되면 공간 단위로 다음 쪽에 (글은 줄이지 않음)
-function buildWhyCanvases(data, opts, totalAfter) {
+function buildWhyCanvases(data, opts, totalAfter, before) {      // before: 앞에 있는 쪽 수 (우리 집 색, 37번)
     const info = whySetsOf(data);
     if (!info.rooms.length) return [];
     const compact = info.rooms.reduce((a, R) => a + R.sets.length, 0) >= 4;      // 원단 4개부터 작게
@@ -3681,9 +3687,336 @@ function buildWhyCanvases(data, opts, totalAfter) {
         const t = drawWhy(ctx, data, p.W, compact);
         t.hdr();
         pg.items.forEach(it => t.drawRoom(it.L, it.y));
-        t.pageLabel(pi, totalAfter(n), H);
+        t.pageLabel(pi + (before || 0), totalAfter(n), H);
         return canvas;
     });
+}
+
+// ==============================================================
+// 〈우리 집 색〉 쪽 (작업목록 37번): 최종 제안 맨 앞. 공간끼리 어떻게 어울리는지 = 색 지도 + 총평 2~3문장 + 공간별 색 줄
+//  이유 카드(이 공간에 왜 이 원단인지)와 역할을 나눔 — 이유 카드 문장은 여기 다시 쓰지 않음. 금액·직원용 색 사전 이름 없음
+//  원단을 담은 공간이 2곳 이상이고 그 원단 중 색 값(L·a·b)이 있는 것이 있을 때만. 시안: Claude outputs/시안/우리집색_시안.html
+// ==============================================================
+// 총평 숫자 (임시값 — 몇 집 써 보고 사장님이 정함). 색 차이는 Lab 거리(ΔE76)
+const HOUSE_UNIFY = 14;          // 공간마다 대표 원단끼리 가장 먼 차이가 이 안이면 "집 전체를 ○○ 계열로"
+const HOUSE_SHEER_SAME = 6;      // 속지끼리 가장 먼 차이가 이 안이면 "속지는 비슷한 밝기로"
+const HOUSE_FUR_DL = 20;         // 커튼 밝기 − 가구 밝기가 이만큼 넘게 차이 나면 "무겁게 보이지 않도록 밝게" / "무게를 맞춰 깊은 색으로"
+const HOUSE_FUR_NEAR = 12;       // 가구와 커튼 색 차이가 이 안이면 "비슷한 색으로 맞춰"
+const HOUSE_KIND_ORDER = { 겉지: 0, 속지: 1, 블라인드: 2 };
+// 받침에 따라 은/는 · 이/가 · 과/와 (숫자로 끝나면 읽는 소리로: 1·3·6·7·8·0은 받침 있음)
+function houseJosa(w, withB, noB) {
+    const ch = String(w).slice(-1), code = ch.charCodeAt(0);
+    const has = (code >= 0xAC00 && code <= 0xD7A3) ? (code - 0xAC00) % 28 > 0 : '013678'.includes(ch);
+    return has ? withB : noB;
+}
+// 공간마다 [이름 · 잰 벽·바닥 · 가구 · 원단들(색 값)] — 원단을 담은 공간만
+function houseSpacesOf(data) {
+    const nameOf = (k, c) => (window.RoomColor && RoomColor.colorName && (RoomColor.colorName(k, c) || {}).name) || '';
+    const okLab = c => c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number';
+    const okHex = h => /^#[0-9a-f]{6}$/i.test(h || '');
+    return data.rooms.map(room => {
+        const items = room.items.filter(it => it.fabricId);
+        if (!items.length) return null;
+        const mc = (room.raw && room.raw.measuredColor) || {};
+        const part = k => (okLab(mc[k]) && okHex(mc[k].hex)) ? { L: mc[k].L, a: mc[k].a, b: mc[k].b, hex: mc[k].hex.toUpperCase(), name: nameOf(k, mc[k]) } : null;
+        const fur = (Array.isArray(mc.furniture) ? mc.furniture : []).filter(f => okLab(f) && okHex(f.hex))
+            .map(f => ({ n: f.n, L: f.L, a: f.a, b: f.b, hex: f.hex.toUpperCase(), name: (window.RoomColor && RoomColor.furName) ? RoomColor.furName(f) : '' }));
+        const fabs = items.map(it => {
+            const col = whyFabricColor(it.fabricId, it.colorName);
+            const lab = col && typeof col.L === 'number' ? { L: col.L, a: col.a, b: col.b } : null;
+            return { k: it.kind, fabricId: it.fabricId, colorName: it.colorName, nm: it.name, hex: (col && col.hex) || it.fill, lab };
+        });
+        return { name: room.name, wall: part('wall'), floor: part('floor'), fur, fabs };
+    }).filter(Boolean);
+}
+function houseShows(data, opts) {
+    if (opts && opts.noCard) return false;
+    const sp = houseSpacesOf(data);
+    return sp.length >= 2 && sp.some(s => s.fabs.some(f => f.lab));
+}
+// 공간의 대표 원단: 겉지 → 속지 → 블라인드 (색 값이 있는 것 중)
+function houseRep(s) {
+    return s.fabs.filter(f => f.lab).sort((x, y) => (HOUSE_KIND_ORDER[x.k] ?? 3) - (HOUSE_KIND_ORDER[y.k] ?? 3))[0] || null;
+}
+// 총평 (37-4): ① 흐름(한 문장) → ② 속지(속지 공간 2곳 이상일 때) → ③ 가구(가구를 찍은 첫 공간, 첫 가구 하나) · 최대 3문장
+function houseBrief(sp) {
+    const out = [], S = sp.filter(houseRep), reps = S.map(s => houseRep(s).lab);
+    const maxDist = list => { let m = 0; list.forEach((p, i) => list.forEach((q, j) => { if (j > i) m = Math.max(m, whyDE(p, q)); })); return m; };
+    const avg = (list, k) => list.reduce((t, c) => t + c[k], 0) / list.length;
+    // ① 흐름 (비교할 공간이 2곳 이상일 때)
+    if (S.length >= 2) {
+        const maxD = maxDist(reps);
+        if (maxD <= HOUSE_UNIFY) {
+            const L = avg(reps, 'L'), b = avg(reps, 'b');
+            const fam = (L >= 80 ? '밝은 ' : (L >= 60 ? '부드러운 ' : '깊은 ')) + (b >= 12 ? '베이지' : (b >= 5 ? '아이보리·그레이지' : '그레이'));
+            out.push(`집 전체를 ${fam} 계열로 맞춰, 공간을 옮겨 다녀도 흐름이 끊기지 않아요.`);
+        } else {
+            let point = null;
+            if (S.length >= 3) S.forEach((s, i) => {
+                const rest = reps.filter((_, j) => j !== i);
+                if (!point && maxDist(rest) <= HOUSE_UNIFY && Math.min(...rest.map(q => whyDE(reps[i], q))) > HOUSE_UNIFY) point = { s, i, rest };
+            });
+            if (point) {
+                const o = reps[point.i], dL = o.L - avg(point.rest, 'L'), db = o.b - avg(point.rest, 'b');
+                const dir = Math.abs(dL) >= Math.abs(db) * 1.2 ? (dL > 0 ? '한 톤 밝게' : '한 톤 진하게') : (db > 0 ? '조금 따뜻하게' : '조금 차분하게');
+                const names = S.filter((_, j) => j !== point.i).map(s => s.name).join('·');
+                out.push(`${names}${houseJosa(names, '은', '는')} 같은 계열의 색으로 잇고, ${point.s.name}만 ${dir} 두어 분위기를 나눴어요.`);
+            } else if (S.length === 2) {
+                out.push(`${S[0].name}${houseJosa(S[0].name, '과', '와')} ${S[1].name}의 쓰임이 달라, 두 공간의 분위기를 다르게 잡았어요.`);
+            } else {
+                out.push('벽·바닥과 쓰임이 공간마다 달라, 각 공간에 따로 맞춰 골랐어요.');
+            }
+        }
+    }
+    // ② 속지
+    const withSheer = sp.filter(s => s.fabs.some(f => f.k === '속지' && f.lab));
+    const sh = withSheer.map(s => s.fabs.find(f => f.k === '속지' && f.lab));
+    if (sh.length >= 2) {
+        if (sh.every(f => f.fabricId === sh[0].fabricId && f.colorName === sh[0].colorName)) {
+            const who = withSheer.length === sp.length ? '모든 공간을' : withSheer.map(s => s.name).join('·') + ' 모두';
+            out.push(`속지는 ${who} 같은 색으로 맞춰, 밖에서 보면 창이 한결같아 보여요.`);
+        } else if (maxDist(sh.map(f => f.lab)) <= HOUSE_SHEER_SAME) {
+            out.push('속지는 비슷한 밝기로 맞춰, 밖에서 봐도 창이 고르게 보여요.');
+        }
+    }
+    // ③ 가구
+    const fs = S.find(s => s.fur.length);
+    if (fs) {
+        const f = fs.fur[0], r = houseRep(fs).lab, dL = r.L - f.L, d = whyDE(f, r);
+        const nm = f.name ? f.name + ' ' : '', is = houseJosa(fs.name, '은', '는');
+        if (dL >= HOUSE_FUR_DL) out.push(`${fs.name}${is} ${nm}${f.n}${houseJosa(f.n, '이', '가')} 무겁게 보이지 않도록, 커튼을 한결 밝게 두었어요.`);
+        else if (dL <= -HOUSE_FUR_DL) out.push(`${fs.name}${is} ${nm}${f.n}${houseJosa(f.n, '과', '와')} 무게를 맞춰, 커튼도 깊은 색으로 골랐어요.`);
+        else if (d <= HOUSE_FUR_NEAR) out.push(`${fs.name}${is} ${f.n}${houseJosa(f.n, '과', '와')} 비슷한 색으로 맞춰, 공간이 하나로 차분하게 보여요.`);
+        else out.push(`${fs.name}${is} ${nm}${f.n}까지 함께 보고 골랐어요.`);
+    }
+    return out.slice(0, 3);
+}
+// 색 지도 (고객 더 보기 지도와 같은 축·같은 말): 900×470 좌표에 그림. ctx는 미리 옮기고 늘려 둠
+//  ● 고른 원단(같은 원단·같은 색은 하나로, "거실·안방 속지") · ■ 벽·바닥(모든 공간이 같으면 "벽") · ◆ 가구
+function drawHouseMap(ctx, sp) {
+    const W = 900, H = 470, P = { l: 76, r: 76, t: 34, b: 40 };
+    const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    const PAPER = '#fffdf9';
+    const marks = [], seen = {};
+    sp.forEach(s => {
+        [['벽', s.wall], ['바닥', s.floor]].forEach(([k, c]) => {
+            if (!c) return;
+            const key = k + c.hex;
+            if (seen[key]) { seen[key].who.push(s.name); return; }
+            marks.push(seen[key] = { t: 's', c, k, who: [s.name] });
+        });
+        s.fur.forEach(f => marks.push({ t: 'd', c: f, k: f.n, who: [s.name] }));
+        s.fabs.forEach(f => {
+            if (!f.lab) return;
+            const key = 'f' + f.k + f.fabricId + '|' + f.colorName;
+            if (seen[key]) { if (!seen[key].who.includes(s.name)) seen[key].who.push(s.name); return; }
+            marks.push(seen[key] = { t: 'c', c: Object.assign({ hex: f.hex }, f.lab), k: f.k, who: [s.name] });
+        });
+    });
+    if (!marks.length) return;
+    const Ls = marks.map(m => m.c.L), bs = marks.map(m => m.c.b);
+    let Lmin = Math.min(...Ls) - 4, Lmax = Math.max(...Ls) + 3, bmin = Math.min(...bs) - 3, bmax = Math.max(...bs) + 3;
+    // 색이 몇 개 안 되거나 서로 가까우면 조금 벌어진 것도 크게 보이므로 눈금 폭을 조금은 남김
+    if (Lmax - Lmin < 24) { const m = (Lmax + Lmin) / 2; Lmin = m - 12; Lmax = m + 12; }
+    if (bmax - bmin < 14) { const m = (bmax + bmin) / 2; bmin = m - 7; bmax = m + 7; }
+    const X = b => P.l + (b - bmin) / (bmax - bmin) * (W - P.l - P.r), Y = L => P.t + (Lmax - L) / (Lmax - Lmin) * (H - P.t - P.b);
+    const line = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+    ctx.strokeStyle = '#efe7dc'; ctx.lineWidth = 1;
+    [0.25, 0.5, 0.75].forEach(f => { const y = P.t + (H - P.t - P.b) * f; line(P.l, y, W - P.r, y); });
+    [1 / 3, 2 / 3].forEach(f => { const x = P.l + (W - P.l - P.r) * f; line(x, P.t, x, H - P.b); });
+    ctx.font = `500 15px ${SANS}`; ctx.fillStyle = '#a3937f';
+    ctx.textAlign = 'center'; ctx.fillText('↑ 밝게', W / 2, P.t - 12); ctx.fillText('↓ 진하게', W / 2, H - 10);
+    ctx.textAlign = 'right'; ctx.fillText('차분하게', P.l - 12, H / 2);
+    ctx.textAlign = 'left'; ctx.fillText('따뜻하게', W - P.r + 12, H / 2);
+    // 자리 + 겹친 점 밀기
+    const pts = marks.map(m => ({ m, x: X(m.c.b), y: Y(m.c.L), r: m.t === 'c' ? 20 : 12 }));
+    for (let k = 0; k < 60; k++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+        const a = pts[i], c = pts[j], dx = c.x - a.x, dy = c.y - a.y, dd = Math.hypot(dx, dy) || 0.01, need = a.r + c.r + 6;
+        if (dd < need) { const mv = (need - dd) / 2, ux = dx / dd, uy = dy / dd; a.x -= ux * mv; a.y -= uy * mv; c.x += ux * mv; c.y += uy * mv; }
+    }
+    pts.forEach(p => { p.x = Math.max(P.l - 24, Math.min(W - P.r + 24, p.x)); p.y = Math.max(P.t + 8, Math.min(H - P.b - 8, p.y)); });
+    // 표시: 네모·마름모 먼저, 원단 동그라미는 위에
+    pts.filter(p => p.m.t !== 'c').forEach(p => {
+        ctx.save(); ctx.translate(p.x, p.y);
+        if (p.m.t === 'd') ctx.rotate(Math.PI / 4);
+        const s = p.m.t === 's' ? 22 : 18;
+        ctx.fillStyle = p.m.c.hex; ctx.fillRect(-s / 2, -s / 2, s, s);
+        ctx.strokeStyle = '#b9a893'; ctx.lineWidth = 1; ctx.strokeRect(-s / 2 + 0.5, -s / 2 + 0.5, s - 1, s - 1);
+        ctx.restore();
+    });
+    pts.filter(p => p.m.t === 'c').forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 19, 0, Math.PI * 2); ctx.fillStyle = p.m.c.hex; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 20.5, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(43,34,26,0.25)'; ctx.stroke();
+    });
+    // 글자: 오른쪽 → 왼쪽 → 위 → 아래 중 다른 글자·점과 안 겹치는 자리 (원단 글자를 먼저)
+    const boxes = pts.map(p => ({ x1: p.x - p.r, y1: p.y - p.r, x2: p.x + p.r, y2: p.y + p.r }));
+    const hit = q => boxes.some(o => q.x1 < o.x2 && q.x2 > o.x1 && q.y1 < o.y2 && q.y2 > o.y1) || q.x1 < 4 || q.x2 > W - 4;
+    const put = (p, t, fs, weight, color) => {
+        ctx.font = `${weight} ${fs}px ${SANS}`;
+        const w = ctx.measureText(t).width, g = p.r + 6;
+        const cands = [[p.x + g, p.y + fs * 0.35, 'left'], [p.x - g, p.y + fs * 0.35, 'right'], [p.x, p.y - g - 2, 'center'], [p.x, p.y + g + fs, 'center']];
+        let pick = cands[0];
+        for (const cd of cands) {
+            const x1 = cd[2] === 'left' ? cd[0] : (cd[2] === 'right' ? cd[0] - w : cd[0] - w / 2), q = { x1, y1: cd[1] - fs, x2: x1 + w, y2: cd[1] + 3 };
+            if (!hit(q)) { boxes.push(q); pick = cd; break; }
+        }
+        ctx.textAlign = pick[2]; ctx.lineJoin = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = PAPER; ctx.strokeText(t, pick[0], pick[1]);
+        ctx.fillStyle = color; ctx.fillText(t, pick[0], pick[1]);
+    };
+    pts.filter(p => p.m.t === 'c').forEach(p => put(p, p.m.who.join('·') + ' ' + p.m.k, 15, 600, '#2b221a'));
+    pts.filter(p => p.m.t !== 'c').forEach(p => {
+        const t = p.m.t === 's' ? ((p.m.who.length === sp.length && sp.length > 1) ? p.m.k : p.m.who.join('·') + ' ' + p.m.k) : p.m.who[0] + ' ' + p.m.k;
+        put(p, t, 13, 500, '#8a7a6a');
+    });
+}
+// 쪽 짜기·그리기. 넘치면 글자를 한 단계 줄이고(compact), 그래도 넘치면 공간별 색 줄만 다음 쪽으로 (지도·총평은 첫 쪽)
+function planHouse(data) {
+    const sp = houseSpacesOf(data), brief = houseBrief(sp);
+    const hasFur = sp.some(s => s.fur.length);
+    const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
+    const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    const DARK = '#2b221a', MUTED = '#6f5f4f', SOFT = '#8a7a6a', LINE = '#e5dcd0';
+    const W = TICKET_W, H = TICKET_PAGE_H, PAD = TICKET_PAD, CX = PAD, RX = W - PAD, CW = RX - CX, BOTTOM = 90;
+    const MAP_Y = TICKET_HEAD_Y + 26, MAP_H = Math.round(CW * 470 / 900);
+    const make = compact => {
+        const Q_SIZE = compact ? 24 : 27, Q_LH = compact ? 40 : 46;          // 총평 (명조, 이유 카드 손님 말과 같은 크기)
+        const N_SIZE = compact ? 21 : 23, NAME_W = compact ? 140 : 156;        // 공간 이름 (명조)
+        const C_SIZE = compact ? 18 : 19, C_SW = compact ? 17 : 18, C_LH = compact ? 30 : 32;      // 윗줄 칩
+        const F_SIZE = compact ? 19 : 21, F_LH = compact ? 32 : 34;            // 아랫줄 원단 (굵게)
+        const ctx = document.createElement('canvas').getContext('2d');
+        const wrap = (str, maxW) => {
+            const lines = []; let cur = '';
+            for (const word of String(str).split(' ')) {
+                const test = cur ? cur + ' ' + word : word;
+                if (ctx.measureText(test).width <= maxW || !cur) { cur = test; continue; }
+                lines.push(cur); cur = word;
+            }
+            if (cur) lines.push(cur);
+            return lines;
+        };
+        // 칩 한 줄 배치: [{ w, draw(x, y) }]을 폭에 맞춰 줄로
+        const flow = (chips, maxW, gap) => {
+            const rows = [[]]; let x = 0;
+            chips.forEach(c => { if (x && x + c.w > maxW) { rows.push([]); x = 0; } rows[rows.length - 1].push(Object.assign({ x }, c)); x += c.w + gap; });
+            return rows.filter(r => r.length);
+        };
+        let y = MAP_Y + MAP_H + 6;
+        const legendY = y + 22; y = legendY + 26;
+        ctx.font = `400 ${Q_SIZE}px ${SERIF}`;
+        const bLines = brief.length ? wrap(brief.join(' '), CW) : [];
+        const briefLineY = y; y += bLines.length ? 22 : 0;
+        const bY = y + Q_SIZE; if (bLines.length) y = bY + (bLines.length - 1) * Q_LH + 18;
+        const rowsTop = y + 10;
+        const RW = CW - NAME_W;
+        const rowLayouts = sp.map(s => {
+            ctx.font = `400 ${C_SIZE}px ${SANS}`;
+            const tops = [];
+            if (s.wall) tops.push({ hex: s.wall.hex, t: '벽 ' + s.wall.name, shape: 's' });
+            if (s.floor) tops.push({ hex: s.floor.hex, t: '바닥 ' + s.floor.name, shape: 's' });
+            s.fur.forEach(f => tops.push({ hex: f.hex, t: `${f.n} ${f.name}`.trim(), shape: 'd' }));
+            const topRows = flow(tops.map(c => Object.assign(c, { w: C_SW + 9 + ctx.measureText(c.t).width })), RW, 24);
+            ctx.font = `700 ${F_SIZE}px ${SANS}`;
+            const fabRows = flow(s.fabs.map(f => ({ hex: f.hex, t: `${f.k} · ${f.nm}`, shape: 'c', w: F_SIZE + 10 + ctx.measureText(`${f.k} · ${f.nm}`).width })), RW, 28);
+            const h = 18 + topRows.length * C_LH + (topRows.length ? 6 : 0) + fabRows.length * F_LH + 12;
+            return { s, topRows, fabRows, h };
+        });
+        // 공간 줄을 쪽에 나눔: 첫 쪽은 지도·총평 아래, 다음 쪽부터는 머리글 아래
+        const pages = [{ rows: [], y: rowsTop }];
+        rowLayouts.forEach(R => {
+            let pg = pages[pages.length - 1];
+            if (pg.rows.length && pg.y + R.h > H - BOTTOM) { pg = { rows: [], y: TICKET_HEAD_Y + 20 }; pages.push(pg); }
+            pg.rows.push({ R, y: pg.y }); pg.y += R.h;
+        });
+        const fits = pages.length === 1 && pages[0].y <= H - BOTTOM;
+        const draw = (c, pi, label) => {
+            const t = drawWhy(c, data, W, compact, '우리 집 색');
+            t.hdr();
+            const hline = (x1, x2, yy, color, lw) => { c.strokeStyle = color; c.lineWidth = lw; c.beginPath(); c.moveTo(x1, yy); c.lineTo(x2, yy); c.stroke(); };
+            if (pi === 0) {
+                c.save(); c.translate(CX, MAP_Y); c.scale(CW / 900, CW / 900); drawHouseMap(c, sp); c.restore();
+                // 범례 (가구가 없으면 가구 빼기)
+                const lg = [['c', '고른 원단'], ['s', '벽·바닥']].concat(hasFur ? [['d', '가구']] : []);
+                c.font = `400 17px ${SANS}`;
+                const lw = lg.map(([, t]) => 22 + c.measureText(t).width), total = lw.reduce((a, b) => a + b, 0) + (lg.length - 1) * 30;
+                let lx = W / 2 - total / 2;
+                lg.forEach(([shape, t], i) => {
+                    const cy = legendY - 6;
+                    c.fillStyle = shape === 'c' ? '#c9b49c' : '#d9cbb9';
+                    if (shape === 'c') { c.beginPath(); c.arc(lx + 7, cy, 7, 0, Math.PI * 2); c.fill(); }
+                    else { c.save(); c.translate(lx + 7, cy); if (shape === 'd') c.rotate(Math.PI / 4); const z = shape === 'd' ? 10 : 12; c.fillRect(-z / 2, -z / 2, z, z); c.strokeStyle = '#b9a893'; c.lineWidth = 1; c.strokeRect(-z / 2, -z / 2, z, z); c.restore(); }
+                    c.textAlign = 'left'; c.fillStyle = SOFT; c.fillText(t, lx + 20, legendY);
+                    lx += lw[i] + 30;
+                });
+                if (bLines.length) {
+                    hline(CX, RX, briefLineY, LINE, 1);
+                    c.font = `400 ${Q_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
+                    bLines.forEach((ln, i) => c.fillText(ln, CX, bY + i * Q_LH));
+                }
+            }
+            const rows = pages[pi].rows;
+            if (rows.length) hline(CX, RX, rows[0].y, LINE, 1);
+            rows.forEach(({ R, y: ry }) => {
+                c.font = `600 ${N_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
+                c.fillText(R.s.name, CX, ry + 18 + N_SIZE);
+                let yy = ry + 18 + C_SIZE;
+                R.topRows.forEach(row => {
+                    row.forEach(ch => {
+                        const x = CX + NAME_W + ch.x;
+                        c.save(); c.translate(x + C_SW / 2, yy - C_SIZE * 0.35);
+                        if (ch.shape === 'd') c.rotate(Math.PI / 4);
+                        const z = ch.shape === 'd' ? C_SW * 0.72 : C_SW;
+                        c.fillStyle = ch.hex; c.fillRect(-z / 2, -z / 2, z, z); c.strokeStyle = 'rgba(43,34,26,0.12)'; c.lineWidth = 1; c.strokeRect(-z / 2, -z / 2, z, z);
+                        c.restore();
+                        c.font = `400 ${C_SIZE}px ${SANS}`; c.fillStyle = MUTED; c.textAlign = 'left'; c.fillText(ch.t, x + C_SW + 9, yy);
+                    });
+                    yy += C_LH;
+                });
+                if (R.topRows.length) yy += 6 - C_LH + F_SIZE + 4;
+                else yy = ry + 18 + F_SIZE;
+                R.fabRows.forEach(row => {
+                    row.forEach(ch => {
+                        const x = CX + NAME_W + ch.x, r = F_SIZE / 2;
+                        c.beginPath(); c.arc(x + r, yy - F_SIZE * 0.35, r, 0, Math.PI * 2); c.fillStyle = ch.hex; c.fill();
+                        c.lineWidth = 1; c.strokeStyle = 'rgba(43,34,26,0.15)'; c.stroke();
+                        c.font = `700 ${F_SIZE}px ${SANS}`; c.fillStyle = DARK; c.textAlign = 'left'; c.fillText(ch.t, x + F_SIZE + 10, yy);
+                    });
+                    yy += F_LH;
+                });
+                hline(CX, RX, ry + R.h, LINE, 1);
+            });
+            label();
+        };
+        return { fits, pages, draw };
+    };
+    const p = make(false);
+    return p.fits ? p : make(true);
+}
+// 우리 집 색 쪽(들): { count, draw(opts, before, total) → canvas[] }. 생기지 않으면 count 0
+function buildHouseCanvases(data, opts) {
+    if (!houseShows(data, opts)) return { count: 0, draw: () => [] };
+    const plan = planHouse(data);
+    return {
+        count: plan.pages.length,
+        draw(o, total) {
+            const pr = (o && o.pixelRatio) || 1;
+            return plan.pages.map((pg, pi) => {
+                const H = Math.max(TICKET_PAGE_H, Math.ceil(pg.y + 90));
+                const canvas = document.createElement('canvas');
+                canvas.width = TICKET_W * pr; canvas.height = Math.round(H * pr);
+                const ctx = canvas.getContext('2d');
+                ctx.scale(pr, pr);
+                ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, TICKET_W, H);
+                ctx.textBaseline = 'alphabetic';
+                plan.draw(ctx, pi, () => {
+                    if (total < 2) return;
+                    ctx.font = '500 20px Pretendard,"Noto Sans KR","Malgun Gothic",sans-serif'; ctx.fillStyle = '#8a7a6a'; ctx.textAlign = 'center';
+                    ctx.fillText(`${pi + 1} / ${total}`, TICKET_W / 2, H - 30);
+                });
+                return canvas;
+            });
+        }
+    };
 }
 
 function buildTicketCanvases(opts, preparedData) {
@@ -3695,9 +4028,11 @@ function buildTicketCanvases(opts, preparedData) {
     if (!plan) plan = planTicket(data, 1, slim);
     const { s, W, PAGE_H, BOTTOM, F, pages } = plan;
     const pr = opts.pixelRatio || 1;      // 화면에 띄울 때는 더 선명하게(저장·인쇄는 1 = 1080px)
-    // 맨 앞에 "원단을 고른 이유" 카드 (손님이 답한 공간이 있을 때만). 쪽 표시는 카드+견적서 전체로 셈
-    const whyPages = opts.noCard ? [] : buildWhyCanvases(data, opts, n => n + pages.length);
-    const off = whyPages.length;
+    // 맨 앞에 "우리 집 색"(37번, 원단을 담은 공간이 2곳 이상일 때) → "원단을 고른 이유" 카드(손님이 답한 공간이 있을 때만). 쪽 표시는 전체로 셈
+    const house = buildHouseCanvases(data, opts), hn = house.count;
+    const whyPages = opts.noCard ? [] : buildWhyCanvases(data, opts, n => hn + n + pages.length, hn);
+    const housePages = house.draw(opts, hn + whyPages.length + pages.length);
+    const off = hn + whyPages.length;
 
     const ticketPages = pages.map((p, pi) => {
         const isLast = pi === pages.length - 1;
@@ -3715,8 +4050,9 @@ function buildTicketCanvases(opts, preparedData) {
         t.pageLabel(pi + off, pages.length + off, H);
         return canvas;
     });
-    const all = whyPages.concat(ticketPages);
-    all.cardCount = off;
+    const all = housePages.concat(whyPages, ticketPages);
+    all.cardCount = off;          // 견적서 앞 쪽 수 (우리 집 색 + 이유 카드)
+    all.houseCount = hn;
     return all;
 }
 
@@ -3738,10 +4074,10 @@ async function makeTicketBlobs(opts) {
     } catch (e) {}
     const data = await loadTicketPhotos(ticketData());
     const canvases = buildTicketCanvases(opts, data);
-    if (opts.canvasOnly) return { canvases, blobs: [], type: null, cardCount: canvases.cardCount || 0 };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
+    if (opts.canvasOnly) return { canvases, blobs: [], type: null, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0 };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
     const type = opts.type || 'image/png';
     const blobs = await Promise.all(canvases.map(c => new Promise(res => c.toBlob(res, type, 0.95))));
-    return { canvases, blobs, type, cardCount: canvases.cardCount || 0 };
+    return { canvases, blobs, type, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0 };
 }
 // 파일 이름. asciiOnly는 휴대폰 공유 창이 한글 이름을 못 읽는 경우를 피하기 위한 영문 이름
 function ticketFileNames(count, ext, asciiOnly) {
