@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261059';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261060';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -185,7 +185,7 @@
             lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null,
             diagnosed: !!r.diagnosed,
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
-            width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
+            width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
                 let realFab = liveDb.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);
@@ -1367,8 +1367,9 @@
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f) => `<div class="${dark(bg) ? 'is-dark' : ''}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;
             sp.forEach(s => {
+                const cartRoom = state.roomsCart.find(r => r.name === s.name);
                 const rm = data.rooms.find(r => r.name === s.name);
-                const raw = (rm && rm.raw) ? rm.raw : (rm || {});
+                const raw = cartRoom || (rm && rm.raw) || (rm || {});
                 const dirTxt = raw.windowDir ? windowDirText(windowDirOf(raw.windowDir)) : '';
                 const baseParts = [];
                 if (s.wall) baseParts.push('벽 ' + s.wall.name);
@@ -1465,7 +1466,8 @@
             h += '</div>';
 
             whyInfo.rooms.forEach((R, idx) => {
-                const rm = data.rooms.find(r => r.name === R.name) || {}, raw = rm.raw || {};
+                const cartRoom = state.roomsCart.find(r => r.name === R.name);
+                const rm = data.rooms.find(r => r.name === R.name) || {}, raw = cartRoom || rm.raw || rm || {};
                 const sz = roomSize(raw), comp = roomComp(raw);
                 const subBot = COMP_NAMES[comp] || '';
                 const keys = [];
@@ -2845,6 +2847,9 @@
                 if (!ed.partHeight && ed.height) ed.partHeight = ed.height;
                 if (!ed.spaceWidth && ed.width) ed.spaceWidth = ed.width;
                 if (!ed.spaceHeight && ed.height) ed.spaceHeight = ed.height;
+            } else if (mode === 'full') {
+                if (ed.spaceWidth) ed.width = ed.spaceWidth;
+                if (ed.spaceHeight) ed.height = ed.spaceHeight;
             }
             render();
         },
