@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261055';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261056';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -678,12 +678,16 @@
     function spaceEditHtml() {
         const ed = state.editingRoom, r = state.roomsCart.find(x => x.id === state.editingRoomId);
         if (!ed || !r) return '';
+        if (!ed.sizeMode) ed.sizeMode = (r.sizeMode || 'full');
+        const isPart = ed.sizeMode === 'part';
+        const curW = isPart ? (ed.partWidth != null ? ed.partWidth : ed.width) : (ed.spaceWidth != null ? ed.spaceWidth : ed.width);
+        const curH = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
         const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-        const measureBox = (target, label, steps) =>
+        const measureBox = (target, label, val, steps) =>
             `<div id="measureBox_${target}" class="measure-box msr-box" onclick="window.concierge.openKeypad('${target}')">` +
             `<span class="msr-label">${label}</span>` +
             `<div class="msr-num-wrap">` +
-            `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${ed[target]}</span><small>cm</small></div>` +
+            `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${val}</span><small>cm</small></div>` +
             stepperHtml(target, label) +
             `</div>` +
             '<span class="msr-hint">숫자를 누르면 직접 입력</span>' + nudgeRowHtml(target, steps) + '</div>';
@@ -694,9 +698,20 @@
         };
         const house = houseColor();
         let h = '<div class="msr-stage">';
+        h += '<div class="msr-top-bar">';
         h += `<span class="q-meta">${esc(r.name)} · 수정하기</span>`;
+        h += '<div class="msr-mode-switch" role="tablist" aria-label="크기 측정 모드">' +
+            `<button type="button" class="msr-mode-btn ${!isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('full')">전체</button>` +
+            `<button type="button" class="msr-mode-btn ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
+            '</div></div>';
         h += '<h2 class="msr-title font-serif-kr">크기와 색을 고칠게요</h2>';
-        h += '<div class="msr-grid">' + measureBox('width', '넓이', [-10, -5, -1, 1, 5, 10]) + measureBox('height', '높이', [-10, -5, -1, 1, 5, 10]) + '</div>'; // 41번
+        if (isPart && ((ed.spaceWidth || ed.width) > 0 || (ed.spaceHeight || ed.height) > 0)) {
+            h += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${ed.spaceWidth || ed.width || 0} × ${ed.spaceHeight || ed.height || 0}cm</b></p>`;
+        }
+        h += '<div class="msr-grid">' +
+            measureBox('width', isPart ? '창 넓이' : '공간 넓이', curW, [-10, -5, -1, 1, 5, 10]) +
+            measureBox('height', isPart ? '창 높이' : '공간 높이', curH, [-10, -5, -1, 1, 5, 10]) +
+            '</div>'; // 41번, 43번
         h += `<div class="ed-color">${row('벽', 'wall')}${row('바닥', 'floor')}`;
         if (house) h += '<button type="button" class="ed-sub" onclick="window.concierge.editRoomUseHouse()">집 기본 색으로 맞추기</button>';
         h += '</div>' + dirPickerHtml();
@@ -851,18 +866,36 @@
             // [공간 추가 ② 크기] 실측 화면 모양 (옵션은 원단을 고른 뒤 마무리에서)
             case "1.6-Add-Size": {
                 const d = state.editingRoom;
-                const measureBox = (target, label, steps) =>
+                if (!d.sizeMode) d.sizeMode = 'full';
+                const isPart = d.sizeMode === 'part';
+                const curW = isPart ? (d.partWidth != null ? d.partWidth : d.width) : (d.spaceWidth != null ? d.spaceWidth : d.width);
+                const curH = isPart ? (d.partHeight != null ? d.partHeight : d.height) : (d.spaceHeight != null ? d.spaceHeight : d.height);
+
+                const measureBox = (target, label, val, steps) =>
                     `<div id="measureBox_${target}" class="measure-box msr-box" onclick="window.concierge.openKeypad('${target}')">` +
                     `<span class="msr-label">${label}</span>` +
                     `<div class="msr-num-wrap">` +
-                    `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${d[target]}</span><small>cm</small></div>` +
+                    `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${val}</span><small>cm</small></div>` +
                     stepperHtml(target, label) +
                     `</div>` +
                     '<span class="msr-hint">숫자를 누르면 직접 입력</span>' + nudgeRowHtml(target, steps) + '</div>';
+
                 html += '<div class="msr-stage">';
-                html += `<span class="q-meta">${d.name} · 크기</span>`;
-                html += '<h2 class="msr-title font-serif-kr">크기를 적어 주세요</h2>';
-                html += '<div class="msr-grid">' + measureBox('width', '넓이', [-10, -5, -1, 1, 5, 10]) + measureBox('height', '높이', [-10, -5, -1, 1, 5, 10]) + '</div>'; // 41번
+                html += '<div class="msr-top-bar">';
+                html += `<span class="q-meta">${d.name} · ${isPart ? '부분 크기 (창)' : '공간 크기 (전체)'}</span>`;
+                html += '<div class="msr-mode-switch" role="tablist" aria-label="크기 측정 모드">' +
+                    `<button type="button" class="msr-mode-btn ${!isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('full')">전체</button>` +
+                    `<button type="button" class="msr-mode-btn ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
+                    '</div></div>';
+
+                html += `<h2 class="msr-title font-serif-kr">${isPart ? '창 크기를 적어 주세요' : '크기를 적어 주세요'}</h2>`;
+                if (isPart && ((d.spaceWidth || d.width) > 0 || (d.spaceHeight || d.height) > 0)) {
+                    html += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${d.spaceWidth || d.width || 0} × ${d.spaceHeight || d.height || 0}cm</b></p>`;
+                }
+                html += '<div class="msr-grid">' +
+                    measureBox('width', isPart ? '창 넓이' : '넓이', curW, [-10, -5, -1, 1, 5, 10]) +
+                    measureBox('height', isPart ? '창 높이' : '높이', curH, [-10, -5, -1, 1, 5, 10]) +
+                    '</div>'; // 41번, 43번
                 html += '<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.addRoomColor()">다음 · 색 →</button>';
                 html += '</div>';
                 break;
@@ -1292,13 +1325,14 @@
             if (hasFur) h += '<span><i class="lg-d" style="background:#d9cbb9"></i>가구</span>';
             h += '</div></div></div>'; // 41번: 사족 문구 제거, 범례만 중앙 정돈
             if (brief.length) h += `<p class="fin-house-lead font-serif-kr">${esc(brief.join(' '))}</p>`; // 41번: 총평 글이 아래로 이동
-            // 공간별 창가 색 띠 (41-7: 2단 창가 입면 띠 - 윗줄 벽·원단·벽, 아랫줄 바닥)
+            // 공간별 창가 색 띠 (3단 창가 입면 띠: 1단 상단 벽 빔 · 2단 중간 창/커튼 · 3단 하단 바닥, 43번)
             h += '<div class="fin-layer-strips">';
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f) => `<div class="${dark(bg) ? 'is-dark' : ''}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;
             sp.forEach(s => {
                 const rm = data.rooms.find(r => r.name === s.name);
-                const dirTxt = (rm && rm.raw) ? windowDirText(windowDirOf(rm.raw.windowDir)) : '';
+                const raw = (rm && rm.raw) ? rm.raw : (rm || {});
+                const dirTxt = raw.windowDir ? windowDirText(windowDirOf(raw.windowDir)) : '';
                 const baseParts = [];
                 if (s.wall) baseParts.push('벽 ' + s.wall.name);
                 if (s.floor) baseParts.push('바닥 ' + s.floor.name);
@@ -1310,27 +1344,46 @@
                 const wHex = s.wall && s.wall.hex ? s.wall.hex : '#f2eee8';
                 const fHex = s.floor && s.floor.hex ? s.floor.hex : '#e5ddcf';
                 const fabs = s.fabs || [];
-                let topSegs = '';
+
+                // 공간 전체 크기와 커튼 크기 비율 계산 (부분일 경우 벽이 더 넓게 드러남)
+                const sW = Number(raw.spaceWidth) || 0;
+                const cW = Number(raw.width) || 0;
+                let wallSideFlex = 1.2;
+                let curtTotalFlex = 3.6;
+                if (sW > 0 && cW > 0 && sW > cW) {
+                    const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
+                    curtTotalFlex = 6.0 * curtRatio;
+                    wallSideFlex = (6.0 - curtTotalFlex) / 2;
+                }
+
+                let midSegs = '';
                 if (fabs.length === 2 && fabs.some(f => f.k === '속지') && fabs.some(f => f.k === '겉지')) {
                     const drape = fabs.find(f => f.k === '겉지'), sheer = fabs.find(f => f.k === '속지');
-                    topSegs += seg('벽', wHex, 1.2);
-                    topSegs += seg('겉지', drape.hex, 0.9);
-                    topSegs += seg('속지', sheer.hex, 1.8);
-                    topSegs += seg('겉지', drape.hex, 0.9);
-                    topSegs += seg('벽', wHex, 1.2);
+                    const drapeFlex = curtTotalFlex * 0.25;
+                    const sheerFlex = curtTotalFlex * 0.5;
+                    midSegs += seg('벽', wHex, wallSideFlex);
+                    midSegs += seg('겉지', drape.hex, drapeFlex);
+                    midSegs += seg('속지', sheer.hex, sheerFlex);
+                    midSegs += seg('겉지', drape.hex, drapeFlex);
+                    midSegs += seg('벽', wHex, wallSideFlex);
                 } else if (fabs.length === 1) {
-                    topSegs += seg('벽', wHex, 1.3);
-                    topSegs += seg(fabs[0].k, fabs[0].hex, 2.4);
-                    topSegs += seg('벽', wHex, 1.3);
+                    midSegs += seg('벽', wHex, wallSideFlex);
+                    midSegs += seg(fabs[0].k, fabs[0].hex, curtTotalFlex);
+                    midSegs += seg('벽', wHex, wallSideFlex);
                 } else if (fabs.length > 0) {
-                    topSegs += seg('벽', wHex, 1.0);
-                    fabs.forEach(f => { topSegs += seg(f.k, f.hex, 1.2); });
-                    topSegs += seg('벽', wHex, 1.0);
+                    midSegs += seg('벽', wHex, wallSideFlex);
+                    const eachFlex = curtTotalFlex / fabs.length;
+                    fabs.forEach(f => { midSegs += seg(f.k, f.hex, eachFlex); });
+                    midSegs += seg('벽', wHex, wallSideFlex);
                 } else {
-                    topSegs += seg('벽', wHex, 3.0);
-                    if (s.fur && s.fur[0]) topSegs += seg(s.fur[0].n || '가구', s.fur[0].hex, 1.0);
+                    midSegs += seg('벽', wHex, 4.0);
+                    if (s.fur && s.fur[0]) midSegs += seg(s.fur[0].n || '가구', s.fur[0].hex, 1.2);
                 }
-                const swatchHtml = `<div class="arch-layer-box is-mini"><div class="arch-top-wall">${topSegs}</div><div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div></div>`;
+                const swatchHtml = `<div class="arch-layer-box is-mini">`
+                    + `<div class="arch-wall-beam" style="background:${wHex}"></div>`
+                    + `<div class="arch-mid-window">${midSegs}</div>`
+                    + `<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div>`
+                    + `</div>`;
                 h += '<div class="fin-layer-row">';
                 h += `<div class="fin-layer-rname font-serif-kr">${esc(s.name)}${dirTxt ? `<small>${esc(dirTxt)}향</small>` : ''}</div>`; // 41번: 남향
                 h += `<div class="arch-swatch">${swatchHtml}</div>`;
@@ -2078,7 +2131,11 @@
             const sameTypeCount = state.roomsCart.filter(r => r.name.startsWith(selectedName)).length;
             const displayName = sameTypeCount === 0 ? selectedName : `${selectedName} ${sameTypeCount + 1}`;
             state.editingRoomId = null;
-            state.editingRoom = { name: displayName, roomType: selectedName, addDraft: true, width: 0, height: 0, items: [], windowDir: [] }; // 41번
+            state.editingRoom = {
+                name: displayName, roomType: selectedName, addDraft: true,
+                sizeMode: 'full', spaceWidth: 0, spaceHeight: 0, partWidth: 0, partHeight: 0,
+                width: 0, height: 0, items: [], windowDir: []
+            }; // 41번, 43번
             goToStep("1.6-Add-Size");
         },
         // 크기 다음 색: 집 기본 색이 아직 없으면 색 재기, 있으면 "앞 공간과 같나요?"
@@ -2101,9 +2158,16 @@
             const d = state.editingRoom;
             if (!d || !d.addDraft) return;
             const house = houseColor();
+            const isPart = d.sizeMode === 'part' && ((d.partWidth > 0) || (d.width > 0));
+            const sW = Number(d.spaceWidth || d.width) || 0;
+            const sH = Number(d.spaceHeight || d.height) || 0;
+            const pW = Number(isPart ? (d.partWidth || d.width) : sW) || 0;
+            const pH = Number(isPart ? (d.partHeight || d.height) : sH) || 0;
             const room = {
                 id: newRoomId(), name: d.name, roomType: d.roomType,
-                width: Number(d.width) || 0, height: Number(d.height) || 0, // 41번
+                sizeMode: isPart ? 'part' : 'full',
+                spaceWidth: sW, spaceHeight: sH,
+                width: pW, height: pH, // 41번, 43번
                 floorTone: "warm", wallTone: "cool", lightLevel: "mid", mood: "soft_warm",
                 isConfigured: false, curtains: [], subtotal: 0,
                 colorSrc: src === 'first' ? 'measured' : (src === 'none' ? null : src),
@@ -2280,6 +2344,11 @@
             state.editingRoomId = r.id;
             state.editingRoom = {
                 id: r.id, name: r.name, editOnly: true, items: [],
+                sizeMode: r.sizeMode || 'full',
+                spaceWidth: r.spaceWidth || size.w,
+                spaceHeight: r.spaceHeight || size.h,
+                partWidth: r.sizeMode === 'part' ? size.w : 0,
+                partHeight: r.sizeMode === 'part' ? size.h : 0,
                 width: size.w, height: size.h,
                 floorTone: r.floorTone, wallTone: r.wallTone, diagnosed: r.diagnosed, cardParts: r.cardParts ? Object.assign({}, r.cardParts) : null, colorSrc: r.colorSrc || null,
                 measuredColor: r.measuredColor ? JSON.parse(JSON.stringify(r.measuredColor)) : null,
@@ -2313,7 +2382,16 @@
         saveRoomEdit: function() {
             const ed = state.editingRoom, r = state.roomsCart.find(x => x.id === state.editingRoomId);
             if (!ed || !r) return;
-            r.width = Number(ed.width) || r.width; r.height = Number(ed.height) || r.height;
+            const isPart = ed.sizeMode === 'part' && ((ed.partWidth > 0) || (ed.width > 0));
+            const sW = Number(ed.spaceWidth || ed.width) || r.spaceWidth || r.width;
+            const sH = Number(ed.spaceHeight || ed.height) || r.spaceHeight || r.height;
+            const pW = Number(isPart ? (ed.partWidth || ed.width) : sW) || r.width;
+            const pH = Number(isPart ? (ed.partHeight || ed.height) : sH) || r.height;
+            r.sizeMode = isPart ? 'part' : 'full';
+            r.spaceWidth = sW;
+            r.spaceHeight = sH;
+            r.width = pW;
+            r.height = pH;
             r.floorTone = ed.floorTone; r.wallTone = ed.wallTone; r.measuredColor = ed.measuredColor || null;
             r.cardParts = ed.cardParts || null;
             r.colorSrc = ed.colorSrc || null;
@@ -2631,7 +2709,9 @@
                     lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
                     roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
                     measuredColor: r.measuredColor || null,
-                    width: Number(r.width) || null, height: Number(r.height) || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
+                    width: Number(r.width) || null, height: Number(r.height) || null,
+                    spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null,
+                    colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                     isConfigured: r.curtains.length > 0,          // 공간 추가만 하고 아직 상담 전인 공간(커튼 없음)은 "상담하기"로
                     curtains: r.curtains.map(c => ({ ...c })),
                     subtotal: sub
@@ -2676,7 +2756,9 @@
                 name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
                 roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
                 measuredColor: r.measuredColor || null,
-                width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
+                width: r.width || null, height: r.height || null,
+                spaceWidth: r.spaceWidth || null, spaceHeight: r.spaceHeight || null, sizeMode: r.sizeMode || null,
+                colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                 curtains: r.isConfigured ? r.curtains : []
             }));
         },
@@ -2692,14 +2774,41 @@
             syncToV1MasterRooms();
             if (typeof window.printTicket === 'function') window.printTicket();
         },
-        // 치수 조금씩 바꾸기 (+100, −100, +1, −5 등, 41번). 0 미만 방지. 키패드가 열려 있으면 그 숫자도 함께 바뀜
+        // 크기 측정 모드 전환: 전체(공간 치수) / 부분(창/커튼 치수) (43번)
+        setSizeMode: function(mode) {
+            const ed = state.editingRoom;
+            if (!ed) return;
+            ed.sizeMode = mode;
+            if (mode === 'part') {
+                if (!ed.partWidth && ed.width) ed.partWidth = ed.width;
+                if (!ed.partHeight && ed.height) ed.partHeight = ed.height;
+                if (!ed.spaceWidth && ed.width) ed.spaceWidth = ed.width;
+                if (!ed.spaceHeight && ed.height) ed.spaceHeight = ed.height;
+            }
+            render();
+        },
+        // 치수 조금씩 바꾸기 (+100, −100, +1, −5 등, 41번, 43번). 0 미만 방지. 키패드가 열려 있으면 그 숫자도 함께 바뀜
         nudge: function(target, delta) {
             if (!state.editingRoom) return;
-            const v = Math.min(99999, Math.max(0, (parseInt(state.editingRoom[target], 10) || 0) + delta));
-            state.editingRoom[target] = v;
+            const ed = state.editingRoom;
+            const isPart = ed.sizeMode === 'part';
+            let curVal = 0;
+            if (target === 'width') curVal = isPart ? (ed.partWidth != null ? ed.partWidth : ed.width) : (ed.spaceWidth != null ? ed.spaceWidth : ed.width);
+            else curVal = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
+            const v = Math.min(99999, Math.max(0, (parseInt(curVal, 10) || 0) + delta));
+            if (target === 'width') {
+                if (isPart) { ed.partWidth = v; ed.width = v; }
+                else { ed.spaceWidth = v; ed.width = v; }
+            } else {
+                if (isPart) { ed.partHeight = v; ed.height = v; }
+                else { ed.spaceHeight = v; ed.height = v; }
+            }
             const boxVal = document.getElementById(`displayVal_${target}`);
             if (boxVal) boxVal.textContent = v;
-            if (state.keypadTarget === target) document.getElementById("v2KeypadValueDisplay").textContent = v;
+            if (state.keypadTarget === target) {
+                const kpDisp = document.getElementById("v2KeypadValueDisplay");
+                if (kpDisp) kpDisp.textContent = v;
+            }
         },
         openKeypad: function(target) {
             state.keypadTarget = target;
@@ -2707,8 +2816,15 @@
             const targetBox = document.getElementById(`measureBox_${target}`);
             if (targetBox) targetBox.classList.add('is-active');
 
-            document.getElementById("v2KeypadTargetLabel").textContent = target === "width" ? "넓이" : "높이";
-            document.getElementById("v2KeypadValueDisplay").textContent = state.editingRoom[target];
+            const ed = state.editingRoom;
+            const isPart = ed && ed.sizeMode === 'part';
+            let curVal = 0;
+            if (target === 'width') curVal = isPart ? (ed.partWidth != null ? ed.partWidth : ed.width) : (ed.spaceWidth != null ? ed.spaceWidth : ed.width);
+            else curVal = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
+
+            const lbl = target === "width" ? (isPart ? "창 넓이" : "공간 넓이") : (isPart ? "창 높이" : "공간 높이");
+            document.getElementById("v2KeypadTargetLabel").textContent = lbl;
+            document.getElementById("v2KeypadValueDisplay").textContent = curVal;
             document.getElementById("v2VirtualKeypadSheet").classList.add("active");
             positionKeypad(target);
         },
@@ -2717,16 +2833,29 @@
         },
         pressKey: function(k) {
             if (!state.keypadTarget || !state.editingRoom) return;
-            let val = String(state.editingRoom[state.keypadTarget] || "0");
+            const ed = state.editingRoom;
+            const isPart = ed.sizeMode === 'part';
+            let curVal = 0;
+            if (state.keypadTarget === 'width') curVal = isPart ? (ed.partWidth != null ? ed.partWidth : ed.width) : (ed.spaceWidth != null ? ed.spaceWidth : ed.width);
+            else curVal = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
+
+            let val = String(curVal || "0");
             if (k === "C") val = "0";
             else if (k === "DEL") val = val.length > 1 ? val.slice(0, -1) : "0";
             else val = val === "0" ? k : (val + k).slice(0, 5);
-            
-            state.editingRoom[state.keypadTarget] = parseInt(val, 10);
-            document.getElementById("v2KeypadValueDisplay").textContent = state.editingRoom[state.keypadTarget];
-            
+
+            const v = parseInt(val, 10);
+            if (state.keypadTarget === 'width') {
+                if (isPart) { ed.partWidth = v; ed.width = v; }
+                else { ed.spaceWidth = v; ed.width = v; }
+            } else {
+                if (isPart) { ed.partHeight = v; ed.height = v; }
+                else { ed.spaceHeight = v; ed.height = v; }
+            }
+            document.getElementById("v2KeypadValueDisplay").textContent = v;
+
             const boxVal = document.getElementById(`displayVal_${state.keypadTarget}`);
-            if (boxVal) boxVal.textContent = state.editingRoom[state.keypadTarget];
+            if (boxVal) boxVal.textContent = v;
         },
         // 최종 제안의 시공비 입력: 직원 화면과 맞춘 뒤 세로 제안서 합계는 즉시 갱신하고 종이는 잠깐 기다렸다가 다시 그림 (40-2)
         updateInstallFee: function(val) {
