@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261046';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261047';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261046';
+const REDAM_BUILD = '20261047';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -479,7 +479,7 @@ function collectConsultation() {
         phone: ((document.getElementById('custPhone') || {}).value || '').trim(),
         rooms: src.map(r => ({
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null,
-            roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
+            roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
             measuredColor: r.measuredColor || null,          // 방 색 재기로 잰 벽·바닥 색 (사진은 저장 안 함)
             width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 중심 화면: 공간 추가 때 정한 크기·색 출처
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
@@ -943,15 +943,15 @@ function renderDevicePhotos() {
     if (clearBtn) clearBtn.hidden = !keys.length;
     if (!listEl) return;
     const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    const groups = {}, scenes = { mood: [], feel: [] };
+    const groups = {}, scenes = { mood: [], feel: [], comp: [], blind: [] };
     keys.forEach(k => {
         const sl = k.indexOf('/');
-        if (sl > 0 && scenes[k.slice(0, sl)]) { scenes[k.slice(0, sl)].push(k); return; }      // 분위기·속지 느낌 사진 (34번 덧붙임)
+        if (sl > 0 && scenes[k.slice(0, sl)]) { scenes[k.slice(0, sl)].push(k); return; }      // 분위기·속지 느낌·창 구성·블라인드 종류 사진 (34·38번)
         const at = k.lastIndexOf('__'); const id = at > 0 ? k.slice(0, at) : k; (groups[id] = groups[id] || []).push({ key: k, color: at > 0 ? k.slice(at + 2) : '' });
     });
     const num = s => /^\d+$/.test(s) ? Number(s) : Infinity;
     const chip = (key, label) => `<button type="button" class="dev-photo-chip" title="이 사진 지우기" onclick="removeDevicePhoto('${esc(key)}')">${esc(label)}<i aria-hidden="true">×</i></button>`;
-    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진' };
+    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진', comp: '창 구성 사진', blind: '블라인드 종류 사진' };
     const sceneRows = Object.keys(scenes).filter(k => scenes[k].length).map(k => {
         const order = SCENE_PHOTOS[k];
         const chips = scenes[k].sort((a, b) => order.indexOf(a.split('/')[1]) - order.indexOf(b.split('/')[1])).map(key => chip(key, key.split('/')[1])).join('');
@@ -2478,7 +2478,8 @@ function closeFabricSearch(input) {
     setTimeout(() => {
         if (!input.isConnected || document.activeElement === input) return;
         if (input.nextElementSibling) input.nextElementSibling.hidden = true;
-        input.value = fabricSearchLabel(FABRIC_DB.find(f => f.id === input.dataset.fabricId));
+        const fab = FABRIC_DB.find(f => f.id === input.dataset.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(input.dataset.fabricId) : null);
+        input.value = fabricSearchLabel(fab);
     }, 200);
 }
 const INSTALL_TYPE_LABELS = { rail: '기본 레일', rail_2line: '패널 레일 (2줄)', rail_3line: '패널 레일 (3줄)', rod35: '35파이 봉', rod25: '25파이 봉' };
@@ -2532,7 +2533,7 @@ function renderRooms() {
 
         let curtainsHtml = "";
         room.curtains.forEach((c, curtainIndex) => {
-            let curFab = FABRIC_DB.find(f => f.id === c.fabricId);
+            let curFab = FABRIC_DB.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);
             if (!curFab && FABRIC_DB.length > 0) {
                 curFab = FABRIC_DB[0];
                 c.fabricId = curFab.id;
@@ -2849,6 +2850,7 @@ const TICKET_LIGHT_LABELS = { high: '햇빛 풍부', mid: '햇빛 은은', low: 
 const TICKET_BLOCK_LABELS = { light: '빛은 은은하게', soft: '빛은 적당히 가림', dark: '빛은 완전 차단' };
 const TICKET_PRIVACY_LABELS = { open: '바깥 시선 괜찮음', some: '바깥 시선 조금 신경', high: '바깥 시선 많이 신경' };
 const TICKET_FEEL_LABELS = { smooth: '속지는 깔끔·매끈하게', textured: '속지는 결이 살아 있게', cozy: '속지는 도톰·보송하게' };
+const TICKET_BLIND_LABELS = { combi: '콤비 블라인드', roll: '롤 블라인드', wood: '우드 블라인드', alu: '알루미늄 블라인드' };
 // 공간 진단 요약 한 줄 (고객 화면에서 진단을 거친 공간만)
 function ticketRoomSummary(r) {
     if (!r || !r.diagnosed) return '';
@@ -2859,12 +2861,15 @@ function ticketRoomSummary(r) {
     if (TICKET_BLOCK_LABELS[r.lightBlock]) parts.push(TICKET_BLOCK_LABELS[r.lightBlock]);
     if (TICKET_PRIVACY_LABELS[r.privacy]) parts.push(TICKET_PRIVACY_LABELS[r.privacy]);
     if (TICKET_FEEL_LABELS[r.sheerFeel]) parts.push(TICKET_FEEL_LABELS[r.sheerFeel]);
+    if (TICKET_BLIND_LABELS[r.blindWant]) parts.push(TICKET_BLIND_LABELS[r.blindWant]);
     if (MOOD_LABELS[r.wantMood]) parts.push(`${MOOD_LABELS[r.wantMood]} 분위기`);
     return parts.join(' · ');
 }
 // 품목별 추천 이유 (사장님이 분류한 원단 + 진단을 거친 공간만. 아니면 빈칸)
 function ticketItemReason(r, c) {
     if (!r || !r.diagnosed || !c || !c.fabricId) return '';
+    const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
+    if (sf) return '상담 때 실물 샘플로 보여 드릴게요';
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
@@ -2875,6 +2880,8 @@ function ticketItemReason(r, c) {
 // "원단을 고른 이유" 카드 셋째 줄: 손님이 답한 조건(바깥 시선·빛 가림·강한 햇빛)을 이 원단이 지켜 주는 점 하나. 없으면 빈칸(그 줄만 생략)
 function ticketKeepWord(r, c) {
     if (!r || !r.diagnosed || !c || !c.fabricId) return '';
+    const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
+    if (sf) return '상담 때 실물 샘플로 보여 드릴게요.';
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
@@ -2884,6 +2891,8 @@ function ticketKeepWord(r, c) {
 }
 // 고객에게 보여 줄 원단 이름: 괄호(폭·암막률·단가 등)·가격·앞의 책자 이름을 빼고, 색 표시(예: 3번 (그레이지))는 붙임
 function ticketFabricName(c, calc) {
+    const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
+    if (sf) return sf.name;
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return (calc && calc.fabName) || c.label || '원단';
     let n = String(f.name || '').replace(/\([^)]*\)/g, ' ').replace(/[0-9,]+\s*원/g, ' ').replace(/\s+/g, ' ').trim();
@@ -2898,7 +2907,7 @@ function ticketKindLabel(c) {
 // 사진이 없을 때 원단 칸을 채우는 색: 고른 색(없으면 원단)의 톤으로 짐작. 제안서·견적서·첫 화면 공간 칸이 함께 씀
 const FABRIC_TONE_FILL = { warm: '#dcc3a4', cool: '#b9c4cb', neutral: '#d3cdc3', deep: '#7a695c' };
 function fabricToneFill(fabricId, colorName) {
-    const f = FABRIC_DB.find(x => x.id === fabricId);
+    const f = FABRIC_DB.find(x => x.id === fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(fabricId) : null);
     if (!f) return '#d9cdbb';
     const col = colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(colorName)) : null;
     return FABRIC_TONE_FILL[(col && col.tone) || f.tone] || '#d9cdbb';
@@ -3024,9 +3033,10 @@ function ticketData() {
                 if (c.shapeFee > 0) opts.push('형상기억');
                 if (c.leadBand) opts.push('리드밴드');
                 if (c.hotelFit) opts.push('호텔핏');
+                const sampleOnly = !!(typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId));
                 return {
                     label: c.label, kind: ticketKindLabel(c), name: ticketFabricName(c, calc), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
-                    fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0,
+                    fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly,
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || ''),
@@ -3044,8 +3054,9 @@ function ticketData() {
             // 잇는 색은 넣지 않음 (사장님 10-16: 최종 제안에서는 고른 원단 자체가 잇는 색)
             // 속지만 + 바깥 시선이 신경 쓰이는 공간 (33번): 이유 카드 공간 아래 밤 안내 한 줄
             const night = (r.privacy === 'high' || r.privacy === 'some') && r.curtains.length > 0 && r.curtains.every(c => c.presetType === 'sheer');
+            const sampleOnly = items.length > 0 && items.every(i => i.sampleOnly);
             // raw: 이유 문장(35번)이 쓰는 공간 값(잰 색 Lab·창 방향·공간 종류·속지 느낌) · opp: 같은 이름 공간과 방향이 반대인 맞은편 창
-            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null, colors, night,
+            return { name: r.name, total: items.reduce((a, i) => a + i.price, 0), sampleOnly, items, summary: '', diagnosed: !!r.diagnosed, ans, linkDir: r.linkDir || null, colors, night,
                 raw: r, opp: oppositeRoomOf(r, rooms) };      // 공간 설명 줄은 뺌 (제안서가 길어져서)
         }),
         install: globalInstallFee,
@@ -3068,7 +3079,7 @@ function drawTicket(ctx, data, W, slim) {
     const START_Y = HEAD_Y + 56;                    // 첫 공간이 시작되는 높이 (표 머리 아래)
     const SW_W = slim ? 36 : 56, SW_H = slim ? 46 : 70;      // 원단 칸 (세로로 긴 네모)
     const KIND_W = 76;                              // slim: 종류 이름표 칸 폭
-    const NAME_Y = slim ? 40 : 74, NAME_LH = slim ? 34 : 38, NAME_PX = slim ? 23 : 26;      // 원단 이름 글줄 (품목 윗선에서 첫 줄까지 · 줄 간격 · 글자 크기 — 앞장들과 위계 통일, 39번)
+    const NAME_Y = slim ? 40 : 74, NAME_LH = slim ? 34 : 38, NAME_PX = slim ? 21 : 24;      // 원단 이름 글줄 (품목 윗선에서 첫 줄까지 · 줄 간격 · 글자 크기 — 앞장들과 위계 통일, 39번)
     const SIZE_R = RX - 190, SIZE_W = 170;          // "크기" 칸: 오른쪽 끝 위치와 폭 (그 오른쪽 190은 "금액" 칸)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
     const canSpace = 'letterSpacing' in ctx;
@@ -3111,7 +3122,7 @@ function drawTicket(ctx, data, W, slim) {
         setFont(400, 24, SERIF); text(data.recipient, CX, 154, 'left', MUTED);
         setFont(400, 20, SANS); label(data.date, RX, 154, 'right', 2);
         hline(CX, RX, HEAD_Y, DARK, 2.5);
-        setFont(500, 18, SANS);
+        setFont(400, 18, SANS);
         label('품목', CX, HEAD_Y + 36, 'left', 3);
         label('크기', SIZE_R, HEAD_Y + 36, 'right', 3);
         label('금액', RX, HEAD_Y + 36, 'right', 3);
@@ -3146,8 +3157,8 @@ function drawTicket(ctx, data, W, slim) {
     function drawRoom(L, y) {
         const { room, px, iw, tx, nx, blocks, headH } = L;
         hline(px, px + iw, y, LINE, 1);
-        setFont(400, 25, SERIF); text(room.name, px, y + (slim ? 42 : 46), 'left', DARK);
-        setFont(400, 24, SERIF); text(won(room.total), px + iw, y + (slim ? 42 : 46), 'right', DARK);
+        setFont(400, 24, SERIF); text(room.name, px, y + (slim ? 42 : 46), 'left', DARK);
+        if (!room.sampleOnly) { setFont(400, 23, SERIF); text(won(room.total), px + iw, y + (slim ? 42 : 46), 'right', DARK); }
         let by = y + headH;
         blocks.forEach(b => {
             // 원단 칸: 사진이 있으면 가운데를 잘라 넣고, 없으면 톤 색으로 채움
@@ -3158,12 +3169,12 @@ function drawTicket(ctx, data, W, slim) {
                 const k = Math.max(SW_W / sw, SW_H / sh), cw = SW_W / k, ch = SW_H / k;
                 ctx.drawImage(b.photo, (sw - cw) / 2, (sh - ch) / 2, cw, ch, px, swY, SW_W, SW_H);
             }
-            setFont(500, 19, SANS); label(b.it.kind, tx, slim ? by + NAME_Y : by + 36, 'left', 3);
+            setFont(400, 19, SANS); label(b.it.kind, tx, slim ? by + NAME_Y : by + 36, 'left', 3);
             setFont(400, NAME_PX, SERIF);
             b.lines.forEach((ln, li) => text(ln, nx, by + NAME_Y + li * NAME_LH, 'left', DARK));
             let ty = by + NAME_Y + (b.lines.length - 1) * NAME_LH;
             if (b.it.size) { setFont(400, slim ? 20 : 22, SANS); text(b.it.size, SIZE_R, by + NAME_Y, 'right', MUTED); }
-            setFont(400, slim ? 23 : 25, SERIF); text(won(b.it.price), px + iw, by + NAME_Y, 'right', DARK);
+            if (!b.it.sampleOnly) { setFont(400, slim ? 22 : 24, SERIF); text(won(b.it.price), px + iw, by + NAME_Y, 'right', DARK); }
             setFont(400, 20, SANS);
             if (b.metaInline) text(b.it.meta, nx + b.lastW + 14, ty, 'left', MUTED);
             b.metaLines.forEach(ln => { ty += 32; text(ln, nx, ty, 'left', MUTED); });
@@ -3196,19 +3207,19 @@ function drawTicket(ctx, data, W, slim) {
         if (data.install > 0) {
             hline(CX, RX, y, LINE, 1);
             setFont(400, 22, SANS); text('시공 및 설치비', CX, y + 48, 'left', MUTED);
-            setFont(400, 24, SERIF); text(won(data.install), RX, y + 48, 'right', DARK);
+            setFont(400, 23, SERIF); text(won(data.install), RX, y + 48, 'right', DARK);
             y += 76;
         }
         hline(CX, RX, y, DARK, 2);
         y += 96;
-        setFont(500, 20, SANS); label('합계 금액 (시공비 포함)', CX, y - 6, 'left', 3);
+        setFont(400, 20, SANS); label('합계 금액 (시공비 포함)', CX, y - 6, 'left', 3);
         setFont(400, 24, SERIF);
         const wonW = ctx.measureText('원').width;
         text('원', RX, y, 'right', DARK);
-        setFont(400, 56, SERIF); text(data.total, RX - wonW - 8, y, 'right', DARK);      // 합계 숫자도 볼드 없이 400 명조로 단정하게 (39번)
+        setFont(400, 52, SERIF); text(data.total, RX - wonW - 8, y, 'right', DARK);      // 합계 숫자도 볼드 없이 400 명조로 단정하게 (39번)
         y += 54;
         const infoRow = (name, lines, color) => {
-            setFont(500, 19, SANS); label(name, CX, y, 'left', 3);
+            setFont(400, 19, SANS); label(name, CX, y, 'left', 3);
             setFont(400, 22, SANS);
             lines.forEach((ln, i) => text(ln, INFO_X, y + i * INFO_LH, 'left', color));
             y += lines.length * INFO_LH + INFO_GAP;
@@ -3319,7 +3330,7 @@ function whyRoomCtx(room) {
     };
 }
 function whyItemFacts(it, R) {
-    const f = FABRIC_DB.find(x => x.id === it.fabricId) || {};
+    const f = FABRIC_DB.find(x => x.id === it.fabricId) || (typeof sampleBlindFabric === 'function' && sampleBlindFabric(it.fabricId)) || {};
     const kind = it.kindKey === 'sheer' ? 'sheer' : (it.kindKey === 'blind' ? 'blind' : 'drape');
     const col = whyFabricColor(it.fabricId, it.colorName);
     return { it, f, kind, hex: col && col.hex, lab: col && typeof col.L === 'number' ? col : null, link: it.pickDir || R.room.linkDir || null,
@@ -3531,9 +3542,9 @@ function drawWhy(ctx, data, W, compact, title) {
             chipW = C_SW + 10 + ctx.measureText(set.hex).width + 16;
             ops.push({ chip: set.hex, y: cy });
         }
-        setFont(500, B_SIZE + 1, SANS);
+        setFont(400, B_SIZE, SANS);
         const hl = wrap(`${set.it.kind} · ${name}`, colW, colW - chipW);
-        hl.forEach((ln, i) => { ops.push({ t: ln, f: [500, B_SIZE + 1, SANS], c: DARK, y: cy, x: i === 0 ? chipW : 0 }); if (i < hl.length - 1) cy += B_LH; });
+        hl.forEach((ln, i) => { ops.push({ t: ln, f: [400, B_SIZE, SANS], c: DARK, y: cy, x: i === 0 ? chipW : 0 }); if (i < hl.length - 1) cy += B_LH; });
         if (set.it.colorDesc) {
             const lastX = (hl.length === 1 ? chipW : 0) + ctx.measureText(hl[hl.length - 1]).width;
             setFont(400, B_SIZE, SANS);
@@ -3868,7 +3879,7 @@ function drawHouseMap(ctx, sp) {
         ctx.textAlign = pick[2]; ctx.lineJoin = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = PAPER; ctx.strokeText(t, pick[0], pick[1]);
         ctx.fillStyle = color; ctx.fillText(t, pick[0], pick[1]);
     };
-    pts.filter(p => p.m.t === 'c').forEach(p => put(p, p.m.who.join('·') + ' ' + p.m.k, 15, 500, '#2b221a'));
+    pts.filter(p => p.m.t === 'c').forEach(p => put(p, p.m.who.join('·') + ' ' + p.m.k, 15, 400, '#2b221a'));
     pts.filter(p => p.m.t !== 'c').forEach(p => {
         const t = p.m.t === 's' ? ((p.m.who.length === sp.length && sp.length > 1) ? p.m.k : p.m.who.join('·') + ' ' + p.m.k) : p.m.who[0] + ' ' + p.m.k;
         put(p, t, 13, 400, '#8a7a6a');
@@ -3887,7 +3898,7 @@ function planHouse(data) {
         const Q_SIZE = compact ? 23 : 25, Q_LH = compact ? 38 : 42;          // 총평 (400 명조, 이유 카드 손님 말과 같은 크기·굵기, 39번)
         const N_SIZE = compact ? 22 : 24, NAME_W = 148;                        // 공간 이름 (400 명조, 이유 카드와 같은 크기·폭, 39번)
         const C_SIZE = compact ? 18 : 19, C_SW = compact ? 18 : 19, C_LH = compact ? 30 : 32;      // 윗줄 칩
-        const F_SIZE = compact ? 19 : 20, F_LH = compact ? 30 : 32;            // 아랫줄 원단 (볼드 없이 500 고딕 + 짙은 색 DARK)
+        const F_SIZE = compact ? 19 : 20, F_LH = compact ? 30 : 32;            // 아랫줄 원단 (볼드 없이 400 고딕 + 짙은 색 DARK, 39번)
         const ctx = document.createElement('canvas').getContext('2d');
         const wrap = (str, maxW) => {
             const lines = []; let cur = '';
@@ -3920,7 +3931,7 @@ function planHouse(data) {
             if (s.floor) tops.push({ hex: s.floor.hex, t: '바닥 ' + s.floor.name, shape: 's' });
             s.fur.forEach(f => tops.push({ hex: f.hex, t: `${f.n} ${f.name}`.trim(), shape: 'd' }));
             const topRows = flow(tops.map(c => Object.assign(c, { w: C_SW + 9 + ctx.measureText(c.t).width })), RW, 24);
-            ctx.font = `500 ${F_SIZE}px ${SANS}`;
+            ctx.font = `400 ${F_SIZE}px ${SANS}`;
             const fabRows = flow(s.fabs.map(f => ({ hex: f.hex, t: `${f.k} · ${f.nm}`, shape: 'c', w: F_SIZE + 10 + ctx.measureText(`${f.k} · ${f.nm}`).width })), RW, 28);
             const h = 20 + topRows.length * C_LH + (topRows.length ? 6 : 0) + fabRows.length * F_LH + 14;
             return { s, topRows, fabRows, h };
@@ -3983,7 +3994,7 @@ function planHouse(data) {
                         const x = CX + NAME_W + ch.x, r = F_SIZE / 2;
                         c.beginPath(); c.arc(x + r, yy - F_SIZE * 0.35, r, 0, Math.PI * 2); c.fillStyle = ch.hex; c.fill();
                         c.lineWidth = 1; c.strokeStyle = 'rgba(43,34,26,0.15)'; c.stroke();
-                        c.font = `500 ${F_SIZE}px ${SANS}`; c.fillStyle = DARK; c.textAlign = 'left'; c.fillText(ch.t, x + F_SIZE + 10, yy);
+                        c.font = `400 ${F_SIZE}px ${SANS}`; c.fillStyle = DARK; c.textAlign = 'left'; c.fillText(ch.t, x + F_SIZE + 10, yy);
                     });
                     yy += F_LH;
                 });
@@ -4268,7 +4279,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 mood: r.mood || "soft_warm",
                 wantMood: r.wantMood || null,
                 roomType: r.roomType || null,
-                lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
+                lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null,
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 measuredColor: r.measuredColor || null,
                 // 중심 화면(20번): 공간 추가 때 적은 크기 · 색 출처 · 카드로 고른 부분 · 색 잇기 (직원 화면을 거쳐도 빠지지 않게)

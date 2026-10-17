@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261046';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261047';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -307,14 +307,22 @@ function blackoutLevel(f) {
 }
 
 // ---- 블라인드 자동 분류 (엑셀 비고·품명으로 판단. 사장님은 톤·분위기만 지정) ----
-const BLIND_KIND_LABELS = { combi: '콤비', roll: '롤', print: '프린트' };
+const BLIND_KIND_LABELS = { combi: '콤비', roll: '롤', print: '프린트', wood: '우드', alu: '알루미늄' };
 const BLIND_LIGHT_LABELS = { full: '암막', none: '일반', see: '투시' };
-// 비고 칸: "TRIPLE & COMBI" → 콤비, "ROLL TYPE" → 롤, "PRINTED FABRIC BLINDS" → 프린트
+// 우드·알루미늄 등 아직 단가표에 없는 블라인드를 골랐을 때의 실물 상담용 임시 품목 (38-2)
+const SAMPLE_BLIND_ITEMS = {
+    _sample_wood: { id: '_sample_wood', book: '실물 샘플', name: '우드 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'warm', blindKind: 'wood', sampleOnly: true },
+    _sample_alu: { id: '_sample_alu', book: '실물 샘플', name: '알루미늄 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'cool', blindKind: 'alu', sampleOnly: true }
+};
+function sampleBlindFabric(id) { return SAMPLE_BLIND_ITEMS[id] || null; }
+// 비고 칸: "TRIPLE & COMBI" → 콤비, "ROLL TYPE" → 롤, "PRINTED FABRIC BLINDS" → 프린트, "WOOD" → 우드, "ALU" → 알루미늄 (38-2)
 function detectBlindKind(note) {
     const s = String(note || '').toUpperCase();
     if (/COMBI|TRIPLE|콤비|트리플/.test(s)) return 'combi';
     if (/ROLL|롤/.test(s)) return 'roll';
     if (/PRINT|프린트/.test(s)) return 'print';
+    if (/WOOD|우드/.test(s)) return 'wood';
+    if (/ALU|알루미늄/.test(s)) return 'alu';
     return null;
 }
 function blindKind(f) { return (f && f.blindKind && BLIND_KIND_LABELS[f.blindKind]) ? f.blindKind : null; }
@@ -494,7 +502,16 @@ function calculateFabricMatchScore(fabric, room, category) {
             light: { full: -1, none: 2, see: 4 }
         }[room.lightBlock];
         if (table) score += table[bl] || 0;
-        if (kind === 'combi' && room.lightBlock !== 'dark') score += 1;      // 각도 조절이 되어 빛 양을 맞추기 쉬움
+        if (kind === 'combi' && room.lightBlock !== 'dark') score += 1;      // 빛을 들일 만큼만 맞추기 쉬움
+    }
+    // 블라인드 종류 취향 (38-2): 고른 종류와 같으면 +8, 다르면 -4 (프린트는 무늬 차이라 콤비·롤 안에서 감점 없이 섞임)
+    if (category === '블라인드' && room.blindWant && room.blindWant !== 'any') {
+        const kind = blindKind(fabric);
+        if (kind) {
+            if (kind === room.blindWant) score += 8;
+            else if (kind === 'print' && (room.blindWant === 'combi' || room.blindWant === 'roll')) score += 0;
+            else score -= 4;
+        }
     }
 
     if (fabric.categoryType === category) score += 2;
@@ -540,12 +557,20 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
             : room.lightBlock === 'light' && (b === 'none' || b === 'mid') ? '햇빛이 은은히 스미는 원단' : '';
         if (msg) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
+    if (category === '블라인드' && room.blindWant && room.blindWant !== 'any') {
+        const kind = blindKind(fabric);
+        const msg = room.blindWant === 'combi' && kind === 'combi' ? '빛을 들일 만큼만 맞추는 콤비'
+            : room.blindWant === 'roll' && kind === 'roll' ? '실용적이고 깔끔한 롤'
+            : room.blindWant === 'wood' && kind === 'wood' ? '나무 결이 살아 있는 우드'
+            : room.blindWant === 'alu' && kind === 'alu' ? '얇고 깨끗한 알루미늄' : '';
+        if (msg) { parts.unshift(msg); said.unshift(msg); }   // 고객이 고른 블라인드 종류 (38-2)
+    }
     if (category === '블라인드' && room.lightBlock) {
         const bl = blindLight(fabric), kind = blindKind(fabric);
         const msg = room.lightBlock === 'dark' && bl === 'full' ? '빛을 거의 막는 암막'
             : room.lightBlock === 'light' && bl === 'see' ? '풍경은 살리고 햇빛만 거르는 투시'
-            : room.lightBlock !== 'dark' && kind === 'combi' ? '각도로 빛을 맞추는 콤비' : '';
-        if (msg) { parts.unshift(msg); said.unshift(msg); }
+            : room.lightBlock !== 'dark' && kind === 'combi' ? '빛을 들일 만큼만 맞추는 콤비' : '';
+        if (msg) { if (!parts.includes(msg)) parts.unshift(msg); said.unshift(msg); }
     }
     if (onlySaid) return said[0] || '';
     // 짧은 말로 끝냄(예: 깔끔하고 매끈한 결). 원단 고르는 칸은 1개만, 제안서는 2개까지
@@ -624,6 +649,8 @@ function customerFacts(fabric) {
 // 34번: 기기에 넣은 사진(직원 화면 › 사진 › 사진 불러오기, IndexedDB)이 있으면 그것을 먼저 씀 → 없으면 photos/ 주소 → 없으면 색 질감
 //  colorOnly: 색 사진 주소만 (대표 사진은 빼고)
 function fabricPhotoUrls(id, color, colorOnly) {
+    const sf = sampleBlindFabric(id);
+    if (sf) return [scenePhotoUrl('blind', 'blind_' + sf.blindKind)];
     const col = normalizeColorName(color);
     const repo = repoPhotoUrls(id, col);
     const dev = DevicePhotos.urlOf(id, col);
@@ -643,10 +670,12 @@ function repoPhotoUrls(id, color) {
     return [cb + '.jpg', cb + '.webp', cb + '.png'].concat(generic);
 }
 
-// 분위기·속지 느낌 장면 사진 이름 (photos/mood/, photos/feel/의 기본값. 같은 이름으로 기기에 넣으면 그것이 먼저 — 34번 덧붙임)
+// 분위기·속지 느낌·창 구성·블라인드 종류 장면 사진 이름 (photos/mood/, photos/feel/, photos/comp/, photos/blind/의 기본값. 같은 이름으로 기기에 넣으면 그것이 먼저 — 34·38번)
 const SCENE_PHOTOS = {
     mood: ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'],
-    feel: ['feel_smooth', 'feel_textured', 'feel_cozy']
+    feel: ['feel_smooth', 'feel_textured', 'feel_cozy'],
+    comp: ['comp_double', 'comp_sheer', 'comp_drape', 'comp_blind'],
+    blind: ['blind_combi', 'blind_roll', 'blind_wood', 'blind_alu']
 };
 // 장면 사진 주소: 기기 사진 → 저장소 기본값
 function scenePhotoUrl(folder, name) {
@@ -704,10 +733,10 @@ const DevicePhotos = (() => {
         const m = /^(.+?)\.(jpe?g|png|webp)$/i.exec(raw);
         if (!m) return { why: 'jpg·png·webp 사진이 아님' };
         const stem = m[1].trim();
-        // 분위기·속지 느낌 장면 사진(34번 덧붙임): 이름이 정해진 9장. 키는 "mood/mood_01_cozy"처럼 폴더/이름
+        // 분위기·속지 느낌·창 구성·블라인드 종류 장면 사진(34·38번): 이름이 정해진 사진들. 키는 "mood/mood_01_cozy"처럼 폴더/이름
         const folder = Object.keys(SCENE_PHOTOS).find(k => SCENE_PHOTOS[k].includes(stem.toLowerCase()));
         if (folder) return { scene: folder + '/' + stem.toLowerCase() };
-        if (/^(mood|feel)_/i.test(stem)) return { why: '분위기·속지 느낌 사진 이름이 아님(mood_01_cozy~mood_06_bright, feel_smooth·feel_textured·feel_cozy)' };
+        if (/^(mood|feel|comp|blind)_/i.test(stem)) return { why: '장면 사진 이름이 아님(mood_01_cozy~mood_06_bright, feel_*, comp_*, blind_*)' };
         const at = stem.lastIndexOf('__');
         const id = (at > 0 ? stem.slice(0, at) : stem).trim();
         const color = at > 0 ? normalizeColorName(stem.slice(at + 2)) : '';

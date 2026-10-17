@@ -4,7 +4,7 @@
    - 외부 도구(Tailwind·아이콘·글꼴 등): 처음 한 번 받아 저장해 두고 이후엔 저장본 사용
    ========================================================================== */
 // 앱 버전: 바꾸면 탭이 새 서비스 워커를 받아 앱 파일을 다시 받아 둠 (CACHE 이름은 그대로 — 바꾸면 미리 받아 둔 사진까지 지워짐)
-const BUILD = '20261046';
+const BUILD = '20261047';
 const CACHE = 'redam-app-v1';
 const SCOPE = self.registration.scope;
 
@@ -49,6 +49,11 @@ async function precache() {
     // 속지 느낌 장면 3장도 같이 (10-15)
     ['feel_smooth', 'feel_textured', 'feel_cozy']
         .forEach(n => urls.add(new URL('photos/feel/' + n + '.jpg', SCOPE).href));
+    // 창 구성 4장 · 블라인드 종류 4장도 같이 (38번)
+    ['comp_double', 'comp_sheer', 'comp_drape', 'comp_blind']
+        .forEach(n => urls.add(new URL('photos/comp/' + n + '.jpg', SCOPE).href));
+    ['blind_combi', 'blind_roll', 'blind_wood', 'blind_alu']
+        .forEach(n => urls.add(new URL('photos/blind/' + n + '.jpg', SCOPE).href));
 
     await Promise.allSettled([...urls].map(async href => {
         const local = href.startsWith(self.location.origin);

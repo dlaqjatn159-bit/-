@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261046';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261047';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -29,19 +29,34 @@
         return `url('${scenePhotoUrl('mood', name)}') center / cover no-repeat, ${fallback}`;
     }
 
-    // 분위기 사진 6장 미리 받기: 앱을 켜면 뒤에서 받아 두고 decode(그릴 준비)까지 끝내 둠
-    // → 분위기 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15)
-    let finalPage = 0, finalCardCount = 0, finalHouseCount = 0, lastRenderedStep = null;      // 최종 제안의 쪽 넘기기 (우리 집 색 → 원단을 고른 이유 → 견적서). cardCount = 견적서 앞 쪽 수(우리 집 색 포함)
+    // 창 구성·블라인드 종류 카드 배경 (38번): photos/comp/, photos/blind/ 사진. 기기 사진이 있으면 먼저, 안 뜨면 색 질감
+    function compBg(name, fallback) {
+        return `url('${scenePhotoUrl('comp', name)}') center / cover no-repeat, ${fallback}`;
+    }
+    function blindBg(name, fallback) {
+        return `url('${scenePhotoUrl('blind', name)}') center / cover no-repeat, ${fallback}`;
+    }
+
+    // 분위기·속지 느낌·창 구성·블라인드 종류 사진을 미리 받기: 앱을 켜면 뒤에서 받아 두고 decode(그릴 준비)까지 끝내 둠
+    // → 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15, 38번)
+    let finalPage = 0, finalCardCount = 0, finalHouseCount = 0, finalZoom = false, lastRenderedStep = null;      // 최종 제안의 쪽 넘기기·크게 보기(39번). cardCount = 견적서 앞 쪽 수(우리 집 색 포함)
     const PICK_PAUSE_MS = 220;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 450일 때 "렉 같다"는 말이 있어 줄임(10-15). 더 여유를 주려면 300~350
     const MOOD_PHOTOS = SCENE_PHOTOS.mood;
     const FEEL_PHOTOS = SCENE_PHOTOS.feel;   // 속지 느낌 3장도 같이 미리 받음 (10-15)
+    const COMP_PHOTOS = SCENE_PHOTOS.comp || [];   // 창 구성 4장 (38-1)
+    const BLIND_PHOTOS = SCENE_PHOTOS.blind || []; // 블라인드 종류 4장 (38-2)
     (function preloadMoodPhotos() {
-        // 기기 사진을 다 읽은 뒤, 기기에 있는 것은 기기 사진을 (34번 덧붙임)
-        const run = () => DevicePhotos.ready.then(() => MOOD_PHOTOS.map(n => scenePhotoUrl('mood', n)).concat(FEEL_PHOTOS.map(n => scenePhotoUrl('feel', n))).forEach(src => {
-            const im = new Image();
-            im.src = src;
-            if (im.decode) im.decode().catch(() => {});
-        }));
+        // 기기 사진을 다 읽은 뒤, 기기에 있는 것은 기기 사진을 (34·38번)
+        const run = () => DevicePhotos.ready.then(() => []
+            .concat(MOOD_PHOTOS.map(n => scenePhotoUrl('mood', n)))
+            .concat(FEEL_PHOTOS.map(n => scenePhotoUrl('feel', n)))
+            .concat(COMP_PHOTOS.map(n => scenePhotoUrl('comp', n)))
+            .concat(BLIND_PHOTOS.map(n => scenePhotoUrl('blind', n)))
+            .forEach(src => {
+                const im = new Image();
+                im.src = src;
+                if (im.decode) im.decode().catch(() => {});
+            }));
         // 첫 화면 그리기를 방해하지 않게 한가할 때 받음 (구형 브라우저는 1초 뒤)
         if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2000 }); else setTimeout(run, 1000);
     })();
@@ -167,13 +182,13 @@
             mood: r.mood || "soft_warm",
             wantMood: r.wantMood || null,
             roomType: r.roomType || null,
-            lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null,
+            lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null,
             diagnosed: !!r.diagnosed,
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
             width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
-                let realFab = liveDb.find(f => f.id === c.fabricId);
+                let realFab = liveDb.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);
                 if (!realFab) {
                     if (isBlind) {
                         realFab = liveDb.find(f => f.categoryType === '블라인드' || f.calcType === 'hebe') || liveDb[0];
@@ -331,7 +346,13 @@
         if (canLink(ed)) steps.push("2-Base-Link");
         steps.push("2-Base-Mood");
         if (state.step === "2-Base-SheerFeel" || items.some(i => i.presetType === 'sheer')) steps.push("2-Base-SheerFeel");
+        if (state.step === "2-Base-BlindKind" || items.some(i => i.presetType === 'blind')) steps.push("2-Base-BlindKind");
         return steps;
+    }
+    // 고른 블라인드 종류가 지금 단가표 목록에 있는지 확인 (우드·알루미늄처럼 아직 목록에 없으면 실물 샘플 안내로, 38-2)
+    function hasBlindKindInPool(want) {
+        if (!want || want === 'any') return true;
+        return getLiveCategoryPool('블라인드').some(f => typeof blindKind === 'function' && blindKind(f) === want);
     }
     // 색 잇기를 물을 수 있는 공간: 벽·바닥을 둘 다 잰 색이 있고(카드로만 고른 공간은 아님), 블라인드가 아님 (블라인드 색 데이터 없음)
     function canLink(ed) {
@@ -352,7 +373,7 @@
         lightBlock: { light: '빛은 들어와도 좋아요', soft: '눈부심만 줄이고 싶어요', dark: '빛을 거의 막고 싶어요' },
         privacy: { open: '밖의 시선은 신경 쓰이지 않아요', some: '낮엔 적당히 가려지면 좋아요', high: '밖에서 잘 안 보였으면 해요' }
     };
-    const HEARD_COMP = { double: '이중 커튼 · 호텔처럼', sheer_only: '속지 커튼 · 은은한 채광', drape_only: '겉지 커튼 · 빛 차단', blind_only: '블라인드 · 빛 각도 조절' };
+    const HEARD_COMP = { double: '이중 커튼 · 호텔처럼', sheer_only: '속지 커튼 · 은은한 채광', drape_only: '겉지 커튼 · 빛 차단', blind_only: '블라인드 · 창틀 안에 깔끔하게' };
     function compKeyOf(ed) {
         const t = (ed.items || []).map(i => i.presetType);
         if (t.includes('blind')) return 'blind_only';
@@ -975,6 +996,19 @@
                 html += '</div></div>';
                 break;
 
+            // [블라인드 종류 고르기: 블라인드 구성에서 한 번 (38-2)]
+            case "2-Base-BlindKind":
+                html += '<div class="bookmark-stage">';
+                html += stepHead('어떤 블라인드가 좋으세요?');
+                html += `<button type="button" class="step-skip${was('blindWant', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectBlindKind('any')">잘 모르겠어요 · 추천대로</button>`;
+                html += '<div class="bookmark-canvas" style="--items-count: 4;">';
+                html += renderBookmarkCard("콤비", "빛을 들일 만큼만", "", blindBg('blind_combi', SOLID_TEXTURES.l1), function() { window.concierge.selectBlindKind('combi'); }, 'vdesc' + was('blindWant', 'combi'));
+                html += renderBookmarkCard("롤", "실용적인 기본", "", blindBg('blind_roll', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectBlindKind('roll'); }, 'vdesc' + was('blindWant', 'roll'));
+                html += renderBookmarkCard("우드", "나무 결 그대로", "", blindBg('blind_wood', SOLID_TEXTURES.oak), function() { window.concierge.selectBlindKind('wood'); }, 'vdesc' + was('blindWant', 'wood'));
+                html += renderBookmarkCard("알루미늄", "얇고 깨끗하게", "", blindBg('blind_alu', SOLID_TEXTURES.tile), function() { window.concierge.selectBlindKind('alu'); }, 'vdesc' + was('blindWant', 'alu'));
+                html += '</div></div>';
+                break;
+
             // [Step 2-4: 희망 분위기 선택]
             case "2-Base-Mood":
                 html += '<div class="bookmark-stage">';
@@ -1000,18 +1034,34 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('창을 어떻게 구성할까요?', recComp ? '빛과 시선 답에 맞는 구성을 표시했어요' : '');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("이중 커튼", "호텔처럼", "", SOLID_TEXTURES.l1, function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
+                html += renderBookmarkCard("이중 커튼", "호텔처럼", "", compBg('comp_double', SOLID_TEXTURES.l1), function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
                 // 바깥 시선이 신경 쓰이는 공간: 속지만이면 밤에는 그림자가 비칠 수 있다고 솔직하게 (33번, 이중커튼은 겉지가 가려 줌)
                 const sheerNight = (state.editingRoom.privacy === 'high' || state.editingRoom.privacy === 'some') ? SHEER_NIGHT_NOTE : '';
-                html += renderBookmarkCard("속지 커튼", "은은한 채광", "", SOLID_TEXTURES.l2, function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'), sheerNight);
-                html += renderBookmarkCard("겉지 커튼", "빛 차단", "", SOLID_TEXTURES.l3, function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
-                html += renderBookmarkCard("블라인드", "빛 각도 조절", "", SOLID_TEXTURES.oak, function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
+                html += renderBookmarkCard("속지 커튼", "은은한 채광", "", compBg('comp_sheer', SOLID_TEXTURES.l2), function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'), sheerNight);
+                html += renderBookmarkCard("겉지 커튼", "빛 차단", "", compBg('comp_drape', SOLID_TEXTURES.l3), function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
+                html += renderBookmarkCard("블라인드", "창틀 안에 깔끔하게", "", compBg('comp_blind', SOLID_TEXTURES.oak), function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
                 html += '</div></div>';
                 break;
 
             // [Step 3.5: 감성 앰비언트 브릿지]
-            case "3.5-Bridge":
+            case "3.5-Bridge": {
                 const curItem = state.pendingItemQueue[state.currentItemIndex];
+                const bw = state.editingRoom && state.editingRoom.blindWant;
+                // 우드·알루미늄처럼 아직 목록에 없는 종류는 실물 샘플로 안내하고 바로 담음 (38-2)
+                if (curItem.presetType === 'blind' && bw && bw !== 'any' && !hasBlindKindInPool(bw)) {
+                    const kindName = (typeof BLIND_KIND_LABELS !== 'undefined' && BLIND_KIND_LABELS[bw]) || '선택하신';
+                    const subText = bw === 'wood' ? '나무 결과 색감은 창가에서 실제로 대 보며 고르는 편이 정확해요.'
+                        : (bw === 'alu' ? '슬랫 두께와 색감은 창가에서 실제로 대 보며 고르는 편이 정확해요.'
+                        : '실제 샘플을 창가에 대 보며 어울리는 색을 골라 드려요.');
+                    html += '<div class="ambient-stage" onclick="window.concierge.proceedSampleBlind()">';
+                    html += '<div class="ambient-light-glow"></div>';
+                    html += `<span class="q-meta">${state.editingRoom.name} · 블라인드 안내</span>`;
+                    html += `<h2 class="q-title font-serif-kr">${kindName} 블라인드는 상담 때<br>실물 샘플로 보여 드릴게요.</h2>`;
+                    html += `<p class="q-sub font-serif-kr">${subText}</p>`;
+                    html += '<div class="q-hint font-serif-kr"><span>이 공간에 담아 두기</span><i class="fa-solid fa-arrow-right text-xs"></i></div>';
+                    html += '</div>';
+                    break;
+                }
                 const typeLabel = curItem.presetType === 'sheer' ? '속지' : (curItem.presetType === 'drape' ? '겉지' : '블라인드');
                 html += '<div class="ambient-stage" onclick="window.concierge.proceedToFabricQueue()">';
                 html += '<div class="ambient-light-glow"></div>';
@@ -1021,6 +1071,7 @@
                 html += '<div class="q-hint font-serif-kr"><span>원단 보기</span><i class="fa-solid fa-arrow-right text-xs"></i></div>';
                 html += '</div>';
                 break;
+            }
 
             // [Step 4: 실제 FABRIC_DB 기반 원단 3종 쇼케이스]
             case "4-Fabric-Queue":
@@ -1123,8 +1174,8 @@
             // [Step 7: 최종 제안 = 견적서] 저장·인쇄되는 견적서 이미지(app.js drawTicket)를 종이 한 장처럼 가운데에 그대로 보여 줌
             // 공간 화면(고치고 더하는 화면)과 일부러 다른 모양: 여기는 "발행된 문서". 버튼과 시공비 입력은 종이 밖 오른쪽
             case "7-Final-Dossier": {
-                if (lastRenderedStep !== "7-Final-Dossier") finalPage = 0;      // 최종 제안에 새로 들어오면 첫 쪽(원단을 고른 이유)부터
-                html += '<div class="fin-stage">';
+                if (lastRenderedStep !== "7-Final-Dossier") { finalPage = 0; finalZoom = false; }      // 최종 제안에 새로 들어오면 첫 쪽·기본 크기부터
+                html += `<div class="fin-stage${finalZoom ? ' is-zoom' : ''}">`;
                 html += '<div class="fin-paper" id="finPaper"><p class="fin-wait font-serif-kr">견적서를 준비하고 있어요</p></div>';
                 html += '<aside class="fin-side">';
                 html += `<p class="fin-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${currentCust} 고객님` : '고객님'}<br>맞춤 제안</p>`;
@@ -1190,8 +1241,10 @@
         const nextWord = { why: '원단을 고른 이유', ticket: '견적서 보기' }, prevWord = { house: '우리 집 색', why: '원단을 고른 이유' };
         const pager = document.getElementById('finPager');
         if (pager) {
-            let h = '';
+            // 세로 모드에서는 [← 이전 (맨 왼쪽)] · [쪽 번호 + 크게 보기 (가운데)] · [다음 → (맨 오른쪽)] 자리가 고정됨 (39번)
+            let h = '<span class="fin-mid">';
             if (n > 1) h += `<span class="fin-pg">${finalPage + 1} / ${n}</span>`;
+            h += `<button type="button" class="fin-zoom" onclick="window.concierge.toggleFinalZoom()">${finalZoom ? '기본 크기' : '크게 보기'}</button></span>`;
             if (finalPage < n - 1) {
                 const g = groupOf(finalPage + 1);
                 h += `<button type="button" class="dos-act is-main" onclick="window.concierge.finalNext()">${g !== groupOf(finalPage) ? nextWord[g] : '다음'} →</button>`;
@@ -1823,7 +1876,7 @@
                 mood: target.mood || 'soft_warm',
                 wantMood: target.wantMood || null,
                 roomType: target.roomType || roomTypeOf(target),
-                lightBlock: target.lightBlock || null, privacy: target.privacy || null, sheerFeel: target.sheerFeel || null,
+                lightBlock: target.lightBlock || null, privacy: target.privacy || null, sheerFeel: target.sheerFeel || null, blindWant: target.blindWant || null,
                 measuredColor: target.measuredColor ? JSON.parse(JSON.stringify(target.measuredColor)) : null,     // 카드로 고치면 그 부분을 지우므로 복사본
                 colorSrc: target.colorSrc || null,
                 cardParts: target.cardParts ? Object.assign({}, target.cardParts) : null,
@@ -1855,7 +1908,7 @@
                 state.editingRoom.prev = {
                     floorTone: target.floorTone, wallTone: target.wallTone, lightLevel: target.lightLevel,
                     lightBlock: target.lightBlock || null, privacy: target.privacy || null,
-                    wantMood: target.wantMood || null, sheerFeel: target.sheerFeel || null, comp, linkDir: target.linkDir || null
+                    wantMood: target.wantMood || null, sheerFeel: target.sheerFeel || null, blindWant: target.blindWant || null, comp, linkDir: target.linkDir || null
                 };
             }
             // 새 흐름(20번): 벽·바닥을 이미 아는 공간(잰 색·집 기본 색·카드)은 빛 질문부터(위에 확인 칩). 모르는 공간은 바닥·벽 카드부터
@@ -2037,11 +2090,16 @@
             state.editingRoom.sheerFeel = feel;
             goToStep("3.5-Bridge");
         },
+        selectBlindKind: function(kind) {
+            state.editingRoom.blindWant = kind;
+            goToStep("3.5-Bridge");
+        },
         selectMood: function(mood) {
             state.editingRoom.wantMood = mood;
-            // 속지가 들어가는 구성이면 속지 느낌을 물음 (공간마다. "수정"으로 다시 들어와도 다른 질문처럼 다시 물음 — 마음이 바뀔 수 있어서)
+            // 속지가 들어가는 구성이면 속지 느낌을, 블라인드 구성이면 블라인드 종류를 물음 (공간마다. "수정"으로 다시 들어와도 다시 물음 — 38-2)
             const hasSheer = (state.editingRoom.items || []).some(i => i.presetType === 'sheer');
-            goToStep(hasSheer ? "2-Base-SheerFeel" : "3.5-Bridge");
+            const hasBlind = (state.editingRoom.items || []).some(i => i.presetType === 'blind');
+            goToStep(hasSheer ? "2-Base-SheerFeel" : (hasBlind ? "2-Base-BlindKind" : "3.5-Bridge"));
         },
         chooseWindowComposition: function(type) {
             const rName = state.editingRoom.name;
@@ -2050,18 +2108,23 @@
                     { label: `${rName} 속지`, presetType: "sheer", fabricId: null, floorGap: 0 },
                     { label: `${rName} 겉지`, presetType: "drape", fabricId: null, floorGap: 0 }
                 ];
+                state.editingRoom.blindWant = null;
             } else if (type === 'sheer_only') {
                 state.editingRoom.items = [
                     { label: `${rName} 속지`, presetType: "sheer", fabricId: null, floorGap: 0 }
                 ];
+                state.editingRoom.blindWant = null;
             } else if (type === 'drape_only') {
                 state.editingRoom.items = [
                     { label: `${rName} 겉지`, presetType: "drape", fabricId: null, floorGap: 0 }
                 ];
+                state.editingRoom.sheerFeel = null;
+                state.editingRoom.blindWant = null;
             } else if (type === 'blind_only') {
                 state.editingRoom.items = [
                     { label: `${rName} 블라인드`, presetType: "blind", fabricId: null, floorGap: 0 }
                 ];
+                state.editingRoom.sheerFeel = null;
             }
             state.pendingItemQueue = state.editingRoom.items;
             state.currentItemIndex = 0;
@@ -2077,6 +2140,25 @@
             state.seeking = true;
             const open = () => { state.seeking = false; goToStep("4-Fabric-Queue"); };
             try { playFabricSeek(open); } catch (e) { open(); }      // 찾는 중 화면에 문제가 생겨도 원단 화면은 열림
+        },
+        // 목록에 없는 블라인드 종류(우드·알루미늄 등, 38-2): 실물 샘플 안내 후 바로 공간에 담음
+        proceedSampleBlind: function() {
+            const item = state.pendingItemQueue[state.currentItemIndex];
+            const bw = (state.editingRoom && state.editingRoom.blindWant) || 'wood';
+            if (item) {
+                item.fabricId = '_sample_' + bw;
+                item.colorName = '';
+            }
+            if (state.currentItemIndex + 1 < state.pendingItemQueue.length) {
+                stepHistory.push({ step: state.step, idx: state.currentItemIndex });
+                state.currentItemIndex++;
+                goToStep("3.5-Bridge", false);
+            } else if (state.editingRoom.sizeKnown) {
+                if (state.editingRoom.items.some(i => i.presetType === "sheer" || i.presetType === "drape")) goToStep("6-Finish");
+                else window.concierge.commitRoomCart();
+            } else {
+                goToStep("6-Measure");
+            }
         },
         // 색상 카드 넘기기: dir 1 = 다음 색, -1 = 이전 색 (끝에서 한 바퀴 돌아 처음으로)
         stepColor: function(fabId, dir) {
@@ -2192,6 +2274,7 @@
                 roomTarget.lightBlock = state.editingRoom.lightBlock || null;
                 roomTarget.privacy = state.editingRoom.privacy || null;
                 roomTarget.sheerFeel = state.editingRoom.sheerFeel || null;
+                roomTarget.blindWant = state.editingRoom.blindWant || null;
                 roomTarget.roomType = state.editingRoom.roomType || roomTarget.roomType || null;
                 roomTarget.measuredColor = state.editingRoom.measuredColor || null;
                 roomTarget.colorSrc = state.editingRoom.colorSrc || null;
@@ -2240,9 +2323,16 @@
         // 색 잇기 방향의 말 ("원단을 고른 이유" 카드, app.js가 씀): linkSay = "벽과 이어지는 색", linkWhy = 이유 한 문장
         linkSay: function(dir) { return LINK_WORD[dir] || ''; },
         linkWhy: function(dir) { return LINK_WHY[dir] || ''; },
-        // 최종 제안 화면의 쪽 넘기기 (원단을 고른 이유 → 견적서)
+        // 최종 제안 화면의 쪽 넘기기 · 세로 모드 크게 보기 (39번)
         finalNext: function() { setFinalPage(finalPage + 1); },
         finalPrev: function() { setFinalPage(finalPage - 1); },
+        toggleFinalZoom: function() {
+            finalZoom = !finalZoom;
+            const st = document.querySelector('.fin-stage');
+            if (st) st.classList.toggle('is-zoom', finalZoom);
+            const btn = document.querySelector('#finPager .fin-zoom');
+            if (btn) btn.textContent = finalZoom ? '기본 크기' : '크게 보기';
+        },
         linkWord: function(dir) { return { wall: '넓어 보이게', bridge: '그 중간으로', floor: '바닥과 어울리게' }[dir] || ''; },
         cardNameParts: function(fabricId, colorTag) {
             const f = getLiveDb().find(x => x.id === fabricId);
@@ -2281,7 +2371,7 @@
                     id: newRoomId(), name: r.name,
                     floorTone: r.floorTone || 'warm', wallTone: r.wallTone || 'cool',
                     lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
-                    roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
+                    roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
                     measuredColor: r.measuredColor || null,
                     width: Number(r.width) || null, height: Number(r.height) || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                     isConfigured: r.curtains.length > 0,          // 공간 추가만 하고 아직 상담 전인 공간(커튼 없음)은 "상담하기"로
@@ -2326,7 +2416,7 @@
         getRoomsForSave: function() {
             return state.roomsCart.map(r => ({          // 아직 상담 전인 공간도 (크기·벽·바닥 색을 먼저 담아 둠)
                 name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
-                roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, diagnosed: !!r.diagnosed,
+                roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
                 measuredColor: r.measuredColor || null,
                 width: r.width || null, height: r.height || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                 curtains: r.isConfigured ? r.curtains : []
