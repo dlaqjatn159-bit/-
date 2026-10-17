@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261060';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261061';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1112,14 +1112,16 @@
                 html += '<div class="bookmark-stage">';
                 // 색 잇기를 골랐으면 위 작은 글로 보여 주고, 그 방향과 어울리는 분위기 카드에 추천 표시 (점수는 그대로)
                 const ld = state.editingRoom && state.editingRoom.linkDir;
+                state.__recMoods = ld ? LINK_MOODS[ld] : [];
                 html += stepHead('원하시는 분위기를 골라 주세요', ''); // 42번: 사족 설명 제거
+                const recList = state.__recMoods || [];
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
-                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
-                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
-                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
-                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
-                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
+                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick expand-pick' + (recList.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
+                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick expand-pick' + (recList.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
+                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc pause-pick expand-pick' + (recList.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
+                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc pause-pick expand-pick' + (recList.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
+                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc pause-pick expand-pick' + (recList.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
+                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc pause-pick expand-pick' + (recList.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
                 html += '</div></div>';
                 break;
 
