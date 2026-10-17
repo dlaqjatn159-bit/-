@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261056';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261057';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -603,36 +603,50 @@
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
                 + `<span class="dos-rhead-r">${r.isConfigured ? `<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button>` : `<button type="button" class="dos-todo" onclick="window.concierge.openRoomCart(${r.id})">상담하기</button>`}</span></div>`;
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
-            // 공간 색 띠 (41-7, 41-12): 2단 창가 입면 띠 (윗줄: 벽·원단·벽, 아랫줄: 바닥). 미선택 시에도 빈칸 없이 100% 채움
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f, cls) => `<div class="${(dark(bg) ? 'is-dark ' : '') + (cls || '')}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;
             const wHex = wall && wall.hex ? wall.hex : '#f2eee8';
             const fHex = floor && floor.hex ? floor.hex : '#e5ddcf';
+
+            // 공간 전체 크기와 커튼 크기 비율 계산 (부분일 경우 벽이 더 넓게 드러남, 43번)
+            const sW = Number(r.spaceWidth) || 0;
+            const cW = Number(r.width) || 0;
+            let wallSideFlex = 1.2;
+            let curtTotalFlex = 3.6;
+            if (sW > 0 && cW > 0 && sW > cW) {
+                const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
+                curtTotalFlex = 6.0 * curtRatio;
+                wallSideFlex = (6.0 - curtTotalFlex) / 2;
+            }
+
             let topSegs = '';
             if (r.isConfigured && r.curtains.length) {
                 if (r.curtains.length === 2 && r.curtains.some(c => c.presetType === 'sheer') && r.curtains.some(c => c.presetType === 'drape')) {
                     const drape = r.curtains.find(c => c.presetType === 'drape'), sheer = r.curtains.find(c => c.presetType === 'sheer');
                     const dFill = colorFillOf(drape.fabricId, drape.colorName), sFill = colorFillOf(sheer.fabricId, sheer.colorName);
-                    topSegs += seg('벽', wHex, 1.2);
-                    topSegs += seg('겉지', dFill, 0.9, fillCls(r, 0));
-                    topSegs += seg('속지', sFill, 1.8, fillCls(r, 1));
-                    topSegs += seg('겉지', dFill, 0.9, fillCls(r, 0));
-                    topSegs += seg('벽', wHex, 1.2);
+                    const drapeFlex = curtTotalFlex * 0.25;
+                    const sheerFlex = curtTotalFlex * 0.5;
+                    topSegs += seg('벽', wHex, wallSideFlex);
+                    topSegs += seg('겉지', dFill, drapeFlex, fillCls(r, 0));
+                    topSegs += seg('속지', sFill, sheerFlex, fillCls(r, 1));
+                    topSegs += seg('겉지', dFill, drapeFlex, fillCls(r, 0));
+                    topSegs += seg('벽', wHex, wallSideFlex);
                 } else if (r.curtains.length === 1) {
                     const c0 = r.curtains[0], k = kindOf(c0);
-                    topSegs += seg('벽', wHex, 1.3);
-                    topSegs += seg(k, colorFillOf(c0.fabricId, c0.colorName), 2.4, fillCls(r, 0));
-                    topSegs += seg('벽', wHex, 1.3);
+                    topSegs += seg('벽', wHex, wallSideFlex);
+                    topSegs += seg(k, colorFillOf(c0.fabricId, c0.colorName), curtTotalFlex, fillCls(r, 0));
+                    topSegs += seg('벽', wHex, wallSideFlex);
                 } else {
-                    topSegs += seg('벽', wHex, 1.0);
-                    r.curtains.forEach((c, i) => { topSegs += seg(kindOf(c), colorFillOf(c.fabricId, c.colorName), 1.2, fillCls(r, i)); });
-                    topSegs += seg('벽', wHex, 1.0);
+                    topSegs += seg('벽', wHex, wallSideFlex);
+                    const eachFlex = curtTotalFlex / r.curtains.length;
+                    r.curtains.forEach((c, i) => { topSegs += seg(kindOf(c), colorFillOf(c.fabricId, c.colorName), eachFlex, fillCls(r, i)); });
+                    topSegs += seg('벽', wHex, wallSideFlex);
                 }
             } else {
-                topSegs += seg('벽', wHex, 3.0);
-                if (furs[0] && furs[0].hex) topSegs += seg(furs[0].n || '가구', furs[0].hex, 1.0);
+                topSegs += seg('벽', wHex, 4.0);
+                if (furs[0] && furs[0].hex) topSegs += seg(furs[0].n || '가구', furs[0].hex, 1.2);
             }
-            h += `<div class="arch-layer-box"><div class="arch-top-wall">${topSegs}</div><div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div></div>`;
+            h += `<div class="arch-layer-box"><div class="arch-mid-window">${topSegs}</div><div class="arch-wall-base" style="background:${wHex}"></div><div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div></div>`;
             if (!r.isConfigured) { h += '<p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 채워져요.</p></section>'; return; }
             // 이유 한 줄: 색 잇기를 골랐으면 그 방향("벽과 바닥 사이를 잇는 색으로 골랐어요. …"), 아니면 견적서와 같은 추천 이유
             const reason = (r.linkDir && LINK_WORD[r.linkDir]) ? `${LINK_WORD[r.linkDir]}으로 골랐어요. ${LINK_WHY[r.linkDir]}`
@@ -1380,8 +1394,8 @@
                     if (s.fur && s.fur[0]) midSegs += seg(s.fur[0].n || '가구', s.fur[0].hex, 1.2);
                 }
                 const swatchHtml = `<div class="arch-layer-box is-mini">`
-                    + `<div class="arch-wall-beam" style="background:${wHex}"></div>`
                     + `<div class="arch-mid-window">${midSegs}</div>`
+                    + `<div class="arch-wall-base" style="background:${wHex}"></div>`
                     + `<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div>`
                     + `</div>`;
                 h += '<div class="fin-layer-row">';
@@ -1399,13 +1413,10 @@
         if (showWhy) {
             const chNum = CH_WORDS[chIdx++] || '둘';
             h += '<section class="fin-chapter" id="finSecWhy">';
-            // 2장 대주제 헤더: [둘] 공간 제안
-            h += '<div class="fin-ch-intro"><div class="fin-ch-grid">';
-            h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간 제안</h2>`;
-            h += '<p class="fin-ch-sub">머무시는 분의 빛과 시선, 그리고 공간의 색에 맞추어 정성껏 구성했어요.</p>';
-            h += '<div class="pleat-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>';
-            h += '<div class="fin-ch-intro-body"><p class="fin-ch-intro-lead font-serif-kr">각 공간의 창가마다 필요한 기능과 자연스러운 어울림을 담았습니다.</p></div>';
-            h += '</div></div>';
+            // 2장 대주제 헤더: [둘] 공간 제안 (42번/43번: 사족 문구 및 브랜드 4선 제거, 담백한 헤더)
+            h += '<div class="fin-ch-intro">';
+            h += `<span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간 제안</h2>`;
+            h += '</div>';
 
             whyInfo.rooms.forEach((R, idx) => {
                 const rm = data.rooms.find(r => r.name === R.name) || {}, raw = rm.raw || {};
@@ -1442,22 +1453,26 @@
                         + `</div></div>`;
                 }).join('');
 
+                // 스펙 정보 (빛의 방향, 창의 크기, 구성 방식): 우하단 배치용 (43번)
+                let specsHtml = '';
+                const specItems = [];
+                if (R.dirText) specItems.push(`<div class="fin-spec-row"><span class="fin-spec-k">빛의 방향</span><span class="fin-spec-v">${esc(R.dirText)}향</span></div>`);
+                if (sz) specItems.push(`<div class="fin-spec-row"><span class="fin-spec-k">창의 크기</span><span class="fin-spec-v">${sz.w} × ${sz.h}cm</span></div>`);
+                if (subBot) specItems.push(`<div class="fin-spec-row"><span class="fin-spec-k">구성 방식</span><span class="fin-spec-v">${esc(subBot)}</span></div>`);
+                if (specItems.length) {
+                    specsHtml = `<div class="fin-space-specs-bot"><div class="fin-caption-specs">${specItems.join('')}</div></div>`;
+                }
+
                 h += '<div class="fin-space-story"><div class="fin-ch-grid">';
-                h += '<div class="fin-ch-side fin-space-caption-side">';
-                h += '<div class="fin-space-caption-head">';
-                if (whyInfo.rooms.length > 1) h += `<span class="fin-space-idx font-serif-kr">${ORD_WORDS[idx] || (idx + 1) + '번째'} 공간</span>`;
-                h += `<h3 class="fin-space-title font-serif-kr">${esc(R.name)}</h3>`;
+                h += '<div class="fin-ch-side">';
+                h += `<h3 class="fin-space-title font-serif-kr">${esc(R.name)}</h3>`; // 43번: 첫째 공간 사족 제거, 공간명만 명료하게
                 h += '</div>';
-                h += '<div class="fin-space-caption-plate"><div class="fin-caption-specs">';
-                if (R.dirText) h += `<div class="fin-spec-row"><span class="fin-spec-k">빛의 방향</span><span class="fin-spec-v">${esc(R.dirText)}향</span></div>`;
-                if (sz) h += `<div class="fin-spec-row"><span class="fin-spec-k">창의 크기</span><span class="fin-spec-v">${sz.w} × ${sz.h}cm</span></div>`;
-                if (subBot) h += `<div class="fin-spec-row"><span class="fin-spec-k">구성 방식</span><span class="fin-spec-v">${esc(subBot)}</span></div>`;
-                h += '</div></div></div>';
-                h += '<div>';
+                h += '<div class="fin-space-body">';
                 if (quotes.length) h += `<p class="fin-st-voice font-serif-kr">${quotes.map(esc).join(' &nbsp;')}<small>하셨어요</small></p>`;
                 if (mHtml) h += `<div class="fin-st-measured">${mHtml}</div>`;
                 h += `<div class="fin-st-curtains${R.sets.length === 1 ? ' is-single' : ''}">${curtainsHtml}</div>`;
                 if (R.night && typeof SHEER_NIGHT_NOTE === 'string') h += `<p class="fin-curtain-honest fin-night-note">${esc(SHEER_NIGHT_NOTE)}</p>`;
+                if (specsHtml) h += specsHtml; // 43번: 우측 원단 설명부 아래 우하단에 높이 맞춤
                 h += '</div></div></div>';
             });
             h += '</section>';
