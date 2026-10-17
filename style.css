@@ -1637,11 +1637,10 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .fin-layer-row { display: grid; grid-template-columns: 92px 210px minmax(0, 1fr); gap: 1.6rem; align-items: center; padding: 1.25rem 0; border-bottom: 1px solid #e5dcd0; }
     .fin-layer-rname { font-size: 1.06rem; font-weight: 400; color: #2b221a; }
     .fin-layer-rname small { display: block; margin-top: 0.2rem; font-family: Pretendard, sans-serif; font-size: 0.75rem; font-weight: 400; color: #8a7a6a; }
-    .arch-swatch { position: relative; height: 54px; display: flex; }
-    .arch-bg-wall { flex: 1.4; height: 100%; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.1); }
-    .arch-bg-floor { flex: 1; height: 100%; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.1); }
-    .arch-fab-pair { position: absolute; right: 12px; top: -5px; bottom: -5px; display: flex; box-shadow: -6px 4px 16px rgba(43, 34, 26, 0.1); }
-    .arch-fab { width: 38px; height: 100%; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.16); }
+    .arch-swatch { height: 44px; display: flex; border-radius: 2px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
+    .arch-swatch > div { position: relative; height: 100%; }
+    .arch-swatch > div span { position: absolute; left: 0.4rem; bottom: 0.25rem; font-size: 0.65rem; font-weight: 400; letter-spacing: 0.04em; color: rgba(43, 34, 26, 0.62); line-height: 1; }
+    .arch-swatch > div.is-dark span { color: rgba(255, 255, 255, 0.85); }
     .fin-layer-txts { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.84rem; }
     .fin-layer-base { font-size: 0.78rem; color: #8a7a6a; }
     .fin-layer-fab { color: #2b221a; }
@@ -1660,7 +1659,6 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .fin-st-curtains.is-single { grid-template-columns: 1fr; }
     .fin-curtain-col { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
     .drape-swatch { width: 68px; height: 108px; position: relative; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.14); }
-    .drape-swatch::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0px, rgba(255, 255, 255, 0) 8px, rgba(43, 34, 26, 0.035) 14px, rgba(255, 255, 255, 0) 22px); }
     .fin-curtain-meta { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.75rem; color: #8a7a6a; }
     .fin-curtain-name { margin-bottom: 0.6rem; font-size: 1.06rem; font-weight: 400; line-height: 1.35; color: #2b221a; }
     .fin-curtain-name span { margin-left: 0.4rem; font-family: Pretendard, sans-serif; font-size: 0.84rem; font-weight: 400; color: #6f5f4f; }

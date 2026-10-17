@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261049';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261050';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261049';
+const REDAM_BUILD = '20261050';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3543,7 +3543,8 @@ function drawWhy(ctx, data, W, compact, title) {
             ops.push({ chip: set.hex, y: cy });
         }
         setFont(400, B_SIZE, SANS);
-        const hl = wrap(`${set.it.kind} · ${name}`, colW, colW - chipW);
+        const titleText = (set.it.kind === '블라인드' && name.includes('블라인드')) ? name : `${set.it.kind} · ${name}`;
+        const hl = wrap(titleText, colW, colW - chipW);
         hl.forEach((ln, i) => { ops.push({ t: ln, f: [400, B_SIZE, SANS], c: DARK, y: cy, x: i === 0 ? chipW : 0 }); if (i < hl.length - 1) cy += B_LH; });
         if (set.it.colorDesc) {
             const lastX = (hl.length === 1 ? chipW : 0) + ctx.measureText(hl[hl.length - 1]).width;
@@ -3932,7 +3933,10 @@ function planHouse(data) {
             s.fur.forEach(f => tops.push({ hex: f.hex, t: `${f.n} ${f.name}`.trim(), shape: 'd' }));
             const topRows = flow(tops.map(c => Object.assign(c, { w: C_SW + 9 + ctx.measureText(c.t).width })), RW, 24);
             ctx.font = `400 ${F_SIZE}px ${SANS}`;
-            const fabRows = flow(s.fabs.map(f => ({ hex: f.hex, t: `${f.k} · ${f.nm}`, shape: 'c', w: F_SIZE + 10 + ctx.measureText(`${f.k} · ${f.nm}`).width })), RW, 28);
+            const fabRows = flow(s.fabs.map(f => {
+                const title = (f.k === '블라인드' && f.nm && f.nm.includes('블라인드')) ? f.nm : `${f.k} · ${f.nm}`;
+                return { hex: f.hex, t: title, shape: 'c', w: F_SIZE + 10 + ctx.measureText(title).width };
+            }), RW, 28);
             const h = 20 + topRows.length * C_LH + (topRows.length ? 6 : 0) + fabRows.length * F_LH + 14;
             return { s, topRows, fabRows, h };
         });

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261049';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261050';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -659,9 +659,10 @@
                 if (c.hotelFit) opts.push('호텔핏');
                 const tones = c.presetType === 'blind' ? null : toneNeighbors(c);
                 const toneBtn = (e, word, step) => `<button type="button"${e ? ` onclick="window.concierge.toneSwap(${r.id}, ${i}, '${e.key.replace(/'/g, "\\'")}', ${step})"` : ' disabled'}><i style="background:${e ? e.hex : '#eee8df'}"></i><span>${word}</span></button>`;
+                const isBlindDupe = c.presetType === 'blind' && (c.calc?.fabName || c.label || '').includes('블라인드');
                 h += '<div class="dos-item">';
                 h += `<div class="dos-sw${fillCls(r, i)}" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
-                h += `<div class="dos-txt"><div class="dos-kind">${kindOf(c)}</div>`;
+                h += `<div class="dos-txt">${isBlindDupe ? '' : `<div class="dos-kind">${kindOf(c)}</div>`}`;
                 h += `<div class="dos-fab font-serif-kr">${(typeof ticketFabricName === 'function') ? ticketFabricName(c, c.calc || {}) : ((c.calc && c.calc.fabName) || c.label || '원단')}${opts.length ? `<em>${opts.join(' · ')}</em>` : ''}</div>`;
                 if (c.presetType !== 'blind') h += `<button type="button" class="dos-more" onclick="openSpaceMore(${r.id}, ${i})">더 보기</button>`;
                 h += '</div>';
@@ -1287,8 +1288,10 @@
             h += '<span><i class="lg-s" style="background:#d9cbb9"></i>벽·바닥</span>';
             if (hasFur) h += '<span><i class="lg-d" style="background:#d9cbb9"></i>가구</span>';
             h += '</div><span>창가에서 함께 본 색의 위치</span></div></div>';
-            // 공간별 창가 색 겹침 조각 (arch-swatch: 사진이 아닌 순수 측정 단색으로 색의 어울림만 또렷하게 보여 줌)
+            // 공간별 창가 색 띠 (측정 벽·바닥·가구 색과 고른 원단 색이 한 줄로 단정하게 어우러지는 비례 띠)
             h += '<div class="fin-layer-strips">';
+            const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
+            const seg = (k, bg, f) => `<div class="${dark(bg) ? 'is-dark' : ''}" style="flex:${f};background:${bg || HATCH}"><span>${esc(k)}</span></div>`;
             sp.forEach(s => {
                 const rm = data.rooms.find(r => r.name === s.name);
                 const dirTxt = (rm && rm.raw) ? windowDirText(windowDirOf(rm.raw.windowDir)) : '';
@@ -1296,14 +1299,21 @@
                 if (s.wall) baseParts.push('벽 ' + s.wall.name);
                 if (s.floor) baseParts.push('바닥 ' + s.floor.name);
                 (s.fur || []).forEach(fu => baseParts.push((fu.n + ' ' + (fu.name || '')).trim()));
-                const fabSpans = (s.fabs || []).map(f => `<span>${esc(f.k)} · ${esc(f.nm)}</span>`).join('');
+                const fabSpans = (s.fabs || []).map(f => {
+                    const k = (f.k === '블라인드' && f.nm && f.nm.includes('블라인드')) ? '' : f.k;
+                    return `<span>${k ? `${esc(k)} · ` : ''}${esc(f.nm)}</span>`;
+                }).join('');
+                let stripHtml = '';
+                if (s.wall) stripHtml += seg('벽', s.wall.hex, 1.4);
+                if (s.floor) stripHtml += seg('바닥', s.floor.hex, 1.1);
+                (s.fur || []).slice(0, 1).forEach(fu => { stripHtml += seg(fu.n || '가구', fu.hex, 0.85); });
+                (s.fabs || []).forEach(f => {
+                    const shortK = f.k === '블라인드' ? '블라인드' : f.k;
+                    stripHtml += seg(shortK, f.hex, 1.35);
+                });
                 h += '<div class="fin-layer-row">';
                 h += `<div class="fin-layer-rname font-serif-kr">${esc(s.name)}${dirTxt ? `<small>${esc(dirTxt)}쪽 창</small>` : ''}</div>`;
-                h += '<div class="arch-swatch">';
-                h += `<div class="arch-bg-wall" style="background:${s.wall ? s.wall.hex : HATCH}"></div>`;
-                h += `<div class="arch-bg-floor" style="background:${s.floor ? s.floor.hex : HATCH}"></div>`;
-                h += '<div class="arch-fab-pair">' + (s.fabs || []).map(f => `<div class="arch-fab" style="background:${f.hex || '#d9cdbb'};${s.fabs.length === 1 ? 'width:52px;' : ''}"></div>`).join('') + '</div>';
-                h += '</div>';
+                h += `<div class="arch-swatch">${stripHtml}</div>`;
                 h += '<div class="fin-layer-txts">';
                 if (baseParts.length) h += `<div class="fin-layer-base">${esc(baseParts.join(' · '))}</div>`;
                 h += `<div class="fin-layer-fab">${fabSpans}</div>`;
@@ -1341,10 +1351,11 @@
 
                 const curtainsHtml = R.sets.map(s => {
                     const baseName = s.it.colorDesc ? s.it.name.replace(' (' + s.it.colorDesc + ')', '') : s.it.name;
+                    const hideKind = s.it.kind === '블라인드' && baseName.includes('블라인드');
                     return `<div class="fin-curtain-col">`
                         + `<div class="drape-swatch" style="${fabricFillStyle(s.it.fabricId, s.it.colorName)}"></div>`
                         + `<div>`
-                        + `<div class="fin-curtain-meta"><span>${esc(s.it.kind)}</span>${s.hex ? `<span class="hex-code">${esc(s.hex)}</span>` : ''}</div>`
+                        + `<div class="fin-curtain-meta">${hideKind ? '' : `<span>${esc(s.it.kind)}</span>`}${s.hex ? `<span class="hex-code">${esc(s.hex)}</span>` : ''}</div>`
                         + `<div class="fin-curtain-name font-serif-kr">${esc(baseName)}${s.it.colorDesc ? `<span>${esc(s.it.colorDesc)}</span>` : ''}</div>`
                         + (s.lines && s.lines.length ? `<p class="fin-curtain-why">${esc(s.lines.join(' '))}</p>` : '')
                         + (s.note ? `<p class="fin-curtain-honest">${esc(s.note)}</p>` : '')
