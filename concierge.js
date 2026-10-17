@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261057';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261058';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -608,15 +608,31 @@
             const wHex = wall && wall.hex ? wall.hex : '#f2eee8';
             const fHex = floor && floor.hex ? floor.hex : '#e5ddcf';
 
-            // 공간 전체 크기와 커튼 크기 비율 계산 (부분일 경우 벽이 더 넓게 드러남, 43번)
-            const sW = Number(r.spaceWidth) || 0;
-            const cW = Number(r.width) || 0;
-            let wallSideFlex = 1.2;
-            let curtTotalFlex = 3.6;
-            if (sW > 0 && cW > 0 && sW > cW) {
-                const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
-                curtTotalFlex = 6.0 * curtRatio;
-                wallSideFlex = (6.0 - curtTotalFlex) / 2;
+            // 부분 치수가 있어서 벽이 남는 경우에만 벽 연결 및 비율 계산 (43번)
+            const sW = Number(r.spaceWidth) || 0, cW = Number(r.width) || 0;
+            const sH = Number(r.spaceHeight) || 0, cH = Number(r.height) || 0;
+            const isPartial = (r.sizeMode === 'partial' || (sW > 0 && cW > 0 && sW > cW)) && (sW > cW || (sH > 0 && cH > 0 && sH > cH));
+
+            let wallSideFlex = 1.0;
+            let curtTotalFlex = 4.0;
+            let baseWallHeight = 0;
+
+            if (isPartial) {
+                if (sW > 0 && cW > 0 && sW > cW) {
+                    const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
+                    curtTotalFlex = 6.0 * curtRatio;
+                    wallSideFlex = (6.0 - curtTotalFlex) / 2;
+                }
+                if (sH > 0 && cH > 0 && sH > cH) {
+                    const wallHRatio = Math.max(0.15, Math.min(0.45, (sH - cH) / sH));
+                    baseWallHeight = Math.round(48 * wallHRatio);
+                } else {
+                    baseWallHeight = 11;
+                }
+            } else {
+                wallSideFlex = 1.0;
+                curtTotalFlex = 4.0;
+                baseWallHeight = 0; // 전체 모드: 하단 연결 벽 없음
             }
 
             let topSegs = '';
@@ -646,7 +662,9 @@
                 topSegs += seg('벽', wHex, 4.0);
                 if (furs[0] && furs[0].hex) topSegs += seg(furs[0].n || '가구', furs[0].hex, 1.2);
             }
-            h += `<div class="arch-layer-box"><div class="arch-mid-window">${topSegs}</div><div class="arch-wall-base" style="background:${wHex}"></div><div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div></div>`;
+            const midWindowH = baseWallHeight > 0 ? (48 - baseWallHeight) : 48;
+            const wallBaseHtml = baseWallHeight > 0 ? `<div class="arch-wall-base" style="height:${baseWallHeight}px;background:${wHex}"></div>` : '';
+            h += `<div class="arch-layer-box"><div class="arch-mid-window" style="height:${midWindowH}px">${topSegs}</div>${wallBaseHtml}<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div></div>`;
             if (!r.isConfigured) { h += '<p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 채워져요.</p></section>'; return; }
             // 이유 한 줄: 색 잇기를 골랐으면 그 방향("벽과 바닥 사이를 잇는 색으로 골랐어요. …"), 아니면 견적서와 같은 추천 이유
             const reason = (r.linkDir && LINK_WORD[r.linkDir]) ? `${LINK_WORD[r.linkDir]}으로 골랐어요. ${LINK_WHY[r.linkDir]}`
@@ -1359,15 +1377,31 @@
                 const fHex = s.floor && s.floor.hex ? s.floor.hex : '#e5ddcf';
                 const fabs = s.fabs || [];
 
-                // 공간 전체 크기와 커튼 크기 비율 계산 (부분일 경우 벽이 더 넓게 드러남)
-                const sW = Number(raw.spaceWidth) || 0;
-                const cW = Number(raw.width) || 0;
-                let wallSideFlex = 1.2;
-                let curtTotalFlex = 3.6;
-                if (sW > 0 && cW > 0 && sW > cW) {
-                    const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
-                    curtTotalFlex = 6.0 * curtRatio;
-                    wallSideFlex = (6.0 - curtTotalFlex) / 2;
+                // 부분 치수가 있어서 벽이 남는 경우에만 벽 연결 및 비율 계산 (43번)
+                const sW = Number(raw.spaceWidth) || 0, cW = Number(raw.width) || 0;
+                const sH = Number(raw.spaceHeight) || 0, cH = Number(raw.height) || 0;
+                const isPartial = (raw.sizeMode === 'partial' || (sW > 0 && cW > 0 && sW > cW)) && (sW > cW || (sH > 0 && cH > 0 && sH > cH));
+
+                let wallSideFlex = 1.0;
+                let curtTotalFlex = 4.0;
+                let baseWallHeight = 0;
+
+                if (isPartial) {
+                    if (sW > 0 && cW > 0 && sW > cW) {
+                        const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
+                        curtTotalFlex = 6.0 * curtRatio;
+                        wallSideFlex = (6.0 - curtTotalFlex) / 2;
+                    }
+                    if (sH > 0 && cH > 0 && sH > cH) {
+                        const wallHRatio = Math.max(0.15, Math.min(0.45, (sH - cH) / sH));
+                        baseWallHeight = Math.round(41 * wallHRatio);
+                    } else {
+                        baseWallHeight = 9;
+                    }
+                } else {
+                    wallSideFlex = 1.0;
+                    curtTotalFlex = 4.0;
+                    baseWallHeight = 0; // 전체 모드: 하단 연결 벽 없음
                 }
 
                 let midSegs = '';
@@ -1393,9 +1427,11 @@
                     midSegs += seg('벽', wHex, 4.0);
                     if (s.fur && s.fur[0]) midSegs += seg(s.fur[0].n || '가구', s.fur[0].hex, 1.2);
                 }
+                const midWindowH = baseWallHeight > 0 ? (41 - baseWallHeight) : 41;
+                const wallBaseHtml = baseWallHeight > 0 ? `<div class="arch-wall-base" style="height:${baseWallHeight}px;background:${wHex}"></div>` : '';
                 const swatchHtml = `<div class="arch-layer-box is-mini">`
-                    + `<div class="arch-mid-window">${midSegs}</div>`
-                    + `<div class="arch-wall-base" style="background:${wHex}"></div>`
+                    + `<div class="arch-mid-window" style="height:${midWindowH}px">${midSegs}</div>`
+                    + wallBaseHtml
                     + `<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div>`
                     + `</div>`;
                 h += '<div class="fin-layer-row">';
@@ -1453,26 +1489,26 @@
                         + `</div></div>`;
                 }).join('');
 
-                // 스펙 정보 (빛의 방향, 창의 크기, 구성 방식): 우하단 배치용 (43번)
+                // 스펙 정보 (빛의 방향, 창의 크기, 구성 방식): 좌측 기둥 하단 배치 (43번)
                 let specsHtml = '';
                 const specItems = [];
                 if (R.dirText) specItems.push(`<div class="fin-spec-row"><span class="fin-spec-k">빛의 방향</span><span class="fin-spec-v">${esc(R.dirText)}향</span></div>`);
                 if (sz) specItems.push(`<div class="fin-spec-row"><span class="fin-spec-k">창의 크기</span><span class="fin-spec-v">${sz.w} × ${sz.h}cm</span></div>`);
                 if (subBot) specItems.push(`<div class="fin-spec-row"><span class="fin-spec-k">구성 방식</span><span class="fin-spec-v">${esc(subBot)}</span></div>`);
                 if (specItems.length) {
-                    specsHtml = `<div class="fin-space-specs-bot"><div class="fin-caption-specs">${specItems.join('')}</div></div>`;
+                    specsHtml = `<div class="fin-space-specs-plate"><div class="fin-caption-specs">${specItems.join('')}</div></div>`;
                 }
 
                 h += '<div class="fin-space-story"><div class="fin-ch-grid">';
-                h += '<div class="fin-ch-side">';
-                h += `<h3 class="fin-space-title font-serif-kr">${esc(R.name)}</h3>`; // 43번: 첫째 공간 사족 제거, 공간명만 명료하게
+                h += '<div class="fin-ch-side fin-space-side">';
+                h += `<h3 class="fin-space-title font-serif-kr">${esc(R.name)}</h3>`;
+                if (specsHtml) h += specsHtml; // 43번: 좌측 기둥 하단에 배치하여 우측 설명 마지막 줄과 높이 맞춤
                 h += '</div>';
                 h += '<div class="fin-space-body">';
                 if (quotes.length) h += `<p class="fin-st-voice font-serif-kr">${quotes.map(esc).join(' &nbsp;')}<small>하셨어요</small></p>`;
                 if (mHtml) h += `<div class="fin-st-measured">${mHtml}</div>`;
                 h += `<div class="fin-st-curtains${R.sets.length === 1 ? ' is-single' : ''}">${curtainsHtml}</div>`;
                 if (R.night && typeof SHEER_NIGHT_NOTE === 'string') h += `<p class="fin-curtain-honest fin-night-note">${esc(SHEER_NIGHT_NOTE)}</p>`;
-                if (specsHtml) h += specsHtml; // 43번: 우측 원단 설명부 아래 우하단에 높이 맞춤
                 h += '</div></div></div>';
             });
             h += '</section>';
