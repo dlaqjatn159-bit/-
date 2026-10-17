@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261042';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261043';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261042';
+const REDAM_BUILD = '20261043';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3326,7 +3326,7 @@ function whyItemFacts(it, R) {
              tex: (f.texture && TEXTURE_LABELS[f.texture]) ? f.texture : null };
 }
 // S. 공간 문장 (색 잇기 방향, 공간에 한 번): 맞는 원단만 앞에 붙임 — 다 맞으면 주어 없이, 일부만 맞으면 "겉지는 / 속지는"
-const WHY_S = { wall: ['S1', '벽 색에 맞춰 공간이 넓어 보이게 했어요.'], bridge: ['S2', '벽과 바닥 사이 색으로 이었어요.'], floor: ['S3', '바닥 색을 따라 따뜻하고 안정감 있게 했어요.'] };
+const WHY_S = { wall: ['S1', '벽 색에 맞춰 공간이 넓어 보이게 했어요.'], bridge: ['S2', '벽과 바닥 사이 색으로 이었어요.'], floor: ['S3', '바닥 색에 맞춰 공간이 따뜻해 보이게 했어요.'] };
 function whySpaceCands(R, facts) {
     const curtains = facts.filter(F => F.kind !== 'blind');
     const fits = (F, dir) => {
@@ -3346,23 +3346,23 @@ function whySpaceCands(R, facts) {
     });
     return out;
 }
-// 원단 한 개의 재료를 순서대로: F → C(최대 2) → D → O3/T → P(겉지만). 회색 안내(O1·O2)는 따로
+// 원단 한 개의 재료를 순서대로: F → C(최대 2) → D → O3/T → P(겉지만). 회색 안내(O1·O2·F4·C5)는 따로 (36번)
 function whyItemCands(F, R, facts) {
     const list = [], c = F.lab, f = F.f, kind = F.kind, add = (g, id, a, b) => list.push({ g, id, t: [a, b || null] });
     // F. 손님 말 ↔ 기능 (하나만)
     if (kind === 'sheer') {
         const d = DENSITY_LABELS[f.density] ? f.density : null;
-        if (R.light === 'high' && d === 'day') add('F', 'F9', '햇살이 강한 창이라, 낮에는 밖에서 안이 잘 보이지 않아요.');
+        if (R.light === 'high' && d === 'day') add('F', 'F9', '햇빛이 강한 창이라, 낮에는 밖에서 안이 잘 보이지 않아요.');
         else if (R.light === 'low' && (R.privacy === 'high' || R.privacy === 'some') && d === 'heavy') add('F', 'F8', '해가 덜 드는 창이라, 촘촘한 원단으로 골랐어요.');
         else if (R.privacy === 'high' && (d === 'day' || d === 'heavy')) add('F', 'F1', '낮에도 밖에서 안이 보이지 않아요.');
         else if (R.privacy === 'some' && (d === 'medium' || d === 'day')) add('F', 'F2', '밖에서는 형태만 흐릿하게 보여요.');
-        else if (R.privacy === 'open' && d === 'light') add('F', 'F3', '풍경과 햇살이 그대로 들어와요.');
+        else if (R.privacy === 'open' && d === 'light') add('F', 'F3', '풍경과 햇빛이 그대로 들어와요.');
     } else if (kind === 'drape') {
         const b = blackoutLevel(f);
         if (R.block === 'dark' && b === 'full') add('F', 'F4', '빛을 거의 막아 낮에도 어둡게 쉴 수 있어요.');
-        else if (R.block === 'soft' && b === 'life') add('F', 'F5', '눈부심만 줄이고 방은 너무 어둡지 않아요.');
+        else if (R.block === 'soft' && b === 'life') add('F', 'F5', '눈부심은 줄이고, 방이 캄캄해지지는 않아요.');
         else if (R.block === 'soft' && (b === 'none' || b === 'mid')) add('F', 'F6', '빛을 살짝 걸러 줘요.');
-        else if (R.block === 'light' && (b === 'none' || b === 'mid')) add('F', 'F7', '햇빛이 은은하게 스며들어요.');
+        else if (R.block === 'light' && (b === 'none' || b === 'mid')) add('F', 'F7', '햇빛을 크게 막지 않아 방이 밝아요.');
     } else if (F.it.keep) {
         const k = /[.!?]$/.test(F.it.keep) ? F.it.keep : F.it.keep + '.';      // 블라인드: 지금까지의 한 줄 (빛 가림 답과 맞는 점)
         add('F', 'FB:' + k, k);
@@ -3372,56 +3372,62 @@ function whyItemCands(F, R, facts) {
     if (F.it.toneStep > 0) add('C', 'K+', '여기서 한 톤 밝게 바꿔 빛을 더 환하게 받도록 했어요.');
     else if (F.it.toneStep < 0) add('C', 'K-', '여기서 한 톤 진하게 바꿔 차분한 무게를 더했어요.');
     else if (c) {
-        if (kind === 'sheer' && c.L >= 88) add('C', 'C8', '밝은 흰빛이라 햇살을 받으면 은은하게 빛나요.', '햇살을 받으면 창 전체가 환하게 밝아져요.');
+        if (kind === 'sheer' && c.L >= 88) add('C', 'C8', '밝은 흰색이라, 햇빛을 받으면 창 전체가 환해져요.', '흰빛이 밝아서 낮에 창 쪽이 환해요.');
         else if (R.wall) {
             const dL = c.L - R.wall.L;
-            if (whyDE(c, R.wall) < 6) add('C', 'C1', '벽 색과 거의 같아 커튼이 벽에 스며들어요.', '벽과 한 몸처럼 이어져 창이 조용해 보여요.');
-            else if (dL > 15) add('C', 'C3', '벽보다 훨씬 밝아 창이 공간의 빛이 돼요.', '밝은 색이 창을 넓어 보이게 해요.');
-            else if (dL >= 6) add('C', 'C2', '벽보다 한 톤 밝아 창 쪽이 환하게 열려 보여요.', '벽보다 살짝 밝아 공간이 가벼워 보여요.');
-            else if (dL < -15) add('C', 'C5', '벽과 대비가 또렷해 창이 공간의 중심이 돼요.', '진한 색이 공간을 단단하게 잡아 줘요.');
-            else if (dL <= -6) add('C', 'C4', '벽보다 한 톤 진해 창이 차분한 무게로 자리 잡아요.', '벽보다 살짝 진해 공간이 정돈돼 보여요.');
+            if (whyDE(c, R.wall) < 6) add('C', 'C1', '벽 색과 거의 같아서, 커튼을 쳐도 공간이 넓어 보여요.', '벽과 거의 같은 색이라, 커튼이 눈에 띄지 않아요.');
+            else if (dL > 15) add('C', 'C3', '벽보다 훨씬 밝은 색이라, 창 쪽이 가장 환해 보여요.', '밝은 색이라 창이 넓어 보여요.');
+            else if (dL >= 6) add('C', 'C2', '벽보다 한 톤 밝아서, 창 쪽이 환해 보여요.', '벽보다 살짝 밝은 색이라, 공간이 가벼워 보여요.');
+            else if (dL < -15) add('C', 'C5', '벽보다 훨씬 진해서, 창이 눈에 먼저 들어와요.', '진한 색이라 공간이 또렷하게 나뉘어 보여요.');
+            else if (dL <= -6) add('C', 'C4', '벽보다 한 톤 진해서, 창 쪽이 차분해 보여요.', '벽보다 살짝 진한 색이라, 공간이 정돈돼 보여요.');
         }
         if (R.floor) {
-            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + '의' : '의'} ${WHY_FAM_WORD[c.fam]} 기운을 살짝 받아 왔어요.`, '바닥 나무색과 같은 쪽 색이라 잘 어울려요.');
-            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', '색 기운이 거의 없어 바닥 나무색을 그대로 살려요.', '맑은 색이라 바닥 색을 방해하지 않아요.');
+            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울려요.`, '바닥 나무색과 같은 쪽 색이라 잘 어울려요.');
+            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', '색 기운이 거의 없어서, 바닥 나무색이 그대로 보여요.', '맑은 색이라 바닥 색과 부딪히지 않아요.');
         }
     }
     // D. 창 방향 × 원단 (방향은 점수에 안 썼으니 모두 "~해요" 꼴). 하나만, 쓰임(빛 가림·잠) → 빛 → 색 순
     const lifeFull = kind === 'drape' && ['life', 'full'].includes(blackoutLevel(f));
     const warm = !!(c && c.fam && WHY_WARM_FAM.includes(c.fam));
     const D = [
-        [R.E && R.bedroom && lifeFull, 'D1', '아침 해가 먼저 드는 창이라, 이른 햇빛에 잠이 깨지 않게 막아 줘요.'],
-        [R.W && lifeFull, 'D5', '낮게 깊이 들어오는 오후 햇빛의 눈부심과 열기를 줄여 줘요.'],
-        [R.E && kind === 'sheer', 'D2', '아침의 맑은 햇살이 속지를 지나 방을 부드럽게 밝혀요.'],
-        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '하루 내내 높은 해가 드는 창이라, 속지가 빛을 고르게 펴 줘요.'],
-        [R.N && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 귀한 창이라, 밝은 속지로 들어오는 빛을 살려요.'],
-        [R.W && warm && c.C >= 6, 'D3', '오후엔 노을빛이 더해져 이 색이 한층 따뜻하고 깊어 보여요.'],
-        [R.W && c && c.C < 4, 'D4', '기운이 적은 색이라 오후의 노란 빛에도 색이 들뜨지 않아요.'],
-        [R.N && warm, 'D7', '푸른 기운이 도는 북쪽 빛을 이 따뜻한 색이 데워 줘요.'],
-        [R.N && c && c.C < 4 && c.L >= 75, 'D8', '고른 북쪽 빛에 맑은 색이 차분하게 가라앉아요.']
+        [R.E && R.bedroom && lifeFull, 'D1', '아침 해가 먼저 드는 창이라, 이른 햇빛에 잠이 덜 깨도록 가려 줘요.'],
+        [R.W && lifeFull, 'D5', '낮게 들어오는 오후 햇빛의 눈부심과 열기를 줄여 줘요.'],
+        [R.E && kind === 'sheer', 'D2', '아침 해가 드는 창이라, 아침엔 속지만 쳐도 방이 밝아요.'],
+        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '낮 내내 해가 드는 창이라, 속지로 빛을 고르게 걸러요.'],
+        [R.N && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 북쪽 창이라, 밝은 속지로 빛을 덜 막아요.'],
+        [R.W && warm && c.C >= 6, 'D3', '서쪽 창이라 오후엔 빛이 노래져서, 이 색이 조금 더 따뜻해 보여요.'],
+        [R.W && c && c.C < 4, 'D4', '색 기운이 적어서, 오후의 노란 빛에도 색이 크게 달라 보이지 않아요.'],
+        [R.N && warm, 'D7', '북쪽 빛은 푸르스름해서, 따뜻한 기운이 있는 이 색이 차가워 보이지 않아요.'],
+        [R.N && c && c.C < 4 && c.L >= 75, 'D8', '북쪽 빛은 하루 내내 고르게 들어서, 이 색이 시간마다 크게 달라 보이지 않아요.']
     ].find(x => x[0]);
     if (D) add('D', D[1], D[2]);
     // O3 · T. 재질 (결 이야기는 하나만)
     const feelMatch = kind === 'sheer' && ((R.feel === 'textured' && F.tex === 'natural') || (R.feel === 'cozy' && F.tex === 'cozy'));
-    if (F.tex === 'natural' && R.opp) add('T', 'O3', '맞은편 빛이 앞에서 비춰 결이 낮에도 또렷해요.');
+    if (F.tex === 'natural' && R.opp) add('T', 'O3', '맞은편 창 빛이 앞면을 비춰서, 낮에도 결이 잘 보여요.');
     if (feelMatch) add('T', 'T4', `고르신 ${R.feel === 'cozy' ? '도톰하고 보송한' : '결이 살아 있는'} 느낌 그대로예요.`);
-    if (F.tex === 'natural' && !R.opp && (R.E || R.W || R.light === 'high')) add('T', 'T1', '결이 있는 원단이라 비스듬한 햇살에 결이 살아나요.');
-    else if (F.tex === 'cozy') add('T', 'T2', '도톰하고 보송해 손에 닿는 느낌이 포근해요.');
+    if (F.tex === 'natural' && !R.opp && (R.E || R.W || R.light === 'high')) add('T', 'T1', '결이 있는 원단이라, 비스듬히 드는 햇빛에 결이 잘 보여요.');
+    else if (F.tex === 'cozy') add('T', 'T2', '도톰하고 보송한 원단이라, 만졌을 때 포근해요.');
     else if (F.tex === 'smooth' && kind === 'sheer' && R.feel === 'smooth') add('T', 'T3', '매끈해서 주름이 곧고 깔끔하게 떨어져요.');
     // P. 속지 ↔ 겉지 짝 (겉지 줄에만). 기운이 엇갈리는 짝(P4)은 문장 없음
     const sh = kind === 'drape' && c && facts.find(x => x.kind === 'sheer' && x.lab);
     if (sh) {
         const s = sh.lab;
-        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속지와 같은 계열로 한 톤 진하게 겹쳐, 둘이 한 벌처럼 보여요.');
-        else if (s.C < 3 && s.L >= 88 && c.C >= 4) add('P', 'P2', `낮엔 하얀 속지로 밝게, 밤엔 ${F.it.colorDesc ? F.it.colorDesc + ' ' : ''}겉지로 포근하게 바뀌어요.`);
-        else if (whyDE(s, c) < 5) add('P', 'P3', '속지와 겉지 색을 거의 같게 맞춰 겹쳐도 깔끔해요.');
+        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속지와 같은 계열에 한 톤 진한 색이라, 겹쳐 쳐도 어색하지 않아요.');
+        else if (s.C < 3 && s.L >= 88 && c.C >= 4) add('P', 'P2', `낮엔 흰 속지로 밝게, 밤엔 ${F.it.colorDesc ? F.it.colorDesc + ' ' : ''}겉지로 차분하게 쓸 수 있어요.`);
+        else if (whyDE(s, c) < 5) add('P', 'P3', '속지와 겉지 색이 거의 같아서, 겹쳐 쳐도 깔끔해요.');
     }
     return list;
 }
-function whyItemNote(F, R) {
-    if (!R.opp) return '';
-    if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '맞은편 창으로 방 안이 밝은 낮엔 비침이 조금 늘어요. 신경 쓰이면 겉지를 살짝 쳐 주세요.';
-    if (F.kind === 'drape' && R.block === 'dark') return '다른 창에서도 빛이 들어, 그쪽도 가려야 방이 완전히 어두워져요.';
+// 회색 안내(한 원단에 1개, 36번): 맞은편 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5) 솔직한 안내
+function whyItemNote(F, R, cands) {
+    if (R.opp) {
+        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '맞은편 창으로 방 안이 밝은 낮엔 비침이 조금 늘어요. 신경 쓰이면 겉지를 살짝 쳐 주세요.';
+        if (F.kind === 'drape' && R.block === 'dark') return '다른 창에서도 빛이 들어, 그쪽도 가려야 방이 완전히 어두워져요.';
+    }
+    if (R.room && R.room.night) return '';      // 속지만 밤 안내가 있는 공간은 안내가 이미 있음 (한 원단에 1개)
+    const ids = (cands || []).map(x => x.id);
+    if (ids.includes('F4')) return '커튼 옆과 위로 새는 빛은 조금 남아요.';
+    if (ids.includes('C5') && !(F.it.toneStep < 0)) return '차분한 쪽이 좋으시면 한 톤 밝은 색도 같이 볼 수 있어요.';
     return '';
 }
 // 카드에 들어갈 공간·원단 묶음 (비어 있으면 카드 없음). 같은 재료는 카드 안에서 한 번만: 두 번째는 "나" 말, 세 번째부터는 건너뜀 (손님 말 F만은 공간마다 다시 씀)
@@ -3458,7 +3464,7 @@ function whySetsOf(data) {
             }));
             picked.sort((a, b) => a.i - b.i).forEach(p => lines.push(p.t));
             seen.push({ key, room: room.name, ids: cands.map(x => x.id) });
-            return { it, hex: F.hex, lines, note: whyItemNote(F, R) };
+            return { it, hex: F.hex, lines, note: whyItemNote(F, R, cands) };
         });
         // 벽·바닥이 앞 공간과 같은 코드면 색 줄 대신 "벽과 바닥은 ○○과 같아요." (S4)
         const colors = room.colors || [], code = k => (colors.find(c => c.k === k) || {}).hex || '';
