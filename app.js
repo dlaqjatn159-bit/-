@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261044';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261045';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261044';
+const REDAM_BUILD = '20261045';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3068,7 +3068,7 @@ function drawTicket(ctx, data, W, slim) {
     const START_Y = HEAD_Y + 56;                    // 첫 공간이 시작되는 높이 (표 머리 아래)
     const SW_W = slim ? 36 : 56, SW_H = slim ? 46 : 70;      // 원단 칸 (세로로 긴 네모)
     const KIND_W = 76;                              // slim: 종류 이름표 칸 폭
-    const NAME_Y = slim ? 40 : 74, NAME_LH = slim ? 34 : 38, NAME_PX = slim ? 26 : 28;      // 원단 이름 글줄 (품목 윗선에서 첫 줄까지 · 줄 간격 · 글자 크기)
+    const NAME_Y = slim ? 40 : 74, NAME_LH = slim ? 34 : 38, NAME_PX = slim ? 23 : 26;      // 원단 이름 글줄 (품목 윗선에서 첫 줄까지 · 줄 간격 · 글자 크기 — 앞장들과 위계 통일, 39번)
     const SIZE_R = RX - 190, SIZE_W = 170;          // "크기" 칸: 오른쪽 끝 위치와 폭 (그 오른쪽 190은 "금액" 칸)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
     const canSpace = 'letterSpacing' in ctx;
@@ -3106,8 +3106,8 @@ function drawTicket(ctx, data, W, slim) {
         text('Re', CX, 112, 'left', DARK); text('.', CX + wRe, 112, 'left', '#8a4a22'); text('dam', CX + wDot, 112, 'left', DARK);
         spacing('0px');
         setFont(600, 26, SERIF);
-        if (canSpace) { spacing('14px'); text('견적서', RX + 14, 108, 'right', DARK); spacing('0px'); }
-        else text('견 적 서', RX, 108, 'right', DARK);
+        if (canSpace) { spacing('5px'); text('견적서', RX + 5, 108, 'right', DARK); spacing('0px'); }
+        else text('견적서', RX, 108, 'right', DARK);
         setFont(400, 24, SERIF); text(data.recipient, CX, 154, 'left', MUTED);
         setFont(400, 20, SANS); label(data.date, RX, 154, 'right', 2);
         hline(CX, RX, HEAD_Y, DARK, 3);
@@ -3128,7 +3128,7 @@ function drawTicket(ctx, data, W, slim) {
             setFont(700, NAME_PX, SERIF);
             const lines = wrap(it.name, tw);
             const lastW = ctx.measureText(lines[lines.length - 1] || '').width;
-            setFont(400, 22, SANS);
+            setFont(400, 20, SANS);
             // 옵션은 이름 옆에 작게. 자리가 모자라면 다음 줄로
             const metaInline = !!it.meta && lastW + 14 + ctx.measureText(it.meta).width <= tw;
             const metaLines = (it.meta && !metaInline) ? wrap(it.meta, tw) : [];
@@ -3146,8 +3146,8 @@ function drawTicket(ctx, data, W, slim) {
     function drawRoom(L, y) {
         const { room, px, iw, tx, nx, blocks, headH } = L;
         hline(px, px + iw, y, LINE, 2);
-        setFont(700, 30, SERIF); text(room.name, px, y + (slim ? 42 : 46), 'left', DARK);
-        setFont(700, 26, SERIF); text(won(room.total), px + iw, y + (slim ? 42 : 46), 'right', DARK);
+        setFont(600, 26, SERIF); text(room.name, px, y + (slim ? 42 : 46), 'left', DARK);
+        setFont(700, 25, SERIF); text(won(room.total), px + iw, y + (slim ? 42 : 46), 'right', DARK);
         let by = y + headH;
         blocks.forEach(b => {
             // 원단 칸: 사진이 있으면 가운데를 잘라 넣고, 없으면 톤 색으로 채움
@@ -3162,9 +3162,9 @@ function drawTicket(ctx, data, W, slim) {
             setFont(700, NAME_PX, SERIF);
             b.lines.forEach((ln, li) => text(ln, nx, by + NAME_Y + li * NAME_LH, 'left', DARK));
             let ty = by + NAME_Y + (b.lines.length - 1) * NAME_LH;
-            if (b.it.size) { setFont(400, slim ? 21 : 23, SANS); text(b.it.size, SIZE_R, by + NAME_Y, 'right', MUTED); }
-            setFont(600, slim ? 24 : 26, SERIF); text(won(b.it.price), px + iw, by + NAME_Y, 'right', DARK);
-            setFont(400, 22, SANS);
+            if (b.it.size) { setFont(400, slim ? 20 : 22, SANS); text(b.it.size, SIZE_R, by + NAME_Y, 'right', MUTED); }
+            setFont(600, slim ? 23 : 25, SERIF); text(won(b.it.price), px + iw, by + NAME_Y, 'right', DARK);
+            setFont(400, 20, SANS);
             if (b.metaInline) text(b.it.meta, nx + b.lastW + 14, ty, 'left', MUTED);
             b.metaLines.forEach(ln => { ty += 32; text(ln, nx, ty, 'left', MUTED); });
             b.rlines.forEach(ln => { ty += 32; text(ln, nx, ty, 'left', SOFT); });
@@ -3482,9 +3482,9 @@ function drawWhy(ctx, data, W, compact, title) {
     const DARK = '#2b221a', MUTED = '#6f5f4f', SOFT = '#8a7a6a';
     const PAD = TICKET_PAD, CX = PAD, RX = W - PAD, CW = RX - CX, HEAD_Y = TICKET_HEAD_Y, START_Y = HEAD_Y;      // 첫 공간의 윗선이 머리글 굵은 선과 겹침
     const COL_GAP = 44;
-    const Q_SIZE = compact ? 24 : 27, Q_LH = compact ? 36 : 40;              // 손님 말 (명조)
-    const B_SIZE = compact ? 20 : 21, B_LH = compact ? 30 : 32;              // 원단 이름·이유 (고딕)
-    const C_SIZE = compact ? 19 : 20, C_LH = compact ? 32 : 34, C_SW = compact ? 20 : 22;      // 잰 벽·바닥 색 줄 (32번) · 원단 색 칩도 같은 크기 (35번)
+    const Q_SIZE = compact ? 23 : 25, Q_LH = compact ? 36 : 40;              // 손님 말 (명조 — 우리 집 색 총평과 같은 크기, 39번)
+    const B_SIZE = compact ? 19 : 20, B_LH = compact ? 29 : 31;              // 원단 이름·이유 (고딕)
+    const C_SIZE = compact ? 18 : 19, C_LH = compact ? 30 : 32, C_SW = compact ? 19 : 20;      // 잰 벽·바닥 색 줄 (32번) · 원단 색 칩도 같은 크기 (35번)
     const N_SIZE = compact ? 17 : 18, N_LH = compact ? 26 : 28;              // 회색 안내 (밤 안내 33번 · 맞은편 창 35번)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
     const canSpace = 'letterSpacing' in ctx;
@@ -3527,7 +3527,7 @@ function drawWhy(ctx, data, W, compact, title) {
         const name = set.it.colorDesc ? set.it.name.replace(' (' + set.it.colorDesc + ')', '') : set.it.name;
         let chipW = 0;
         if (set.hex) {      // 칩은 잰 색(색상코드)만. 없으면 칩·코드 없이 이름만
-            setFont(500, C_SIZE - 3, MONO);
+            setFont(500, C_SIZE - 2, MONO);
             chipW = C_SW + 10 + ctx.measureText(set.hex).width + 16;
             ops.push({ chip: set.hex, y: cy });
         }
@@ -3552,16 +3552,16 @@ function drawWhy(ctx, data, W, compact, title) {
         }
         return { set, ops, h: Math.max(C_SW + 8, cy - B_LH + 8) };
     }
-    // 공간 한 묶음: 윗선 · 공간 이름 옆에 손님 말 한 번("…" "…" 하셨어요) · 벽·바닥 색 줄 · 공간 문장 · 원단(2개면 좌우 2단, 아니면 한 줄씩)
+    // 공간 한 묶음: 윗선 · 공간 이름(명조 24px, 우리 집 색·견적서와 같은 글꼴·위계) 옆에 손님 말 한 번("…" "…" 하셨어요) · 벽·바닥 색 줄 · 공간 문장 · 원단(2개면 좌우 2단, 아니면 한 줄씩)
+    const R_SIZE = compact ? 22 : 24;
     function layoutRoom(R) {
         const keys = [];
         R.sets.forEach(s => (s.it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light']).forEach(k => { if (R.ans[k] && WHY_SAY[k][R.ans[k]] && !keys.includes(k)) keys.push(k); }));
         keys.sort((a, b) => ['light', 'privacy', 'block'].indexOf(a) - ['light', 'privacy', 'block'].indexOf(b));
         const quotes = keys.map(k => whyQuote(k, R.ans));
         if (R.dirText) quotes.push(`“${R.dirText}쪽 창이에요”`);
-        setFont(600, 21, SANS); spacing('4px');
-        const nameW = Math.max(140, Math.ceil(ctx.measureText(R.name).width) + 32);
-        spacing('0px');
+        setFont(600, R_SIZE, SERIF);
+        const nameW = Math.max(148, Math.ceil(ctx.measureText(R.name).width) + 28);
         const QX = CX + nameW, QW = RX - QX;
         // 손님 말은 따옴표 하나가 줄 중간에서 끊기지 않게 통째로 놓음 (한 줄보다 길 때만 쪼갬)
         setFont(600, Q_SIZE, SERIF);
@@ -3592,16 +3592,16 @@ function drawWhy(ctx, data, W, compact, title) {
             if (cRows.length && cRowW + w <= QW) { cRows[cRows.length - 1].push(c); cRowW += w + 28; }
             else { cRows.push([c]); cRowW = w + 28; }
         });
-        const cY = base + 44;
+        const cY = base + 42;
         if (cRows.length) base = cY + (cRows.length - 1) * C_LH;
-        const sameY = R.sameAs ? base + 44 : 0;
+        const sameY = R.sameAs ? base + 42 : 0;
         if (R.sameAs) base = sameY;
         // 공간 문장 (S, 공간에 한 번)
         setFont(400, B_SIZE, SANS);
         const sLines = R.space.length ? wrap(R.space.join(' '), QW) : [];
-        const sY = base + (base ? 40 : 44);
+        const sY = base + (base ? 38 : 44);
         if (sLines.length) base = sY + (sLines.length - 1) * B_LH;
-        const headH = Math.max(44, base) + 26;
+        const headH = Math.max(44, base) + 24;
         const two = R.sets.length === 2;
         const colW = two ? (CW - COL_GAP) / 2 : CW;
         const sets = R.sets.map(s => layoutSet(s, colW));
@@ -3611,7 +3611,7 @@ function drawWhy(ctx, data, W, compact, title) {
         let nLines = [];
         if (R.night && typeof SHEER_NIGHT_NOTE === 'string') { setFont(400, N_SIZE, SANS); nLines = wrap(SHEER_NIGHT_NOTE, CW); }
         const noteH = nLines.length ? 18 + nLines.length * N_LH : 0;
-        return { R, nameW, QX, qLines, saidInline, headH, two, colW, sets, rows, cRows, cY, sameY, sLines, sY, nLines, bodyH, h: headH + bodyH + noteH + 30 };
+        return { R, nameW, QX, qLines, saidInline, headH, two, colW, sets, rows, cRows, cY, sameY, sLines, sY, nLines, bodyH, h: headH + bodyH + noteH + 28 };
     }
     function chip(hex, x, base) {
         ctx.fillStyle = hex; ctx.fillRect(x, base - C_SW + 3, C_SW, C_SW);
@@ -3620,14 +3620,14 @@ function drawWhy(ctx, data, W, compact, title) {
     // "■ 벽 라이트 베이지 #D8CEBF" 한 칸: 색 조각 · 벽/바닥(작게) · 이름(굵게) · 코드(작게). 다음 칸이 시작할 x를 돌려줌 (창 방향 칸은 조각·코드 없음)
     function drawColorPart(c, x, base) {
         if (c.hex) { chip(c.hex, x, base); x += C_SW + 10; }
-        setFont(500, C_SIZE - 2, SANS); text(c.k, x, base, 'left', SOFT); x += ctx.measureText(c.k).width + 8;
+        setFont(500, C_SIZE - 1, SANS); text(c.k, x, base, 'left', SOFT); x += ctx.measureText(c.k).width + 8;
         if (c.name) { setFont(700, C_SIZE, SANS); text(c.name, x, base, 'left', DARK); x += ctx.measureText(c.name).width + 8; }
-        if (c.hex) { setFont(500, C_SIZE - 3, MONO); text(c.hex, x, base, 'left', SOFT); x += ctx.measureText(c.hex).width; }
+        if (c.hex) { setFont(500, C_SIZE - 2, MONO); text(c.hex, x, base, 'left', SOFT); x += ctx.measureText(c.hex).width; }
         return x + 28;
     }
     function drawRoom(L, y) {
         hline(CX, RX, y, DARK, 2);
-        setFont(600, 21, SANS); label(L.R.name, CX, y + 44, 'left', 4);
+        setFont(600, R_SIZE, SERIF); text(L.R.name, CX, y + 44, 'left', DARK);
         setFont(600, Q_SIZE, SERIF);
         L.qLines.forEach((ln, i) => text(ln, L.QX, y + 44 + i * Q_LH, 'left', DARK));
         if (L.qLines.length) {
@@ -3647,7 +3647,7 @@ function drawWhy(ctx, data, W, compact, title) {
             b.ops.forEach(o => {
                 if (o.chip) {
                     chip(o.chip, sx, sy + o.y);
-                    setFont(500, C_SIZE - 3, MONO); text(o.chip, sx + C_SW + 10, sy + o.y, 'left', SOFT);
+                    setFont(500, C_SIZE - 2, MONO); text(o.chip, sx + C_SW + 10, sy + o.y, 'left', SOFT);
                     return;
                 }
                 setFont(o.f[0], o.f[1], o.f[2]); text(o.t, sx + (o.x || 0), sy + o.y, 'left', o.c);
@@ -3661,13 +3661,12 @@ function drawWhy(ctx, data, W, compact, title) {
     function pageLabel(i, n, H) { if (n < 2) return; setFont(500, 20, SANS); text(`${i + 1} / ${n}`, W / 2, H - 30, 'center', SOFT); }
     return { START_Y, hdr, layoutRoom, drawRoom, pageLabel };
 }
-// 카드 쪽(들) 만들기: 한 장에 안 들어가면 글자·간격을 줄이고(견적서와 같은 방식), 그래도 안 되면 공간 단위로 다음 쪽에 (글은 줄이지 않음)
+// 카드 쪽(들) 만들기: 머리글·글자 크기가 1·2·3쪽 모두 같게 유지되도록 축소 배율(TICKET_SCALES)은 쓰지 않고, 한 쪽에 안 들어가면 compact → 다음 쪽으로 나눔 (39번)
 function buildWhyCanvases(data, opts, totalAfter, before) {      // before: 앞에 있는 쪽 수 (우리 집 색, 37번)
     const info = whySetsOf(data);
     if (!info.rooms.length) return [];
-    const compact = info.rooms.reduce((a, R) => a + R.sets.length, 0) >= 4;      // 원단 4개부터 작게
-    const plan = s => {
-        const W = Math.round(TICKET_W / s), PAGE_H = Math.round(TICKET_PAGE_H / s), BOTTOM = 90;
+    const plan = compact => {
+        const W = TICKET_W, PAGE_H = TICKET_PAGE_H, BOTTOM = 90;
         const T = drawWhy(document.createElement('canvas').getContext('2d'), data, W, compact);
         const pages = []; let cur = { items: [], y: T.START_Y };
         info.rooms.forEach(R => {
@@ -3676,21 +3675,20 @@ function buildWhyCanvases(data, opts, totalAfter, before) {      // before: 앞�
             cur.items.push({ L, y: cur.y }); cur.y += L.h;
         });
         pages.push(cur);
-        return { s, W, PAGE_H, pages };
+        return { compact, W, PAGE_H, pages };
     };
-    let p = null;
-    for (const s of TICKET_SCALES) { const q = plan(s); if (q.pages.length === 1) { p = q; break; } }
-    if (!p) p = plan(1);
+    let p = plan(false);
+    if (p.pages.length > 1) { const q = plan(true); if (q.pages.length < p.pages.length) p = q; }
     const pr = opts.pixelRatio || 1, n = p.pages.length;
     return p.pages.map((pg, pi) => {
         const H = Math.max(p.PAGE_H, Math.ceil(pg.y + 90));
         const canvas = document.createElement('canvas');
-        canvas.width = TICKET_W * pr; canvas.height = Math.round(H * p.s * pr);
+        canvas.width = TICKET_W * pr; canvas.height = Math.round(H * pr);
         const ctx = canvas.getContext('2d');
-        ctx.scale(p.s * pr, p.s * pr);
+        ctx.scale(pr, pr);
         ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, p.W, H);
         ctx.textBaseline = 'alphabetic';
-        const t = drawWhy(ctx, data, p.W, compact);
+        const t = drawWhy(ctx, data, p.W, p.compact);
         t.hdr();
         pg.items.forEach(it => t.drawRoom(it.L, it.y));
         t.pageLabel(pi + (before || 0), totalAfter(n), H);
@@ -3886,10 +3884,10 @@ function planHouse(data) {
     const W = TICKET_W, H = TICKET_PAGE_H, PAD = TICKET_PAD, CX = PAD, RX = W - PAD, CW = RX - CX, BOTTOM = 90;
     const MAP_Y = TICKET_HEAD_Y + 26, MAP_H = Math.round(CW * 470 / 900);
     const make = compact => {
-        const Q_SIZE = compact ? 24 : 27, Q_LH = compact ? 40 : 46;          // 총평 (명조, 이유 카드 손님 말과 같은 크기)
-        const N_SIZE = compact ? 21 : 23, NAME_W = compact ? 140 : 156;        // 공간 이름 (명조)
-        const C_SIZE = compact ? 18 : 19, C_SW = compact ? 17 : 18, C_LH = compact ? 30 : 32;      // 윗줄 칩
-        const F_SIZE = compact ? 19 : 21, F_LH = compact ? 32 : 34;            // 아랫줄 원단 (굵게)
+        const Q_SIZE = compact ? 23 : 25, Q_LH = compact ? 38 : 42;          // 총평 (명조, 이유 카드 손님 말과 같은 크기, 39번)
+        const N_SIZE = compact ? 22 : 24, NAME_W = 148;                        // 공간 이름 (명조, 이유 카드와 같은 크기·폭, 39번)
+        const C_SIZE = compact ? 18 : 19, C_SW = compact ? 18 : 19, C_LH = compact ? 30 : 32;      // 윗줄 칩
+        const F_SIZE = compact ? 19 : 21, F_LH = compact ? 31 : 33;            // 아랫줄 원단 (굵게)
         const ctx = document.createElement('canvas').getContext('2d');
         const wrap = (str, maxW) => {
             const lines = []; let cur = '';
@@ -3909,10 +3907,10 @@ function planHouse(data) {
         };
         let y = MAP_Y + MAP_H + 6;
         const legendY = y + 22; y = legendY + 26;
-        ctx.font = `400 ${Q_SIZE}px ${SERIF}`;
+        ctx.font = `600 ${Q_SIZE}px ${SERIF}`;
         const bLines = brief.length ? wrap(brief.join(' '), CW) : [];
-        const briefLineY = y; y += bLines.length ? 22 : 0;
-        const bY = y + Q_SIZE; if (bLines.length) y = bY + (bLines.length - 1) * Q_LH + 18;
+        const briefLineY = y; y += bLines.length ? 24 : 0;
+        const bY = y + Q_SIZE; if (bLines.length) y = bY + (bLines.length - 1) * Q_LH + 20;
         const rowsTop = y + 10;
         const RW = CW - NAME_W;
         const rowLayouts = sp.map(s => {
@@ -3924,7 +3922,7 @@ function planHouse(data) {
             const topRows = flow(tops.map(c => Object.assign(c, { w: C_SW + 9 + ctx.measureText(c.t).width })), RW, 24);
             ctx.font = `700 ${F_SIZE}px ${SANS}`;
             const fabRows = flow(s.fabs.map(f => ({ hex: f.hex, t: `${f.k} · ${f.nm}`, shape: 'c', w: F_SIZE + 10 + ctx.measureText(`${f.k} · ${f.nm}`).width })), RW, 28);
-            const h = 18 + topRows.length * C_LH + (topRows.length ? 6 : 0) + fabRows.length * F_LH + 12;
+            const h = 20 + topRows.length * C_LH + (topRows.length ? 6 : 0) + fabRows.length * F_LH + 14;
             return { s, topRows, fabRows, h };
         });
         // 공간 줄을 쪽에 나눔: 첫 쪽은 지도·총평 아래, 다음 쪽부터는 머리글 아래
@@ -3956,7 +3954,7 @@ function planHouse(data) {
                 });
                 if (bLines.length) {
                     hline(CX, RX, briefLineY, LINE, 1);
-                    c.font = `400 ${Q_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
+                    c.font = `600 ${Q_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
                     bLines.forEach((ln, i) => c.fillText(ln, CX, bY + i * Q_LH));
                 }
             }
@@ -3964,8 +3962,8 @@ function planHouse(data) {
             if (rows.length) hline(CX, RX, rows[0].y, LINE, 1);
             rows.forEach(({ R, y: ry }) => {
                 c.font = `600 ${N_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
-                c.fillText(R.s.name, CX, ry + 18 + N_SIZE);
-                let yy = ry + 18 + C_SIZE;
+                c.fillText(R.s.name, CX, ry + 20 + N_SIZE);
+                let yy = ry + 20 + C_SIZE;
                 R.topRows.forEach(row => {
                     row.forEach(ch => {
                         const x = CX + NAME_W + ch.x;
@@ -3979,7 +3977,7 @@ function planHouse(data) {
                     yy += C_LH;
                 });
                 if (R.topRows.length) yy += 6 - C_LH + F_SIZE + 4;
-                else yy = ry + 18 + F_SIZE;
+                else yy = ry + 20 + F_SIZE;
                 R.fabRows.forEach(row => {
                     row.forEach(ch => {
                         const x = CX + NAME_W + ch.x, r = F_SIZE / 2;
@@ -4028,10 +4026,9 @@ function buildHouseCanvases(data, opts) {
 function buildTicketCanvases(opts, preparedData) {
     opts = opts || {};
     const data = preparedData || ticketData();
-    let plan = null;
     const slim = !opts.noCard && whySetsOf(data).rooms.length > 0;      // 앞장 카드가 있으면 견적서는 품목당 한 줄
-    for (const s of TICKET_SCALES) { const p = planTicket(data, s, slim); if (p.fitsOnePage) { plan = p; break; } }
-    if (!plan) plan = planTicket(data, 1, slim);
+    // 1·2·3쪽의 머리글·글자 크기가 흔들리지 않도록 모든 쪽을 같은 배율(1 = 1080px)로 그림 (39번)
+    const plan = planTicket(data, 1, slim);
     const { s, W, PAGE_H, BOTTOM, F, pages } = plan;
     const pr = opts.pixelRatio || 1;      // 화면에 띄울 때는 더 선명하게(저장·인쇄는 1 = 1080px)
     // 맨 앞에 "우리 집 색"(37번, 원단을 담은 공간이 2곳 이상일 때) → "원단을 고른 이유" 카드(손님이 답한 공간이 있을 때만). 쪽 표시는 전체로 셈
