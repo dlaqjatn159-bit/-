@@ -1279,12 +1279,12 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .logo-intro svg { display: block; width: 100%; height: 100%; }
 .logo-intro path { fill: var(--brand-dark); }
 
-/* 치수 미세 조절 버튼 (넓이 ±1·±10, 높이 ±1·±5) */
-.nudge-row { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.9rem; }
+/* 치수 미세 조절 버튼 (±10, ±5, ±1) - 41번 */
+.nudge-row { display: flex; justify-content: center; gap: 0.4rem; margin-top: 0.9rem; flex-wrap: wrap; }
 .nudge-btn {
-    min-width: 3.4rem; padding: 0.6rem 0.4rem; background: none; cursor: pointer;
+    min-width: 2.2rem; padding: 0.5rem 0.2rem; background: none; cursor: pointer;
     border: none; border-bottom: 1.5px solid rgba(43, 34, 26, 0.55);
-    font-size: 1.05rem; font-weight: 700; color: #2b221a;
+    font-size: 0.95rem; font-weight: 700; color: #2b221a;
 }
 .nudge-btn:active { color: #91401a; border-color: #91401a; }
 
@@ -1460,20 +1460,31 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .cm-res b .hex-code { display: block; margin: 0.1rem 0 0.15rem; }
 .cm-adj-val b .hex-code { margin-left: 0.6rem; }
 .dos-wf .dos-t { margin-top: 0.1rem; padding-left: 2.65rem; }
-/* 공간 색 띠: 벽 · 바닥 · 가구 · 원단 칸 */
-.dos-cband { display: flex; height: 68px; border-radius: 3px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.08); }
-.dos-cband > div { position: relative; transition: background-color 0.45s ease; }
-.dos-cband > div span { position: absolute; left: 0.55rem; bottom: 0.38rem; font-size: 0.69rem; font-weight: 400; letter-spacing: 0.06em; color: rgba(43, 34, 26, 0.58); }
-.dos-cband > div.is-dark span { color: rgba(255, 255, 255, 0.78); }
-.dos-room > .dos-why { margin: 0.75rem 0 0.35rem; font-size: 0.85rem; line-height: 1.55; }
+/* 공간 색 띠 (41-7): 2단 창가 입면 띠 (윗줄: 벽·원단·벽, 아랫줄: 바닥) */
+.arch-layer-box { display: flex; flex-direction: column; height: 64px; border-radius: 3px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.08); margin-bottom: 0.75rem; }
+.arch-top-wall { display: flex; flex: 1; height: 48px; }
+.arch-top-wall > div { position: relative; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: background-color 0.45s ease; }
+.arch-top-wall > div span { font-size: 0.68rem; font-weight: 400; letter-spacing: 0.04em; color: rgba(43, 34, 26, 0.58); }
+.arch-top-wall > div.is-dark span { color: rgba(255, 255, 255, 0.85); }
+.arch-bot-floor { flex: none; height: 16px; display: flex; align-items: center; justify-content: center; border-top: 1px solid rgba(43, 34, 26, 0.08); }
+.arch-bot-floor span { font-size: 0.62rem; font-weight: 400; letter-spacing: 0.04em; color: rgba(43, 34, 26, 0.58); }
+.arch-bot-floor.is-dark span { color: rgba(255, 255, 255, 0.85); }
+
+/* 공간 카드 헤더 정돈 (41-10, 41-11) */
+.dos-rname { display: flex; align-items: baseline; gap: 8px; font-size: 1.15rem; color: #2b221a; }
+.dos-rmeta { font-family: Pretendard, sans-serif; font-size: 0.8rem; font-weight: 400; color: #8a7a6a; }
+.dos-redit { font-size: 0.78rem; color: #8a7a6a; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 2px 4px; }
+.dos-redit:hover { color: #2b221a; }
+
+.dos-room > .dos-why { margin: 0.4rem 0 0.35rem; font-size: 0.85rem; line-height: 1.55; }
 .dos-why.is-muted { color: #a89a8b; }
 .dos-room > .dos-why + .dos-item { margin-top: 0.4rem; }
 /* 방금 원단을 고른 공간: 띠 칸은 왼쪽에서 오른쪽으로, 원단 조각은 아래에서 위로 0.7초 */
-.dos-house-strip .fill-in, .dos-cband .fill-in { animation: dosFillIn 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: left; }
+.dos-house-strip .fill-in, .arch-top-wall .fill-in { animation: dosFillIn 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: left; }
 .dos-sw.fill-in { animation: dosFillUp 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: bottom; }
 @keyframes dosFillIn { from { transform: scaleX(0); } }
 @keyframes dosFillUp { from { transform: scaleY(0); } }
-@media (prefers-reduced-motion: reduce) { .dos-house-strip .fill-in, .dos-cband .fill-in, .dos-sw.fill-in { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .dos-house-strip .fill-in, .arch-top-wall .fill-in, .dos-sw.fill-in { animation: none; } }
 @media (max-width: 760px) { .dos-prep { grid-template-columns: 1fr; } .dos-prep > div + div { border-left: 0; padding-left: 0; border-top: 1px solid #e5dcd0; } }
 /* 끝 모습 원단 줄: 이름 아래 "더 보기", 오른쪽 한 톤 밝게 / 진하게 (누르면 바로 바뀜) */
 .dos-more { display: inline-block; margin-top: 0.25rem; padding: 0 0 0.1rem; background: none; border: none; border-bottom: 1.5px solid #91401a; cursor: pointer; font-size: 0.78rem; font-weight: 400; color: #91401a; }
@@ -1629,6 +1640,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .fin-map-wrap { padding: 1.6rem 0 1.2rem; border-top: 1px solid #e5dcd0; border-bottom: 1px solid #e5dcd0; }
     .fin-ed-map { display: block; width: 100%; height: auto; }
     .fin-map-caption { display: flex; justify-content: space-between; align-items: center; margin-top: 0.9rem; font-size: 0.75rem; color: #8a7a6a; }
+    .fin-map-caption.is-centered { justify-content: center; margin-top: 1.1rem; } /* 41번: 범례 중앙 정돈 */
     .fin-map-legend { display: flex; gap: 1.2rem; }
     .lg-c { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(43, 34, 26, 0.25); }
     .lg-s { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(43, 34, 26, 0.25); }
@@ -1637,10 +1649,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .fin-layer-row { display: grid; grid-template-columns: 92px 210px minmax(0, 1fr); gap: 1.6rem; align-items: center; padding: 1.25rem 0; border-bottom: 1px solid #e5dcd0; }
     .fin-layer-rname { font-size: 1.06rem; font-weight: 400; color: #2b221a; }
     .fin-layer-rname small { display: block; margin-top: 0.2rem; font-family: Pretendard, sans-serif; font-size: 0.75rem; font-weight: 400; color: #8a7a6a; }
-    .arch-swatch { height: 44px; display: flex; border-radius: 2px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
-    .arch-swatch > div { position: relative; height: 100%; }
-    .arch-swatch > div span { position: absolute; left: 0.4rem; bottom: 0.25rem; font-size: 0.65rem; font-weight: 400; letter-spacing: 0.04em; color: rgba(43, 34, 26, 0.62); line-height: 1; }
-    .arch-swatch > div.is-dark span { color: rgba(255, 255, 255, 0.85); }
+    .arch-swatch { height: 44px; display: flex; border-radius: 2px; overflow: hidden; }
+    .arch-layer-box.is-mini { width: 100%; height: 44px; margin-bottom: 0; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
+    .arch-layer-box.is-mini .arch-top-wall { height: 32px; }
+    .arch-layer-box.is-mini .arch-bot-floor { height: 12px; }
+    .arch-layer-box.is-mini span { display: none; }
     .fin-layer-txts { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.84rem; }
     .fin-layer-base { font-size: 0.78rem; color: #8a7a6a; }
     .fin-layer-fab { color: #2b221a; }
@@ -1719,11 +1732,22 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .msr-stage .measure-box.msr-box { background: none; border: none; border-radius: 0; padding: 1.8rem 1rem 2rem; outline: none; transform: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
 .msr-stage .measure-box.msr-box + .msr-box { border-left: 1px solid #e5dcd0; }
 .msr-label { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.2em; color: #8a7a6a; }
+.msr-num-wrap { display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; }
 .msr-num { font-size: 4.6rem; font-weight: 700; line-height: 1.15; color: #2b221a; letter-spacing: -0.02em; transition: color .15s ease; }
 .msr-num small { font-size: 1.1rem; font-weight: 600; color: #6f5f4f; margin-left: 0.4rem; letter-spacing: 0; }
+.msr-stepper { display: inline-flex; flex-direction: column; gap: 4px; }
+.msr-step-btn {
+    width: 2.2rem; height: 1.85rem; display: flex; align-items: center; justify-content: center;
+    background: rgba(43, 34, 26, 0.04); border: 1px solid rgba(43, 34, 26, 0.2); border-radius: 4px;
+    color: #2b221a; cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease;
+    padding: 0;
+}
+.msr-step-btn:hover { background: rgba(43, 34, 26, 0.08); border-color: rgba(43, 34, 26, 0.45); }
+.msr-step-btn:active { background: #91401a; color: #fff; border-color: #91401a; }
+.msr-stage .measure-box.is-active .msr-step-btn { border-color: rgba(145, 64, 26, 0.35); }
 .msr-hint { font-size: 0.74rem; color: #8a7a6a; }
 .msr-stage .measure-box.is-active .msr-num { color: #91401a; }
-.msr-stage .nudge-row { margin-top: 1.3rem; gap: 0.9rem; }
+.msr-stage .nudge-row { margin-top: 1.3rem; gap: 0.4rem; }
 .msr-opts { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.4rem 2.6rem; margin-top: 2rem; }
 .msr-opt { background: none; border: none; cursor: pointer; padding: 0.5rem 0.1rem 0.35rem; font-size: 1.1rem; font-weight: 700; color: #a89a8b; border-bottom: 1.5px solid rgba(43, 34, 26, 0.2); transition: color .15s ease, border-color .15s ease; }
 .msr-opt::before { content: '+ '; font-weight: 400; }
@@ -1756,7 +1780,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .bookmark-stage .bookmark-card { background-color: #2b221a; }
 .bookmark-stage .bookmark-card .fab-gradient { display: none; }
 .bookmark-stage .bookmark-card .bookmark-bg,
-.bookmark-stage .bookmark-card .fabric-photo { bottom: auto; height: calc(100% - var(--band-h)); }
+.bookmark-stage .bookmark-card .fabric-photo { bottom: auto; height: calc(100% - var(--band-h)); background-position: center bottom; } /* 41번: 바닥 과다 노출 방지 및 로고 가림 */
 .bookmark-stage .bookmark-card:hover .bookmark-bg, .bookmark-stage .bookmark-card:hover .fabric-photo { transform: none; }   /* 커지면 띠 위로 넘침 */
 .bookmark-stage .fab-band { bottom: 1.5rem; color: var(--band-ink); }
 .bookmark-stage .fab-vname { text-shadow: none; font-size: min(1.95rem, calc((var(--band-h) - 2.7rem) / var(--len, 3) / 1.14)); }   /* 띠 안에 들어가게 */

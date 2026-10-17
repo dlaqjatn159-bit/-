@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261050';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261053';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261050';
+const REDAM_BUILD = '20261053';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3024,7 +3024,7 @@ function ticketData() {
     const pad = n => String(n).padStart(2, '0');
     return {
         recipient: custName ? `${custName} 고객님 귀하` : '고객님 귀하',
-        proposalFor: custName ? `${custName} 고객님 맞춤 제안` : '고객님 맞춤 제안',      // "원단을 고른 이유" 카드 머리글
+        proposalFor: custName ? `${custName} 공간 제안서` : '공간 제안서',      // "원단을 고른 이유" 카드 머리글 (41번)
         date: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`,
         rooms: rooms.map(r => {
             const items = r.curtains.map(c => {
@@ -3405,11 +3405,11 @@ function whyItemCands(F, R, facts) {
         [R.W && lifeFull, 'D5', '낮게 들어오는 오후 햇빛의 눈부심과 열기를 줄여 줘요.'],
         [R.E && kind === 'sheer', 'D2', '아침 해가 드는 창이라, 아침엔 속지만 쳐도 방이 밝아요.'],
         [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '낮 내내 해가 드는 창이라, 속지로 빛을 고르게 걸러요.'],
-        [R.N && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 북쪽 창이라, 밝은 속지로 빛을 덜 막아요.'],
-        [R.W && warm && c.C >= 6, 'D3', '서쪽 창이라 오후엔 빛이 노래져서, 이 색이 조금 더 따뜻해 보여요.'],
+        [R.N && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 북향이라, 밝은 속지로 빛을 덜 막아요.'], // 41번
+        [R.W && warm && c.C >= 6, 'D3', '서향이라 오후엔 빛이 노래져서, 이 색이 조금 더 따뜻해 보여요.'], // 41번
         [R.W && c && c.C < 4, 'D4', '색 기운이 적어서, 오후의 노란 빛에도 색이 크게 달라 보이지 않아요.'],
-        [R.N && warm, 'D7', '북쪽 빛은 푸르스름해서, 따뜻한 기운이 있는 이 색이 차가워 보이지 않아요.'],
-        [R.N && c && c.C < 4 && c.L >= 75, 'D8', '북쪽 빛은 하루 내내 고르게 들어서, 이 색이 시간마다 크게 달라 보이지 않아요.']
+        [R.N && warm, 'D7', '북향 빛은 푸르스름해서, 따뜻한 기운이 있는 이 색이 차가워 보이지 않아요.'], // 41번
+        [R.N && c && c.C < 4 && c.L >= 75, 'D8', '북향 빛은 하루 내내 고르게 들어서, 이 색이 시간마다 크게 달라 보이지 않아요.'] // 41번
     ].find(x => x[0]);
     if (D) add('D', D[1], D[2]);
     // O3 · T. 재질 (결 이야기는 하나만)
@@ -3571,7 +3571,7 @@ function drawWhy(ctx, data, W, compact, title) {
         R.sets.forEach(s => (s.it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light']).forEach(k => { if (R.ans[k] && WHY_SAY[k][R.ans[k]] && !keys.includes(k)) keys.push(k); }));
         keys.sort((a, b) => ['light', 'privacy', 'block'].indexOf(a) - ['light', 'privacy', 'block'].indexOf(b));
         const quotes = keys.map(k => whyQuote(k, R.ans));
-        if (R.dirText) quotes.push(`“${R.dirText}쪽 창이에요”`);
+        if (R.dirText) quotes.push(`“${R.dirText}향이에요”`); // 41번
         setFont(400, R_SIZE, SERIF);
         const nameW = Math.max(148, Math.ceil(ctx.measureText(R.name).width) + 28);
         const QX = CX + nameW, QW = RX - QX;
@@ -3776,11 +3776,11 @@ function houseBrief(sp) {
                 const o = reps[point.i], dL = o.L - avg(point.rest, 'L'), db = o.b - avg(point.rest, 'b');
                 const dir = Math.abs(dL) >= Math.abs(db) * 1.2 ? (dL > 0 ? '한 톤 밝게' : '한 톤 진하게') : (db > 0 ? '조금 따뜻하게' : '조금 차분하게');
                 const names = S.filter((_, j) => j !== point.i).map(s => s.name).join('·');
-                out.push(`${names}${houseJosa(names, '은', '는')} 같은 계열의 색으로 잇고, ${point.s.name}만 ${dir} 두어 분위기를 나눴어요.`);
+                out.push(`${names}${houseJosa(names, '은', '는')} 같은 계열의 색으로 잇고, ${point.s.name}만 ${dir} 두어 분위기를 살려 제안합니다.`); // 41번
             } else if (S.length === 2) {
-                out.push(`${S[0].name}${houseJosa(S[0].name, '과', '와')} ${S[1].name}의 쓰임이 달라, 두 공간의 분위기를 다르게 잡았어요.`);
+                out.push(`${S[0].name}${houseJosa(S[0].name, '과', '와')} ${S[1].name}의 빛과 바탕색에 맞춰, 각 공간의 고유한 분위기를 살려 제안합니다.`); // 41번
             } else {
-                out.push('벽·바닥과 쓰임이 공간마다 달라, 각 공간에 따로 맞춰 골랐어요.');
+                out.push('각 공간의 빛과 바탕색에 맞춰, 고유한 분위기를 살려 제안합니다.'); // 41번
             }
         }
     }

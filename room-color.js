@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261050';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261053';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -475,7 +475,7 @@
             if (res.wall && res.floor) {
                 const k = (saved && typeof saved.bridgeK === 'number') ? saved.bridgeK : BRIDGE_WALL_WEIGHT;
                 const br = bridgeOf(res.wall, res.floor, k);
-                h += '<div class="rc-bridge"><span class="rc-bridge-lbl">벽과 바닥을 이어주는 색</span>';
+                h += '<div class="rc-bridge"><span class="rc-bridge-lbl">벽과 바닥의 중간 톤</span>'; // 41번
                 h += `<div class="rc-bridge-bar"><i style="background:${res.wall.hex}"></i><span style="background:linear-gradient(90deg, ${res.wall.hex}, ${br.hex} ${(1 - k) * 100}%, ${res.floor.hex})"><b style="left:${(1 - k) * 100}%;background:${br.hex}"></b></span><i style="background:${res.floor.hex}"></i></div>`;
                 h += `<span class="rc-res-lab">${bridgeRatioText(k)} · ${classifyLab(br).text} · 밝기 L ${br.L.toFixed(1)} (반영 뒤 공간 카드의 막대로 조절)</span></div>`;
             }
@@ -491,7 +491,7 @@
         const canApply = !!(res.wall || res.floor || res.furniture.length);
         h += '<div class="rc-foot"><span>고객 화면에는 숫자 없이 "밝은 웜" 같은 말과 바닥·벽 카드만 쓰여요. 사진은 저장되지 않아요.</span>';
         h += `<div class="rc-foot-btns"><button type="button" class="staff-btn" onclick="RoomColor.apply()"${canApply ? '' : ' disabled'}>이 공간에 반영</button>`;
-        h += `<button type="button" class="staff-btn rc-apply" onclick="RoomColor.apply(true)"${canApply ? '' : ' disabled'}>${res.wall && res.floor ? '반영 후 이어주는 원단 찾기 →' : '반영 후 원단 찾기 →'}</button></div></div>`;
+        h += `<button type="button" class="staff-btn rc-apply" onclick="RoomColor.apply(true)"${canApply ? '' : ' disabled'}>${res.wall && res.floor ? '반영 후 조화로운 원단 찾기 →' : '반영 후 원단 찾기 →'}</button></div></div>`; // 41번
         h += '</div>';
 
         ov.innerHTML = h;
@@ -588,7 +588,7 @@
             + `<div class="cm-adj-row"><span class="rc-adj-end">벽</span>`
             + `<input type="range" min="${Math.round((1 - BRIDGE_K_MAX) * 100)}" max="${Math.round((1 - BRIDGE_K_MIN) * 100)}" step="5" value="${Math.round((1 - k) * 100)}" style="--wall:${res.wall.hex};--floor:${res.floor.hex};--mid:${br.hex}" aria-label="벽과 바닥 중 많이 보이는 쪽" oninput="RoomColor.custBridge(+this.value)">`
             + `<span class="rc-adj-end">바닥</span></div>`
-            + `<div class="cm-adj-val"><i style="background:${br.hex}"></i><span><b class="font-serif-kr">이어주는 색<em class="hex-code">${br.hex.toUpperCase()}</em></b><small class="cm-adj-ratio">${bridgeRatioText(k)}${Math.abs(k - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : ''}</small></span></div></div>`;
+            + `<div class="cm-adj-val"><i style="background:${br.hex}"></i><span><b class="font-serif-kr">중간 톤<em class="hex-code">${br.hex.toUpperCase()}</em></b><small class="cm-adj-ratio">${bridgeRatioText(k)}${Math.abs(k - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : ''}</small></span></div></div>`; // 41번
     }
     function custK() { return (st && typeof st.custK === 'number') ? st.custK : BRIDGE_WALL_WEIGHT; }
     function custBridge(pos) {
@@ -713,14 +713,14 @@
                     + (cur && cur !== c.tone ? ` <em>(지금 카드: ${esc(cardName(kind, cur))})</em>` : '') + '</span>';
             };
             return `<div class="rc-summary"><span class="rc-sum-lbl">잰 색</span>${part('wall', mc.wall)}${part('floor', mc.floor)}`
-                + `<span class="rc-sum-btns"><button type="button" onclick="openRoomColorFinder(${room.id})">${mc.wall && mc.floor ? '이어주는 원단 보기' : '원단 찾기'}</button>`
+                + `<span class="rc-sum-btns"><button type="button" onclick="openRoomColorFinder(${room.id})">${mc.wall && mc.floor ? '조화로운 원단 보기' : '원단 찾기'}</button>` // 41번
                 + `<button type="button" onclick="RoomColor.open(${room.id})">다시 재기</button></span></div>`
                 + (mc.wall && mc.floor ? (() => {
                     const k = typeof mc.bridgeK === 'number' ? mc.bridgeK : BRIDGE_WALL_WEIGHT;
                     const br = mc.bridge || bridgeOf(mc.wall, mc.floor, k);
-                    return `<div class="rc-adj" id="rcAdj_${room.id}"><span class="rc-sum-lbl">이어주는 색</span>`
+                    return `<div class="rc-adj" id="rcAdj_${room.id}"><span class="rc-sum-lbl">중간 톤</span>` // 41번
                         + `<span class="rc-adj-end">벽이 많이 보여요</span>`
-                        + `<input type="range" min="${Math.round((1 - BRIDGE_K_MAX) * 100)}" max="${Math.round((1 - BRIDGE_K_MIN) * 100)}" step="5" value="${Math.round((1 - k) * 100)}" style="--wall:${mc.wall.hex};--floor:${mc.floor.hex};--mid:${br.hex}" aria-label="벽과 바닥을 이어주는 색 조절" oninput="RoomColor.setBridge(${room.id}, +this.value, false)" onchange="RoomColor.setBridge(${room.id}, +this.value, true)">`
+                        + `<input type="range" min="${Math.round((1 - BRIDGE_K_MAX) * 100)}" max="${Math.round((1 - BRIDGE_K_MIN) * 100)}" step="5" value="${Math.round((1 - k) * 100)}" style="--wall:${mc.wall.hex};--floor:${mc.floor.hex};--mid:${br.hex}" aria-label="벽과 바닥의 중간 톤 조절" oninput="RoomColor.setBridge(${room.id}, +this.value, false)" onchange="RoomColor.setBridge(${room.id}, +this.value, true)">` // 41번
                         + `<span class="rc-adj-end">바닥이 많이 보여요</span>`
                         + `<span class="rc-adj-val"><i class="rc-dot" style="background:${br.hex}"></i> <b class="rc-adj-ratio">${bridgeRatioText(k)}${Math.abs(k - BRIDGE_WALL_WEIGHT) < 0.001 ? ' (기본)' : ''}</b></span></div>`;
                 })() : '') + furLine;

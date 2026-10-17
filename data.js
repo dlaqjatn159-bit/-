@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261050';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261053';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -262,7 +262,7 @@ const MOOD_ALIASES = {
 //  light=많이 비침(풍경 또렷) / medium=은은한 비침(형태는 보이나 흐림) / day=낮 가림(밝기만, 낮에는 밖에서 안 보임) / heavy=거의 안 비침(저녁 조명에도 흐릿)
 const DENSITY_LABELS = { light: '많이 비침', medium: '은은한 비침', day: '낮 가림', heavy: '거의 안 비침' };
 // 속지만 + 바깥 시선이 신경 쓰이는 공간에 붙이는 밤 안내 (33번: 구성 화면 속지 커튼 칸, 원단을 고른 이유 카드)
-const SHEER_NIGHT_NOTE = '밤에 불을 켜면 어떤 속지든 안의 그림자가 비칠 수 있어요. 밤 가림이 필요하면 겉커튼이나 블라인드를 더할 수 있어요.';
+const SHEER_NIGHT_NOTE = '밤에 불을 켜면 어떤 속지든 안의 그림자가 비칠 수 있어요. 밤 가림이 필요하면 겉커튼을 더할 수 있어요.'; // 41번
 const DENSITY_ORDER = ['light', 'medium', 'day', 'heavy'];
 const DENSITY_FACTS = { light: '#맑은비침', medium: '#은은한비침', day: '#낮시간가림', heavy: '#비침적음' };
 // 고객 사생활 질문 (속지가 들어가는 구성에서 한 번)
