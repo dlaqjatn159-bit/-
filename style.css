@@ -1639,7 +1639,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .pleat-mark { margin-top: 2.2rem; width: 28px; height: 120px; display: flex; justify-content: space-between; opacity: 0.55; }
     .pleat-mark i { display: block; width: 1px; height: 100%; background: #d9cdbd; }
     /* 1장. 공간의 색: 총평 + 색 지도 + 창가 색 겹침 조각(arch-swatch) */
-    .fin-house-lead { margin: 0 0 2.6rem; font-size: 1.28rem; font-weight: 400; line-height: 1.8; color: #2b221a; word-break: keep-all; }
+    .fin-house-lead { margin: 0 0 2.6rem; font-size: 1.08rem; font-weight: 400; line-height: 1.8; color: #2b221a; word-break: keep-all; }
     .fin-map-wrap { padding: 1.6rem 0 1.2rem; border-top: 1px solid #e5dcd0; border-bottom: 1px solid #e5dcd0; }
     .fin-ed-map { display: block; width: 100%; height: auto; }
     .fin-map-caption { display: flex; justify-content: space-between; align-items: center; margin-top: 0.9rem; font-size: 0.75rem; color: #8a7a6a; }
@@ -1654,32 +1654,34 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .fin-layer-rname small { display: block; margin-top: 0.2rem; font-family: Pretendard, sans-serif; font-size: 0.75rem; font-weight: 400; color: #8a7a6a; }
     .arch-swatch { height: 54px; display: flex; border-radius: 2px; overflow: hidden; }
     .arch-layer-box.is-mini { width: 100%; height: 54px; margin-bottom: 0; display: flex; flex-direction: column; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); }
-    .arch-layer-box.is-mini .arch-mid-window { height: 32px; width: 100%; flex: none; display: flex; }
-    .arch-layer-box.is-mini .arch-wall-base { height: 9px; width: 100%; flex: none; }
+    .arch-layer-box.is-mini .arch-mid-window { width: 100%; flex: 1; min-height: 0; display: flex; }
+    .arch-layer-box.is-mini .arch-wall-base { width: 100%; flex: none; }
     .arch-layer-box.is-mini .arch-bot-floor { height: 13px; width: 100%; flex: none; border-top: 1px solid rgba(43, 34, 26, 0.08); }
     .arch-layer-box.is-mini span { display: none; }
     .fin-layer-txts { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.84rem; }
     .fin-layer-base { font-size: 0.78rem; color: #8a7a6a; }
     .fin-layer-fab { color: #2b221a; }
     .fin-layer-fab span + span { margin-left: 1rem; }
-    /* 1장과 2장 사이 넉넉한 챕터 전환 여백 (43번) */
-    #finSecHouse { padding-bottom: 7rem; }
-    #finSecWhy { padding-top: 7.5rem; }
+    /* 1장과 2장, 2장과 3장 사이 넉넉하고 균일한 챕터 전환 여백 (43번) */
+    #finSecHouse { padding-bottom: 9rem; }
+    #finSecWhy { padding-top: 9rem; padding-bottom: 9rem; }
+    #finSecEst { padding-top: 9rem; }
 
-    /* 2장. 공간 제안: 담백한 헤더 + 첫 공간 컴팩트 연결(원래대로 축소) + 하위 공간 들여쓰기 */
+    /* 2장. 공간 제안: 담백한 헤더 + 첫 공간 간격 여유 확보(4.8rem) + 하위 공간 들여쓰기 */
     .fin-ch-intro { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
     .fin-space-story { padding: 3.5rem 0; border-top: 1px solid #ede5d8; margin-left: 2.2rem; }
-    .fin-ch-intro + .fin-space-story { padding-top: 1.4rem; border-top: none; }
+    .fin-ch-intro + .fin-space-story { padding-top: 4.8rem; border-top: none; }
+    .fin-space-story:last-of-type { padding-bottom: 0; }
     .fin-space-story .fin-ch-grid { align-items: stretch; }
     .fin-space-side { display: flex; flex-direction: column; justify-content: space-between; min-height: 100%; }
-    .fin-space-title { margin: 0; font-size: 1.45rem; font-weight: 400; line-height: 1.35; color: #2b221a; }
+    .fin-space-title { margin: 0; font-size: 1.22rem; font-weight: 400; line-height: 1.35; color: #2b221a; }
     .fin-space-specs-plate { margin-top: auto; padding-top: 1.5rem; }
     .fin-caption-specs { display: flex; flex-direction: column; gap: 0.35rem; }
     .fin-spec-row { display: flex; gap: 0.75rem; align-items: baseline; font-size: 0.78rem; line-height: 1.6; }
     .fin-spec-k { color: #8a7a6a; min-width: 48px; font-weight: 400; word-break: keep-all; }
     .fin-spec-v { color: #6f5f4f; font-weight: 400; font-family: Pretendard, sans-serif; word-break: keep-all; }
-    .fin-st-voice { margin: 0 0 1.25rem; font-size: 1.24rem; font-weight: 400; line-height: 1.65; color: #2b221a; word-break: keep-all; }
-    .fin-st-voice small { margin-left: 0.5rem; font-family: Pretendard, sans-serif; font-size: 0.84rem; font-weight: 400; color: #8a7a6a; }
+    .fin-st-voice { margin: 0 0 1.25rem; font-size: 1.08rem; font-weight: 400; line-height: 1.65; color: #2b221a; word-break: keep-all; }
+    .fin-st-voice small { margin-left: 0.5rem; font-family: Pretendard, sans-serif; font-size: 0.8rem; font-weight: 400; color: #8a7a6a; }
     .fin-st-measured { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; padding: 0.75rem 0; border-top: 1px solid #ede5d8; border-bottom: 1px solid #ede5d8; font-size: 0.81rem; color: #6f5f4f; }
     .fin-st-m-item { display: inline-flex; align-items: center; gap: 0.42rem; }
     .fin-st-m-chip { display: inline-block; width: 15px; height: 15px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.18); }

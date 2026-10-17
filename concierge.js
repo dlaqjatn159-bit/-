@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261058';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261059';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -611,28 +611,33 @@
             // 부분 치수가 있어서 벽이 남는 경우에만 벽 연결 및 비율 계산 (43번)
             const sW = Number(r.spaceWidth) || 0, cW = Number(r.width) || 0;
             const sH = Number(r.spaceHeight) || 0, cH = Number(r.height) || 0;
-            const isPartial = (r.sizeMode === 'partial' || (sW > 0 && cW > 0 && sW > cW)) && (sW > cW || (sH > 0 && cH > 0 && sH > cH));
+            const isPartMode = r.sizeMode === 'part' || r.sizeMode === 'partial';
+            const hasPartialW = (sW > 0 && cW > 0 && sW > cW);
+            const hasPartialH = (sH > 0 && cH > 0 && sH > cH);
+            const isPartial = isPartMode || hasPartialW || hasPartialH;
 
-            let wallSideFlex = 1.0;
-            let curtTotalFlex = 4.0;
-            let baseWallHeight = 0;
+            const TOTAL_FLEX = 10.0;
+            let curtTotalFlex = 8.8; // 전체 모드 기본: 커튼이 88% 차지 (시원한 전체 창)
+            let wallSideFlex = 0.6;  // 양옆 벽은 6%씩
+            let baseWallHeight = 0;  // 전체 모드: 바닥까지 닿음 (하단 벽 없음)
 
             if (isPartial) {
-                if (sW > 0 && cW > 0 && sW > cW) {
-                    const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
-                    curtTotalFlex = 6.0 * curtRatio;
-                    wallSideFlex = (6.0 - curtTotalFlex) / 2;
+                if (hasPartialW) {
+                    // 가로가 줄어들면 가운데 커튼이 비례적으로 폭이 줄어듦 (43번)
+                    const curtRatio = Math.max(0.18, Math.min(0.85, cW / sW));
+                    curtTotalFlex = TOTAL_FLEX * curtRatio;
+                    wallSideFlex = (TOTAL_FLEX - curtTotalFlex) / 2;
+                } else if (isPartMode) {
+                    curtTotalFlex = 6.0;
+                    wallSideFlex = 2.0;
                 }
-                if (sH > 0 && cH > 0 && sH > cH) {
-                    const wallHRatio = Math.max(0.15, Math.min(0.45, (sH - cH) / sH));
+                if (hasPartialH) {
+                    // 높이가 다를 때만(커튼이 바닥까지 닿지 않을 때만) 하단 벽 연결 (43번)
+                    const wallHRatio = Math.max(0.12, Math.min(0.55, (sH - cH) / sH));
                     baseWallHeight = Math.round(48 * wallHRatio);
                 } else {
-                    baseWallHeight = 11;
+                    baseWallHeight = 0; // 높이가 같으면 바닥까지 닿으므로 하단 벽 절대 연결 안 됨!
                 }
-            } else {
-                wallSideFlex = 1.0;
-                curtTotalFlex = 4.0;
-                baseWallHeight = 0; // 전체 모드: 하단 연결 벽 없음
             }
 
             let topSegs = '';
@@ -1380,28 +1385,33 @@
                 // 부분 치수가 있어서 벽이 남는 경우에만 벽 연결 및 비율 계산 (43번)
                 const sW = Number(raw.spaceWidth) || 0, cW = Number(raw.width) || 0;
                 const sH = Number(raw.spaceHeight) || 0, cH = Number(raw.height) || 0;
-                const isPartial = (raw.sizeMode === 'partial' || (sW > 0 && cW > 0 && sW > cW)) && (sW > cW || (sH > 0 && cH > 0 && sH > cH));
+                const isPartMode = raw.sizeMode === 'part' || raw.sizeMode === 'partial';
+                const hasPartialW = (sW > 0 && cW > 0 && sW > cW);
+                const hasPartialH = (sH > 0 && cH > 0 && sH > cH);
+                const isPartial = isPartMode || hasPartialW || hasPartialH;
 
-                let wallSideFlex = 1.0;
-                let curtTotalFlex = 4.0;
-                let baseWallHeight = 0;
+                const TOTAL_FLEX = 10.0;
+                let curtTotalFlex = 8.8; // 전체 모드 기본: 커튼이 88% 차지 (시원한 전체 창)
+                let wallSideFlex = 0.6;  // 양옆 벽은 6%씩
+                let baseWallHeight = 0;  // 전체 모드: 바닥까지 닿음 (하단 벽 없음)
 
                 if (isPartial) {
-                    if (sW > 0 && cW > 0 && sW > cW) {
-                        const curtRatio = Math.max(0.25, Math.min(0.85, cW / sW));
-                        curtTotalFlex = 6.0 * curtRatio;
-                        wallSideFlex = (6.0 - curtTotalFlex) / 2;
+                    if (hasPartialW) {
+                        // 가로가 줄어들면 가운데 커튼이 비례적으로 폭이 줄어듦 (43번)
+                        const curtRatio = Math.max(0.18, Math.min(0.85, cW / sW));
+                        curtTotalFlex = TOTAL_FLEX * curtRatio;
+                        wallSideFlex = (TOTAL_FLEX - curtTotalFlex) / 2;
+                    } else if (isPartMode) {
+                        curtTotalFlex = 6.0;
+                        wallSideFlex = 2.0;
                     }
-                    if (sH > 0 && cH > 0 && sH > cH) {
-                        const wallHRatio = Math.max(0.15, Math.min(0.45, (sH - cH) / sH));
+                    if (hasPartialH) {
+                        // 높이가 다를 때만(커튼이 바닥까지 닿지 않을 때만) 하단 벽 연결 (43번)
+                        const wallHRatio = Math.max(0.12, Math.min(0.55, (sH - cH) / sH));
                         baseWallHeight = Math.round(41 * wallHRatio);
                     } else {
-                        baseWallHeight = 9;
+                        baseWallHeight = 0; // 높이가 같으면 바닥까지 닿으므로 하단 벽 절대 연결 안 됨!
                     }
-                } else {
-                    wallSideFlex = 1.0;
-                    curtTotalFlex = 4.0;
-                    baseWallHeight = 0; // 전체 모드: 하단 연결 벽 없음
                 }
 
                 let midSegs = '';
