@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261053';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261055';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -320,14 +320,7 @@
         const btn = document.getElementById("v2FloatingPrevBtn");
         if (!btn) return;
         const canGoBack = stepHistory.length > 0;
-        // 오른쪽 위 글자 버튼 묶음: 안 쓰는 버튼은 자리째 감춰서 남은 버튼이 오른쪽 끝에 붙음 (40번 뒤 10-17)
         btn.style.display = canGoBack ? "" : "none";
-        // 처음으로: 공간 화면·최종 제안에서만 보임
-        const home = document.getElementById("v2HomeBtn");
-        if (home) {
-            const show = state.step === "1-Space" || state.step === "7-Final-Dossier";
-            home.style.display = show ? "" : "none";
-        }
     }
 
     // 화면 위 가운데: 지금 무엇을 고르는지 짧은 질문 + 진행 점
@@ -589,10 +582,10 @@
         const fillCls = (r, i) => (r.id === fresh && (freshIdx == null || freshIdx === i)) ? ' fill-in' : '';
         let h = '<div class="dos-stage"><div class="dos-sheet">';
         h += '<div class="dos-left">';
-        h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>Re<i class="logo-dot">.</i>dam</h1><span class="dos-phase">빛과 공간</span></div>'; // 41번
+        h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>Re<i class="logo-dot">.</i>dam</h1></div>'; // 42번: 빛과 공간 제거
         h += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${esc(currentCust)} 고객님` : '고객님'}의 공간</p>`;
-        h += doneN ? '<h2 class="dos-lead font-serif-kr">공간마다 알맞은 빛의 결을 찾았어요<small>한 톤씩 바꿔 보거나, 더 보기에서 다른 색을 찾아볼 수 있어요</small></h2>' // 41번
-                   : `<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴볼게요${list.length ? '<small>실측한 크기와 방에서 잰 벽·바닥·가구 색을 공간마다 담아 두었어요</small>' : ''}</h2>`;
+        h += doneN ? '<h2 class="dos-lead font-serif-kr">공간마다 알맞은<br>빛의 결을 찾았어요</h2>' // 42번: 사족 설명 제거
+                   : '<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴볼게요</h2>';
         // 맨 위 공간 전체 색 띠: 처음엔 빈 띠, 공간마다 빈 칸이 생기고 원단을 고르면 그 칸이 색으로 채워짐
         const strip = list.length ? list.map(r => r.isConfigured && r.curtains.length
             ? r.curtains.map((c, i) => `<i class="${fillCls(r, i).trim()}" style="background:${colorFillOf(c.fabricId, c.colorName)}"></i>`).join('')
@@ -666,7 +659,7 @@
             });
             h += '</section>';
         });
-        h += '<section class="dos-room dos-add"><button type="button" class="dos-addbtn font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button><span class="dos-add-desc">다른 공간도 함께 보시려면 눌러 주세요</span></section>';
+        h += '<section class="dos-room dos-add"><button type="button" class="dos-addbtn font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button></section>'; // 42번: 사족 설명 제거
         h += '</div>';
 
         // 아래 버튼: 남은 공간이 있으면 "상담 시작 / 다음 공간 상담하기", 모두 끝났으면 "최종 제안 보기". 가로 대화면에서는 왼쪽 기둥 하단에 고정 (40-1)
@@ -713,11 +706,11 @@
         h += '</div>';
         return h;
     }
-    // 치수 100 단위 증감 화살표 버튼 (위 +100, 아래 −100, 41번)
+    // 치수 100 단위 증감 꺽쇠 버튼 (위 +100, 아래 −100, 42번)
     function stepperHtml(target, label) {
         return '<div class="msr-stepper">' +
-            `<button type="button" class="msr-step-btn up" aria-label="${label} 100cm 올리기" onclick="event.stopPropagation(); window.concierge.nudge('${target}', 100)"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>` +
-            `<button type="button" class="msr-step-btn down" aria-label="${label} 100cm 줄이기" onclick="event.stopPropagation(); window.concierge.nudge('${target}', -100)"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>` +
+            `<button type="button" class="msr-step-btn up" aria-label="${label} 100cm 올리기" onclick="event.stopPropagation(); window.concierge.nudge('${target}', 100)"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>` +
+            `<button type="button" class="msr-step-btn down" aria-label="${label} 100cm 줄이기" onclick="event.stopPropagation(); window.concierge.nudge('${target}', -100)"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>` +
             '</div>';
     }
     // 치수 미세 조절 버튼 (숫자를 누르면 키패드, 버튼은 조금씩 더하고 빼기)
@@ -896,7 +889,7 @@
                 html += '<div class="ambient-stage ask-stage">';
                 html += `<span class="q-meta">${ed.name} · 창</span>`;
                 html += '<h2 class="q-title font-serif-kr">빛은 어디에서 들어오나요?</h2>';
-                html += '<p class="q-sub">해가 드는 때와 빛의 색을 원단을 고른 이유에 담아 드려요</p>';
+                html += '<p class="q-sub">해가 드는 때와 빛의 색을 공간 제안에 담아 드려요</p>';
                 html += dirPickerHtml(true);
                 html += `<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.dirDone()">${ed.addDraft ? `${ed.name} 담기` : '다음'}</button>`;
                 html += '</div>';
@@ -1049,8 +1042,7 @@
                 html += '<div class="bookmark-stage">';
                 // 색 잇기를 골랐으면 위 작은 글로 보여 주고, 그 방향과 어울리는 분위기 카드에 추천 표시 (점수는 그대로)
                 const ld = state.editingRoom && state.editingRoom.linkDir;
-                state.__recMoods = ld ? LINK_MOODS[ld] : [];
-                html += stepHead('원하시는 분위기를 골라 주세요', ld ? (ld === 'bridge' ? '중간 톤 안에서 골라 드려요' : LINK_WORD[ld] + ' 안에서 골라 드려요') : '답변을 확인해 보니 어울릴 색이 보여요.'); // 41번
+                html += stepHead('원하시는 분위기를 골라 주세요', ''); // 42번: 사족 설명 제거
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
                 html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
                 html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick expand-pick' + (state.__recMoods.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
@@ -1067,7 +1059,7 @@
                 const recComp = (typeof recommendComposition === 'function') ? recommendComposition(state.editingRoom) : null;
                 const recCls = key => recComp === key ? 'is-recommended' : '';
                 html += '<div class="bookmark-stage">';
-                html += stepHead('창을 어떻게 구성할까요?', recComp ? '들려주신 빛과 시선에 알맞은 구성을 준비했어요' : ''); // 41번
+                html += stepHead('창을 어떻게 구성할까요?', ''); // 42번: 사족 설명 제거
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard("이중 커튼", "호텔처럼", "", compBg('comp_double', SOLID_TEXTURES.l1), function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
                 // 바깥 시선이 신경 쓰이는 공간: 속지만이면 밤에는 그림자가 비칠 수 있다고 솔직하게 (33번, 이중커튼은 겉지가 가려 줌)
@@ -1093,7 +1085,7 @@
                     html += `<span class="q-meta">${state.editingRoom.name} · 블라인드 안내</span>`;
                     html += `<h2 class="q-title font-serif-kr">${kindName} 블라인드는 상담 때<br>실물 샘플로 보여 드릴게요.</h2>`;
                     html += `<p class="q-sub font-serif-kr">${subText}</p>`;
-                    html += '<div class="q-hint font-serif-kr"><span>이 공간에 담아 두기</span><i class="fa-solid fa-arrow-right text-xs"></i></div>';
+                    html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.proceedSampleBlind()">이 공간에 담아 두기 →</button>'; // 42번
                     html += '</div>';
                     break;
                 }
@@ -1103,7 +1095,7 @@
                 html += `<span class="q-meta">${state.editingRoom.name} · 원단 제안</span>`;
                 html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br>${typeLabel}를 골랐습니다.</h2>`;
                 html += '<p class="q-sub font-serif-kr">바닥·벽의 색과 들어오는 햇빛을 보고 고른 원단입니다.</p>';
-                html += '<div class="q-hint font-serif-kr"><span>원단 보기</span><i class="fa-solid fa-arrow-right text-xs"></i></div>';
+                html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.proceedToFabricQueue()">원단 보기 →</button>'; // 42번
                 html += '</div>';
                 break;
             }
@@ -1115,7 +1107,7 @@
 
                 const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
                 html += '<div class="bookmark-stage">';
-                html += stepHead('마음에 드는 원단을 눌러 주세요', anyColors ? '아래 견본을 누르면 다른 색을 볼 수 있어요' : '');
+                html += stepHead('마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
                 html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
                 state.fabPanelCount = showcaseList.length;      // 마지막 칸에 Re.dam 표시를 넣기 위해
                 showcaseList.forEach((entry, idx) => {
@@ -1271,8 +1263,8 @@
         let h = '<div class="fin-ed-bar">';
         h += '<button type="button" class="fin-ed-back" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button>';
         h += '<nav class="fin-ed-nav" aria-label="제안서 목차">';
-        if (showHouse) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecHouse\')">우리 집 색</button>';
-        if (showWhy) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">원단을 고른 이유</button>';
+        if (showHouse) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecHouse\')">공간의 색</button>';
+        if (showWhy) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">공간 제안</button>';
         h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
         h += '</nav></div>';
 
@@ -1282,14 +1274,14 @@
         h += `<div class="fin-ed-meta"><div class="fin-ed-for font-serif-kr">${esc(data.proposalFor)}</div><div class="fin-ed-date">${esc(String(data.date || '').replace(/\./g, '. '))}</div></div>`;
         h += '</header>';
 
-        // 1장. 우리 집 색 (원단을 담은 공간 2곳 이상 + 색 값이 있을 때)
+        // 1장. 공간의 색 (원단을 담은 공간 2곳 이상 + 색 값이 있을 때)
         if (showHouse) {
             const chNum = CH_WORDS[chIdx++] || '하나';
             const brief = (typeof houseBrief === 'function') ? houseBrief(sp) : [];
             const hasFur = sp.some(s => s.fur && s.fur.length);
             h += '<section class="fin-chapter" id="finSecHouse"><div class="fin-ch-grid">';
-            h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">우리 집 색</h2>`;
-            h += '<p class="fin-ch-sub">공간마다 잰 벽·바닥·가구 색과 고른 원단이 집 전체에서 어떻게 조화를 이루는지 모았어요.</p>'; // 41번: 조화를 이루는지
+            h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간의 색</h2>`;
+            h += '<p class="fin-ch-sub">공간마다 잰 벽·바닥·가구 색과 고른 원단이 어떻게 조화를 이루는지 모았어요.</p>'; // 41번: 조화를 이루는지
             h += '<div class="pleat-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>';
             h += '<div>';
             // 그림이 위로 (41-2)
@@ -1350,14 +1342,21 @@
             h += '</div></div></div></section>';
         }
 
-        // 2장. 원단을 고른 이유 (손님이 상담에서 답한 공간들)
+        // 2장. 공간 제안 (손님이 상담에서 답한 공간들)
         if (showWhy) {
             const chNum = CH_WORDS[chIdx++] || '둘';
             h += '<section class="fin-chapter" id="finSecWhy">';
+            // 2장 대주제 헤더: [둘] 공간 제안
+            h += '<div class="fin-ch-intro"><div class="fin-ch-grid">';
+            h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간 제안</h2>`;
+            h += '<p class="fin-ch-sub">머무시는 분의 빛과 시선, 그리고 공간의 색에 맞추어 정성껏 구성했어요.</p>';
+            h += '<div class="pleat-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>';
+            h += '<div class="fin-ch-intro-body"><p class="fin-ch-intro-lead font-serif-kr">각 공간의 창가마다 필요한 기능과 자연스러운 어울림을 담았습니다.</p></div>';
+            h += '</div></div>';
+
             whyInfo.rooms.forEach((R, idx) => {
                 const rm = data.rooms.find(r => r.name === R.name) || {}, raw = rm.raw || {};
                 const sz = roomSize(raw), comp = roomComp(raw);
-                const subTop = [R.dirText ? R.dirText + '향' : '', sz ? `${sz.w} × ${sz.h}cm` : ''].filter(Boolean).join(' · '); // 41번: 남향
                 const subBot = COMP_NAMES[comp] || '';
                 const keys = [];
                 R.sets.forEach(s => (s.it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light']).forEach(k => {
@@ -1391,11 +1390,17 @@
                 }).join('');
 
                 h += '<div class="fin-space-story"><div class="fin-ch-grid">';
-                h += '<div class="fin-ch-side">';
-                h += `<span class="fin-ch-num font-serif-kr">${chNum}${whyInfo.rooms.length > 1 ? ` · ${ORD_WORDS[idx] || (idx + 1) + '번째'} 공간` : ''}</span>`;
-                h += `<h2 class="fin-ch-ttl font-serif-kr">${esc(R.name)}</h2>`;
-                if (subTop || subBot) h += `<p class="fin-ch-sub">${esc(subTop)}${subTop && subBot ? '<br>' : ''}${esc(subBot)}</p>`;
-                h += '</div><div>';
+                h += '<div class="fin-ch-side fin-space-caption-side">';
+                h += '<div class="fin-space-caption-head">';
+                if (whyInfo.rooms.length > 1) h += `<span class="fin-space-idx font-serif-kr">${ORD_WORDS[idx] || (idx + 1) + '번째'} 공간</span>`;
+                h += `<h3 class="fin-space-title font-serif-kr">${esc(R.name)}</h3>`;
+                h += '</div>';
+                h += '<div class="fin-space-caption-plate"><div class="fin-caption-specs">';
+                if (R.dirText) h += `<div class="fin-spec-row"><span class="fin-spec-k">빛의 방향</span><span class="fin-spec-v">${esc(R.dirText)}향</span></div>`;
+                if (sz) h += `<div class="fin-spec-row"><span class="fin-spec-k">창의 크기</span><span class="fin-spec-v">${sz.w} × ${sz.h}cm</span></div>`;
+                if (subBot) h += `<div class="fin-spec-row"><span class="fin-spec-k">구성 방식</span><span class="fin-spec-v">${esc(subBot)}</span></div>`;
+                h += '</div></div></div>';
+                h += '<div>';
                 if (quotes.length) h += `<p class="fin-st-voice font-serif-kr">${quotes.map(esc).join(' &nbsp;')}<small>하셨어요</small></p>`;
                 if (mHtml) h += `<div class="fin-st-measured">${mHtml}</div>`;
                 h += `<div class="fin-st-curtains${R.sets.length === 1 ? ' is-single' : ''}">${curtainsHtml}</div>`;
@@ -1491,7 +1496,7 @@
         const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
         // 쪽 묶음 (37번): [0, house) = 우리 집 색 · [house, card) = 원단을 고른 이유 · [card, n) = 견적서
         const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : 'ticket');
-        const nextWord = { why: '원단을 고른 이유', ticket: '견적서 보기' }, prevWord = { house: '우리 집 색', why: '원단을 고른 이유' };
+        const nextWord = { why: '공간 제안', ticket: '견적서 보기' }, prevWord = { house: '공간의 색', why: '공간 제안' };
         const pager = document.getElementById('finPager');
         if (pager) {
             // 세로 모드에서는 [← 이전 (맨 왼쪽)] · [쪽 번호 + 크게 보기 (가운데)] · [다음 → (맨 오른쪽)] 자리가 고정됨 (39번)
@@ -1525,7 +1530,7 @@
             finalHouseCount = houseCount || 0;
             canvases.forEach((c, k) => {
                 const img = document.createElement('img');
-                img.alt = k < finalHouseCount ? '우리 집 색' : ((k < finalCardCount) ? '원단을 고른 이유' : '견적서');
+                img.alt = k < finalHouseCount ? '공간의 색' : ((k < finalCardCount) ? '공간 제안' : '견적서');
                 img.src = c.toDataURL('image/png');
                 box.appendChild(img);
             });

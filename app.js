@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261053';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261055';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261053';
+const REDAM_BUILD = '20261055';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3526,8 +3526,8 @@ function drawWhy(ctx, data, W, compact, title) {
         text('Re', CX, 112, 'left', DARK); text('.', CX + wRe, 112, 'left', '#8a4a22'); text('dam', CX + wDot, 112, 'left', DARK);
         spacing('0px');
         setFont(400, 26, SERIF);
-        if (canSpace) { spacing('5px'); text(title || '원단을 고른 이유', RX + 5, 108, 'right', DARK); spacing('0px'); }
-        else text(title || '원단을 고른 이유', RX, 108, 'right', DARK);
+        if (canSpace) { spacing('5px'); text(title || '공간 제안', RX + 5, 108, 'right', DARK); spacing('0px'); }
+        else text(title || '공간 제안', RX, 108, 'right', DARK);
         setFont(400, 24, SERIF); text(data.proposalFor, CX, 154, 'left', MUTED);
         setFont(400, 20, SANS); label(data.date, RX, 154, 'right', 2);
         hline(CX, RX, HEAD_Y, DARK, 2.5);
@@ -3949,7 +3949,7 @@ function planHouse(data) {
         });
         const fits = pages.length === 1 && pages[0].y <= H - BOTTOM;
         const draw = (c, pi, label) => {
-            const t = drawWhy(c, data, W, compact, '우리 집 색');
+            const t = drawWhy(c, data, W, compact, '공간의 색');
             t.hdr();
             const hline = (x1, x2, yy, color, lw) => { c.strokeStyle = color; c.lineWidth = lw; c.beginPath(); c.moveTo(x1, yy); c.lineTo(x2, yy); c.stroke(); };
             if (pi === 0) {

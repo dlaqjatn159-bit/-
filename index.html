@@ -575,11 +575,9 @@
     <!-- ============================================================== -->
     <section id="trackCurationSection" class="hidden">
         
-        <!-- v2 뒤로가기 · 처음으로: 오른쪽 위에 글자 버튼으로 (로고를 가리지 않게) -->
+        <!-- v2 뒤로가기: 오른쪽 위에 글자 버튼으로 (로고를 가리지 않게) -->
         <div id="v2TopActs">
             <button id="v2FloatingPrevBtn" class="font-serif-kr" onclick="concierge.prevStep()" title="이전 단계">← 이전</button>
-            <!-- 처음으로: 제안서(공간 화면)에서만 보임 → 첫 화면(고객 정보) -->
-            <button id="v2HomeBtn" class="font-serif-kr" onclick="concierge.goHome()" title="처음 화면" aria-label="처음 화면">처음으로</button>
         </div>
 
         <!-- v2 풀스크린 뷰포트 -->
@@ -683,13 +681,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261053"></script>
-    <script src="costing.js?v=20261053"></script>
-    <script src="data.js?v=20261053"></script>
-    <script src="calculator.js?v=20261053"></script>
-    <script src="concierge.js?v=20261053"></script>
-    <script src="app.js?v=20261053"></script>
-    <script src="room-color.js?v=20261053"></script>
+    <script src="pricing.js?v=20261055"></script>
+    <script src="costing.js?v=20261055"></script>
+    <script src="data.js?v=20261055"></script>
+    <script src="calculator.js?v=20261055"></script>
+    <script src="concierge.js?v=20261055"></script>
+    <script src="app.js?v=20261055"></script>
+    <script src="room-color.js?v=20261055"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
