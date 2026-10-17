@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261043';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261044';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1161,13 +1161,29 @@
     // ---- 최종 제안의 종이: 저장·인쇄되는 이미지를 한 쪽씩 보여 줌 (app.js makeTicketBlobs) ----
     //  우리 집 색(원단을 담은 공간 2곳 이상, 37번) → "원단을 고른 이유" 카드(고객 답이 있을 때만) → 견적서. 위아래로 이어 붙이면 한 장처럼 느껴져서 "다음"을 눌러 넘김 (10-15 사장님)
     let finalPaperSeq = 0, finalPaperTimer = null;
+    // 종이를 옆으로 밀어서 쪽 넘기기 (39번, 세로에서 고객이 직접 넘길 때). 위아래 읽기와 헷갈리지 않게 옆으로 크게 밀었을 때만
+    function bindFinalSwipe(box) {
+        if (!box || box.dataset.swipe) return;
+        box.dataset.swipe = '1';
+        let sx = 0, sy = 0, on = false;
+        box.addEventListener('touchstart', e => { if (e.touches.length !== 1) { on = false; return; } on = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+        box.addEventListener('touchend', e => {
+            if (!on) return;
+            on = false;
+            const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+            if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+            setFinalPage(finalPage + (dx < 0 ? 1 : -1));
+        }, { passive: true });
+    }
     function setFinalPage(i) {
         const box = document.getElementById('finPaper');
         if (!box) return;
         const imgs = box.querySelectorAll('img');
         if (!imgs.length) return;
+        const before = finalPage;
         finalPage = Math.max(0, Math.min(i, imgs.length - 1));
         imgs.forEach((im, k) => im.classList.toggle('is-on', k === finalPage));
+        if (finalPage !== before) { const st = document.querySelector('.fin-stage'); if (st) st.scrollTop = 0; }      // 세로에서 아래까지 읽다 넘기면 새 쪽 맨 위부터 (39번)
         const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
         // 쪽 묶음 (37번): [0, house) = 우리 집 색 · [house, card) = 원단을 고른 이유 · [card, n) = 견적서
         const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : 'ticket');
@@ -1208,6 +1224,7 @@
                 box.appendChild(img);
             });
             setFinalPage(finalPage);
+            bindFinalSwipe(box);
         } catch (e) {
             console.error(e);
             const box = document.getElementById('finPaper');

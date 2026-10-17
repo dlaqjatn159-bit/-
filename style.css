@@ -1552,11 +1552,21 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-fee input::-webkit-outer-spin-button, .fin-fee input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .fin-sub { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; margin-top: 2.6rem; }
 /* 세로로 긴 화면(탭 세로·휴대폰): 종이를 폭에 맞추고 버튼은 아래로 */
+/* 고객이 읽는 화면이라 세로로 돌리면 글씨가 커짐: 쪽 넘기기·저장·인쇄는 맨 아래 얇은 띠에 늘 보이게, 직원 칸(시공비·다음 상담·공간 수정)은 감춤 (39번) */
 @media (max-aspect-ratio: 1/1) {
-    .fin-stage { flex-direction: column; align-items: center; gap: 1.6rem; padding: 5rem 1.2rem 2rem; }
+    .fin-stage { flex-direction: column; align-items: center; gap: 1.6rem; padding: 4.6rem 1rem 6.4rem; }
+    .fin-paper { width: 100%; max-width: 900px; }
     .fin-paper img { height: auto; width: 100%; }
     .fin-wait { width: 100%; height: 60vh; }
-    .fin-side { position: static; flex: 0 0 auto; min-height: 0; width: 100%; max-width: 680px; }
+    .fin-side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 20; min-height: 0; width: auto; flex-direction: row; justify-content: space-between; align-items: center; gap: 1.2rem; padding: 0.9rem 1.6rem calc(0.9rem + env(safe-area-inset-bottom, 0px)); background: #fbf9f5; border-top: 1px solid #ddd3c6; box-sizing: border-box; }
+    .fin-who, .fin-fee, .fin-sub { display: none; }
+    .fin-pager { flex: 1 1 auto; flex-direction: row; align-items: center; justify-content: flex-start; gap: 1.4rem; margin-bottom: 0; }
+    .fin-pager:empty { display: flex; }
+    .fin-pager .fin-prev { order: 0; font-size: 1rem; }
+    .fin-pager .fin-pg { order: 1; }
+    .fin-pager .dos-act { order: 2; margin-left: auto; }
+    .fin-main { flex-direction: row; align-items: center; gap: 1.4rem; }
+    .fin-side .dos-act { font-size: 1.15rem; }
 }
 
 #trackCurationSection:has(.dos-stage) #brandMark, #trackCurationSection:has(.fin-stage) #brandMark { display: none; }   /* 공간 화면·최종 제안에는 Re.dam이 따로 있음 */
