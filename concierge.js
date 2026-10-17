@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261048';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261049';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -320,15 +320,13 @@
         const btn = document.getElementById("v2FloatingPrevBtn");
         if (!btn) return;
         const canGoBack = stepHistory.length > 0;
-        btn.style.opacity = canGoBack ? "1" : "0";
-        btn.style.pointerEvents = canGoBack ? "auto" : "none";
-        // 홈 버튼: 공간 화면·최종 제안에서만 보임. 뒤로가기가 없으면 그 자리로 당김
+        // 오른쪽 위 글자 버튼 묶음: 안 쓰는 버튼은 자리째 감춰서 남은 버튼이 오른쪽 끝에 붙음 (40번 뒤 10-17)
+        btn.style.display = canGoBack ? "" : "none";
+        // 처음으로: 공간 화면·최종 제안에서만 보임
         const home = document.getElementById("v2HomeBtn");
         if (home) {
             const show = state.step === "1-Space" || state.step === "7-Final-Dossier";
-            home.style.opacity = show ? "1" : "0";
-            home.style.pointerEvents = show ? "auto" : "none";
-            home.style.left = canGoBack ? "calc(2rem + 46px + 0.6rem)" : "2rem";
+            home.style.display = show ? "" : "none";
         }
     }
 
