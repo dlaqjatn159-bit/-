@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261063';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261064';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -686,12 +686,21 @@
                 const toneBtn = (e, word, step) => `<button type="button"${e ? ` onclick="window.concierge.toneSwap(${r.id}, ${i}, '${e.key.replace(/'/g, "\\'")}', ${step})"` : ' disabled'}><i style="background:${e ? e.hex : '#eee8df'}"></i><span>${word}</span></button>`;
                 const isBlindDupe = c.presetType === 'blind' && (c.calc?.fabName || c.label || '').includes('블라인드');
                 h += '<div class="dos-item">';
+                h += '<div class="dos-item-main">';
                 h += `<div class="dos-sw${fillCls(r, i)}" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
                 h += `<div class="dos-txt">${isBlindDupe ? '' : `<div class="dos-kind">${kindOf(c)}</div>`}`;
                 h += `<div class="dos-fab font-serif-kr">${(typeof ticketFabricName === 'function') ? ticketFabricName(c, c.calc || {}) : ((c.calc && c.calc.fabName) || c.label || '원단')}${opts.length ? `<em>${opts.join(' · ')}</em>` : ''}</div>`;
-                if (c.presetType !== 'blind') h += `<button type="button" class="dos-more" onclick="openSpaceMore(${r.id}, ${i})">더 보기</button>`;
+                h += '</div></div>';
+                h += '<div class="dos-item-sub">';
+                if (c.presetType !== 'blind') {
+                    h += `<button type="button" class="dos-more" onclick="openSpaceMore(${r.id}, ${i})">더 보기</button>`;
+                } else {
+                    h += '<span></span>';
+                }
+                if (tones) {
+                    h += `<div class="dos-tone">${toneBtn(tones.lighter, '한 톤 밝게', 1)}${toneBtn(tones.darker, '한 톤 진하게', -1)}</div>`;
+                }
                 h += '</div>';
-                if (tones) h += `<div class="dos-tone">${toneBtn(tones.lighter, '한 톤 밝게', 1)}<span class="dos-tone-cur"></span>${toneBtn(tones.darker, '한 톤 진하게', -1)}</div>`;
                 h += '</div>';
             });
             h += '</section>';
