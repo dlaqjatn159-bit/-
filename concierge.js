@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261061';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261062';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -2412,8 +2412,8 @@
                 sizeMode: r.sizeMode || 'full',
                 spaceWidth: r.spaceWidth || size.w,
                 spaceHeight: r.spaceHeight || size.h,
-                partWidth: r.sizeMode === 'part' ? size.w : 0,
-                partHeight: r.sizeMode === 'part' ? size.h : 0,
+                partWidth: r.sizeMode === 'part' ? size.w : null,
+                partHeight: r.sizeMode === 'part' ? size.h : null,
                 width: size.w, height: size.h,
                 floorTone: r.floorTone, wallTone: r.wallTone, diagnosed: r.diagnosed, cardParts: r.cardParts ? Object.assign({}, r.cardParts) : null, colorSrc: r.colorSrc || null,
                 measuredColor: r.measuredColor ? JSON.parse(JSON.stringify(r.measuredColor)) : null,
@@ -2845,8 +2845,8 @@
             if (!ed) return;
             ed.sizeMode = mode;
             if (mode === 'part') {
-                if (!ed.partWidth && ed.width) ed.partWidth = ed.width;
-                if (!ed.partHeight && ed.height) ed.partHeight = ed.height;
+                if (ed.partWidth == null && ed.width) ed.partWidth = ed.width;
+                if (ed.partHeight == null && ed.height) ed.partHeight = ed.height;
                 if (!ed.spaceWidth && ed.width) ed.spaceWidth = ed.width;
                 if (!ed.spaceHeight && ed.height) ed.spaceHeight = ed.height;
             } else if (mode === 'full') {
