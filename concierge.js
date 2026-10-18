@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261064';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261065';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -761,7 +761,28 @@
         h += `<div class="ed-color">${row('벽', 'wall')}${row('바닥', 'floor')}`;
         if (house) h += '<button type="button" class="ed-sub" onclick="window.concierge.editRoomUseHouse()">집 기본 색으로 맞추기</button>';
         h += '</div>' + dirPickerHtml();
-        if (r.isConfigured) h += '<p class="q-sub ed-note">고른 원단은 그대로 두고, 바뀐 색으로 어울림만 다시 살펴요.</p>';
+        // 창 구성 선택 (48번): 상담을 마친 공간이면 이중 커튼 · 속지만 · 겉지만 · 블라인드로 즉시/스마트하게 변경
+        if (r.isConfigured) {
+            const curComp = roomComp(r) || 'double';
+            const compHints = {
+                double: '속지와 겉지가 함께 들어가는 구성이에요',
+                sheer_only: '은은한 채광의 속지만 들어가는 구성이에요',
+                drape_only: '빛 차단을 위한 겉지만 들어가는 구성이에요',
+                blind_only: '창틀 안에 들어가는 블라인드 구성이에요'
+            };
+            h += '<div class="ed-comp"><span class="ed-comp-k">창 구성</span><div class="ed-comp-btns">';
+            [
+                ['double', '이중 커튼'],
+                ['sheer_only', '속지 커튼'],
+                ['drape_only', '겉지 커튼'],
+                ['blind_only', '블라인드']
+            ].forEach(([k, txt]) => {
+                const on = (curComp === k);
+                h += `<button type="button" class="ed-comp-btn font-serif-kr${on ? ' on' : ''}" onclick="window.concierge.switchComposition('${k}')">${txt}</button>`;
+            });
+            h += `</div><span class="ed-comp-hint">${compHints[curComp] || ''}</span></div>`;
+        }
+        if (r.isConfigured) h += '<p class="q-sub ed-note">고른 원단은 그대로 두고, 바뀐 색이나 구성으로 어울림을 살펴요.</p>';
         h += '<div class="ed-acts font-serif-kr"><button type="button" class="msr-add" onclick="window.concierge.saveRoomEdit()">저장</button>';
         h += `<button type="button" class="ed-sub" onclick="window.concierge.deleteRoom(${r.id})">이 공간 삭제</button></div>`;
         h += '</div>';
@@ -867,6 +888,11 @@
             stepHistory.length = 0;
             updatePrevButtonVisibility();
         }
+
+        // 스크롤 위치 기억 (48번): 1-Space 한 톤 조절이나 화면 갱신 시 스크롤이 맨 위로 튀는 현상 방지
+        const prevRightScroll = (state.step === "1-Space") ? (document.querySelector('.dos-right')?.scrollTop || 0) : 0;
+        const prevStageScroll = (state.step === "1-Space") ? (document.querySelector('.dos-stage')?.scrollTop || 0) : 0;
+        const prevMsrScroll = (state.step === "1-Space-Edit") ? (document.querySelector('.msr-stage')?.scrollTop || 0) : 0;
 
         const currentCust = getClientName();
         // "수정"으로 들어온 공간: 지난번에 고른 답을 색 빠진 회색으로 표시 (새 공간에는 표시 없음. 주황·빛 테두리는 "추천" 전용). 누를 수는 있음
@@ -1311,6 +1337,21 @@
         html += '</div>';
         main.innerHTML = html;
         lastRenderedStep = state.step;
+        // 스크롤 복원 (48번)
+        if (state.step === "1-Space") {
+            if (prevRightScroll) {
+                const el = document.querySelector('.dos-right');
+                if (el) el.scrollTop = prevRightScroll;
+            }
+            if (prevStageScroll) {
+                const st = document.querySelector('.dos-stage');
+                if (st) st.scrollTop = prevStageScroll;
+            }
+        }
+        if (state.step === "1-Space-Edit" && prevMsrScroll) {
+            const msr = document.querySelector('.msr-stage');
+            if (msr) msr.scrollTop = prevMsrScroll;
+        }
         if (state.step === "4-Fabric-Queue") {
             bindColorDecks();     // 색상 카드 밀어 넘기기 연결
             // "찾는 중" 화면을 거치지 않고 열렸을 때(뒤로 가기 등): 사진 주소를 찾은 뒤 넣음
@@ -2481,6 +2522,171 @@
             state.editingRoom = null;
             backToSpace();
         },
+        // ---- 수정하기 내 창 구성 전환 (48번): 이중 커튼 ↔ 속지 ↔ 겉지 ↔ 블라인드 ----
+        switchComposition: function(targetType) {
+            const ed = state.editingRoom, r = state.roomsCart.find(x => x.id === state.editingRoomId);
+            if (!ed || !r) return;
+            const curComp = roomComp(r) || 'double';
+            if (targetType === curComp) return;
+
+            // 수정하기 화면에서 바꾼 크기·벽·바닥·방향을 r에 먼저 저장 (작성 중이던 값이 날아가지 않도록)
+            const isPart = ed.sizeMode === 'part' && ((ed.partWidth > 0) || (ed.width > 0));
+            const sW = Number(ed.spaceWidth || ed.width) || r.spaceWidth || r.width;
+            const sH = Number(ed.spaceHeight || ed.height) || r.spaceHeight || r.height;
+            const pW = Number(isPart ? (ed.partWidth || ed.width) : sW) || r.width;
+            const pH = Number(isPart ? (ed.partHeight || ed.height) : sH) || r.height;
+            r.sizeMode = isPart ? 'part' : 'full';
+            r.spaceWidth = sW;
+            r.spaceHeight = sH;
+            r.width = pW;
+            r.height = pH;
+            r.floorTone = ed.floorTone;
+            r.wallTone = ed.wallTone;
+            r.measuredColor = ed.measuredColor || null;
+            r.cardParts = ed.cardParts || null;
+            r.colorSrc = ed.colorSrc || null;
+            r.windowDir = windowDirOf(ed.windowDir);
+
+            // 1. 축소: 이중 커튼 → 속지만
+            if (curComp === 'double' && targetType === 'sheer_only') {
+                if (!confirm(`'${r.name}'의 겉지를 빼고 속지만 남길까요?`)) return;
+                r.curtains = r.curtains.filter(c => c.presetType === 'sheer');
+                r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
+                syncToV1MasterRooms();
+                spaceToast(`${r.name}: 겉지를 빼고 속지만 남겼어요`);
+                render();
+                return;
+            }
+
+            // 2. 축소: 이중 커튼 → 겉지만
+            if (curComp === 'double' && targetType === 'drape_only') {
+                if (!confirm(`'${r.name}'의 속지를 빼고 겉지만 남길까요?`)) return;
+                r.curtains = r.curtains.filter(c => c.presetType === 'drape');
+                r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
+                syncToV1MasterRooms();
+                spaceToast(`${r.name}: 속지를 빼고 겉지만 남겼어요`);
+                render();
+                return;
+            }
+
+            // 3. 확장: 속지만 → 이중 커튼 (기존 속지 유지, 겉지만 새로 선택)
+            if (curComp === 'sheer_only' && targetType === 'double') {
+                const sheerCurt = r.curtains.find(c => c.presetType === 'sheer');
+                state.editingRoom = Object.assign({}, r, {
+                    sizeKnown: true,
+                    editOnly: false,
+                    existingCurtains: sheerCurt ? [sheerCurt] : [],
+                    items: [{ label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }]
+                });
+                state.pendingItemQueue = state.editingRoom.items;
+                state.currentItemIndex = 0;
+                goToStep("3.5-Bridge");
+                return;
+            }
+
+            // 4. 확장: 겉지만 → 이중 커튼 (기존 겉지 유지, 속지만 새로 선택)
+            if (curComp === 'drape_only' && targetType === 'double') {
+                const drapeCurt = r.curtains.find(c => c.presetType === 'drape');
+                state.editingRoom = Object.assign({}, r, {
+                    sizeKnown: true,
+                    editOnly: false,
+                    existingCurtains: drapeCurt ? [drapeCurt] : [],
+                    items: [{ label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
+                });
+                state.pendingItemQueue = state.editingRoom.items;
+                state.currentItemIndex = 0;
+                goToStep("2-Base-SheerFeel");
+                return;
+            }
+
+            // 5. 교체: 블라인드로 변경
+            if (targetType === 'blind_only') {
+                if (r.curtains.length && !confirm(`'${r.name}'의 기존 커튼을 블라인드로 바꿀까요?\n(새 블라인드 종류를 선택하게 됩니다)`)) return;
+                r.curtains = [];
+                state.editingRoom = Object.assign({}, r, {
+                    sizeKnown: true,
+                    editOnly: false,
+                    existingCurtains: [],
+                    items: [{ label: `${r.name} 블라인드`, presetType: 'blind', fabricId: null, floorGap: 0 }]
+                });
+                state.pendingItemQueue = state.editingRoom.items;
+                state.currentItemIndex = 0;
+                goToStep("2-Base-BlindKind");
+                return;
+            }
+
+            // 6. 교체: 블라인드에서 커튼으로 변경
+            if (curComp === 'blind_only') {
+                if (r.curtains.length && !confirm(`'${r.name}'의 블라인드를 커튼으로 바꿀까요?\n(새 커튼 원단을 선택하게 됩니다)`)) return;
+                r.curtains = [];
+                if (targetType === 'double') {
+                    state.editingRoom = Object.assign({}, r, {
+                        sizeKnown: true,
+                        editOnly: false,
+                        existingCurtains: [],
+                        items: [
+                            { label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 },
+                            { label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }
+                        ]
+                    });
+                    state.pendingItemQueue = state.editingRoom.items;
+                    state.currentItemIndex = 0;
+                    goToStep("2-Base-SheerFeel");
+                } else if (targetType === 'sheer_only') {
+                    state.editingRoom = Object.assign({}, r, {
+                        sizeKnown: true,
+                        editOnly: false,
+                        existingCurtains: [],
+                        items: [{ label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
+                    });
+                    state.pendingItemQueue = state.editingRoom.items;
+                    state.currentItemIndex = 0;
+                    goToStep("2-Base-SheerFeel");
+                } else if (targetType === 'drape_only') {
+                    state.editingRoom = Object.assign({}, r, {
+                        sizeKnown: true,
+                        editOnly: false,
+                        existingCurtains: [],
+                        items: [{ label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }]
+                    });
+                    state.pendingItemQueue = state.editingRoom.items;
+                    state.currentItemIndex = 0;
+                    goToStep("3.5-Bridge");
+                }
+                return;
+            }
+
+            // 7. 교체: 속지만 ↔ 겉지만 상호 교체
+            if (curComp === 'sheer_only' && targetType === 'drape_only') {
+                if (r.curtains.length && !confirm(`'${r.name}'의 기존 속지를 정리하고 겉지로 바꿀까요?\n(새 겉지 원단을 선택하게 됩니다)`)) return;
+                r.curtains = [];
+                state.editingRoom = Object.assign({}, r, {
+                    sizeKnown: true,
+                    editOnly: false,
+                    existingCurtains: [],
+                    items: [{ label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }]
+                });
+                state.pendingItemQueue = state.editingRoom.items;
+                state.currentItemIndex = 0;
+                goToStep("3.5-Bridge");
+                return;
+            }
+
+            if (curComp === 'drape_only' && targetType === 'sheer_only') {
+                if (r.curtains.length && !confirm(`'${r.name}'의 기존 겉지를 정리하고 속지로 바꿀까요?\n(새 속지 원단을 선택하게 됩니다)`)) return;
+                r.curtains = [];
+                state.editingRoom = Object.assign({}, r, {
+                    sizeKnown: true,
+                    editOnly: false,
+                    existingCurtains: [],
+                    items: [{ label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
+                });
+                state.pendingItemQueue = state.editingRoom.items;
+                state.currentItemIndex = 0;
+                goToStep("2-Base-SheerFeel");
+                return;
+            }
+        },
         selectLightLevel: function(level) {
             state.editingRoom.lightLevel = level;
             if (returnHomeIfFixing()) return;
@@ -2675,6 +2881,25 @@
                     return cObj;
                 });
 
+                // 기존 원단과 병합 (48번: 속지만 또는 겉지만 있는 공간에 다른 한쪽을 추가했을 때)
+                let allCurtains = finalizedCurtains;
+                const exist = (state.editingRoom.existingCurtains || []).slice();
+                if (exist.length) {
+                    exist.forEach(c => {
+                        c.width = Number(state.editingRoom.width) || c.width;
+                        c.height = Number(state.editingRoom.height) || c.height;
+                        c.calc = calculateV1ItemPrice(c);
+                    });
+                    const combined = exist.concat(finalizedCurtains);
+                    combined.sort((a, b) => {
+                        const rank = k => (k === 'sheer' ? 1 : (k === 'drape' ? 2 : 3));
+                        return rank(a.presetType) - rank(b.presetType);
+                    });
+                    combined.forEach((c, idx) => { c.id = (roomTarget.id * 100) + (idx + 1); });
+                    allCurtains = combined;
+                    roomSubSum = allCurtains.reduce((acc, c) => acc + ((c.calc && c.calc.curtainSubtotal) || c.calc.sellingPrice || 0), 0);
+                }
+
                 roomTarget.isConfigured = true;
                 roomTarget.floorTone = state.editingRoom.floorTone;
                 roomTarget.wallTone = state.editingRoom.wallTone;
@@ -2692,7 +2917,7 @@
                 roomTarget.linkDir = state.editingRoom.linkDir || null;
                 roomTarget.windowDir = windowDirOf(state.editingRoom.windowDir);      // 창 방향 (35번)          // 색 잇기 답 (원단 추천·중심 화면 이유 한 줄)
                 roomTarget.diagnosed = true;          // 바닥·벽·채광 진단을 거침 → 제안서에 진단 요약·추천 이유 표시
-                roomTarget.curtains = finalizedCurtains;
+                roomTarget.curtains = allCurtains;
                 roomTarget.subtotal = roomSubSum;
                 roomTarget.width = Number(state.editingRoom.width) || roomTarget.width;
                 roomTarget.height = Number(state.editingRoom.height) || roomTarget.height;
