@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261067';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261068';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261067';
+const REDAM_BUILD = '20261068';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2785,6 +2785,7 @@ function renderDbTable() {
     if (searchKeyword) {
         filtered = filtered.filter(f => 
             (f.name && f.name.toLowerCase().includes(searchKeyword)) ||
+            (f.engName && f.engName.toLowerCase().includes(searchKeyword)) ||
             (f.book && f.book.toLowerCase().includes(searchKeyword)) ||
             (f.id && f.id.toLowerCase().includes(searchKeyword))
         );
@@ -2809,7 +2810,7 @@ function renderDbTable() {
             <tr class="hover:bg-slate-50 transition text-xs">
                 <td class="p-2.5 font-bold text-amber-900">
                     <div class="text-[10px] text-slate-400 font-normal">${f.book}${pv && pv.supplier ? ` · ${pv.supplier}` : ''} [${f.id}]</div>
-                    <div class="text-slate-800 font-semibold">${f.name}</div>
+                    <div class="text-slate-800 font-semibold">${f.name}${f.engName ? ` <span class="text-stone-400 font-mono text-[11px] font-normal">[${f.engName}]</span>` : ''}</div>
                 </td>
                 <td class="p-2.5 font-mono">${calcBadge}</td>
                 <td class="p-2.5 font-mono text-slate-500">${costText}</td>

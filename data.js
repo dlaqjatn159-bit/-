@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261067';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261068';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -879,6 +879,7 @@ function importColorRows(rows) {
     const iId = head.findIndex(h => h.includes('원단') && h.includes('ID'));
     const iExact = head.findIndex(h => h.trim() === '색상');                         // 딱 "색상"인 열이 먼저 ("색상코드"·"색상 톤"과 헷갈리지 않게)
     const iColor = iExact >= 0 ? iExact : head.findIndex(h => h.includes('색상') && !h.includes('톤') && !h.includes('파일') && !h.includes('코드'));
+    const iOrderCode = head.findIndex(h => h.includes('주문코드') || h.includes('책자코드') || h.includes('원문코드') || h.includes('발주코드')); // 선택: 책자 원문 코드 (51번)
     const iTone = head.findIndex(h => h.includes('톤'));
     const iLabel = head.findIndex(h => h.includes('이름') && !h.includes('ID'));     // 선택: "색 이름"·"가까운 이름" 열
     const iLight = head.findIndex(h => h.includes('밝기'));                          // 선택: "밝기" 열 (L값 0~100)
@@ -896,6 +897,8 @@ function importColorRows(rows) {
         next[id] = next[id] || [];
         if (next[id].some(c => c.name === name)) continue;
         const entry = { name, tone: iTone >= 0 ? normalizeToneInput(r[iTone]) : null };
+        const orderCode = iOrderCode >= 0 ? String(r[iOrderCode] == null ? '' : r[iOrderCode]).trim() : '';
+        if (orderCode) entry.orderCode = orderCode;
         const label = iLabel >= 0 ? String(r[iLabel] == null ? '' : r[iLabel]).trim().slice(0, 20) : '';
         if (label) entry.label = label;
         const light = iLight >= 0 ? normalizeLightInput(r[iLight]) : null;
@@ -1189,6 +1192,7 @@ function buildFabricRecords(dataRows, rules) {
         const book = getCol(['책자명', '책자', '샘플북', '브랜드']) || "기타";
         let rawCode = getCol(['품번코드', '품번', '코드', 'id']);
         const name = getCol(['품명', '원단명', '품목명', '제품명']) || `품목 ${i}`;
+        const engName = getCol(['영문품명', '영어품명', '책자품명', '발주품명', '영문명', '영어명', 'engname']); // 영문 품명 병기 지원 (51번)
         const specRaw = getCol(['규격사이즈', '규격', '폭', 'cm', '폭cm']) || "150";
         if (!rawCode || rawCode.trim() === '-' || rawCode.trim() === '') rawCode = '';
 
@@ -1216,7 +1220,7 @@ function buildFabricRecords(dataRows, rules) {
         }
 
         const fabObj = {
-            book, id: uid, name, calcType: detected.calcType, specCm: parsedSpecCm,
+            book, id: uid, name, engName: engName || null, calcType: detected.calcType, specCm: parsedSpecCm,
             unit: detected.unit, price,
             categoryType: getCol(['상세구분', '구분', '카테고리']) || null,
             tone: normalizeToneInput(getCol(['언더톤', '톤', '색조'])),

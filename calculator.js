@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261067';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261068';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -125,9 +125,30 @@ function generateDoc(type) {
     const vatAmountVal = globalVatOption === 'business' ? Math.ceil((sellingPriceVal * 0.1) / 1000) * 1000 : 0;
     const finalPriceVal = sellingPriceVal + vatAmountVal;
 
-    let roomSummaries = rooms.map((r, i) => {
+    // 서류 및 발주서용 원단명 표기: 공장 발주서·시트 상세·CSV 다운로드에서는 [영문품명] 병기 (51번)
+    const formatFabDocName = (calc, fab, isFactory, curtain) => {
+        let n = (calc && calc.fabName) || (fab && fab.name) || '';
+        if (isFactory && fab && fab.engName) {
+            if (fab.name && n.includes(fab.name)) {
+                n = n.replace(fab.name, `${fab.name} [${fab.engName}]`);
+            } else {
+                n = `${n} [${fab.engName}]`;
+            }
+        }
+        if (isFactory && curtain && curtain.fabricId && curtain.colorName && typeof getFabricColors === 'function') {
+            const col = getFabricColors(curtain.fabricId).find(x => x.name === normalizeColorName(curtain.colorName));
+            if (col && col.orderCode && !n.includes(col.orderCode)) {
+                n += ` [${col.orderCode}]`;
+            }
+        }
+        return n;
+    };
+
+    const buildRoomSummaries = (isFactory) => rooms.map((r, i) => {
         let curtainLines = r.curtains.map((c) => {
             const calc = c.calc || {};
+            const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
+            const fabDisplayName = formatFabDocName(calc, fab, isFactory, c);
             const optionsList = [];
             if (c.shapeFee > 0) optionsList.push("형상기억");
             if (c.leadBand) optionsList.push("리드밴드");
@@ -138,7 +159,7 @@ function generateDoc(type) {
             return `    └ ${c.label}\n` +
                    `      • 실측규격: 가로 ${c.width}cm x 세로 ${c.height}cm\n` +
                    `      • 제작규격: 가로 ${c.width}cm x 세로 ${calc.actualCurtainHeight || c.height}cm [${calc.installDesc}, 바닥:${gapStr}]\n` +
-                   `      • 원단/방식: [${calc.fabBook}] ${calc.fabName} (${methodDesc}, ${c.pleat === 'panel' ? '판넬' : c.pleat + '배'})\n` +
+                   `      • 원단/방식: [${calc.fabBook}] ${fabDisplayName} (${methodDesc}, ${c.pleat === 'panel' ? '판넬' : c.pleat + '배'})\n` +
                    `      • 가공옵션: ${optionsStr}\n` +
                    `      • 산출수량: ${calc.qtyText}\n` +
                    `      • 부자재: ${calc.calcType === "hebe" ? "미적용" : (c.hwName + " (" + calc.numJa + "자)")}\n` +
@@ -151,14 +172,14 @@ function generateDoc(type) {
 
     setTimeout(() => {
         if (type === 'factory') {
-            textarea.value = `[공장 통합 발주서]\n• 발주일자: ${dateStr}\n• 현장/고객명: ${custName} 님\n----------------------------------------\n\n${roomSummaries}\n\n----------------------------------------\n※ 모든 커튼 세로 제작 치수는 기구 차감 및 바닥 간격 조정이 반영된 최종 완제품 치수임.`;
+            textarea.value = `[공장 통합 발주서]\n• 발주일자: ${dateStr}\n• 현장/고객명: ${custName} 님\n----------------------------------------\n\n${buildRoomSummaries(true)}\n\n----------------------------------------\n※ 모든 커튼 세로 제작 치수는 기구 차감 및 바닥 간격 조정이 반영된 최종 완제품 치수임.`;
         } else if (type === 'kakao') {
             const vatDesc = globalVatOption === 'business' 
                 ? `• 부가세 (VAT 10%): ${vatText}원 (세금계산서 발행)\n` 
                 : `• 부가세: 0원 (일반 소비자 판매가)\n`;
 
-            textarea.value = `안녕하세요 ${custName} 고객님! 요청하신 커튼 & 블라인드 맞춤 견적 안내드립니다.\n\n` +
-                `[견적 상세 내역]\n\n${roomSummaries}\n\n` +
+            textarea.value = `안녕하세요 ${custName} 고객님! 요청하신 커튼 & 블라인드 맞춤 견적 안내드립니다.\n\n` + 
+                `[견적 상세 내역]\n\n${buildRoomSummaries(false)}\n\n` + 
                 `----------------------------------------\n` +
                 `• 전체 시공/출장비: ${globalInstallFee.toLocaleString()}원\n` +
                 `• 판매가 (시공비 포함): ${subtotalText}원\n` +
@@ -174,12 +195,13 @@ function generateDoc(type) {
                 r.curtains.forEach(c => {
                     const calc = c.calc || {};
                     const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
+                    const fabDisplayName = formatFabDocName(calc, fab, true, c);
                     const qtyVal = calc.calcType === 'hebe' ? calc.appliedHebe : (calc.calcType === 'width' ? calc.numWidths : calc.totalYards);
                     const optText = `${c.shapeFee > 0 ? '형상 ' : ''}${c.leadBand ? '리드밴드' : ''}`.trim() || '기본';
                     const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
 
                     rows.push([
-                        dateStr, custName, r.name, c.label, calc.fabBook || "", calc.fabName || "",
+                        dateStr, custName, r.name, c.label, calc.fabBook || "", fabDisplayName || "",
                         c.width, c.height, calc.installDesc || "레일", `${calc.floorGapVal || 0}cm`,
                         calc.actualCurtainHeight || c.height,
                         methodDesc, optText, qtyVal, fab.unit || "", fab.price || 0,
@@ -194,7 +216,12 @@ function generateDoc(type) {
             textarea.value = rows.join('\n');
         } else if (type === 'ledger') {
             const headers = ["일자", "고객명", "공간수", "창문수", "대표품목", "판매가", "부가세", "최종금액", "시공비", "VAT구분"];
-            let firstItem = (rooms[0] && rooms[0].curtains[0] && rooms[0].curtains[0].calc) ? rooms[0].curtains[0].calc.fabName : "커튼";
+            let firstCurtain = (rooms[0] && rooms[0].curtains[0]);
+            let firstItem = "커튼";
+            if (firstCurtain && firstCurtain.calc) {
+                const fFab = FABRIC_DB.find(f => f.id === firstCurtain.fabricId) || {};
+                firstItem = formatFabDocName(firstCurtain.calc, fFab, true, firstCurtain);
+            }
             let totalCount = rooms.reduce((acc, curr) => acc + curr.curtains.length, 0);
 
             const ledgerRow = [
@@ -232,18 +259,37 @@ function downloadCsvFile() {
         return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
     };
 
+    const formatFabDocName = (calc, fab, isFactory, curtain) => {
+        let n = (calc && calc.fabName) || (fab && fab.name) || '';
+        if (isFactory && fab && fab.engName) {
+            if (fab.name && n.includes(fab.name)) {
+                n = n.replace(fab.name, `${fab.name} [${fab.engName}]`);
+            } else {
+                n = `${n} [${fab.engName}]`;
+            }
+        }
+        if (isFactory && curtain && curtain.fabricId && curtain.colorName && typeof getFabricColors === 'function') {
+            const col = getFabricColors(curtain.fabricId).find(x => x.name === normalizeColorName(curtain.colorName));
+            if (col && col.orderCode && !n.includes(col.orderCode)) {
+                n += ` [${col.orderCode}]`;
+            }
+        }
+        return n;
+    };
+
     let csvContent = '\uFEFF' + headers.map(escapeCsv).join(',') + '\r\n';
 
     rooms.forEach(r => {
         r.curtains.forEach(c => {
             const calc = c.calc || {};
             const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
+            const fabDisplayName = formatFabDocName(calc, fab, true, c);
             const qtyVal = calc.calcType === 'hebe' ? calc.appliedHebe : (calc.calcType === 'width' ? calc.numWidths : calc.totalYards);
             const optText = `${c.shapeFee > 0 ? '형상 ' : ''}${c.leadBand ? '리드밴드' : ''}`.trim() || '기본';
             const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
 
             const row = [
-                dateStr, custName, r.name, c.label, calc.fabBook || "", calc.fabName || "",
+                dateStr, custName, r.name, c.label, calc.fabBook || "", fabDisplayName || "",
                 c.width, c.height, calc.installDesc || "레일", `${calc.floorGapVal || 0}cm`,
                 calc.actualCurtainHeight || c.height,
                 methodDesc, optText, qtyVal, fab.unit || "", fab.price || 0,
