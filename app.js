@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261066';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261067';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261066';
+const REDAM_BUILD = '20261067';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1678,15 +1678,15 @@ const MORE_FILTERS = {
     see: { label: '비침', kind: 'sheer', opts: { clear: '맑게 비침', soft: '은은하게', day: '낮에도 가림' }, of: e => ({ light: 'clear', medium: 'soft', day: 'day', heavy: 'day' })[e.density] || null },
     block: { label: '빛 가림', kind: 'drape', opts: { life: '생활 암막', full: '완전 암막' }, of: e => (e.blackout === 'life' || e.blackout === 'full') ? e.blackout : null }
 };
-const MORE_SORTS = { fit: '우리 집에 어울리는 순', light: '밝은 순', dark: '진한 순' };
+const MORE_SORTS = { fit: '우리 집에 어울리는 순', sameColor: '지금 색과 비슷한 순', light: '밝은 순', dark: '진한 순' };
 const MORE_DIRS = ['wall', 'bridge', 'floor'];      // 잇는 방향 (28번): 넓어 보이게 / 그 중간으로 / 바닥과 어울리게 — 색 잇기 화면과 같은 말
-let spaceMore = null;       // { roomId, idx, view: 'cards' | 'map', stars: [키], focus: 키, sel: { 묶음: Set }, sort, sheet: 키, dir: 잇는 방향(이 화면에서만) }
+let spaceMore = null;       // { roomId, idx, view: 'cards' | 'map', stars: [키], focus: 키, sel: { 묶음: Set }, sameFab, sort, sheet: 키, dir: 잇는 방향(이 화면에서만) }
 function openSpaceMore(roomId, idx) {
     const slot = window.concierge && window.concierge.spaceSlot(roomId, idx);
     if (!slot) return;
     // 잇는 방향 처음 값 = 그 칸에서 고른 방향 → 공간의 색 잇기 답 → 그 중간으로. 바꿔도 공간의 답(room.linkDir)은 그대로
     const mc = slot.room.measuredColor, dir = (mc && mc.wall && mc.floor) ? (slot.curtain.pickDir || slot.room.linkDir || 'bridge') : null;
-    spaceMore = { roomId, idx, view: 'cards', stars: [], focus: null, sel: { bright: new Set(), tex: new Set(), see: new Set(), block: new Set() }, sort: 'fit', sheet: null, dir };
+    spaceMore = { roomId, idx, view: 'cards', stars: [], focus: null, sel: { bright: new Set(), tex: new Set(), see: new Set(), block: new Set() }, sameFab: false, sort: 'fit', sheet: null, dir };
     let ov = document.getElementById('spaceMore');
     if (!ov) {
         ov = document.createElement('div');
@@ -1713,9 +1713,17 @@ function spaceMoreData() {
     if (!slot) return null;
     const all = finderEntries().filter(e => e.cat === slot.kind);
     const curKey = slot.curtain.fabricId + '__' + (slot.curtain.colorName || '');
-    return { slot, all, cur: all.find(e => e.key === curKey) || null, curKey };
+    const cur = all.find(e => e.key === curKey) || null;
+    const curFabId = (cur && cur.fabricId) || slot.curtain.fabricId;
+    const curFab = (typeof FABRIC_DB !== 'undefined' ? FABRIC_DB.find(f => f.id === curFabId) : null);
+    const curFabName = (cur ? finderShowName(cur).name : (curFab && curFab.name)) || '지금 원단';
+    const sameFabCount = all.filter(e => e.fabricId === curFabId).length;
+    return { slot, all, cur, curKey, curFabId, curFabName, sameFabCount };
 }
-function spaceMoreOk(e) { return Object.keys(MORE_FILTERS).every(k => !spaceMore.sel[k].size || spaceMore.sel[k].has(MORE_FILTERS[k].of(e))); }
+function spaceMoreOk(e, curFabId) {
+    if (spaceMore && spaceMore.sameFab && curFabId && e.fabricId !== curFabId) return false;
+    return Object.keys(MORE_FILTERS).every(k => !spaceMore.sel[k].size || spaceMore.sel[k].has(MORE_FILTERS[k].of(e)));
+}
 // 우리 집에 어울리는 점수: 고객 원단 화면 추천과 같은 계산 (기존 추천 점수 + 색 잇기 점수). 색 잇기는 이 화면에서 고른 잇는 방향으로
 function spaceMoreFit(e, room) {
     const cat = e.cat === 'sheer' ? '속지' : '겉지';
@@ -1726,7 +1734,7 @@ const moreEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/
 function renderSpaceMore() {
     const ov = document.getElementById('spaceMore'), d = spaceMore && spaceMoreData();
     if (!ov || !d) { closeSpaceMore(); return; }
-    const { slot, cur } = d, room = slot.room, kindWord = slot.kind === 'sheer' ? '속지' : '겉지';
+    const { slot, cur, curFabId, curFabName, sameFabCount } = d, room = slot.room, kindWord = slot.kind === 'sheer' ? '속지' : '겉지';
     const mc = room.measuredColor, measured = !!(mc && mc.wall && mc.floor);
     const keep = (ov.querySelector('.more-body') || {}).scrollTop || 0;
     // 거름망 (지도에서는 순서 없음). 여러 개 고를 수 있음
@@ -1735,7 +1743,7 @@ function renderSpaceMore() {
         if (f.kind && f.kind !== slot.kind) return '';
         return `<span class="more-fg"><em>${f.label}</em>` + Object.keys(f.opts).map(v => `<button type="button" class="more-chip${spaceMore.sel[k].has(v) ? ' on' : ''}" data-mf="${k}:${v}" aria-pressed="${spaceMore.sel[k].has(v)}">${f.opts[v]}</button>`).join('') + '</span>';
     };
-    const any = Object.values(spaceMore.sel).some(s => s.size);
+    const any = Object.values(spaceMore.sel).some(s => s.size) || spaceMore.sameFab || (spaceMore.sort !== 'fit');
     let h = '<button type="button" class="cm-back" data-mclose aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button>';
     h += '<div class="more-head">';
     h += `<span class="q-meta">${moreEsc(room.name)} · ${kindWord} · 더 보기</span>`;
@@ -1744,6 +1752,9 @@ function renderSpaceMore() {
     h += '<div class="more-fbar">';
     // 잇는 방향 (벽·바닥을 둘 다 잰 공간만, 카드·지도 둘 다): 카드 "우리 집에 어울리는 순"과 지도 점선 원이 따라 바뀜
     if (measured) h += '<span class="more-fg"><em>잇는 방향</em><select data-mdir>' + MORE_DIRS.map(k => `<option value="${k}"${spaceMore.dir === k ? ' selected' : ''}>${window.concierge.linkWord(k)}</option>`).join('') + '</select></span>';
+    if (sameFabCount > 1) {
+        h += `<button type="button" class="more-chip more-chip-fab${spaceMore.sameFab ? ' on' : ''}" data-msamefab="1" aria-pressed="${spaceMore.sameFab}">지금 원단만 (${moreEsc(curFabName)} ${sameFabCount}색)</button>`;
+    }
     h += grp('bright') + grp('tex') + grp('see') + grp('block');
     if (spaceMore.view === 'cards') h += '<span class="more-fg"><em>순서</em><select data-msort>' + Object.keys(MORE_SORTS).map(k => `<option value="${k}"${spaceMore.sort === k ? ' selected' : ''}>${MORE_SORTS[k]}</option>`).join('') + '</select></span>';
     if (any) h += '<button type="button" class="more-clear" data-mclear>조건 풀기</button>';
@@ -1765,10 +1776,34 @@ function renderSpaceMore() {
 // 카드: 지금 원단이 맨 앞("지금"), 지도에서 "카드로 크게 보기"를 누른 색이 그다음, 나머지는 순서대로 (조건에 맞는 것만)
 function spaceMoreCardsHtml(d) {
     const room = d.slot.room;
-    let list = d.all.filter(e => e.key !== d.curKey && spaceMoreOk(e));
+    let list = d.all.filter(e => e.key !== d.curKey && spaceMoreOk(e, d.curFabId));
     if (spaceMore.sort === 'light' || spaceMore.sort === 'dark') {
         const s = spaceMore.sort === 'light' ? -1 : 1;
         list.sort((x, y) => (x.L == null) - (y.L == null) || s * ((x.L || 0) - (y.L || 0)));
+    } else if (spaceMore.sort === 'sameColor') {
+        const cur = d.cur;
+        if (cur && cur.L != null) {
+            const curL = cur.L, curA = cur.a || 0, curB = cur.b || 0;
+            const distCache = new Map();
+            const getDist = x => {
+                if (distCache.has(x)) return distCache.get(x);
+                if (x.L == null) return 9999;
+                const dL = x.L - curL;
+                const da = (x.a != null && cur.a != null) ? (x.a - curA) : 0;
+                const db = (x.b != null && cur.b != null) ? (x.b - curB) : 0;
+                const val = Math.hypot(dL, da, db);
+                distCache.set(x, val);
+                return val;
+            };
+            list.sort((x, y) => {
+                const diff = getDist(x) - getDist(y);
+                if (Math.abs(diff) > 0.05) return diff;
+                return spaceMoreFit(y, room) - spaceMoreFit(x, room);
+            });
+        } else {
+            list.forEach(e => { e.mfit = spaceMoreFit(e, room); });
+            list.sort((x, y) => y.mfit - x.mfit);
+        }
     } else {
         list.forEach(e => { e.mfit = spaceMoreFit(e, room); });
         list.sort((x, y) => y.mfit - x.mfit);
@@ -1785,7 +1820,8 @@ function spaceMoreCardsHtml(d) {
             + (isCur ? '<span class="finder-cur">지금</span>' : `<button type="button" class="finder-star${on ? ' is-on' : ''}" data-mstar="${moreEsc(e.key)}" aria-pressed="${on}" aria-label="후보로 담기">${on ? '★' : '☆'}</button>`)
             + `</div><div class="more-fbody"><b class="font-serif-kr">${moreEsc(n.name)}</b><span>${moreEsc(n.color)}${photo ? '' : ' · 샘플북'}</span></div></article>`;
     };
-    const hint = '카드를 옆으로 밀면 사진이 나와요. 마음에 드는 색에 ☆를 눌러 후보로 모아 주세요.' + (Object.values(spaceMore.sel).some(s => s.size) ? ` (조건에 맞는 ${shown}색 · 지금 원단은 늘 맨 앞)` : '');
+    const hasFilter = Object.values(spaceMore.sel).some(s => s.size) || spaceMore.sameFab;
+    const hint = '카드를 옆으로 밀면 사진이 나와요. 마음에 드는 색에 ☆를 눌러 후보로 모아 주세요.' + (hasFilter ? ` (조건에 맞는 ${shown}색 · 지금 원단은 늘 맨 앞)` : '');
     return `<p class="more-hint">${hint}</p><div class="finder-grid more-grid">${list.map(card).join('')}</div>`;
 }
 // 색 지도 (고객용): 위 밝게 · 아래 진하게 · 왼쪽 차분하게 · 오른쪽 따뜻하게 (숫자 없음). 같은 종류 원단만, 겹친 점은 살짝 띄움
@@ -1836,7 +1872,7 @@ function spaceMoreMapHtml(d) {
     const curPt = pts.find(p => p.e.key === d.curKey);
     const dots = pts.sort((p, q) => (p.e.key === d.curKey) - (q.e.key === d.curKey)).map(({ e, x, y }) => {
         const isCur = e.key === d.curKey, st = spaceMore.stars.includes(e.key);
-        return `<g class="more-dot${isCur ? ' is-cur' : ''}${isCur || spaceMoreOk(e) ? '' : ' is-off'}" data-mpt="${moreEsc(e.key)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCur ? 13 : 10}" fill="${e.hex}"/>`
+        return `<g class="more-dot${isCur ? ' is-cur' : ''}${isCur || spaceMoreOk(e, d.curFabId) ? '' : ' is-off'}" data-mpt="${moreEsc(e.key)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCur ? 13 : 10}" fill="${e.hex}"/>`
             + (st ? `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle" font-size="11" fill="#91401a">★</text>` : '') + '</g>';
     }).join('');
     const curLbl = curPt ? `<text class="more-lbl more-halo" x="${curPt.x.toFixed(1)}" y="${(curPt.y + 28).toFixed(1)}" text-anchor="middle">지금</text>` : '';
@@ -1866,7 +1902,8 @@ function spaceMoreClick(ev) {
     if (by('[data-mclose]')) { closeSpaceMore(); return; }
     if ((b = by('[data-mview]'))) { spaceMore.view = b.dataset.mview; spaceMore.sheet = null; spaceMore.focus = null; renderSpaceMore(); return; }
     if ((b = by('[data-mf]'))) { const [k, v] = b.dataset.mf.split(':'), s = spaceMore.sel[k]; s.has(v) ? s.delete(v) : s.add(v); renderSpaceMore(); return; }
-    if (by('[data-mclear]')) { Object.values(spaceMore.sel).forEach(s => s.clear()); renderSpaceMore(); return; }
+    if ((b = by('[data-msamefab]'))) { spaceMore.sameFab = !spaceMore.sameFab; renderSpaceMore(); return; }
+    if (by('[data-mclear]')) { Object.values(spaceMore.sel).forEach(s => s.clear()); spaceMore.sameFab = false; spaceMore.sort = 'fit'; renderSpaceMore(); return; }
     if ((b = by('[data-mstar]'))) {
         const k = b.dataset.mstar, st = spaceMore.stars;
         if (st.includes(k)) spaceMore.stars = st.filter(x => x !== k);
