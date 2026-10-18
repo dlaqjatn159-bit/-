@@ -550,6 +550,9 @@
                             <button onclick="exportPrivatePack()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
                                 <i class="fa-solid fa-floppy-disk text-[11px] text-amber-700"></i> 백업 내려받기
                             </button>
+                            <button id="undoImportBtn" onclick="restoreUndoSnapshot()" style="display:none" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+                                <i class="fa-solid fa-rotate-left text-[11px] text-rose-600"></i> 방금 불러오기 되돌리기
+                            </button>
                         </div>
                     </div>
 
@@ -681,13 +684,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261068"></script>
-    <script src="costing.js?v=20261068"></script>
-    <script src="data.js?v=20261068"></script>
-    <script src="calculator.js?v=20261068"></script>
-    <script src="concierge.js?v=20261068"></script>
-    <script src="app.js?v=20261068"></script>
-    <script src="room-color.js?v=20261068"></script>
+    <script src="pricing.js?v=20261071"></script>
+    <script src="costing.js?v=20261071"></script>
+    <script src="data.js?v=20261071"></script>
+    <script src="calculator.js?v=20261071"></script>
+    <script src="concierge.js?v=20261071"></script>
+    <script src="app.js?v=20261071"></script>
+    <script src="room-color.js?v=20261071"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

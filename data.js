@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261068';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261071';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -18,6 +18,7 @@ const STORE_KEYS = {
     installFee: 'redam_default_install_fee_v1',   // 새 상담에 들어가는 기본 시공·출장비 (직원 화면 설정)
     optionPrices: 'redam_option_prices_v1',      // 가공·부자재 단가(형상기억·리드밴드·레일·패널 가공비)와 그 원가 (직원 화면 설정, 29번)
     photoList: 'redam_photo_list_v1',  // 실제로 있는 원단 사진 주소 목록 (사진 확인 결과. 다음에 열 때 바로 쓰려고)
+    backupUndo: 'redam_backup_undo_v1', // 불러오기 직전 상태 백업 (되돌리기용, 52번)
     legacy: 'curtain_fabric_db_v23'  // 구버전 앱이 남긴 데이터 (원가 포함 → 삭제 권장)
 };
 
@@ -835,7 +836,26 @@ function colorSort(a, b) {
     if (na !== nb) return na ? -1 : 1;
     return a.name.localeCompare(b.name, 'ko');
 }
-function getFabricColors(id) { return colorsStore()[id] || []; }
+function getFabricColors(id) {
+    const store = colorsStore();
+    if (store[id] && store[id].length > 0) return store[id];
+    // 보조 매칭: ID가 다르더라도 영문 품명이나 한글 품명으로 등록된 색상이 있으면 가져옴
+    if (typeof FABRIC_DB !== 'undefined' && Array.isArray(FABRIC_DB)) {
+        const f = FABRIC_DB.find(x => x.id === id);
+        if (f) {
+            const clean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
+            const cEng = clean(f.engName);
+            const cName = clean(f.name);
+            for (const k of Object.keys(store)) {
+                if (!store[k] || !store[k].length) continue;
+                const cK = clean(k);
+                if (cEng && (cK === cEng || cK.endsWith(cEng) || cEng.endsWith(cK))) return store[k];
+                if (cName && (cK === cName || cK.endsWith(cName) || cName.endsWith(cK))) return store[k];
+            }
+        }
+    }
+    return [];
+}
 function hasColorTones(id) { return getFabricColors(id).some(c => !!c.tone); }
 function addFabricColors(id, names) {
     const store = colorsStore(); const list = store[id] || [];
@@ -875,6 +895,7 @@ function importColorRows(rows) {
         if (t.includes('원단') && t.includes('ID') && t.includes('색상')) { hi = i; break; }
     }
     if (hi < 0) return { error: "머리글(원단 ID, 색상, 색상 톤)을 찾지 못했습니다." };
+    saveUndoSnapshot('색상표 불러오기');
     const head = rows[hi].map(x => String(x == null ? '' : x));
     const iId = head.findIndex(h => h.includes('원단') && h.includes('ID'));
     const iExact = head.findIndex(h => h.trim() === '색상');                         // 딱 "색상"인 열이 먼저 ("색상코드"·"색상 톤"과 헷갈리지 않게)
@@ -886,14 +907,26 @@ function importColorRows(rows) {
     const iHex = head.findIndex(h => h.includes('색상코드'));                        // 선택: "색상코드" 열 (#RRGGBB)
     const iA = head.findIndex(h => h.includes('붉은기'));                            // 선택: "붉은기" 열 (a값)
     const iB = head.findIndex(h => h.includes('노란기'));                            // 선택: "노란기" 열 (b값)
-    const known = new Set(FABRIC_DB.map(f => f.id));
-    const next = {}; let colorCount = 0, unknown = 0;
+    const iName = head.findIndex(h => h.trim() === '품명' || (h.includes('품명') && !h.includes('영') && !h.includes('ID'))); // 선택: 품명
+    const iEng = head.findIndex(h => h.includes('영문') || h.includes('영어') || h.includes('eng')); // 선택: 영문품명
+    const iSpec = head.findIndex(h => h.includes('규격') || h.includes('사이즈') || h.includes('비고')); // 선택: 규격/비고
+
+    const next = {}; let colorCount = 0;
+    const metaById = {};
     for (let i = hi + 1; i < rows.length; i++) {
         const r = rows[i] || [];
         const id = String(r[iId] == null ? '' : r[iId]).trim();
         const name = normalizeColorName(r[iColor]);
         if (!id || id.startsWith('(예시)') || !name) continue;
-        if (!known.has(id)) { unknown++; continue; }
+
+        if (!metaById[id]) {
+            metaById[id] = {
+                id,
+                fabName: iName >= 0 ? String(r[iName] == null ? '' : r[iName]).trim() : '',
+                engName: iEng >= 0 ? String(r[iEng] == null ? '' : r[iEng]).trim() : '',
+                spec: iSpec >= 0 ? String(r[iSpec] == null ? '' : r[iSpec]).trim() : ''
+            };
+        }
         next[id] = next[id] || [];
         if (next[id].some(c => c.name === name)) continue;
         const entry = { name, tone: iTone >= 0 ? normalizeToneInput(r[iTone]) : null };
@@ -911,11 +944,72 @@ function importColorRows(rows) {
         colorCount++;
     }
     Object.keys(next).forEach(id => next[id].sort(colorSort));
-    // 입력표에 등장한 원단만 교체하고, 나머지 원단의 기존 색상은 유지
+
+    // FABRIC_DB와 다각도 매칭 (정확한 ID, 영문 품명, 한글 품명, 별칭 대조)
+    const cleanKey = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
+    const BLIND_NAME_ALIASES = {
+        'PAROTWIN': ['FAROTWINS', 'FAROTWIN', '파로트윈'],
+        'FAROTWINS': ['PAROTWIN', 'FAROTWIN', '파로트윈'],
+        'PARO': ['FARO', '파로'],
+        'FARO': ['PARO', '파로'],
+        'LINEN': ['UCLINEN', 'UC-LINEN', '린넨'],
+        'UCLINEN': ['LINEN', '린넨'],
+        'DAYNIGHT': ['DAYNIGHT', 'DAYNIGHTS', '데이나이트'],
+        'BRIGHTBO': ['VBRITEBO', 'BRIGHTBO', '브라이트암막', 'VBRITE'],
+        'VBRITEBO': ['BRIGHTBO', '브라이트암막'],
+        'ALICEBO': ['ELISEBO', 'ALICEBO', '엘리스암막'],
+        'ELISEBO': ['ALICEBO', '엘리스암막'],
+        'VINCIBO': ['BINCHBO', 'VINCIBO', '빈치암막'],
+        'BINCHBO': ['VINCIBO', '빈치암막'],
+        'MARBLE': ['MABLE', '마블'],
+        'MABLE': ['MARBLE', '마블']
+    };
+
     const store = colorsStore();
-    Object.keys(next).forEach(id => { store[id] = next[id]; });
+    const unlisted = new Set();
+    let fabricDbUpdated = false;
+
+    Object.keys(next).forEach(rawId => {
+        const meta = metaById[rawId] || { id: rawId };
+        const colors = next[rawId];
+        store[rawId] = colors; // 기본 ID 저장
+
+        // FABRIC_DB에서 일치하는 원단 탐색
+        const matchedFabrics = (typeof FABRIC_DB !== 'undefined' && Array.isArray(FABRIC_DB)) ? FABRIC_DB.filter(f => {
+            if (f.id === rawId) return true;
+            if (meta.fabName && f.name === meta.fabName) return true;
+            if (meta.engName) {
+                const cEng = cleanKey(meta.engName);
+                const fEng = cleanKey(f.engName);
+                const fName = cleanKey(f.name);
+                if (fEng && fEng === cEng) return true;
+                if (fName && fName === cEng) return true;
+                const aliases = BLIND_NAME_ALIASES[cEng] || [];
+                if (aliases.some(a => cleanKey(a) === fName || cleanKey(a) === fEng)) return true;
+            }
+            if (meta.fabName) {
+                const cKor = cleanKey(meta.fabName);
+                if (cleanKey(f.name) === cKor || (f.id && f.id.includes(cKor))) return true;
+            }
+            return false;
+        }) : [];
+
+        if (matchedFabrics.length > 0) {
+            matchedFabrics.forEach(f => {
+                store[f.id] = colors; // 매칭된 실제 원단 ID에도 색상 등록
+                if (meta.engName && !f.engName) { f.engName = meta.engName; fabricDbUpdated = true; }
+                if (meta.spec && !f.note) { f.note = meta.spec; fabricDbUpdated = true; }
+            });
+        } else {
+            // 현재 DB에 일치하는 원단이 전혀 없는 경우
+            unlisted.add(meta.fabName ? `${meta.fabName}(${rawId})` : rawId);
+        }
+    });
+
     saveColorsStore();
-    return { fabrics: Object.keys(next).length, colors: colorCount, unknown };
+    if (fabricDbUpdated) saveFabricDb(true);
+
+    return { fabrics: Object.keys(next).length, colors: colorCount, unlisted: Array.from(unlisted) };
 }
 // 한 원단에서 공간(바닥·벽·분위기·채광)에 가장 잘 어울리는 색을 고름
 function rankColorsFor(fabric, room, category) {
@@ -1152,6 +1246,102 @@ function saveFabricDb(triggerRoomsRender = true) {
 }
 
 // ==============================================================
+// 불러오기 직전 자동 백업 + 되돌리기 (작업목록 52번 - 다단계 실행취소 스택)
+// ==============================================================
+function loadUndoStack() {
+    try {
+        const raw = localStorage.getItem(STORE_KEYS.backupUndo);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed && typeof parsed === 'object') return [parsed];
+        return [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveUndoStack(stack) {
+    try {
+        if (!stack || stack.length === 0) {
+            localStorage.removeItem(STORE_KEYS.backupUndo);
+        } else {
+            // 최대 10단계까지 보관 (localStorage 용량 보호)
+            localStorage.setItem(STORE_KEYS.backupUndo, JSON.stringify(stack.slice(-10)));
+        }
+    } catch (e) {
+        console.warn('되돌리기 스택 저장 실패', e);
+    }
+}
+
+function saveUndoSnapshot(sourceName) {
+    try {
+        const snapshot = {
+            source: sourceName || '불러오기',
+            savedAt: new Date().toISOString(),
+            fabrics: JSON.parse(JSON.stringify(FABRIC_DB || [])),
+            costs: (Costing.state && Costing.state.costs) ? JSON.parse(JSON.stringify(Costing.state.costs)) : {},
+            colors: JSON.parse(JSON.stringify(colorsStore() || {})),
+            tags: JSON.parse(JSON.stringify(loadTagOverrides() || {}))
+        };
+        const stack = loadUndoStack();
+        stack.push(snapshot);
+        saveUndoStack(stack);
+        if (typeof renderUndoButton === 'function') renderUndoButton();
+    } catch (e) {
+        console.warn('되돌리기 직전 백업 저장 실패', e);
+    }
+}
+
+function restoreUndoSnapshot() {
+    try {
+        const stack = loadUndoStack();
+        if (stack.length === 0) {
+            showToast('되돌릴 이전 상태가 없습니다.', 'info');
+            return;
+        }
+        const s = stack[stack.length - 1];
+        const timeStr = s.savedAt ? new Date(s.savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+        const fabCount = (s.fabrics && Array.isArray(s.fabrics)) ? s.fabrics.length : 0;
+        const colorCount = (s.colors && typeof s.colors === 'object') ? Object.keys(s.colors).length : 0;
+        const remainCount = stack.length - 1;
+
+        const ok = confirm(
+            `'${s.source || '불러오기'}' 직전 상태(${timeStr} 보관)로 되돌릴까요?\n\n` +
+            `• 복원될 원단: ${fabCount}개\n` +
+            `• 복원될 색상 원단: ${colorCount}개\n` +
+            (remainCount > 0 ? `• 이 작업 전으로 더 되돌리기 가능: ${remainCount}단계 남아있음\n\n` : `\n`) +
+            `현재 원단·단가·색상·분류가 해당 시점의 상태로 즉시 복원됩니다.`
+        );
+        if (!ok) return;
+
+        // 스택에서 꺼내기
+        stack.pop();
+        saveUndoStack(stack);
+
+        if (Array.isArray(s.fabrics)) {
+            FABRIC_DB = s.fabrics.map(f => autoTagFabricAttributes(f));
+        }
+        if (s.costs && Costing.state && Costing.state.rules) {
+            Costing.setPrivate({ rules: Costing.state.rules, costs: s.costs });
+            savePrivateStore();
+        }
+        if (s.tags && typeof s.tags === 'object') saveTagOverrides(s.tags);
+        if (s.colors && typeof s.colors === 'object') replaceColorsStore(s.colors);
+        applyTagOverrides(FABRIC_DB);
+        saveFabricDb(true);
+
+        if (typeof renderUndoButton === 'function') renderUndoButton();
+        if (typeof renderColorEditor === 'function') renderColorEditor();
+        if (typeof renderTagEditor === 'function') renderTagEditor();
+        if (typeof renderDbTable === 'function') renderDbTable();
+        showToast(`'${s.source || '불러오기'}' 직전 상태로 정상 되돌렸습니다. (현재 원단 ${FABRIC_DB.length}개)`, 'success');
+    } catch (e) {
+        showToast('되돌리기 실패: ' + e.message, 'error');
+    }
+}
+
+// ==============================================================
 // 단가표 가져오기 (엑셀/CSV 행 → 공개 원단 + 비공개 원가)
 // ==============================================================
 function buildFabricRecords(dataRows, rules) {
@@ -1197,7 +1387,20 @@ function buildFabricRecords(dataRows, rules) {
         if (!rawCode || rawCode.trim() === '-' || rawCode.trim() === '') rawCode = '';
 
         // 안정적인 ID: 행 번호가 아니라 책자+품번(없으면 품명)으로 만들고, 겹치면 번호를 붙임
-        let baseId = `${book}_${rawCode || name}`.replace(/[\s()\/'"`\\<>&]/g, '_');
+        let baseId;
+        if (rawCode) {
+            // rawCode가 이미 책자 접두어('콤비_', '트리플쉐이드_', '트리플_', '블라인드_' 등)로 시작하거나 이미 ID 형태이면 그대로 사용
+            const knownPrefixes = ['콤비_', '트리플쉐이드_', '트리플_', '블라인드_', '롤_', '허니콤_'];
+            const hasPrefix = knownPrefixes.some(p => rawCode.startsWith(p)) || rawCode.startsWith(book + '_');
+            if (hasPrefix || rawCode.includes('_')) {
+                baseId = rawCode;
+            } else {
+                baseId = `${book}_${rawCode}`;
+            }
+        } else {
+            baseId = `${book}_${name}`;
+        }
+        baseId = baseId.replace(/[\s()\/'"`\\<>&]/g, '_');
         usedIds[baseId] = (usedIds[baseId] || 0) + 1;
         const uid = usedIds[baseId] === 1 ? baseId : `${baseId}_${usedIds[baseId]}`;
 
@@ -1208,7 +1411,8 @@ function buildFabricRecords(dataRows, rules) {
         const imgUrlRaw = getCol(['이미지url', '이미지', '사진', 'image', 'imgurl', '이미지링크']);
         const noteRaw = getCol(['비고', '메모']);
 
-        const detected = detectCalcTypeAndUnit(costRaw, specRaw, name, unitRaw, "", book, "");
+        const catRaw = getCol(['상세구분', '구분', '카테고리']);
+        const detected = detectCalcTypeAndUnit(costRaw, specRaw, name, unitRaw, noteRaw, book, catRaw);
         const parsedSpecCm = (detected.calcType === 'hebe') ? 0 : parseSpecToCm(specRaw, name);
         const cost = cleanNumber(costRaw);
         const labor = laborRaw !== "" ? cleanNumber(laborRaw) : 0;
@@ -1222,13 +1426,14 @@ function buildFabricRecords(dataRows, rules) {
         const fabObj = {
             book, id: uid, name, engName: engName || null, calcType: detected.calcType, specCm: parsedSpecCm,
             unit: detected.unit, price,
-            categoryType: getCol(['상세구분', '구분', '카테고리']) || null,
+            categoryType: catRaw || null,
             tone: normalizeToneInput(getCol(['언더톤', '톤', '색조'])),
             mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),
             density: normalizeDensityInput(getCol(['비침', '두께', '도톰함', '밀도'])),
             texture: normalizeTextureInput(getCol(['질감', '텍스처'])),
             light: normalizeLightInput(getCol(['밝기'])),      // 색이 하나뿐인 원단용 (색이 여러 개면 색상 입력표의 밝기)
             imageUrl: imgUrlRaw || null,
+            note: noteRaw || null,                  // 비고/규격 메모 (예: 280 (85/60mm))
             fabricOnly: /원단만/.test(noteRaw),      // 비고에 "원단만 시킬때" → 고객 추천에서 기본 숨김
             blindKind: detectBlindKind(noteRaw),     // 블라인드 종류 (콤비/롤/프린트). 커튼은 비어 있음
             extra: Costing.deriveExtra(cost, labor, rules)
@@ -1261,13 +1466,58 @@ function applyImportedRows(dataRows, sourceName) {
         showToast(`'${sourceName}' 가져오기 실패: ${res.error || '원단을 찾지 못했습니다.'}`, "error");
         return 0;
     }
-    FABRIC_DB = res.fabrics;
+
+    const curCount = FABRIC_DB ? FABRIC_DB.length : 0;
+    const newCount = res.fabrics.length;
+    const emptyPriceCount = res.fabrics.filter(f => !f.price || f.price === 0).length;
+    const emptyMsg = emptyPriceCount > 0 ? `\n⚠️ 단가 빈 줄: ${emptyPriceCount}개 (0원으로 들어갑니다)` : '';
+
+    let isMerged = false;
+    if (curCount > 0) {
+        const choice = confirm(
+            `[단가표 불러오기 방식 선택]\n\n` +
+            `• 현재 등록된 원단: ${curCount}개\n` +
+            `• 새 파일의 원단: ${newCount}개${emptyMsg}\n\n` +
+            `[확인]: 기존 원단에 더하기 (같은 ID는 새 값으로 갱신, 기존 커튼 유지 - 권장)\n` +
+            `[취소]: 통째로 바꾸기 (기존 원단을 모두 지우고 이 파일만 등록)`
+        );
+        if (choice) {
+            saveUndoSnapshot('단가표 더하기');
+            isMerged = true;
+            const map = new Map(FABRIC_DB.map(f => [f.id, f]));
+            res.fabrics.forEach(f => map.set(f.id, f));
+            FABRIC_DB = Array.from(map.values());
+            Costing.setPrivate({ rules: Costing.state.rules, costs: Object.assign({}, Costing.state.costs, res.costs) });
+        } else {
+            const missingCount = FABRIC_DB.filter(oldF => !res.fabrics.some(newF => newF.id === oldF.id)).length;
+            const confirmReplace = confirm(
+                `⚠️ 정말 통째로 바꾸시겠습니까?\n\n` +
+                `기존 원단 ${missingCount}개가 목록에서 완전히 빠집니다.\n` +
+                `(진행 중인 견적이 끊어질 수 있습니다)\n\n` +
+                `[확인]: 기존 원단을 모두 지우고 교체합니다.\n` +
+                `[취소]: 작업을 취소합니다.`
+            );
+            if (!confirmReplace) {
+                showToast("단가표 교체를 취소했습니다.", "info");
+                return 0;
+            }
+            saveUndoSnapshot('단가표 교체');
+            FABRIC_DB = res.fabrics;
+            Costing.setPrivate({ rules: Costing.state.rules, costs: res.costs });
+        }
+    } else {
+        saveUndoSnapshot('단가표 등록');
+        FABRIC_DB = res.fabrics;
+        Costing.setPrivate({ rules: Costing.state.rules, costs: res.costs });
+    }
+
     applyTagOverrides(FABRIC_DB);
-    Costing.setPrivate({ rules: Costing.state.rules, costs: res.costs });
     savePrivateStore();
     saveFabricDb(true);
-    showToast(`'${sourceName}'에서 ${res.fabrics.length}개 원단을 등록했습니다.`, "success");
+    const mergeMsg = isMerged ? ` (기존 포함 전체 ${FABRIC_DB.length}개)` : '';
+    showToast(`'${sourceName}'에서 ${res.fabrics.length}개 원단을 등록했습니다.${mergeMsg}`, "success");
     warnIfQuoteFabricsMissing();
+    if (typeof renderUndoButton === 'function') renderUndoButton();
     return res.fabrics.length;
 }
 
@@ -1332,10 +1582,12 @@ function handlePrivatePackUpload(event) {
     const reader = new FileReader();
     reader.onload = function (e) {
         try {
+            saveUndoSnapshot('비공개 팩 불러오기');
             const pack = JSON.parse(e.target.result);
             const n = applyPrivatePack(pack);
             const h = (Array.isArray(pack.history) && typeof loadHistory === 'function') ? ` · 상담 기록 ${loadHistory().length}건` : '';
             showToast(`비공개 팩을 불러왔습니다. (원단 ${n}개${h})`, "success");
+            if (typeof renderUndoButton === 'function') renderUndoButton();
         } catch (err) {
             showToast("불러오기 실패: " + err.message, "error");
         }

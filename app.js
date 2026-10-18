@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261068';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261071';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261068';
+const REDAM_BUILD = '20261071';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -48,6 +48,7 @@ window.onload = function() {
     initTicketNoteInput();
     setInterval(saveDraftTick, 3000);
     updateOfflineStatus();
+    renderUndoButton();
     if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', updateOfflineStatus);
 
     if (screen.orientation && screen.orientation.lock) {
@@ -167,6 +168,7 @@ function switchMainTrack(track) {
         updateOfflineStatus();
         renderTagEditor();
         renderColorEditor();
+        renderUndoButton();
     } else {
         if (curationSec) { curationSec.classList.remove('hidden'); curationSec.style.setProperty('display', 'block', 'important'); }
         if (window.concierge && typeof window.concierge.start === 'function' && !window.__conciergeStarted) {
@@ -809,13 +811,50 @@ function colorBulkTone(tone) {
 function colorSetTone(name, tone) { setColorTone(__colorSel, name, tone); renderColorEditor(); renderTagEditor(); }
 function colorSetLabel(name, label) { setColorLabel(__colorSel, name, label); renderColorEditor(); }
 function colorRemove(name) { removeFabricColor(__colorSel, name); renderColorEditor(); renderTagEditor(); }
+// ---- 불러오기 직전 되돌리기 버튼 (52번 - 다단계 스택 지원) ----
+function renderUndoButton() {
+    const btn = document.getElementById('undoImportBtn');
+    if (!btn) return;
+    try {
+        const stack = (typeof loadUndoStack === 'function') ? loadUndoStack() : [];
+        if (!stack || stack.length === 0) {
+            btn.style.display = 'none';
+            return;
+        }
+        const s = stack[stack.length - 1];
+        const timeStr = s.savedAt ? new Date(s.savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
+        const countBadge = stack.length > 1 ? ` (${stack.length}단계)` : '';
+        btn.innerHTML = `<i class="fa-solid fa-rotate-left text-[11px] text-rose-600"></i> 되돌리기: ${s.source || '직전 작업'} (${timeStr})${countBadge}`;
+        btn.style.display = 'inline-flex';
+    } catch (e) {
+        btn.style.display = 'none';
+    }
+}
+
 function handleColorFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     const finish = (rows) => {
         const res = importColorRows(rows);
-        if (res.error) showToast(res.error, 'error');
-        else { showToast(`색상 ${res.colors}개 (원단 ${res.fabrics}개)를 불러왔습니다.${res.unknown ? ` 찾지 못한 원단 ${res.unknown}줄은 건너뜀` : ''}`); renderColorEditor(); renderTagEditor(); }
+        if (res.error) {
+            showToast(res.error, 'error');
+            return;
+        }
+        if (res.unlisted && res.unlisted.length > 0) {
+            const sample = res.unlisted.slice(0, 4).join(', ');
+            const more = res.unlisted.length > 4 ? ` 외 ${res.unlisted.length - 4}개` : '';
+            showToast(
+                `색상 ${res.colors}개 (원단 ${res.fabrics}개)를 불러왔습니다.\n` +
+                `⚠️ 현재 원단 DB에 없는 품목 (${res.unlisted.length}개): ${sample}${more}\n` +
+                `(원단 DB에 단가표를 등록하시면 자동으로 색상이 반영됩니다)`,
+                'warning'
+            );
+        } else {
+            showToast(`색상 ${res.colors}개 (원단 ${res.fabrics}개)를 정상적으로 불러왔습니다.`, 'success');
+        }
+        renderColorEditor();
+        renderTagEditor();
+        renderUndoButton();
     };
     const lower = file.name.toLowerCase();
     if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
