@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261065';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261066';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -217,6 +217,7 @@
                     hotelFit: isBlind ? false : Boolean(c.hotelFit),
                     colorName: c.colorName || '',
                     pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
+                    baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)
                     rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
             calc: c.calc
                 };
@@ -508,21 +509,49 @@
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
     // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
     let spaceEntries = null;
-    function entryOf(fabricId, color) { return (spaceEntries || []).find(e => e.key === fabricId + '__' + (color || '')) || null; }
-    // 같은 종류(겉지·속지) 가운데 노란기 차이가 작고(9 미만) 밝기만 한 단계 다른 색. 지금 색에 색 값이 없으면 없음
+    function entryOf(fabricId, color) {
+        if (!spaceEntries || !spaceEntries.length) {
+            spaceEntries = (typeof finderEntries === 'function') ? finderEntries() : [];
+        }
+        return (spaceEntries || []).find(e => e.key === fabricId + '__' + (color || '')) || null;
+    }
+    // 기준 원단 정보 얻기 (49번, 1안): 품목에 baseFabricId가 있으면 그것, 없으면 지금 원단이 기준(0단계)
+    function getToneBase(c) {
+        if (!c) return { fabricId: '', colorName: '' };
+        return {
+            fabricId: c.baseFabricId || c.fabricId,
+            colorName: (c.baseColorName !== undefined && c.baseColorName !== null) ? c.baseColorName : (c.colorName || '')
+        };
+    }
+    // 3단계 사다리 (49번, 1안): [ -1단계(진하게) ↔ 0단계(원래 원단) ↔ +1단계(밝게) ]
+    // 기준 원단(0단계)을 중심으로 대칭 사다리를 구성하여, 밝게/진하게를 번갈아 눌러도 100% 원래 원단으로 복귀
     function toneNeighbors(c) {
-        const cur = entryOf(c.fabricId, c.colorName);
-        if (!cur || cur.L == null || cur.b == null) return { lighter: null, darker: null };
-        const pool = spaceEntries.filter(x => x.cat === cur.cat && x.key !== cur.key && x.hex && x.L != null && x.b != null && Math.abs(x.b - cur.b) < 9);
+        const base = getToneBase(c);
+        const baseEntry = entryOf(base.fabricId, base.colorName);
+        if (!baseEntry || baseEntry.L == null || baseEntry.b == null) return { lighter: null, darker: null };
+
+        // 기준 원단과 같은 종류(겉지·속지), 노란기 차이가 작고(9 미만)
+        const pool = spaceEntries.filter(x => x.cat === baseEntry.cat && x.key !== baseEntry.key && x.hex && x.L != null && x.b != null && Math.abs(x.b - baseEntry.b) < 9);
         // 같은 원단의 색을 먼저 (결·값이 그대로). 같은 원단에 없을 때만 다른 원단에서
         const pick = (list, gap) => {
-            const same = list.filter(x => x.fabricId === cur.fabricId);
+            const same = list.filter(x => x.fabricId === baseEntry.fabricId);
             return (same.length ? same : list).sort((p, q) => gap(p) - gap(q))[0] || null;
         };
-        return {
-            lighter: pick(pool.filter(x => x.L > cur.L + 1.5), x => (x.L - cur.L) + Math.abs(x.b - cur.b) * 0.3),
-            darker: pick(pool.filter(x => x.L < cur.L - 1.5), x => (cur.L - x.L) + Math.abs(x.b - cur.b) * 0.3)
-        };
+
+        const lighterOfBase = pick(pool.filter(x => x.L > baseEntry.L + 1.5), x => (x.L - baseEntry.L) + Math.abs(x.b - baseEntry.b) * 0.3);
+        const darkerOfBase = pick(pool.filter(x => x.L < baseEntry.L - 1.5), x => (baseEntry.L - x.L) + Math.abs(x.b - baseEntry.b) * 0.3);
+
+        const step = Number(c.toneStep) || 0;
+        if (step > 0) {
+            // 현재 +1단계(한 톤 밝은 상태): 더 밝게는 비활성화(끝), 진하게를 누르면 기준 원단(0단계)으로 100% 직접 복귀
+            return { lighter: null, darker: baseEntry };
+        } else if (step < 0) {
+            // 현재 -1단계(한 톤 진한 상태): 밝게를 누르면 기준 원단(0단계)으로 100% 직접 복귀, 더 진하게는 비활성화(끝)
+            return { lighter: baseEntry, darker: null };
+        } else {
+            // 현재 0단계(원래 원단): 밝게는 lighterOfBase(+1), 진하게는 darkerOfBase(-1)
+            return { lighter: lighterOfBase, darker: darkerOfBase };
+        }
     }
     // 고객에게 보여 줄 "원단 이름 + 색 이름" (예: 오솔로 아이보리)
     function shortFabName(fabricId, color) {
@@ -539,10 +568,34 @@
     function swapCurtain(roomId, idx, fabricId, color, silent, why) {
         const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[idx];
         if (!c) return;
-        const prev = { fabricId: c.fabricId, colorName: c.colorName || '', toneStep: c.toneStep || 0, pickDir: c.pickDir || null };
-        c.fabricId = fabricId; c.colorName = color || '';
+        const prev = {
+            fabricId: c.fabricId,
+            colorName: c.colorName || '',
+            toneStep: c.toneStep || 0,
+            pickDir: c.pickDir || null,
+            baseFabricId: c.baseFabricId || null,
+            baseColorName: c.baseColorName || null
+        };
         const w = why || {};
-        if (w.toneStep) c.toneStep = w.toneStep; else delete c.toneStep;
+        const isTone = (w.toneStep !== undefined && w.toneStep !== null);
+        const nextBaseFab = isTone ? (c.baseFabricId || prev.fabricId) : fabricId;
+        const nextBaseColor = isTone ? ((c.baseColorName !== undefined && c.baseColorName !== null) ? c.baseColorName : prev.colorName) : (color || '');
+
+        c.fabricId = fabricId;
+        c.colorName = color || '';
+        if (isTone) {
+            if (w.toneStep === 0) {
+                delete c.toneStep;
+            } else {
+                c.toneStep = w.toneStep;
+            }
+            c.baseFabricId = nextBaseFab;
+            c.baseColorName = nextBaseColor;
+        } else {
+            delete c.toneStep;
+            delete c.baseFabricId;
+            delete c.baseColorName;
+        }
         if (w.pickDir) c.pickDir = w.pickDir; else delete c.pickDir;
         c.calc = calculateV1ItemPrice(c);
         r.subtotal = r.curtains.reduce((s, x) => s + ((x.calc && x.calc.curtainSubtotal) || 0), 0);
@@ -552,7 +605,7 @@
         if (silent) return;
         const name = shortFabName(fabricId, color);
         spaceToast(`${r.name} ${kindOf(c)}: ${typeof finderJosa === 'function' ? finderJosa(name, '으로', '로') : name + '(으)로'} 바꿨어요`,
-            () => swapCurtain(roomId, idx, prev.fabricId, prev.colorName, true, { toneStep: prev.toneStep, pickDir: prev.pickDir }));
+            () => swapCurtain(roomId, idx, prev.fabricId, prev.colorName, true, { toneStep: prev.toneStep, pickDir: prev.pickDir, baseFabricId: prev.baseFabricId, baseColorName: prev.baseColorName }));
     }
     // 고객 화면 알림 (아래 가운데, 짙은 갈색). 되돌리기가 있으면 3.5초, 없으면 1.8초
     let spaceToastTimer = 0;
@@ -2866,6 +2919,8 @@
                         bookFilter: "ALL",
                         fabricId: item.fabricId,
                         colorName: item.colorName || '',
+                        baseFabricId: item.fabricId,
+                        baseColorName: item.colorName || '',
                         installType: isBlind ? 'none' : (item.presetType === 'panel' ? 'rail_2line' : 'rail'),
                         floorGap: item.floorGap || 0,
                         hwName: isBlind ? '블라인드 일체형' : (item.presetType === 'panel' ? '2줄 패널 레일' : '기본 레일'),
@@ -2948,11 +3003,18 @@
             return c ? { room: r, curtain: c, kind: c.presetType === 'sheer' ? 'sheer' : 'drape' } : null;
         },
         swapCurtain: function(roomId, idx, fabricId, color, why) { swapCurtain(roomId, idx, fabricId, color, false, why); },
-        // 한 톤 밝게(step +1) / 진하게(−1): 그 칸의 toneStep에 더함(0이면 지움). 더 보기에서 고른 잇는 방향(pickDir)은 그대로
+        // 한 톤 밝게(step +1) / 진하게(−1): 3단계 사다리 [-1, 0, +1] (49번, 1안)
         toneSwap: function(roomId, idx, key, step) {
+            if (!spaceEntries || !spaceEntries.length) {
+                spaceEntries = (typeof finderEntries === 'function') ? finderEntries() : [];
+            }
             const e = (spaceEntries || []).find(x => x.key === key);
             const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[idx];
-            if (e && c) swapCurtain(roomId, idx, e.fabricId, e.color, false, { toneStep: (c.toneStep || 0) + (Number(step) || 0), pickDir: c.pickDir || null });
+            if (e && c) {
+                const cur = Number(c.toneStep) || 0;
+                const nextStep = Math.max(-1, Math.min(1, cur + (Number(step) || 0)));
+                swapCurtain(roomId, idx, e.fabricId, e.color, false, { toneStep: nextStep, pickDir: c.pickDir || null });
+            }
         },
         shortFabName: shortFabName,
         // 색 잇기 방향의 말 ("원단을 고른 이유" 카드, app.js가 씀): linkSay = "벽과 이어지는 색", linkWhy = 이유 한 문장

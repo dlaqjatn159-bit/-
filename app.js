@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261065';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261066';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261065';
+const REDAM_BUILD = '20261066';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2044,7 +2044,7 @@ function finderApplyPut(t, e) {
     collapsedRooms.delete(t.room.id);
     updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
     t.c.colorName = e.color;
-    delete t.c.toneStep; delete t.c.pickDir;      // 다른 방법으로 바꾸면 이유 카드의 한 톤·잇는 방향 표시는 지움 (28번)
+    delete t.c.toneStep; delete t.c.pickDir; delete t.c.baseFabricId; delete t.c.baseColorName;      // 다른 방법으로 바꾸면 이유 카드의 한 톤·잇는 방향·사다리 기준은 지움 (28·49번)
     renderRooms();
     calculateAll();
 }
@@ -2368,7 +2368,7 @@ function updateCurtainData(roomId, curtainId, key, val) {
         renderRooms();
     }
     if (c.fabricId !== prevFabricId) c.colorName = '';
-    if (c.fabricId !== prevFabricId || key === 'colorName') { delete c.toneStep; delete c.pickDir; }      // 직원 화면에서 원단·색을 바꾸면 한 톤·잇는 방향 표시는 지움 (28번)
+    if (c.fabricId !== prevFabricId || key === 'colorName') { delete c.toneStep; delete c.pickDir; delete c.baseFabricId; delete c.baseColorName; }      // 직원 화면에서 원단·색을 바꾸면 한 톤·잇는 방향·사다리 기준은 지움 (28·49번)
     const optEl = document.getElementById(`curtainOpt_${c.id}`);
     if (optEl) optEl.textContent = curtainOptionSummary(c);
     calculateAll();
@@ -2382,7 +2382,7 @@ function changeCurtainCategoryPreset(roomId, curtainId, preset) {
 
     c.presetType = preset;
     c.label = getNextCurtainLabel(room, preset);
-    delete c.toneStep; delete c.pickDir;
+    delete c.toneStep; delete c.pickDir; delete c.baseFabricId; delete c.baseColorName;
 
     if (preset === 'sheer') {
         const f = FABRIC_DB.find(item => item.categoryType === '속지') || FABRIC_DB[0];
@@ -4308,6 +4308,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                         hotelFit: isBlind ? false : Boolean(c.hotelFit),
                         colorName: c.colorName || '',
                         pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
+                        baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)
                         rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
                         calc: c.calc
                     };
