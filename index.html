@@ -619,27 +619,27 @@
 
     <!-- Ticket Modal -->
     <div id="ticketModal" class="fixed inset-0 bg-stone-950/75 backdrop-blur-md z-50 flex items-center justify-center hidden p-3 sm:p-6 overflow-y-auto">
-        <div class="bg-white/95 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 relative my-auto border border-stone-200">
-            <div class="flex justify-between items-center border-b pb-3">
+        <div class="bg-[#fffdf9] rounded-none max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 relative my-auto border border-[#2b221a]">
+            <div class="flex justify-between items-center border-b border-stone-200 pb-3">
                 <div>
-                    <h3 class="font-bold text-stone-900 text-sm sm:text-base">견적서</h3>
+                    <h3 class="font-bold text-stone-900 text-sm sm:text-base font-serif-kr">견적서</h3>
                     <p class="text-[11px] text-stone-500">고객 화면 제안서와 같은 모양입니다 · 저장한 이미지를 카카오톡으로 보내거나 인쇄</p>
                 </div>
-                <button onclick="closeTicketModal()" class="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold flex items-center justify-center transition">✕</button>
+                <button onclick="closeTicketModal()" class="w-8 h-8 rounded-none bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold flex items-center justify-center transition border border-stone-300">✕</button>
             </div>
 
             <!-- 저장·인쇄되는 이미지를 그대로 보여 줌 (app.js openTicketModal이 채움) -->
             <div id="ticketPreview" class="max-h-[60vh] overflow-y-auto custom-scrollbar"></div>
 
             <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200">
-                <button onclick="saveTicketImage()" class="w-full bg-[#2b221a] hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-sm shadow-sm transition">견적서 저장</button>
-                <button onclick="printTicket()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-3 px-4 rounded-xl text-sm transition border border-stone-300">인쇄</button>
+                <button onclick="saveTicketImage()" class="w-full bg-[#2b221a] hover:bg-black text-white font-bold py-3 px-4 rounded-none text-sm shadow-sm transition border border-[#2b221a]">견적서 저장</button>
+                <button onclick="printTicket()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-3 px-4 rounded-none text-sm transition border border-stone-300">인쇄</button>
             </div>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold hidden transition-all z-50 flex items-center gap-2 border border-slate-700">
+    <div id="toast" class="fixed bottom-6 right-6 bg-[#2b221a] text-white px-4 py-2.5 rounded-none shadow-lg text-xs font-bold hidden transition-all z-50 flex items-center gap-2 border border-[#2b221a]">
         <i class="fa-solid fa-circle-check text-amber-400" id="toastIcon"></i>
         <span id="toastMsg">처리되었습니다.</span>
     </div>
@@ -681,13 +681,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261062"></script>
-    <script src="costing.js?v=20261062"></script>
-    <script src="data.js?v=20261062"></script>
-    <script src="calculator.js?v=20261062"></script>
-    <script src="concierge.js?v=20261062"></script>
-    <script src="app.js?v=20261062"></script>
-    <script src="room-color.js?v=20261062"></script>
+    <script src="pricing.js?v=20261063"></script>
+    <script src="costing.js?v=20261063"></script>
+    <script src="data.js?v=20261063"></script>
+    <script src="calculator.js?v=20261063"></script>
+    <script src="concierge.js?v=20261063"></script>
+    <script src="app.js?v=20261063"></script>
+    <script src="room-color.js?v=20261063"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
