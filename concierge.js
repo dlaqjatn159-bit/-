@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261079';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261080';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1572,7 +1572,8 @@
                 }
 
                 const curtainsHtml = R.sets.map(s => {
-                    const baseName = s.it.colorDesc ? s.it.name.replace(' (' + s.it.colorDesc + ')', '') : s.it.name;
+                    const bookNm = s.it.bookName || s.it.name;      // 최종 제안 화면은 지금처럼 원단 이름 (61번)
+                    const baseName = s.it.colorDesc ? bookNm.replace(' (' + s.it.colorDesc + ')', '') : bookNm;
                     const hideKind = s.it.kind === '블라인드' && baseName.includes('블라인드');
                     return `<div class="fin-curtain-col">`
                         + `<div class="drape-swatch" style="${fabricFillStyle(s.it.fabricId, s.it.colorName)}"></div>`
@@ -1622,7 +1623,7 @@
                 h += '<div class="fin-est-line">';
                 h += `<div class="fin-est-chip" style="${fabricFillStyle(it.fabricId, it.colorName)}"></div>`;
                 h += `<span class="fin-est-k">${esc(it.kind)}</span>`;
-                h += `<span class="fin-est-nm font-serif-kr">${esc(it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
+                h += `<span class="fin-est-nm font-serif-kr">${esc(it.bookName || it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
                 h += `<span class="fin-est-sz">${esc(it.size || '')}</span>`;
                 h += `<span class="fin-est-pr font-serif-kr">${it.sampleOnly ? '' : `${it.price.toLocaleString()}원`}</span>`;
                 h += '</div>';

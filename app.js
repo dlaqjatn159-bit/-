@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261079';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261080';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261079';
+const REDAM_BUILD = '20261080';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2926,6 +2926,61 @@ function ticketFabricName(c, calc) {
     if (book && n.startsWith(book + ' ')) n = n.slice(book.length).trim();
     return (n || String(f.name || '원단')) + colorSuffix(c.colorName, f.id);
 }
+// 손님이 가져가는 글(견적서·이유 카드·우리 집 색)의 원단 표기 (61번): 책자·원단 이름·색 번호 대신 "색 이름 · 재질"
+//  예: 그레이지 · 결 있는 질감 · 생활암막 / 아이보리 · 콤비 블라인드 · 암막. 원단 이름은 직원 화면과 고객 화면 최종 제안에만
+const PLAIN_TEXTURE_WORDS = { smooth: '매끈한 질감', natural: '결 있는 질감', cozy: '포근한 질감' };
+const PLAIN_BLIND_WORDS = { combi: '콤비 블라인드', roll: '롤스크린', print: '프린트 블라인드' };
+function ticketPlainName(c, calc) {
+    const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
+    if (sf) return sf.name;
+    const f = FABRIC_DB.find(x => x.id === c.fabricId);
+    if (!f) return ticketFabricName(c, calc);
+    // 색 이름: 직원이 붙인 색 이름 → 색 값으로 지은 이름 → 톤
+    let color = c.colorName ? colorLabelOf(f.id, c.colorName) : '';
+    if (!color) {
+        const lab = whyFabricColor(f.id, c.colorName);
+        const nm = (lab && typeof lab.L === 'number' && window.RoomColor && RoomColor.colorName) ? RoomColor.colorName('wall', lab) : null;
+        color = (nm && nm.name) || '';
+    }
+    if (!color) {
+        const col = c.colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(c.colorName)) : null;
+        const tone = (col && col.tone) || f.tone;
+        color = TONE_LABELS[tone] ? `${TONE_LABELS[tone]} 톤` : '';
+    }
+    const parts = [];
+    if (c.presetType === 'blind' || f.categoryType === '블라인드') {
+        const k = blindKind(f), bl = blindLight(f);
+        parts.push(PLAIN_BLIND_WORDS[k] || '블라인드');
+        if (bl === 'full') parts.push('암막'); else if (bl === 'see') parts.push('투시');
+    } else {
+        if (PLAIN_TEXTURE_WORDS[f.texture]) parts.push(PLAIN_TEXTURE_WORDS[f.texture]);
+        if (c.presetType === 'sheer' || f.categoryType === '속지') {
+            if (DENSITY_LABELS[f.density]) parts.push(DENSITY_LABELS[f.density]);
+        } else {
+            const bo = blackoutLevel(f);
+            if (bo) parts.push(bo === 'mid' ? '보통 암막' : BLACKOUT_LABELS[bo]);
+        }
+    }
+    const out = [color, ...parts].filter(Boolean).join(' · ');
+    return out || ticketFabricName(c, calc);
+}
+// 원단 색과 벽·바닥 색의 관계 (61번): 같은 색 계열에 밝기만 다르면 톤온톤, 색 계열은 달라도 밝기·선명함이 비슷하면 톤인톤
+//  잰 벽 → 잰 바닥 순으로 먼저 맞는 것 하나. 못 재었거나 둘 다 아니면 빈칸
+function ticketToneWord(r, c) {
+    const fab = c && c.fabricId ? whyFabricColor(c.fabricId, c.colorName) : null;
+    if (!fab || typeof fab.L !== 'number') return '';
+    const mc = (r && r.measuredColor) || {};
+    for (const [k, word] of [['wall', '벽'], ['floor', '바닥']]) {
+        const w = whyLabOf(mc[k]);
+        if (!w) continue;
+        const dL = Math.abs(fab.L - w.L), dC = Math.abs(fab.C - w.C);
+        let dh = Math.abs(Math.atan2(fab.b, fab.a) - Math.atan2(w.b, w.a)) * 180 / Math.PI; if (dh > 180) dh = 360 - dh;
+        const same = (fab.C < 6 && w.C < 6) || (fab.C >= 6 && w.C >= 6 && dh <= 30);
+        if (same) return dL >= 8 ? `${word}과 톤온톤` : `${word}과 비슷한 색`;
+        if (fab.C >= 6 && w.C >= 6 && dL < 10 && dC < 10) return `${word}과 톤인톤`;
+    }
+    return '';
+}
 // 품목 종류 (속지 / 겉지 / 블라인드)
 function ticketKindLabel(c) {
     return c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : (c.presetType === 'drape' ? '겉지' : '커튼'));
@@ -3061,7 +3116,9 @@ function ticketData() {
                 if (c.hotelFit) opts.push('호텔핏');
                 const sampleOnly = !!(typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId));
                 return {
-                    label: c.label, kind: ticketKindLabel(c), name: ticketFabricName(c, calc), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
+                    label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
+                    name: ticketPlainName(c, calc), tone: ticketToneWord(r, c),      // 손님이 가져가는 글: 색 이름 · 재질 + 벽·바닥과 톤 관계 (61번)
+                    bookName: ticketFabricName(c, calc),      // 고객 화면 최종 제안은 지금처럼 원단 이름 (61번: 책자를 찾으려면 이름이 필요)
                     fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly,
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
@@ -3163,7 +3220,7 @@ function drawTicket(ctx, data, W, slim) {
         const blocks = room.items.map(it => {
             const photo = (data.photos && data.photos[it.photoKey]) || null;
             setFont(400, NAME_PX, SERIF);
-            const lines = wrap(it.name, tw);
+            const lines = wrap(it.tone ? `${it.name} · ${it.tone}` : it.name, tw);      // 색 이름 · 재질 · 톤 관계 (61번)
             const lastW = ctx.measureText(lines[lines.length - 1] || '').width;
             setFont(400, 20, SANS);
             // 옵션은 이름 옆에 작게. 자리가 모자라면 다음 줄로
@@ -3561,7 +3618,7 @@ function drawWhy(ctx, data, W, compact, title) {
     // 원단 한 묶음: [■ 색 칩 + 코드] 속지 · 원단 이름 색 이름 → 이유 1~3문장 → 회색 안내. 볼드 없이 색 농도(DARK / MUTED / SOFT)로 위계 (39번)
     function layoutSet(set, colW) {
         const ops = []; let cy = 24;
-        const name = set.it.colorDesc ? set.it.name.replace(' (' + set.it.colorDesc + ')', '') : set.it.name;
+        const name = set.it.name;      // 이미 색 이름이 앞에 있어 색 설명을 따로 붙이지 않음 (61번)
         let chipW = 0;
         if (set.hex) {      // 칩은 잰 색(색상코드)만. 없으면 칩·코드 없이 이름만
             setFont(400, C_SIZE - 2, MONO);
@@ -3572,12 +3629,6 @@ function drawWhy(ctx, data, W, compact, title) {
         const titleText = (set.it.kind === '블라인드' && name.includes('블라인드')) ? name : `${set.it.kind} · ${name}`;
         const hl = wrap(titleText, colW, colW - chipW);
         hl.forEach((ln, i) => { ops.push({ t: ln, f: [400, B_SIZE, SANS], c: DARK, y: cy, x: i === 0 ? chipW : 0 }); if (i < hl.length - 1) cy += B_LH; });
-        if (set.it.colorDesc) {
-            const lastX = (hl.length === 1 ? chipW : 0) + ctx.measureText(hl[hl.length - 1]).width;
-            setFont(400, B_SIZE, SANS);
-            if (lastX + 12 + ctx.measureText(set.it.colorDesc).width <= colW) ops.push({ t: set.it.colorDesc, f: [400, B_SIZE, SANS], c: MUTED, y: cy, x: lastX + 12 });
-            else { cy += B_LH; ops.push({ t: set.it.colorDesc, f: [400, B_SIZE, SANS], c: MUTED, y: cy }); }
-        }
         cy += B_LH + 8;
         if (set.lines.length) {
             setFont(400, B_SIZE, SANS);
@@ -3766,7 +3817,7 @@ function houseSpacesOf(data) {
         const fabs = items.map(it => {
             const col = whyFabricColor(it.fabricId, it.colorName);
             const lab = col && typeof col.L === 'number' ? { L: col.L, a: col.a, b: col.b } : null;
-            return { k: it.kind, fabricId: it.fabricId, colorName: it.colorName, nm: it.name, hex: (col && col.hex) || it.fill, lab };
+            return { k: it.kind, fabricId: it.fabricId, colorName: it.colorName, nm: it.tone ? `${it.name} · ${it.tone}` : it.name, hex: (col && col.hex) || it.fill, lab };      // 61번
         });
         return { name: room.name, wall: part('wall'), floor: part('floor'), fur, fabs };
     }).filter(Boolean);
