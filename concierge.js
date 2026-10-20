@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261072';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261074';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -3107,6 +3107,8 @@
             goToStep("0-Start", false);
         },
         syncToMaster: function() { syncToV1MasterRooms(); },
+        // 중복 원단 정리: 고객 화면 공간 목록의 옛 원단 ID를 새 ID로 바꿔 닮 (55번)
+        remapFabricIds: function(fix) { fix(state.roomsCart); },
         // 자동 저장용: 모든 공간 (계산 결과는 제외)
         // 직원 화면에 있는 동안의 자동 저장: 직원 화면 공간 목록에는 상담 전인 공간이 없으므로 이것을 더함
         getPendingRoomsForSave: function() {

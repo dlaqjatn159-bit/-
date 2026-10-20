@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261072';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261074';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -815,7 +815,7 @@ function colorLabelOf(fabricId, name) {
     return (c && c.label) ? c.label : '';
 }
 function setColorLabel(id, name, label) {
-    const c = getFabricColors(id).find(x => x.name === normalizeColorName(name));
+    const c = ownFabricColors(id).find(x => x.name === normalizeColorName(name));
     if (!c) return;
     const v = String(label == null ? '' : label).trim().slice(0, 20);
     if (v) c.label = v; else delete c.label;
@@ -839,40 +839,54 @@ function colorSort(a, b) {
 function getFabricColors(id) {
     const store = colorsStore();
     if (store[id] && store[id].length > 0) return store[id];
-    // 보조 매칭: ID가 다르더라도 영문 품명이나 한글 품명으로 등록된 색상이 있으면 가져옴
-    if (typeof FABRIC_DB !== 'undefined' && Array.isArray(FABRIC_DB)) {
-        const f = FABRIC_DB.find(x => x.id === id);
-        if (f) {
-            const clean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
-            const cEng = clean(f.engName);
-            const cName = clean(f.name);
-            for (const k of Object.keys(store)) {
-                if (!store[k] || !store[k].length) continue;
-                const cK = clean(k);
-                if (cEng && (cK === cEng || cK.endsWith(cEng) || cEng.endsWith(cK))) return store[k];
-                if (cName && (cK === cName || cK.endsWith(cName) || cName.endsWith(cK))) return store[k];
-            }
-        }
+    const lent = borrowedColorsOf(id);
+    return lent ? lent.map(c => ({ ...c })) : [];      // 빌려 온 색은 복사본으로만 보여 줌 (고쳐도 원래 주인 원단 색은 그대로, 54번)
+}
+// 보조 매칭: 색이 없는 원단이 같은 원단(다른 책자·다른 ID)의 색을 빌려 옴 (52번)
+// 영문 품명 또는 한글 품명이 정리 후 "완전히 같을" 때만. 끝만 같은 이름은 안 빌림 (54번)
+function borrowedColorsOf(id) {
+    if (typeof FABRIC_DB === 'undefined' || !Array.isArray(FABRIC_DB)) return null;
+    const store = colorsStore();
+    const f = FABRIC_DB.find(x => x.id === id);
+    if (!f) return null;
+    const clean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
+    const cEng = clean(f.engName), cName = clean(f.name);
+    const pick = same => {
+        const lists = [];
+        FABRIC_DB.forEach(g => { if (g.id !== id && store[g.id] && store[g.id].length && same(g) && !lists.includes(store[g.id])) lists.push(store[g.id]); });
+        if (lists.length === 1) return lists[0];
+        // 같은 이름이 여럿이면 색 목록이 모두 같을 때만 (서로 다르면 어느 쪽 색인지 몰라 안 빌림)
+        if (lists.length > 1 && lists.every(l => JSON.stringify(l) === JSON.stringify(lists[0]))) return lists[0];
+        return null;
+    };
+    return (cEng && pick(g => clean(g.engName) === cEng)) || (cName && pick(g => clean(g.name) === cName)) || null;
+}
+// 색을 고칠 때(톤·이름·추가·지우기)는 이 원단 ID의 목록만. 빌려 온 색이면 먼저 이 원단 몫으로 복사해 둠 (54번)
+function ownFabricColors(id) {
+    const store = colorsStore();
+    if (!store[id] || !store[id].length) {
+        const lent = borrowedColorsOf(id);
+        store[id] = lent ? lent.map(c => ({ ...c })) : [];
     }
-    return [];
+    return store[id];
 }
 function hasColorTones(id) { return getFabricColors(id).some(c => !!c.tone); }
 function addFabricColors(id, names) {
-    const store = colorsStore(); const list = store[id] || [];
+    const store = colorsStore(); const list = ownFabricColors(id);
     let added = 0;
     names.map(normalizeColorName).filter(Boolean).forEach(n => { if (!list.some(c => c.name === n)) { list.push({ name: n, tone: null }); added++; } });
     list.sort(colorSort); store[id] = list; saveColorsStore();
     return added;
 }
 function setColorTone(id, name, tone) {
-    const c = getFabricColors(id).find(x => x.name === normalizeColorName(name));
+    const c = ownFabricColors(id).find(x => x.name === normalizeColorName(name));
     if (!c) return;
     c.tone = (tone && TONE_LABELS[tone]) ? tone : null;
     saveColorsStore();
 }
 function removeFabricColor(id, name) {
     const store = colorsStore(); const n = normalizeColorName(name);
-    store[id] = (store[id] || []).filter(c => c.name !== n);
+    store[id] = ownFabricColors(id).filter(c => c.name !== n);
     if (store[id].length === 0) delete store[id];
     saveColorsStore();
 }
@@ -996,7 +1010,7 @@ function importColorRows(rows) {
 
         if (matchedFabrics.length > 0) {
             matchedFabrics.forEach(f => {
-                store[f.id] = colors; // 매칭된 실제 원단 ID에도 색상 등록
+                if (f.id !== rawId) store[f.id] = colors.map(c => ({ ...c })); // 매칭된 실제 원단 ID에도 색상 등록 (원단마다 따로 복사, 54번)
                 if (meta.engName && !f.engName) { f.engName = meta.engName; fabricDbUpdated = true; }
                 if (meta.spec && !f.note) { f.note = meta.spec; fabricDbUpdated = true; }
             });
@@ -1233,6 +1247,7 @@ function loadFabricDb() {
     applyTagOverrides(FABRIC_DB);
     if (typeof updateBookFilterOptions === 'function') updateBookFilterOptions();
     if (typeof renderDbTable === 'function') renderDbTable();
+    if (typeof renderDupCleanButton === 'function') renderDupCleanButton();
     updateDbBadgeText(`DB 품목 (${FABRIC_DB.length}개)`);
 }
 
@@ -1242,6 +1257,7 @@ function saveFabricDb(triggerRoomsRender = true) {
     if (typeof renderDbTable === 'function') renderDbTable();
     if (triggerRoomsRender && typeof renderRooms === 'function') renderRooms();
     if (typeof calculateAll === 'function') calculateAll();
+    if (typeof renderDupCleanButton === 'function') renderDupCleanButton();
     updateDbBadgeText(`보관 품목 (${FABRIC_DB.length}개)`);
 }
 
@@ -1339,6 +1355,142 @@ function restoreUndoSnapshot() {
     } catch (e) {
         showToast('되돌리기 실패: ' + e.message, 'error');
     }
+}
+
+// ==============================================================
+// 중복 원단 정리 (55번)
+//  - 52번 이전 버그로 책자명이 한 번 더 붙은 예전 ID(`콤비_콤비_파로트윈`, `블라인드_콤비_블랙라벨`)와
+//    새 ID(`콤비_파로트윈`, `콤비_블랙라벨`)가 함께 있으면 예전 쪽을 지움
+//  - 예전 ID = "책자명_" + 새 ID 이고, 새 ID 원단이 목록에 있고, 품명(또는 영문 품명)이 같을 때만
+// ==============================================================
+function findDuplicateFabrics() {
+    if (!Array.isArray(FABRIC_DB)) return [];
+    const byId = new Map(FABRIC_DB.map(f => [f.id, f]));
+    const clean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
+    const out = [];
+    FABRIC_DB.forEach(f => {
+        const pre = String(f.book || '').replace(/[\s()\/'"`\\<>&]/g, '_') + '_';
+        if (!pre || pre === '_' || !f.id.startsWith(pre)) return;
+        const newId = f.id.slice(pre.length);
+        const g = byId.get(newId);
+        if (!g || g === f || !newId.includes('_')) return;
+        const sameName = (clean(f.name) && clean(f.name) === clean(g.name)) || (clean(f.engName) && clean(f.engName) === clean(g.engName));
+        if (sameName) out.push({ oldId: f.id, newId, oldF: f, newF: g });
+    });
+    return out;
+}
+// 상담 안의 원단 ID(fabricId·baseFabricId)와 후보 별표(원단ID__색)를 새 ID로 바꿈. 바꾼 곳 수를 돌려줌
+function remapFabricRefs(obj, idMap) {
+    let n = 0;
+    const fixStr = s => {
+        if (idMap[s]) { n++; return idMap[s]; }
+        const k = s.indexOf('__');
+        if (k > 0 && idMap[s.slice(0, k)]) { n++; return idMap[s.slice(0, k)] + s.slice(k); }
+        return s;
+    };
+    const walk = o => {
+        if (Array.isArray(o)) { o.forEach((v, i) => { if (typeof v === 'string') o[i] = fixStr(v); else if (v && typeof v === 'object') walk(v); }); return; }
+        if (!o || typeof o !== 'object') return;
+        Object.keys(o).forEach(key => {
+            const v = o[key];
+            if (typeof v === 'string' && (key === 'fabricId' || key === 'baseFabricId')) o[key] = fixStr(v);
+            else if (v && typeof v === 'object') walk(v);
+        });
+    };
+    walk(obj);
+    return n;
+}
+function cleanDuplicateFabrics() {
+    const dups = findDuplicateFabrics();
+    if (dups.length === 0) { showToast('정리할 중복 원단이 없습니다.', 'info'); return; }
+    const lines = dups.slice(0, 25).map(d => `• ${d.oldF.book} ${d.oldF.name}  (${d.oldId} → ${d.newId})`).join('\n');
+    const more = dups.length > 25 ? `\n… 외 ${dups.length - 25}개` : '';
+    const ok = confirm(
+        `[중복 원단 정리]\n\n` +
+        `예전 ID로 한 번 더 들어간 원단 ${dups.length}개를 찾았습니다. (지금 원단 ${FABRIC_DB.length}개 → 정리 후 ${FABRIC_DB.length - dups.length}개)\n\n` +
+        `${lines}${more}\n\n` +
+        `새 ID 쪽에 없는 원가·색·분류만 옮겨 담고, 예전 ID 원단은 목록에서 지웁니다.\n` +
+        `진행 중인 상담과 상담 기록의 원단도 새 ID로 바꿔 둡니다.\n` +
+        `지우기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n` +
+        `[확인]: 정리합니다.\n[취소]: 그대로 둡니다.`
+    );
+    if (!ok) return;
+    saveUndoSnapshot('중복 원단 정리');
+
+    const idMap = {};
+    dups.forEach(d => { idMap[d.oldId] = d.newId; });
+    const isEmpty = v => v == null || v === '' || v === 0;
+
+    // 1) 원단 정보: 새 ID 쪽이 비어 있는 칸만 채움
+    dups.forEach(d => {
+        ['price', 'engName', 'note', 'imageUrl', 'light', 'blindKind', 'categoryType'].forEach(k => {
+            if (isEmpty(d.newF[k]) && !isEmpty(d.oldF[k])) d.newF[k] = d.oldF[k];
+        });
+    });
+    // 2) 원가: 새 ID에 없거나 0인 칸만
+    const costs = Object.assign({}, (Costing.state && Costing.state.costs) || {});
+    dups.forEach(d => {
+        const o = costs[d.oldId];
+        if (o) {
+            const nw = Object.assign({}, costs[d.newId] || {});
+            Object.keys(o).forEach(k => { if (isEmpty(nw[k]) && !isEmpty(o[k])) nw[k] = o[k]; });
+            costs[d.newId] = nw;
+        }
+        delete costs[d.oldId];
+    });
+    // 3) 색: 새 ID에 없는 색 번호는 더하고, 같은 번호는 빈 값(톤·이름·색상코드 등)만 채움
+    const store = colorsStore();
+    dups.forEach(d => {
+        const o = store[d.oldId];
+        if (o && o.length) {
+            const list = (store[d.newId] || []).map(c => ({ ...c }));
+            o.forEach(oc => {
+                const nc = list.find(c => c.name === oc.name);
+                if (!nc) list.push({ ...oc });
+                else Object.keys(oc).forEach(k => { if (isEmpty(nc[k]) && !isEmpty(oc[k])) nc[k] = oc[k]; });
+            });
+            list.sort(colorSort);
+            store[d.newId] = list;
+        }
+        delete store[d.oldId];
+    });
+    saveColorsStore();
+    // 4) 분류(사장님이 직접 정한 값): 새 ID에 없는 칸만
+    const tags = loadTagOverrides();
+    dups.forEach(d => {
+        const o = tags[d.oldId];
+        if (o) {
+            const nw = Object.assign({}, tags[d.newId] || {});
+            Object.keys(o).forEach(k => { if (!nw[k] && o[k]) nw[k] = o[k]; });
+            tags[d.newId] = nw;
+        }
+        delete tags[d.oldId];
+    });
+    saveTagOverrides(tags);
+
+    // 5) 예전 ID 원단 지우기
+    FABRIC_DB = FABRIC_DB.filter(f => !idMap[f.id]);
+    if (Costing.state && Costing.state.rules) { Costing.setPrivate({ rules: Costing.state.rules, costs }); savePrivateStore(); }
+
+    // 6) 진행 중인 상담·자동 저장·상담 기록 안의 원단 ID를 새 ID로
+    let refs = 0;
+    try { if (typeof rooms !== 'undefined') refs += remapFabricRefs(rooms, idMap); } catch (e) {}
+    try { if (typeof finderPicks !== 'undefined') refs += remapFabricRefs(finderPicks, idMap); } catch (e) {}
+    try { if (window.concierge && window.concierge.remapFabricIds) window.concierge.remapFabricIds(cart => { refs += remapFabricRefs(cart, idMap); }); } catch (e) {}
+    [STORE_KEYS.draft, STORE_KEYS.history].forEach(key => {
+        try {
+            const v = JSON.parse(localStorage.getItem(key));
+            if (v && typeof v === 'object') { const n = remapFabricRefs(v, idMap); if (n) { localStorage.setItem(key, JSON.stringify(v)); refs += n; } }
+        } catch (e) {}
+    });
+
+    applyTagOverrides(FABRIC_DB);
+    saveFabricDb(true);
+    if (typeof renderUndoButton === 'function') renderUndoButton();
+    if (typeof renderColorEditor === 'function') renderColorEditor();
+    if (typeof renderTagEditor === 'function') renderTagEditor();
+    const refMsg = refs ? ` 상담 안의 원단 ${refs}곳도 새 ID로 바꿨습니다.` : '';
+    showToast(`중복 원단 ${dups.length}개를 정리했습니다. (지금 원단 ${FABRIC_DB.length}개)${refMsg}\n탭에도 반영하려면 [백업 내려받기] → 탭에서 [비공개 팩 불러오기]를 해 주세요.`, 'success');
 }
 
 // ==============================================================
