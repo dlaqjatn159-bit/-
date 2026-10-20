@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261078';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261079';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261078';
+const REDAM_BUILD = '20261079';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2473,62 +2473,6 @@ function updateCurtainData(roomId, curtainId, key, val) {
     calculateAll();
 }
 
-function changeCurtainCategoryPreset(roomId, curtainId, preset) {
-    const room = rooms.find(r => r.id === roomId);
-    if (!room) return;
-    const c = room.curtains.find(item => item.id === curtainId);
-    if (!c) return;
-
-    c.presetType = preset;
-    c.label = getNextCurtainLabel(room, preset);
-    delete c.toneStep; delete c.pickDir; delete c.baseFabricId; delete c.baseColorName;
-
-    if (preset === 'sheer') {
-        const f = FABRIC_DB.find(item => item.categoryType === '속지') || FABRIC_DB[0];
-        if (f) c.fabricId = f.id;
-        c.pleat = "2.0";
-        c.pleatType = "나비주름";
-        c.installType = "rail";
-        c.hwName = "기본 레일";
-        c.hwPrice = hwPriceOf('rail');
-        c.leadBand = true;
-        c.shapeFee = 0;
-        c.hotelFit = false;
-    } else if (preset === 'drape') {
-        const f = FABRIC_DB.find(item => item.categoryType === '겉지') || FABRIC_DB[0];
-        if (f) c.fabricId = f.id;
-        c.pleat = "2.0";
-        c.pleatType = "나비주름";
-        c.installType = "rail";
-        c.hwName = "기본 레일";
-        c.hwPrice = hwPriceOf('rail');
-        c.shapeFee = 1;
-        c.leadBand = false;
-        c.hotelFit = false;
-    } else if (preset === 'blind') {
-        const f = FABRIC_DB.find(item => item.categoryType === '블라인드') || FABRIC_DB[0];
-        if (f) c.fabricId = f.id;
-        c.shapeFee = 0;
-        c.leadBand = false;
-        c.hotelFit = false;
-    } else if (preset === 'panel') {
-        const f = FABRIC_DB.find(item => item.categoryType === '겉지') || FABRIC_DB[0];
-        if (f) c.fabricId = f.id;
-        c.pleat = "panel";
-        c.pleatType = "패널";
-        c.installType = "rail_2line";
-        c.hwName = "2줄 패널 레일";
-        c.hwPrice = hwPriceOf('rail_2line');
-        c.shapeFee = 0;
-        c.leadBand = false;
-        c.hotelFit = false;
-    }
-    c.rates = optionRatesNow(c.installType);      // 종류를 바꾸면 새 품목처럼 지금 설정 단가로 (29번)
-
-    renderRooms();
-    calculateAll();
-}
-
 // 상담 화면의 공간 카드 접기: 접으면 공간 이름 · 종류 · 소계만 보임 (공간이 많을 때 전체를 한눈에). 화면에서만 쓰는 상태라 저장하지 않음
 const collapsedRooms = new Set();
 function toggleRoomCollapse(roomId) {
@@ -2947,25 +2891,6 @@ function closeTicketModal() {
 // 견적서 이미지 — 화면 캡처 대신 직접 그립니다 (글자 잘림 방지, 외부 라이브러리 불필요)
 // ==============================================================
 // ---- 제안서에 들어가는 "왜 이렇게 골랐는지" ----
-const TICKET_LIGHT_LABELS = { high: '햇빛 풍부', mid: '햇빛 은은', low: '햇빛 차분' };
-const TICKET_BLOCK_LABELS = { light: '빛은 은은하게', soft: '빛은 적당히 가림', dark: '빛은 완전 차단' };
-const TICKET_PRIVACY_LABELS = { open: '바깥 시선 괜찮음', some: '바깥 시선 조금 신경', high: '바깥 시선 많이 신경' };
-const TICKET_FEEL_LABELS = { smooth: '속지는 깔끔·매끈하게', textured: '속지는 결이 살아 있게', cozy: '속지는 도톰·보송하게' };
-const TICKET_BLIND_LABELS = { combi: '콤비 블라인드', roll: '롤 블라인드', wood: '우드 블라인드', alu: '알루미늄 블라인드' };
-// 공간 진단 요약 한 줄 (고객 화면에서 진단을 거친 공간만)
-function ticketRoomSummary(r) {
-    if (!r || !r.diagnosed) return '';
-    const parts = [];
-    if (TONE_LABELS[r.floorTone]) parts.push(`바닥 ${TONE_LABELS[r.floorTone]} 톤`);
-    if (TONE_LABELS[r.wallTone]) parts.push(`벽 ${TONE_LABELS[r.wallTone]} 톤`);
-    if (TICKET_LIGHT_LABELS[r.lightLevel]) parts.push(TICKET_LIGHT_LABELS[r.lightLevel]);
-    if (TICKET_BLOCK_LABELS[r.lightBlock]) parts.push(TICKET_BLOCK_LABELS[r.lightBlock]);
-    if (TICKET_PRIVACY_LABELS[r.privacy]) parts.push(TICKET_PRIVACY_LABELS[r.privacy]);
-    if (TICKET_FEEL_LABELS[r.sheerFeel]) parts.push(TICKET_FEEL_LABELS[r.sheerFeel]);
-    if (TICKET_BLIND_LABELS[r.blindWant]) parts.push(TICKET_BLIND_LABELS[r.blindWant]);
-    if (MOOD_LABELS[r.wantMood]) parts.push(`${MOOD_LABELS[r.wantMood]} 분위기`);
-    return parts.join(' · ');
-}
 // 품목별 추천 이유 (사장님이 분류한 원단 + 진단을 거친 공간만. 아니면 빈칸)
 function ticketItemReason(r, c) {
     if (!r || !r.diagnosed || !c || !c.fabricId) return '';

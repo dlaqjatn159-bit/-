@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261078';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261079';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -266,10 +266,6 @@ const DENSITY_LABELS = { light: '많이 비침', medium: '은은한 비침', day
 const SHEER_NIGHT_NOTE = '밤에 불을 켜면 어떤 속지든 안의 그림자가 비칠 수 있어요. 밤 가림이 필요하면 겉커튼을 더할 수 있어요.'; // 41번
 const DENSITY_ORDER = ['light', 'medium', 'day', 'heavy'];
 const DENSITY_FACTS = { light: '#맑은비침', medium: '#은은한비침', day: '#낮시간가림', heavy: '#비침적음' };
-// 고객 사생활 질문 (속지가 들어가는 구성에서 한 번)
-const PRIVACY_LABELS = { open: '괜찮아요', some: '조금 신경 쓰여요', high: '많이 신경 쓰여요' };
-// 고객 속지 질감 취향 (속지가 들어가는 구성에서 한 번): 깔끔·매끈 / 결이 살아 있는 / 상관없음(질문 결과 null)
-const SHEER_FEEL_LABELS = { smooth: '깔끔하고 매끈하게', textured: '결이 살아 있게' };
 function roomIsDouble(room) {
     const list = (room && (room.items || room.curtains)) || [];
     return list.some(i => i.presetType === 'sheer') && list.some(i => i.presetType === 'drape');
@@ -289,8 +285,6 @@ function normalizeTextureInput(v) {
 // 암막 4단계 (사장님 기준): 완전암막 = 빛에 예민한 분용 진짜 암막(95% 이상), 생활암막 = 70~94%(블랑·라온), 보통 = 그 아래(넥스 약 60%)
 const BLACKOUT_LABELS = { none: '비암막', mid: '보통', life: '생활암막', full: '완전암막' };
 const BLACKOUT_ORDER = ['none', 'mid', 'life', 'full'];
-// 고객이 고르는 "빛을 얼마나 가릴지" (방에서만 물어봄)
-const LIGHTBLOCK_LABELS = { light: '들어와도 괜찮아요', soft: '적당히 가려 주세요', dark: '완전히 어둡게' };
 
 // 겉지의 암막 정도: 사장님이 직접 정한 값이 우선, 없으면 품명으로 추정 (95% 이상 = 완전, 70~94% = 생활, 70% 미만 = 보통)
 function blackoutLevel(f) {
@@ -630,29 +624,6 @@ function pickShowcase(ranked, n) {
         out.push(rest.splice(i, 1)[0]);
     }
     return out;
-}
-
-// 고객 카드에 보여줄 원단 특징 (사실인 것만: 품명의 암막률, 사장님이 지정한 비침·분위기)
-// 예전 자동 태그(#완벽암막 #사생활보호 등)는 모든 원단에 똑같이 붙어 사실과 다를 수 있어 고객 화면에서 쓰지 않음
-function customerFacts(fabric) {
-    const f = fabric || {}, m = f.manual || {}, out = [];
-    const name = String(f.name || '');
-    const pct = /(\d{2,3})\s*%/.exec(name);
-    const bl = blackoutLevel(f);
-    if (f.categoryType === '블라인드') {
-        const kind = blindKind(f), light = blindLight(f);
-        if (kind) out.push(`#${BLIND_KIND_LABELS[kind]}`);
-        if (light !== 'none') out.push(`#${BLIND_LIGHT_LABELS[light]}`);
-        if (hasMoodInput(f) && MOOD_LABELS[moodOf(f)]) out.push(`#${MOOD_LABELS[moodOf(f)].replace(/\s+/g, '')}`);
-        return out.join(' ');
-    }
-    const pctTxt = (pct && name.includes('암막')) ? ` ${pct[1]}%` : '';
-    if (bl === 'full') out.push(`#완전암막${pctTxt}`);
-    else if (bl === 'life') out.push(`#생활암막${pctTxt}`);
-    else if (bl === 'mid' && pctTxt) out.push(`#빛가림${pctTxt}`);      // 보통 단계는 '암막'이라 부르지 않음
-    if (m.density && DENSITY_FACTS[f.density]) out.push(DENSITY_FACTS[f.density]);
-    if (hasMoodInput(f) && MOOD_LABELS[moodOf(f)]) out.push(`#${MOOD_LABELS[moodOf(f)].replace(/\s+/g, '')}`);
-    return out.join(' ');
 }
 
 // ---- 원단 사진: photos/원단ID.jpg, 색상별은 photos/원단ID__번호.jpg (없으면 .webp, .png 순서로 찾고, 없으면 원단 대표 사진 → 색상 배경) ----

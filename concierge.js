@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261078';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261079';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -136,19 +136,6 @@
         }
 
         return pool;
-    }
-
-    function getV1MatchScore(fabric, roomData, category) {
-        if (!fabric) return 0;
-        if (typeof window.calculateFabricMatchScore === 'function') {
-            return window.calculateFabricMatchScore(fabric, roomData, category);
-        }
-        let score = 0;
-        const fTone = fabric.tone || 'neutral';
-        const floorT = roomData.floorTone || 'warm';
-        if (fTone === floorT) score += 4;
-        if (fabric.categoryType === category) score += 3;
-        return score;
     }
 
     // 판매가 계산은 직원 화면과 같은 엔진(pricing.js)을 사용합니다.
@@ -427,16 +414,6 @@
         if (mc && mc.hex) return { hex: mc.hex, name: measuredName(part, mc) || names[tone] || '', src: 'measured' };
         if ((r.diagnosed || (r.cardParts && r.cardParts[part])) && names[tone]) return { hex: sw[tone], name: names[tone], src: 'card' };
         return null;
-    }
-    // 색을 어디서 가져왔는지 (공간 추가 때 정함): 이 공간에서 잼 / 집 기본 색 그대로 / 벽만·바닥만 따로 잼
-    const COLOR_SRC_TEXT = { measured: '이 공간에서 잰 색', house: '집 기본 색과 같음', wall: '벽만 따로 잰 색', floor: '바닥만 따로 잰 색' };
-    function roomColorSrc(wall, floor, r) {
-        if (r && COLOR_SRC_TEXT[r.colorSrc] && (wall || floor)) return COLOR_SRC_TEXT[r.colorSrc];
-        if (!wall && !floor) return '';
-        const s = [wall, floor].map(p => p ? p.src : 'none');
-        if (s[0] === s[1]) return s[0] === 'measured' ? '이 공간에서 잰 색' : '카드로 고른 색';
-        if (s.includes('none')) return s[0] === 'none' ? '바닥만 정했어요' : '벽만 정했어요';
-        return s[0] === 'measured' ? '벽은 잰 색 · 바닥은 카드로' : '바닥은 잰 색 · 벽은 카드로';
     }
     // 크기: 공간에 적어 둔 값(공간 추가 때) → 없으면 첫 커튼의 크기
     function roomSize(r) {
@@ -1434,7 +1411,6 @@
         const whyInfo = (typeof whySetsOf === 'function') ? whySetsOf(data) : { rooms: [] };
         const showWhy = !!(whyInfo.rooms && whyInfo.rooms.length);
         const CH_WORDS = ['하나', '둘', '셋'];
-        const ORD_WORDS = ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째', '일곱째', '여덟째'];
         let chIdx = 0;
 
         let h = '<div class="fin-ed-bar">';
