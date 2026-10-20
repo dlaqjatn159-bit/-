@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261074';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261075';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -901,6 +901,24 @@ function normalizeLabInput(v) {
     const n = Number(s);
     return (isFinite(n) && n >= -128 && n <= 128) ? Math.round(n * 10) / 10 : null;
 }
+// 블라인드 영문 품명 별칭 (52번). 콤비 책자 영문 품명 → 삼보텍스 책자 표기. 56번 짝 찾기에서도 씀
+const BLIND_NAME_ALIASES = {
+    'PAROTWIN': ['FAROTWINS', 'FAROTWIN', '파로트윈'],
+    'FAROTWINS': ['PAROTWIN', 'FAROTWIN', '파로트윈'],
+    'PARO': ['FARO', '파로'],
+    'FARO': ['PARO', '파로'],
+    'LINEN': ['UCLINEN', 'UC-LINEN', '린넨'],
+    'UCLINEN': ['LINEN', '린넨'],
+    'DAYNIGHT': ['DAYNIGHT', 'DAYNIGHTS', '데이나이트'],
+    'BRIGHTBO': ['VBRITEBO', 'BRIGHTBO', '브라이트암막', 'VBRITE'],
+    'VBRITEBO': ['BRIGHTBO', '브라이트암막'],
+    'ALICEBO': ['ELISEBO', 'ALICEBO', '엘리스암막'],
+    'ELISEBO': ['ALICEBO', '엘리스암막'],
+    'VINCIBO': ['BINCHBO', 'VINCIBO', '빈치암막'],
+    'BINCHBO': ['VINCIBO', '빈치암막'],
+    'MARBLE': ['MABLE', '마블'],
+    'MABLE': ['MARBLE', '마블']
+};
 // 색상 입력표(엑셀/CSV) 행을 읽어 반영: 열 이름에 "원단 ID", "색상", "톤"이 들어 있으면 됩니다. ("색 이름", "밝기", "색상코드", "붉은기", "노란기" 열은 있으면 읽음)
 function importColorRows(rows) {
     let hi = -1;
@@ -961,23 +979,6 @@ function importColorRows(rows) {
 
     // FABRIC_DB와 다각도 매칭 (정확한 ID, 영문 품명, 한글 품명, 별칭 대조)
     const cleanKey = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
-    const BLIND_NAME_ALIASES = {
-        'PAROTWIN': ['FAROTWINS', 'FAROTWIN', '파로트윈'],
-        'FAROTWINS': ['PAROTWIN', 'FAROTWIN', '파로트윈'],
-        'PARO': ['FARO', '파로'],
-        'FARO': ['PARO', '파로'],
-        'LINEN': ['UCLINEN', 'UC-LINEN', '린넨'],
-        'UCLINEN': ['LINEN', '린넨'],
-        'DAYNIGHT': ['DAYNIGHT', 'DAYNIGHTS', '데이나이트'],
-        'BRIGHTBO': ['VBRITEBO', 'BRIGHTBO', '브라이트암막', 'VBRITE'],
-        'VBRITEBO': ['BRIGHTBO', '브라이트암막'],
-        'ALICEBO': ['ELISEBO', 'ALICEBO', '엘리스암막'],
-        'ELISEBO': ['ALICEBO', '엘리스암막'],
-        'VINCIBO': ['BINCHBO', 'VINCIBO', '빈치암막'],
-        'BINCHBO': ['VINCIBO', '빈치암막'],
-        'MARBLE': ['MABLE', '마블'],
-        'MABLE': ['MARBLE', '마블']
-    };
 
     const store = colorsStore();
     const unlisted = new Set();
@@ -989,7 +990,9 @@ function importColorRows(rows) {
         store[rawId] = colors; // 기본 ID 저장
 
         // FABRIC_DB에서 일치하는 원단 탐색
-        const matchedFabrics = (typeof FABRIC_DB !== 'undefined' && Array.isArray(FABRIC_DB)) ? FABRIC_DB.filter(f => {
+        //  - 표의 원단 ID와 똑같은 원단이 있으면 그 원단에만 넣음 (삼보텍스·콤비를 합친 뒤 다시 2장이 되지 않게, 56번)
+        const exact = (typeof FABRIC_DB !== 'undefined' && Array.isArray(FABRIC_DB)) ? FABRIC_DB.filter(f => f.id === rawId) : [];
+        const matchedFabrics = exact.length ? exact : (typeof FABRIC_DB !== 'undefined' && Array.isArray(FABRIC_DB)) ? FABRIC_DB.filter(f => {
             if (f.id === rawId) return true;
             if (meta.fabName && f.name === meta.fabName) return true;
             if (meta.engName) {
@@ -1416,7 +1419,15 @@ function cleanDuplicateFabrics() {
     );
     if (!ok) return;
     saveUndoSnapshot('중복 원단 정리');
+    const refs = mergeFabricPairs(dups);
+    const refMsg = refs ? ` 상담 안의 원단 ${refs}곳도 새 ID로 바꿨습니다.` : '';
+    showToast(`중복 원단 ${dups.length}개를 정리했습니다. (지금 원단 ${FABRIC_DB.length}개)${refMsg}\n탭에도 반영하려면 [백업 내려받기] → 탭에서 [비공개 팩 불러오기]를 해 주세요.`, 'success');
+}
 
+
+// 예전 원단(oldF)을 남길 원단(newF)으로 합침: 빈 칸만 옮겨 담고, 색·원가·분류·상담 안의 ID를 새 ID로, 예전 원단은 지움. 바꾼 상담 곳 수를 돌려줌 (55번, 56번에서 같이 씀)
+//  - opts.fill(d): 칸을 더 채울 때, opts.supplierBlank(v): 이 공급처 값은 빈 칸으로 봄
+function mergeFabricPairs(dups, opts = {}) {
     const idMap = {};
     dups.forEach(d => { idMap[d.oldId] = d.newId; });
     const isEmpty = v => v == null || v === '' || v === 0;
@@ -1426,6 +1437,7 @@ function cleanDuplicateFabrics() {
         ['price', 'engName', 'note', 'imageUrl', 'light', 'blindKind', 'categoryType'].forEach(k => {
             if (isEmpty(d.newF[k]) && !isEmpty(d.oldF[k])) d.newF[k] = d.oldF[k];
         });
+        if (opts.fill) opts.fill(d);
     });
     // 2) 원가: 새 ID에 없거나 0인 칸만
     const costs = Object.assign({}, (Costing.state && Costing.state.costs) || {});
@@ -1433,7 +1445,7 @@ function cleanDuplicateFabrics() {
         const o = costs[d.oldId];
         if (o) {
             const nw = Object.assign({}, costs[d.newId] || {});
-            Object.keys(o).forEach(k => { if (isEmpty(nw[k]) && !isEmpty(o[k])) nw[k] = o[k]; });
+            Object.keys(o).forEach(k => { if ((isEmpty(nw[k]) || (k === 'supplier' && opts.supplierBlank && opts.supplierBlank(nw[k]))) && !isEmpty(o[k])) nw[k] = o[k]; });
             costs[d.newId] = nw;
         }
         delete costs[d.oldId];
@@ -1489,8 +1501,94 @@ function cleanDuplicateFabrics() {
     if (typeof renderUndoButton === 'function') renderUndoButton();
     if (typeof renderColorEditor === 'function') renderColorEditor();
     if (typeof renderTagEditor === 'function') renderTagEditor();
-    const refMsg = refs ? ` 상담 안의 원단 ${refs}곳도 새 ID로 바꿨습니다.` : '';
-    showToast(`중복 원단 ${dups.length}개를 정리했습니다. (지금 원단 ${FABRIC_DB.length}개)${refMsg}\n탭에도 반영하려면 [백업 내려받기] → 탭에서 [비공개 팩 불러오기]를 해 주세요.`, 'success');
+    return refs;
+}
+
+// ==============================================================
+// 삼보텍스(영어 이름)·콤비(한글 이름) 같은 블라인드 합치기 (56번)
+//  - 같은 블라인드가 단가표의 삼보텍스 원단(예: FARO TWINS)과 52번 블라인드 표의 콤비 원단(예: 파로트윈 / PAROTWIN)으로 따로 들어 있음
+//  - 콤비 원단의 영문 품명(또는 별칭)과 삼보텍스 원단의 이름이 정리 후 똑같을 때만 짝. 삼보텍스는 콤비·트리플 블라인드만 (롤 LINEN과 콤비 UC-LINEN이 헷갈리지 않게)
+//  - 한쪽에 짝이 둘 이상이면 건너뛰고 "확인 필요"로 보여 줌
+// ==============================================================
+function findSamboCombiPairs() {
+    if (!Array.isArray(FABRIC_DB)) return { pairs: [], unsure: [] };
+    const clean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
+    const isBlind = f => f.categoryType === '블라인드' || f.calcType === 'hebe';
+    const isSambo = f => String(f.book || '').includes('삼보텍스');
+    const sambo = FABRIC_DB.filter(f => isBlind(f) && isSambo(f) && (f.blindKind || detectBlindKind(f.note)) === 'combi');
+    const combi = FABRIC_DB.filter(f => isBlind(f) && !isSambo(f) && f.engName);
+    const found = combi.map(g => {
+        const e = clean(g.engName);
+        const keys = new Set([e, ...(BLIND_NAME_ALIASES[e] || []).map(clean)].filter(Boolean));
+        return { g, cands: sambo.filter(f => keys.has(clean(f.name))) };
+    });
+    const used = {};
+    found.forEach(x => x.cands.forEach(f => { used[f.id] = (used[f.id] || 0) + 1; }));
+    const pairs = [], unsure = [];
+    found.forEach(({ g, cands }) => {
+        if (!cands.length) return;
+        if (cands.length > 1 || used[cands[0].id] > 1) { unsure.push(`${g.name}(${g.engName}) ↔ ${cands.map(f => f.name).join(' / ')}`); return; }
+        pairs.push({ oldId: cands[0].id, newId: g.id, oldF: cands[0], newF: g });
+    });
+    return { pairs, unsure };
+}
+// 찾기 화면에 보이는 색 수 (원단 찾기 "전체 ○색"과 같은 셈)
+function finderColorCount() {
+    try { return finderEntries().length; } catch (e) { return null; }
+}
+function mergeSamboCombiBlinds() {
+    const { pairs, unsure } = findSamboCombiPairs();
+    if (pairs.length === 0) { showToast(unsure.length ? `합칠 블라인드가 없습니다. 확인 필요 ${unsure.length}개: ${unsure.join(', ')}` : '합칠 블라인드가 없습니다.', 'info'); return; }
+    // 정리 후 색 수: 합친 모양을 잠깐 만들어 세어 보고 바로 되돌림 (이름으로 색을 빌려 오던 원단의 변화까지 같이 셈)
+    const before = finderColorCount();
+    let after = null;
+    if (before != null) {
+        const keepDb = FABRIC_DB, store = colorsStore(), touched = {};
+        try {
+            const oldIds = new Set(pairs.map(d => d.oldId));
+            FABRIC_DB = keepDb.filter(f => !oldIds.has(f.id)).map(f => {
+                const d = pairs.find(p => p.newF === f);
+                return d ? Object.assign({}, f, { engName: d.oldF.name }) : f;
+            });
+            pairs.forEach(d => {
+                [d.oldId, d.newId].forEach(k => { if (!(k in touched)) touched[k] = store[k]; });
+                const list = (store[d.newId] || []).slice();
+                (store[d.oldId] || []).forEach(c => { if (!list.some(x => x.name === c.name)) list.push(c); });
+                store[d.newId] = list;
+                delete store[d.oldId];
+            });
+            after = finderColorCount();
+        } finally {
+            FABRIC_DB = keepDb;
+            Object.keys(touched).forEach(k => { if (touched[k] === undefined) delete store[k]; else store[k] = touched[k]; });
+        }
+    }
+    const lines = pairs.slice(0, 45).map(d => `• ${d.oldF.name} → ${d.newF.name}`).join('\n');
+    const more = pairs.length > 45 ? `\n… 외 ${pairs.length - 45}개` : '';
+    const unsureMsg = unsure.length ? `\n\n확인 필요(짝이 둘 이상이라 건너뜀) ${unsure.length}개:\n${unsure.map(u => '• ' + u).join('\n')}` : '';
+    const ok = confirm(
+        `[삼보텍스·콤비 블라인드 합치기]\n\n` +
+        `같은 블라인드가 삼보텍스(영어 이름)와 콤비(한글 이름)로 2장씩 있는 것 ${pairs.length}쌍을 찾았습니다.\n` +
+        `지워질 원단 ${pairs.length}개 · 원단 ${FABRIC_DB.length}개 → ${FABRIC_DB.length - pairs.length}개` + (before != null && after != null ? ` · 색 ${before}색 → ${after}색` : '') + `\n\n` +
+        `${lines}${more}${unsureMsg}\n\n` +
+        `한글 이름(콤비) 원단으로 남기고, 삼보텍스 쪽 단가·원가(공급처 삼보텍스)·규격 메모·분류 중 비어 있는 칸만 옮겨 담습니다.\n` +
+        `영어 이름은 발주서에 삼보텍스 책자 표기(예: FARO TWINS)로 나오게 바꿉니다. 색은 콤비 쪽 그대로, 없는 번호만 더합니다.\n` +
+        `진행 중인 상담과 상담 기록의 원단도 콤비 원단으로 바꿔 둡니다.\n` +
+        `지우기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n` +
+        `[확인]: 합칩니다.\n[취소]: 그대로 둡니다.`
+    );
+    if (!ok) return;
+    saveUndoSnapshot('삼보텍스·콤비 블라인드 합치기');
+    const refs = mergeFabricPairs(pairs, {
+        fill: d => {
+            d.newF.engName = d.oldF.name;                                   // 발주서 영어 이름은 삼보텍스 책자 표기로 (51번 병기)
+            if (d.oldF.price > 0 && !(d.newF.price > 0) && d.oldF.extra) d.newF.extra = d.oldF.extra;
+        },
+        supplierBlank: v => !v || v === '일반'                             // 블라인드 표로 들어온 콤비 원단은 공급처가 "일반"
+    });
+    const refMsg = refs ? ` 상담 안의 원단 ${refs}곳도 콤비 원단으로 바꿨습니다.` : '';
+    const now = finderColorCount();
+    showToast(`블라인드 ${pairs.length}쌍을 합쳤습니다. (지금 원단 ${FABRIC_DB.length}개${now != null ? ` · ${now}색` : ''})${refMsg}\n탭에도 반영하려면 [백업 내려받기] → 탭에서 [비공개 팩 불러오기]를 해 주세요.`, 'success');
 }
 
 // ==============================================================
