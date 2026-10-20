@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261081';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261082';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -108,9 +108,6 @@ function generateDoc(type) {
     calculateAll();
     const custName = document.getElementById('custName').value || "고객";
     const textarea = document.getElementById('outputDoc');
-    const totalGrandPriceText = document.getElementById('totalGrandPrice').textContent;
-    const subtotalText = document.getElementById('resGrandSubtotal').textContent;
-    const vatText = document.getElementById('resGrandVat').textContent;
 
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -174,19 +171,8 @@ function generateDoc(type) {
         if (type === 'factory') {
             textarea.value = `[공장 통합 발주서]\n• 발주일자: ${dateStr}\n• 현장/고객명: ${custName} 님\n----------------------------------------\n\n${buildRoomSummaries(true)}\n\n----------------------------------------\n※ 모든 커튼 세로 제작 치수는 기구 차감 및 바닥 간격 조정이 반영된 최종 완제품 치수임.`;
         } else if (type === 'kakao') {
-            const vatDesc = globalVatOption === 'business' 
-                ? `• 부가세 (VAT 10%): ${vatText}원 (세금계산서 발행)\n` 
-                : `• 부가세: 0원 (일반 소비자 판매가)\n`;
-
-            textarea.value = `안녕하세요 ${custName} 고객님! 요청하신 커튼 & 블라인드 맞춤 견적 안내드립니다.\n\n` + 
-                `[견적 상세 내역]\n\n${buildRoomSummaries(false)}\n\n` + 
-                `----------------------------------------\n` +
-                `• 전체 시공/출장비: ${globalInstallFee.toLocaleString()}원\n` +
-                `• 판매가 (시공비 포함): ${subtotalText}원\n` +
-                `${vatDesc}` +
-                `• 최종 금액: ${totalGrandPriceText}원\n` +
-                `----------------------------------------\n` +
-                `감사합니다!`;
+            // 손님에게 보내는 글은 견적서의 [카톡 글 복사]와 같은 글 (62번): 책자 이름·공장용 말 대신 색 이름 · 재질
+            textarea.value = ticketKakaoText();
         } else if (type === 'sheet') {
             const headers = ["일자", "고객명", "공간", "항목", "샘플북", "품목명", "실측가로", "실측세로", "설치방식", "바닥간격", "제작세로", "가공방식", "옵션", "수량", "단위", "단가", "부자재", "판매금액"];
             let rows = [headers.join('\t')];

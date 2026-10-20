@@ -643,8 +643,10 @@
             <!-- 저장·인쇄되는 이미지를 그대로 보여 줌 (app.js openTicketModal이 채움) -->
             <div id="ticketPreview" class="max-h-[60vh] overflow-y-auto custom-scrollbar"></div>
 
-            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200">
+            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200">
                 <button onclick="saveTicketImage()" class="w-full bg-[#2b221a] hover:bg-black text-white font-bold py-3 px-4 rounded-none text-sm shadow-sm transition border border-[#2b221a]">견적서 저장</button>
+                <!-- 이유 카드·견적서 내용을 카톡용 글로 복사 (62번) -->
+                <button onclick="copyTicketText()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-3 px-2 rounded-none text-sm transition border border-stone-300">카톡 글 복사</button>
                 <button onclick="printTicket()" class="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-3 px-4 rounded-none text-sm transition border border-stone-300">인쇄</button>
             </div>
         </div>
@@ -693,13 +695,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261081"></script>
-    <script src="costing.js?v=20261081"></script>
-    <script src="data.js?v=20261081"></script>
-    <script src="calculator.js?v=20261081"></script>
-    <script src="concierge.js?v=20261081"></script>
-    <script src="app.js?v=20261081"></script>
-    <script src="room-color.js?v=20261081"></script>
+    <script src="pricing.js?v=20261082"></script>
+    <script src="costing.js?v=20261082"></script>
+    <script src="data.js?v=20261082"></script>
+    <script src="calculator.js?v=20261082"></script>
+    <script src="concierge.js?v=20261082"></script>
+    <script src="app.js?v=20261082"></script>
+    <script src="room-color.js?v=20261082"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

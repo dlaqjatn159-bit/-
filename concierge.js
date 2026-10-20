@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261081';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261082';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1351,6 +1351,7 @@
                 html += '<div class="fin-pager font-serif-kr" id="finPager"></div>';
                 html += '<div class="fin-main font-serif-kr">';
                 html += '<button type="button" class="dos-act is-main" id="finSave" onclick="window.concierge.saveQuote()">견적서 저장</button>';
+                html += '<button type="button" class="dos-act" onclick="window.concierge.copyQuoteText()">카톡 글 복사</button>';      // 62번
                 html += '<button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button>';
                 html += '</div>';
                 html += '<label class="fin-fee"><span>시공 및 설치비</span>';
@@ -1647,7 +1648,7 @@
 
         h += '<footer class="fin-ed-closing"><div class="fin-closing-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="fin-closing-mark font-serif-kr">Re<i>.</i>dam</div></footer>';
         h += '<div class="fin-ed-foot font-serif-kr">';
-        h += '<div class="fin-ed-foot-main"><button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button><button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button></div>';
+        h += '<div class="fin-ed-foot-main"><button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button><button type="button" class="dos-act" onclick="window.concierge.copyQuoteText()">카톡 글 복사</button><button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button></div>';
         h += '<div class="fin-ed-foot-sub"><button type="button" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button><button type="button" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button></div>';
         h += '</div>';
         h += '</div>'; // .fin-ed-doc 끝
@@ -3111,6 +3112,11 @@
         saveQuote: function() {
             syncToV1MasterRooms();
             if (typeof window.saveTicketImage === 'function') window.saveTicketImage();
+        },
+        // 카톡 글 복사 (62번): 이유 카드·견적서 내용을 글로 (app.js)
+        copyQuoteText: function() {
+            syncToV1MasterRooms();
+            if (typeof window.copyTicketText === 'function') window.copyTicketText();
         },
         printQuote: function() {
             syncToV1MasterRooms();

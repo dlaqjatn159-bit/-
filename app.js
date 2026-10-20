@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261081';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261082';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261081';
+const REDAM_BUILD = '20261082';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -4211,6 +4211,69 @@ async function saveTicketImage() {
     } finally {
         __saveBusy = false;
     }
+}
+
+// 카톡 글 복사 (62번): 이유 카드·견적서 내용을 그대로 글로 (새 문구 없이 이유 문장표 문장 그대로). 원단은 61번처럼 "색 이름 · 재질"
+//  잰 색 코드·색 번호·책자 이름은 넣지 않음. 이유 카드는 손님이 답한 공간이 있을 때만, 그때 견적서는 품목당 한 줄(추천 이유는 이유 쪽에)
+function ticketKakaoText(data) {
+    data = data || ticketData();
+    const out = [], why = whySetsOf(data), won = n => `${Number(n || 0).toLocaleString()}원`;
+    const custName = (document.getElementById('custName').value || '').trim();
+    out.push(`[Re.dam] ${custName ? custName + ' 고객님 ' : ''}공간 제안 · ${data.date}`);
+    const nameOf = it => (it.kind === '블라인드' && it.name.includes('블라인드')) ? it.name : `${it.kind} · ${it.name}`;
+    if (why.rooms.length) {
+        out.push('', '〈원단을 고른 이유〉');
+        why.rooms.forEach(R => {
+            out.push('', `■ ${R.name}`);
+            const keys = [];
+            R.sets.forEach(s => (s.it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light']).forEach(k => { if (R.ans[k] && WHY_SAY[k][R.ans[k]] && !keys.includes(k)) keys.push(k); }));
+            keys.sort((a, b) => ['light', 'privacy', 'block'].indexOf(a) - ['light', 'privacy', 'block'].indexOf(b));
+            const quotes = keys.map(k => whyQuote(k, R.ans));
+            if (R.dirText) quotes.push(`“${R.dirText}향이에요”`);
+            if (quotes.length) out.push(`${quotes.join(' ')} 하셨어요.`);
+            if (R.sameAs) out.push(`벽과 바닥은 ${R.sameAs}${whyJosa(R.sameAs)} 같아요.`);
+            else if (R.colors && R.colors.length) out.push(R.colors.map(c => `${c.k} ${c.name}`.trim()).join(' · '));
+            if (R.space.length) out.push(R.space.join(' '));
+            R.sets.forEach(s => {
+                out.push('', `· ${nameOf(s.it)}`);
+                if (s.lines.length) out.push(s.lines.join(' '));
+                if (s.note) out.push(`(${s.note})`);
+            });
+            if (R.night && typeof SHEER_NIGHT_NOTE === 'string') out.push('', `(${SHEER_NIGHT_NOTE})`);
+        });
+    }
+    out.push('', '〈견적서〉');
+    data.rooms.forEach(room => {
+        if (!room.items.length) return;
+        out.push('', `■ ${room.name}${room.sampleOnly ? '' : ' ' + won(room.total)}`);
+        room.items.forEach(it => {
+            out.push(`· ${nameOf(it)}${it.tone ? ' · ' + it.tone : ''}`);
+            const sub = [it.size, it.meta, it.sampleOnly ? '' : won(it.price)].filter(Boolean).join(' · ');
+            if (sub) out.push(`  ${sub}`);
+            if (!why.rooms.length && it.reason) out.push(`  ${it.reason}`);
+        });
+    });
+    out.push('');
+    if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
+    out.push(`합계 금액 (시공비 포함) ${data.total}원`);
+    [['안내', data.note], ['결제 조건', data.pay], ['맞춤 제작 안내', data.custom], ['공급자', data.supplier]].forEach(([k, v]) => {
+        const t = String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+        if (t.length) out.push('', `[${k}]`, ...t);
+    });
+    return out.join('\n');
+}
+async function copyTicketText() {
+    let txt = '';
+    try { txt = ticketKakaoText(); } catch (err) { console.error(err); showToast("글을 만들지 못했습니다.", "error"); return; }
+    // 숨은 글상자로 먼저 복사 (누른 순간에 바로 해야 됨 — 기다린 뒤엔 막히는 창이 있음). 안 되면 클립보드로
+    let ok = false;
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed; left:-9999px; top:0;';
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (!ok) { try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(txt); ok = true; } } catch (e) {} }
+    showToast(ok ? "카톡 글을 복사했어요. 카카오톡 대화창에 붙여 넣어 주세요." : "복사하지 못했습니다.", ok ? "success" : "error");
 }
 
 async function preparePrintSheet() {
