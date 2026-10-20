@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261077';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261078';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -324,6 +324,15 @@ function detectBlindKind(note) {
     if (/PRINT|프린트/.test(s)) return 'print';
     if (/WOOD|우드/.test(s)) return 'wood';
     if (/ALU|알루미늄/.test(s)) return 'alu';
+    return null;
+}
+// 콤비 블라인드 줄 폭: 비고·규격의 "280 (85/60mm)" → 솔리드 85 · 쉬어 60. 못 읽으면 null (59번)
+function blindStripeMm(f) {
+    if (!f) return null;
+    for (const s of [f.note, f.blindSpec]) {
+        const m = String(s || '').match(/(\d{2,3})\s*\/\s*(\d{2,3})\s*mm/i);
+        if (m) return { solid: Number(m[1]), sheer: Number(m[2]) };
+    }
     return null;
 }
 function blindKind(f) { return (f && f.blindKind && BLIND_KIND_LABELS[f.blindKind]) ? f.blindKind : null; }
@@ -1016,6 +1025,7 @@ function importColorRows(rows) {
                 if (f.id !== rawId) store[f.id] = colors.map(c => ({ ...c })); // 매칭된 실제 원단 ID에도 색상 등록 (원단마다 따로 복사, 54번)
                 if (meta.engName && !f.engName) { f.engName = meta.engName; fabricDbUpdated = true; }
                 if (meta.spec && !f.note) { f.note = meta.spec; fabricDbUpdated = true; }
+                if (blindStripeMm({ note: meta.spec }) && !blindStripeMm(f)) { f.blindSpec = meta.spec; fabricDbUpdated = true; } // 비고가 다른 글이면 줄 폭은 따로 (59번)
             });
         } else {
             // 현재 DB에 일치하는 원단이 전혀 없는 경우
@@ -1486,7 +1496,7 @@ function mergeFabricPairs(dups, opts = {}) {
 
     // 1) 원단 정보: 새 ID 쪽이 비어 있는 칸만 채움
     dups.forEach(d => {
-        ['price', 'engName', 'note', 'imageUrl', 'light', 'blindKind', 'categoryType'].forEach(k => {
+        ['price', 'engName', 'note', 'blindSpec', 'imageUrl', 'light', 'blindKind', 'categoryType'].forEach(k => {
             if (isEmpty(d.newF[k]) && !isEmpty(d.oldF[k])) d.newF[k] = d.oldF[k];
         });
         if (opts.fill) opts.fill(d);
