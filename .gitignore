@@ -6,3 +6,6 @@ Claude outputs/
 사진테스트/
 색상분류/
 제미나이 이미지 생성/
+
+# 원단 사진은 기기에만 둠 (53번). 하위 폴더 mood·feel·comp·blind는 그대로 올림
+photos/*.jpg
