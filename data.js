@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261075';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261077';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1085,11 +1085,61 @@ function fabricPriceTiers(list) {
     });
     return out;
 }
+// ---- 같은 원단 묶음 (58번): 같은 블라인드가 두 원단으로 들어 있을 때 화면에는 한 장만 (데이터는 합치지 않음) ----
+//  - 56번 합치기 전의 삼보텍스(영어 이름)·콤비(한글 이름) 짝 → 콤비 쪽이 대표, 삼보텍스 쪽은 콤비에 없는 색만
+//  - 폭당/마당 짝은 묶지 않음 (10-20 사장님: "원단만 시킬때" 줄은 앱에 쓰지 않고 가격은 엑셀에서 확인)
+function fabricTwinReps(list) {
+    const pool = list || FABRIC_DB.filter(f => !isCustomerHidden(f));
+    const inPool = new Set(pool.map(f => f.id)), groupOf = {}, groups = {}, repOf = {}, sambo = new Set();
+    pool.forEach(f => { groupOf[f.id] = f.id; });
+    try {
+        findSamboCombiPairs().pairs.forEach(p => {
+            if (inPool.has(p.oldId) && inPool.has(p.newId)) { groupOf[p.oldId] = groupOf[p.newId]; sambo.add(p.oldId); }
+        });
+    } catch (e) {}
+    pool.forEach((f, i) => { (groups[groupOf[f.id]] = groups[groupOf[f.id]] || []).push({ f, i }); });
+    Object.keys(groups).forEach(k => {
+        const g = groups[k];
+        const rep = g.length === 1 ? g[0] : g.slice().sort((a, b) => (sambo.has(a.f.id) - sambo.has(b.f.id)) || (a.i - b.i))[0];
+        g.forEach(x => { repOf[x.f.id] = rep.f.id; });
+    });
+    return repOf;
+}
+// 고객 화면에 보일 원단만 (같은 원단 묶음에서 대표 하나씩, 58번)
+function fabricTwinDedupe(list) {
+    const repOf = fabricTwinReps(list);
+    return list.filter(f => repOf[f.id] === f.id);
+}
+// 원단 찾기 목록에서 원단ID·색으로 카드 찾기. 묶음의 다른 원단(삼보텍스 짝)으로 들어 있는 색이면 같은 묶음의 같은 색 카드 (58번)
+function finderFind(list, fabricId, color) {
+    const key = fabricId + '__' + (color || '');
+    const hit = (list || []).find(e => e.key === key);
+    if (hit || !fabricId) return hit || null;
+    const twin = (list || []).find(e => e.twins && e.twins.includes(fabricId));
+    if (!twin) return null;
+    return list.find(e => e.group === twin.group && e.color === (color || '')) || null;
+}
+// 색 수: 실제 등록된 색만 (색이 없는 원단의 빈 카드는 세지 않음, 58번) · 원단 수: 같은 원단 묶음은 하나로
+function finderColorTotal(list) { return (list || []).filter(e => e.color !== '').length; }
+function finderFabricTotal(list) { return new Set((list || []).map(e => e.group || e.fabricId)).size; }
+// 색이 아직 등록 안 된 원단 수 (직원 화면 숫자 옆에 따로 알림)
+function finderNoColorNote(list) {
+    const n = (list || []).filter(e => e.color === '').length;
+    return n ? ` · 색 미등록 원단 ${n}개` : '';
+}
 function finderEntries() {
     const out = [];
     const tiers = fabricPriceTiers(FABRIC_DB.filter(f => !isCustomerHidden(f)));
-    FABRIC_DB.forEach(f => {
-        if (isCustomerHidden(f)) return;
+    const repOf = fabricTwinReps();
+    const twinsOf = {};
+    Object.keys(repOf).forEach(id => { (twinsOf[repOf[id]] = twinsOf[repOf[id]] || []).push(id); });
+    // 대표 원단을 먼저 넣고, 묶음의 다른 원단은 대표에 없는 색만 (같은 원단의 같은 색이 두 번 나오지 않게)
+    const order = FABRIC_DB.filter(f => !isCustomerHidden(f));
+    order.sort((a, b) => (repOf[a.id] === a.id ? 0 : 1) - (repOf[b.id] === b.id ? 0 : 1));
+    const seen = {};
+    order.forEach(f => {
+        const group = repOf[f.id] || f.id, isRep = group === f.id;
+        const had = seen[group] || (seen[group] = new Set());
         const m = f.manual || {};
         const blind = f.categoryType === '블라인드' || f.calcType === 'hebe';
         const sheer = !blind && f.categoryType === '속지';
@@ -1101,7 +1151,7 @@ function finderEntries() {
             // 느낌은 색마다: 색의 톤·밝기를 덮어써서 계산 (rankColorsFor와 같은 방식)
             const view = c ? Object.assign({}, f, { tone: c.tone || f.tone, light: L, manual: Object.assign({}, m, { tone: !!c.tone || !!m.tone }) }) : f;
             return {
-                key: f.id + '__' + (c ? c.name : ''), fabric: f, fabricId: f.id, book: f.book, fabName: f.name, cat: blind ? 'blind' : (sheer ? 'sheer' : 'drape'),
+                key: f.id + '__' + (c ? c.name : ''), fabric: f, fabricId: f.id, group, twins: twinsOf[group] || [f.id], book: f.book, fabName: f.name, cat: blind ? 'blind' : (sheer ? 'sheer' : 'drape'),
                 color: c ? c.name : '', no: c ? colorNoLabel(c.name) : '', label: (c && c.label) || '',
                 tone, L, band: lightBandOf(L), hex: (c && c.hex) || null, a: hasAb ? c.a : null, b: hasAb ? c.b : null,
                 C, sat: chromaBandOf(C), hue: hasAb ? hueGroupOf(c.a, c.b) : null,
@@ -1115,10 +1165,12 @@ function finderEntries() {
                 mood: hasMoodInput(f) ? moodOf(view) : null
             };
         };
-        const colors = getFabricColors(f.id);
-        (colors.length ? colors.map(make) : [make(null)]).forEach(e => { if (!blind || e.hex || e.L != null || e.a != null) out.push(e); });
+        const colors = getFabricColors(f.id).filter(c => !had.has(c.name));
+        if (!isRep && !colors.length) return;      // 묶음의 다른 원단: 대표에 없는 색이 없으면 카드 없음
+        (colors.length ? colors.map(make) : [make(null)]).forEach(e => { if (!blind || e.hex || e.L != null || e.a != null) { out.push(e); if (e.color !== '') had.add(e.color); } });
     });
-    return out;
+    // 대표에 색이 없는데 묶음의 다른 원단에 색이 있으면 대표의 빈 카드는 뺌
+    return out.filter(e => e.color !== '' || !out.some(x => x.group === e.group && x.color !== ''));
 }
 // 두 색이 얼마나 다른지: Lab 거리 ΔE = √(ΔL² + Δa² + Δb²). 색 값(밝기·붉은기·노란기)이 모두 있는 색끼리만 잼
 function finderHasLab(e) { return !!e && e.L != null && e.a != null && e.b != null; }
@@ -1534,7 +1586,7 @@ function findSamboCombiPairs() {
 }
 // 찾기 화면에 보이는 색 수 (원단 찾기 "전체 ○색"과 같은 셈)
 function finderColorCount() {
-    try { return finderEntries().length; } catch (e) { return null; }
+    try { return finderColorTotal(finderEntries()); } catch (e) { return null; }
 }
 function mergeSamboCombiBlinds() {
     const { pairs, unsure } = findSamboCombiPairs();
@@ -1592,6 +1644,68 @@ function mergeSamboCombiBlinds() {
 }
 
 // ==============================================================
+// "원단만 시킬때" 줄 빼기 (58번)
+//  - 단가표 비고에 "원단만 시킬때"가 붙은 원단(폭당/마당 짝 가운데 원단만 팔 때 쓰는 줄)은 앱에서 쓰지 않음. 가격은 엑셀에서 확인 (10-20 사장님)
+//  - 진행 중인 상담·자동 저장·상담 기록·후보 별표에 쓰인 원단과, 사장님이 [고객 추천 보임]으로 바꾼 원단은 빼지 않고 "확인 필요"로 보여 줌
+// ==============================================================
+function fabricRefSources() {
+    const out = [];
+    try { if (typeof rooms !== 'undefined') out.push(rooms); } catch (e) {}
+    try { if (typeof finderPicks !== 'undefined') out.push(finderPicks.slice()); } catch (e) {}
+    try { if (window.concierge && window.concierge.remapFabricIds) window.concierge.remapFabricIds(cart => { out.push(cart); }); } catch (e) {}
+    [STORE_KEYS.draft, STORE_KEYS.history].forEach(key => { try { const v = JSON.parse(localStorage.getItem(key)); if (v && typeof v === 'object') out.push(v); } catch (e) {} });
+    return out;
+}
+function findFabricOnlyRows() {
+    if (!Array.isArray(FABRIC_DB)) return { drop: [], keep: [] };
+    const rows = FABRIC_DB.filter(f => f.fabricOnly || /원단만/.test(String(f.note || '')));
+    if (!rows.length) return { drop: [], keep: [] };
+    const srcs = fabricRefSources();
+    const used = id => srcs.some(s => remapFabricRefs(s, { [id]: id }) > 0);      // 같은 ID로 바꿔 보며 쓰인 곳만 셈 (내용은 그대로)
+    const drop = [], keep = [];
+    rows.forEach(f => {
+        if (f.hideOverride === 'no') keep.push({ f, why: '고객 추천 보임으로 바꾼 원단' });
+        else if (used(f.id)) keep.push({ f, why: '상담·후보에 쓰인 원단' });
+        else drop.push(f);
+    });
+    return { drop, keep };
+}
+function removeFabricOnlyRows() {
+    const { drop, keep } = findFabricOnlyRows();
+    const keepMsg = keep.length ? `\n\n확인 필요(빼지 않음) ${keep.length}개:\n${keep.map(k => `• ${k.f.book} ${k.f.name} — ${k.why}`).join('\n')}` : '';
+    if (drop.length === 0) { showToast(keep.length ? `뺄 줄이 없습니다. 확인 필요 ${keep.length}개: ${keep.map(k => k.f.name).join(', ')}` : '"원단만 시킬때" 줄이 없습니다.', 'info'); return; }
+    const before = finderColorCount();
+    const lines = drop.slice(0, 45).map(f => `• ${f.book} ${f.name}`).join('\n');
+    const more = drop.length > 45 ? `\n… 외 ${drop.length - 45}개` : '';
+    const ok = confirm(
+        `["원단만 시킬때" 줄 빼기]\n\n` +
+        `단가표 비고에 "원단만 시킬때"가 붙은 원단 ${drop.length}개를 앱 원단 목록에서 뺍니다. (원단 ${FABRIC_DB.length}개 → ${FABRIC_DB.length - drop.length}개)\n` +
+        `이 원단들은 고객 화면·찾기·추천에 원래 나오지 않았고, 가격은 엑셀 단가표에서 확인하시면 됩니다.\n\n` +
+        `${lines}${more}${keepMsg}\n\n` +
+        `원단과 함께 그 원단의 원가·색·분류도 지웁니다. 짝인 일반 원단(폭당 또는 마당)은 그대로입니다.\n` +
+        `빼기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n` +
+        `[확인]: 뺍니다.\n[취소]: 그대로 둡니다.`
+    );
+    if (!ok) return;
+    saveUndoSnapshot('"원단만 시킬때" 줄 빼기');
+    const ids = new Set(drop.map(f => f.id));
+    const costs = Object.assign({}, (Costing.state && Costing.state.costs) || {});
+    const store = colorsStore(), tags = loadTagOverrides();
+    ids.forEach(id => { delete costs[id]; delete store[id]; delete tags[id]; });
+    saveColorsStore();
+    saveTagOverrides(tags);
+    FABRIC_DB = FABRIC_DB.filter(f => !ids.has(f.id));
+    if (Costing.state && Costing.state.rules) { Costing.setPrivate({ rules: Costing.state.rules, costs }); savePrivateStore(); }
+    applyTagOverrides(FABRIC_DB);
+    saveFabricDb(true);
+    if (typeof renderUndoButton === 'function') renderUndoButton();
+    if (typeof renderColorEditor === 'function') renderColorEditor();
+    if (typeof renderTagEditor === 'function') renderTagEditor();
+    const now = finderColorCount();
+    showToast(`"원단만 시킬때" 줄 ${drop.length}개를 뺐습니다. (지금 원단 ${FABRIC_DB.length}개${before != null && now != null ? ` · ${before}색 → ${now}색` : ''})${keep.length ? ` 확인 필요 ${keep.length}개는 그대로 두었습니다.` : ''}\n탭에도 반영하려면 [백업 내려받기] → 탭에서 [비공개 팩 불러오기]를 해 주세요.`, 'success');
+}
+
+// ==============================================================
 // 단가표 가져오기 (엑셀/CSV 행 → 공개 원단 + 비공개 원가)
 // ==============================================================
 function buildFabricRecords(dataRows, rules) {
@@ -1609,7 +1723,7 @@ function buildFabricRecords(dataRows, rules) {
     const fabrics = [];
     const costs = {};
     const usedIds = {};
-    let priceDerived = 0;
+    let priceDerived = 0, fabricOnlySkipped = 0;
 
     for (let i = headerIdx + 1; i < dataRows.length; i++) {
         const row = dataRows[i];
@@ -1660,6 +1774,8 @@ function buildFabricRecords(dataRows, rules) {
         const unitRaw = getCol(['계산단위', '단위', '계산방식']);
         const imgUrlRaw = getCol(['이미지url', '이미지', '사진', 'image', 'imgurl', '이미지링크']);
         const noteRaw = getCol(['비고', '메모']);
+        // 비고에 "원단만 시킬때" → 앱에 넣지 않음 (가격은 엑셀에서 확인, 58번). ID 번호는 위에서 이미 셌으니 다른 원단 ID는 그대로
+        if (/원단만/.test(noteRaw)) { fabricOnlySkipped++; continue; }
 
         const catRaw = getCol(['상세구분', '구분', '카테고리']);
         const detected = detectCalcTypeAndUnit(costRaw, specRaw, name, unitRaw, noteRaw, book, catRaw);
@@ -1684,7 +1800,7 @@ function buildFabricRecords(dataRows, rules) {
             light: normalizeLightInput(getCol(['밝기'])),      // 색이 하나뿐인 원단용 (색이 여러 개면 색상 입력표의 밝기)
             imageUrl: imgUrlRaw || null,
             note: noteRaw || null,                  // 비고/규격 메모 (예: 280 (85/60mm))
-            fabricOnly: /원단만/.test(noteRaw),      // 비고에 "원단만 시킬때" → 고객 추천에서 기본 숨김
+            fabricOnly: false,                       // "원단만 시킬때" 줄은 위에서 건너뜀 (58번). 예전에 들어온 원단만 true가 남아 있음
             blindKind: detectBlindKind(noteRaw),     // 블라인드 종류 (콤비/롤/프린트). 커튼은 비어 있음
             extra: Costing.deriveExtra(cost, labor, rules)
         };
@@ -1692,7 +1808,7 @@ function buildFabricRecords(dataRows, rules) {
         fabrics.push(autoTagFabricAttributes(fabObj));
         costs[uid] = { supplier, cost, labor };
     }
-    return { fabrics, costs, priceDerived };
+    return { fabrics, costs, priceDerived, fabricOnlySkipped };
 }
 
 // 새 단가표로 교체했을 때, 진행 중인 견적이 없어진 원단을 가리키면 알려 줌
@@ -1765,7 +1881,8 @@ function applyImportedRows(dataRows, sourceName) {
     savePrivateStore();
     saveFabricDb(true);
     const mergeMsg = isMerged ? ` (기존 포함 전체 ${FABRIC_DB.length}개)` : '';
-    showToast(`'${sourceName}'에서 ${res.fabrics.length}개 원단을 등록했습니다.${mergeMsg}`, "success");
+    const skipMsg = res.fabricOnlySkipped ? ` "원단만 시킬때" ${res.fabricOnlySkipped}줄은 건너뛰었습니다.` : '';
+    showToast(`'${sourceName}'에서 ${res.fabrics.length}개 원단을 등록했습니다.${mergeMsg}${skipMsg}`, "success");
     warnIfQuoteFabricsMissing();
     if (typeof renderUndoButton === 'function') renderUndoButton();
     return res.fabrics.length;

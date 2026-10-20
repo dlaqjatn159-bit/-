@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261075';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261077';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261075';
+const REDAM_BUILD = '20261077';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -844,6 +844,13 @@ function renderDupCleanButton() {
     const m = (typeof findSamboCombiPairs === 'function') ? findSamboCombiPairs().pairs.length : 0;
     sb.innerHTML = `<i class="fa-solid fa-object-group text-[11px] text-amber-700"></i> 삼보텍스·콤비 블라인드 합치기 (${m}쌍)`;
     sb.style.display = m ? 'inline-flex' : 'none';
+    // "원단만 시킬때" 줄 빼기: 앱에 남아 있을 때만 (58번)
+    const fo = document.getElementById('fabricOnlyBtn');
+    if (!fo) return;
+    const k = (typeof findFabricOnlyRows === 'function') ? findFabricOnlyRows() : { drop: [], keep: [] };
+    const cnt = k.drop.length + k.keep.length;
+    fo.innerHTML = `<i class="fa-solid fa-scissors text-[11px] text-amber-700"></i> "원단만 시킬때" 줄 빼기 (${cnt}개)`;
+    fo.style.display = cnt ? 'inline-flex' : 'none';
 }
 
 function handleColorFileUpload(event) {
@@ -1317,7 +1324,7 @@ function renderFinder() {
     if (cnt) cnt.innerHTML = sim ? `<b class="font-serif-kr">비슷한 색 ${list.length}개</b><small>거름망은 종류(겉지·속지)만 적용</small>`
         : (pair ? `<b class="font-serif-kr">어울리는 속지 ${list.length}개</b><small>${pairRule} · 거름망은 적용 안 함</small>`
             : (mMode ? `<b class="font-serif-kr">${list.length}색</b><small>${esc(mRoom.name)} ${FINDER_ROOM_MODES[mMode]} · ${{ bridge: '벽과 바닥을 잇는 색 가운데 벽 쪽에 가까운 순', wall: '잰 벽 색과 가까운 순', floor: '바닥 색기를 따르고 바닥보다 밝은 순' }[mMode]} · 색 값이 있는 색만</small>`
-            : `<b class="font-serif-kr">${list.length}색</b><small>${new Set(list.map(e => e.fabricId)).size}개 원단 · 전체 ${all.length}색</small>`));
+            : `<b class="font-serif-kr">${finderColorTotal(list)}색</b><small>${finderFabricTotal(list)}개 원단 · 전체 ${finderColorTotal(all)}색${finderNoColorNote(list)}</small>`));      // 색 수는 등록된 색만 (58번)
     const rbox = document.getElementById('finderRef');
     if (rbox) {
         rbox.hidden = !ref;
@@ -1508,7 +1515,7 @@ function renderColorDict() {
     if (sortSel) { sortSel.innerHTML = Object.keys(DICT_SORTS).map(k => `<option value="${k}">${DICT_SORTS[k]}</option>`).join(''); sortSel.value = dictSort; }
     const names = new Set(list.filter(e => e.pro).map(e => e.pro.ko));
     const cnt = document.getElementById('dictCount');
-    if (cnt) cnt.innerHTML = `<b class="font-serif-kr">${list.length}색</b><small>이름 ${names.size}가지 · ${new Set(list.map(e => e.fabricId)).size}개 원단 · 전체 ${all.length}색</small>`;
+    if (cnt) cnt.innerHTML = `<b class="font-serif-kr">${finderColorTotal(list)}색</b><small>이름 ${names.size}가지 · ${finderFabricTotal(list)}개 원단 · 전체 ${finderColorTotal(all)}색${finderNoColorNote(list)}</small>`;
     if (!all.length) { out.innerHTML = '<div class="finder-empty">보여 줄 원단이 없어요.<br>설정에서 단가표나 비공개 팩을 먼저 불러와 주세요.</div>'; return; }
     if (!list.length) { out.innerHTML = '<div class="finder-empty">조건에 맞는 색이 없어요.<br>조건을 하나씩 빼 보세요.</div>'; return; }
     const num = v => (v < 0 ? '−' : '') + Math.abs(v).toFixed(1);
@@ -1766,16 +1773,17 @@ function spaceMoreData() {
     const slot = window.concierge.spaceSlot(spaceMore.roomId, spaceMore.idx);
     if (!slot) return null;
     const all = finderEntries().filter(e => e.cat === slot.kind);
-    const curKey = slot.curtain.fabricId + '__' + (slot.curtain.colorName || '');
-    const cur = all.find(e => e.key === curKey) || null;
+    const cur = finderFind(all, slot.curtain.fabricId, slot.curtain.colorName || '');      // 삼보텍스·콤비 짝처럼 같은 원단 묶음의 색이면 그 카드 (58번)
+    const curKey = cur ? cur.key : slot.curtain.fabricId + '__' + (slot.curtain.colorName || '');
     const curFabId = (cur && cur.fabricId) || slot.curtain.fabricId;
+    const curGroup = (cur && cur.group) || ((all.find(e => e.twins && e.twins.includes(curFabId)) || {}).group) || curFabId;
     const curFab = (typeof FABRIC_DB !== 'undefined' ? FABRIC_DB.find(f => f.id === curFabId) : null);
     const curFabName = (cur ? finderShowName(cur).name : (curFab && curFab.name)) || '지금 원단';
-    const sameFabCount = all.filter(e => e.fabricId === curFabId).length;
-    return { slot, all, cur, curKey, curFabId, curFabName, sameFabCount };
+    const sameFabCount = finderColorTotal(all.filter(e => (e.group || e.fabricId) === curGroup));
+    return { slot, all, cur, curKey, curFabId, curGroup, curFabName, sameFabCount };
 }
-function spaceMoreOk(e, curFabId) {
-    if (spaceMore && spaceMore.sameFab && curFabId && e.fabricId !== curFabId) return false;
+function spaceMoreOk(e, curGroup) {
+    if (spaceMore && spaceMore.sameFab && curGroup && (e.group || e.fabricId) !== curGroup) return false;
     return Object.keys(MORE_FILTERS).every(k => !spaceMore.sel[k].size || spaceMore.sel[k].has(MORE_FILTERS[k].of(e)));
 }
 // 우리 집에 어울리는 점수: 고객 원단 화면 추천과 같은 계산 (기존 추천 점수 + 색 잇기 점수). 색 잇기는 이 화면에서 고른 잇는 방향으로
@@ -1830,7 +1838,7 @@ function renderSpaceMore() {
 // 카드: 지금 원단이 맨 앞("지금"), 지도에서 "카드로 크게 보기"를 누른 색이 그다음, 나머지는 순서대로 (조건에 맞는 것만)
 function spaceMoreCardsHtml(d) {
     const room = d.slot.room;
-    let list = d.all.filter(e => e.key !== d.curKey && spaceMoreOk(e, d.curFabId));
+    let list = d.all.filter(e => e.key !== d.curKey && spaceMoreOk(e, d.curGroup));
     if (spaceMore.sort === 'light' || spaceMore.sort === 'dark') {
         const s = spaceMore.sort === 'light' ? -1 : 1;
         list.sort((x, y) => (x.L == null) - (y.L == null) || s * ((x.L || 0) - (y.L || 0)));
@@ -1862,7 +1870,7 @@ function spaceMoreCardsHtml(d) {
         list.forEach(e => { e.mfit = spaceMoreFit(e, room); });
         list.sort((x, y) => y.mfit - x.mfit);
     }
-    const shown = list.length;
+    const shown = finderColorTotal(list);      // 등록된 색만 (58번)
     if (spaceMore.focus) { const f = list.find(e => e.key === spaceMore.focus) || d.all.find(e => e.key === spaceMore.focus); if (f && f.key !== d.curKey) list = [f].concat(list.filter(e => e.key !== f.key)); }
     if (d.cur) list = [d.cur].concat(list);
     const card = e => {
@@ -1926,7 +1934,7 @@ function spaceMoreMapHtml(d) {
     const curPt = pts.find(p => p.e.key === d.curKey);
     const dots = pts.sort((p, q) => (p.e.key === d.curKey) - (q.e.key === d.curKey)).map(({ e, x, y }) => {
         const isCur = e.key === d.curKey, st = spaceMore.stars.includes(e.key);
-        return `<g class="more-dot${isCur ? ' is-cur' : ''}${isCur || spaceMoreOk(e, d.curFabId) ? '' : ' is-off'}" data-mpt="${moreEsc(e.key)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCur ? 13 : 10}" fill="${e.hex}"/>`
+        return `<g class="more-dot${isCur ? ' is-cur' : ''}${isCur || spaceMoreOk(e, d.curGroup) ? '' : ' is-off'}" data-mpt="${moreEsc(e.key)}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCur ? 13 : 10}" fill="${e.hex}"/>`
             + (st ? `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle" font-size="11" fill="#91401a">★</text>` : '') + '</g>';
     }).join('');
     const curLbl = curPt ? `<text class="more-lbl more-halo" x="${curPt.x.toFixed(1)}" y="${(curPt.y + 28).toFixed(1)}" text-anchor="middle">지금</text>` : '';
@@ -2015,7 +2023,7 @@ function finderMapHtml(all, on, ref, mc) {
         const r = rank(e);
         return `<circle cx="${x(e.b).toFixed(1)}" cy="${y(e.L).toFixed(1)}" r="${r === 2 ? 10 : (r === 1 ? 7.5 : 5)}" fill="${e.hex || '#cccccc'}" opacity="${r ? 1 : 0.22}" stroke="${r === 2 ? 'var(--brand-accent)' : 'var(--brand-dark)'}" stroke-opacity="${r === 2 ? 1 : 0.35}" stroke-width="${r === 2 ? 3 : 1}"><title>${esc(`${e.fabName} ${e.no} ${e.label}`.replace(/\s+/g, ' ').trim())} · 밝기 ${Math.round(e.L)}</title></circle>`;
     }).join('');
-    const missing = all.length - pts.length;
+    const missing = finderColorTotal(all) - finderColorTotal(pts);      // 색이 없는 원단의 빈 카드는 세지 않음 (58번)
     // 우리 집: 띠·점선은 원단 점 아래, 표지·이어주는 색은 위에 (표지 글씨는 점 오른쪽, 오른쪽 끝이면 왼쪽)
     let under = '', over = '';
     if (mc) {

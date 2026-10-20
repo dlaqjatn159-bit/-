@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261075';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261077';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -116,7 +116,9 @@
     function getLiveCategoryPool(categoryType) {
         // 고객 추천에서 숨긴 원단(예: 비고 "원단만 시킬때")은 빼고 고름. 직원 화면 빠른 견적에는 그대로 있음
         const all = getLiveDb();
-        const pool = (typeof isCustomerHidden === 'function') ? all.filter(f => !isCustomerHidden(f)) : all;
+        let pool = (typeof isCustomerHidden === 'function') ? all.filter(f => !isCustomerHidden(f)) : all;
+        // 56번 합치기 전 삼보텍스·콤비처럼 같은 블라인드가 둘이면 대표 하나만 (58번). 견적은 고른 원단 그대로
+        if (typeof fabricTwinDedupe === 'function') pool = fabricTwinDedupe(pool);
 
         if (categoryType === "블라인드") {
             const blindPool = pool.filter(f => f.categoryType === "블라인드" || f.calcType === "hebe" || (f.name && (f.name.includes("블라인드") || f.name.includes("콤비") || f.name.includes("우드"))));
@@ -513,7 +515,7 @@
         if (!spaceEntries || !spaceEntries.length) {
             spaceEntries = (typeof finderEntries === 'function') ? finderEntries() : [];
         }
-        return (spaceEntries || []).find(e => e.key === fabricId + '__' + (color || '')) || null;
+        return (typeof finderFind === 'function') ? finderFind(spaceEntries, fabricId, color) : ((spaceEntries || []).find(e => e.key === fabricId + '__' + (color || '')) || null);      // 같은 원단 묶음도 찾음 (58번)
     }
     // 기준 원단 정보 얻기 (49번, 1안): 품목에 baseFabricId가 있으면 그것, 없으면 지금 원단이 기준(0단계)
     function getToneBase(c) {
@@ -534,7 +536,7 @@
         const pool = spaceEntries.filter(x => x.cat === baseEntry.cat && x.key !== baseEntry.key && x.hex && x.L != null && x.b != null && Math.abs(x.b - baseEntry.b) < 9);
         // 같은 원단의 색을 먼저 (결·값이 그대로). 같은 원단에 없을 때만 다른 원단에서
         const pick = (list, gap) => {
-            const same = list.filter(x => x.fabricId === baseEntry.fabricId);
+            const same = list.filter(x => (x.group || x.fabricId) === (baseEntry.group || baseEntry.fabricId));
             return (same.length ? same : list).sort((p, q) => gap(p) - gap(q))[0] || null;
         };
 
