@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261080';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261081';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1542,18 +1542,25 @@ function mergeFabricPairs(dups, opts = {}) {
 //  - 같은 블라인드가 단가표의 삼보텍스 원단(예: FARO TWINS)과 52번 블라인드 표의 콤비 원단(예: 파로트윈 / PAROTWIN)으로 따로 들어 있음
 //  - 콤비 원단의 영문 품명(또는 별칭)과 삼보텍스 원단의 이름이 정리 후 똑같을 때만 짝. 삼보텍스는 콤비·트리플 블라인드만 (롤 LINEN과 콤비 UC-LINEN이 헷갈리지 않게)
 //  - 한쪽에 짝이 둘 이상이면 건너뛰고 "확인 필요"로 보여 줌
+//  - 롤스크린도 같은 방식 (64번): 삼보텍스 KRATOS FOAM B/O ↔ 롤스크린 표의 크라토스 폼 암막. 양쪽 종류(콤비/롤)가 다르면 짝 아님
 // ==============================================================
 function findSamboCombiPairs() {
     if (!Array.isArray(FABRIC_DB)) return { pairs: [], unsure: [] };
     const clean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
     const isBlind = f => f.categoryType === '블라인드' || f.calcType === 'hebe';
     const isSambo = f => String(f.book || '').includes('삼보텍스');
-    const sambo = FABRIC_DB.filter(f => isBlind(f) && isSambo(f) && (f.blindKind || detectBlindKind(f.note)) === 'combi');
+    // 종류: 정해 둔 값 → 비고 → 책자·ID(예: 콤비_…, 롤스크린_…)
+    const kindOf = f => f.blindKind || detectBlindKind(f.note) || detectBlindKind(`${f.book || ''} ${f.id || ''}`);
+    const sambo = FABRIC_DB.filter(f => isBlind(f) && isSambo(f) && ['combi', 'roll'].includes(kindOf(f)));
     const combi = FABRIC_DB.filter(f => isBlind(f) && !isSambo(f) && f.engName);
     const found = combi.map(g => {
-        const e = clean(g.engName);
+        const e = clean(g.engName), k = kindOf(g);
         const keys = new Set([e, ...(BLIND_NAME_ALIASES[e] || []).map(clean)].filter(Boolean));
-        return { g, cands: sambo.filter(f => keys.has(clean(f.name))) };
+        return { g, cands: sambo.filter(f => {
+            const sk = kindOf(f);
+            if (k && k !== sk) return false;
+            return k || sk === 'combi' ? keys.has(clean(f.name)) : clean(f.name) === e;      // 종류 모르는 원단은 롤스크린과 별칭 없이 같은 이름만
+        }) };
     });
     const used = {};
     found.forEach(x => x.cands.forEach(f => { used[f.id] = (used[f.id] || 0) + 1; }));
@@ -1600,18 +1607,18 @@ function mergeSamboCombiBlinds() {
     const more = pairs.length > 45 ? `\n… 외 ${pairs.length - 45}개` : '';
     const unsureMsg = unsure.length ? `\n\n확인 필요(짝이 둘 이상이라 건너뜀) ${unsure.length}개:\n${unsure.map(u => '• ' + u).join('\n')}` : '';
     const ok = confirm(
-        `[삼보텍스·콤비 블라인드 합치기]\n\n` +
-        `같은 블라인드가 삼보텍스(영어 이름)와 콤비(한글 이름)로 2장씩 있는 것 ${pairs.length}쌍을 찾았습니다.\n` +
+        `[삼보텍스·한글 이름 블라인드 합치기]\n\n` +
+        `같은 블라인드(콤비·롤스크린)가 삼보텍스(영어 이름)와 한글 이름으로 2장씩 있는 것 ${pairs.length}쌍을 찾았습니다.\n` +
         `지워질 원단 ${pairs.length}개 · 원단 ${FABRIC_DB.length}개 → ${FABRIC_DB.length - pairs.length}개` + (before != null && after != null ? ` · 색 ${before}색 → ${after}색` : '') + `\n\n` +
         `${lines}${more}${unsureMsg}\n\n` +
-        `한글 이름(콤비) 원단으로 남기고, 삼보텍스 쪽 단가·원가(공급처 삼보텍스)·규격 메모·분류 중 비어 있는 칸만 옮겨 담습니다.\n` +
-        `영어 이름은 발주서에 삼보텍스 책자 표기(예: FARO TWINS)로 나오게 바꿉니다. 색은 콤비 쪽 그대로, 없는 번호만 더합니다.\n` +
-        `진행 중인 상담과 상담 기록의 원단도 콤비 원단으로 바꿔 둡니다.\n` +
+        `한글 이름 원단으로 남기고, 삼보텍스 쪽 단가·원가(공급처 삼보텍스)·규격 메모·분류 중 비어 있는 칸만 옮겨 담습니다.\n` +
+        `영어 이름은 발주서에 삼보텍스 책자 표기(예: FARO TWINS)로 나오게 바꿉니다. 색은 한글 이름 쪽 그대로, 없는 번호만 더합니다.\n` +
+        `진행 중인 상담과 상담 기록의 원단도 한글 이름 원단으로 바꿔 둡니다.\n` +
         `지우기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n` +
         `[확인]: 합칩니다.\n[취소]: 그대로 둡니다.`
     );
     if (!ok) return;
-    saveUndoSnapshot('삼보텍스·콤비 블라인드 합치기');
+    saveUndoSnapshot('삼보텍스·한글 이름 블라인드 합치기');
     const refs = mergeFabricPairs(pairs, {
         fill: d => {
             d.newF.engName = d.oldF.name;                                   // 발주서 영어 이름은 삼보텍스 책자 표기로 (51번 병기)
@@ -1619,7 +1626,7 @@ function mergeSamboCombiBlinds() {
         },
         supplierBlank: v => !v || v === '일반'                             // 블라인드 표로 들어온 콤비 원단은 공급처가 "일반"
     });
-    const refMsg = refs ? ` 상담 안의 원단 ${refs}곳도 콤비 원단으로 바꿨습니다.` : '';
+    const refMsg = refs ? ` 상담 안의 원단 ${refs}곳도 한글 이름 원단으로 바꿨습니다.` : '';
     const now = finderColorCount();
     showToast(`블라인드 ${pairs.length}쌍을 합쳤습니다. (지금 원단 ${FABRIC_DB.length}개${now != null ? ` · ${now}색` : ''})${refMsg}\n탭에도 반영하려면 [백업 내려받기] → 탭에서 [비공개 팩 불러오기]를 해 주세요.`, 'success');
 }

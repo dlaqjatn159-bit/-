@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261080';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261081';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261080';
+const REDAM_BUILD = '20261081';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -842,7 +842,7 @@ function renderDupCleanButton() {
     const sb = document.getElementById('samboMergeBtn');
     if (!sb) return;
     const m = (typeof findSamboCombiPairs === 'function') ? findSamboCombiPairs().pairs.length : 0;
-    sb.innerHTML = `<i class="fa-solid fa-object-group text-[11px] text-amber-700"></i> 삼보텍스·콤비 블라인드 합치기 (${m}쌍)`;
+    sb.innerHTML = `<i class="fa-solid fa-object-group text-[11px] text-amber-700"></i> 삼보텍스·한글 이름 블라인드 합치기 (${m}쌍)`;
     sb.style.display = m ? 'inline-flex' : 'none';
     // "원단만 시킬때" 줄 빼기: 앱에 남아 있을 때만 (58번)
     const fo = document.getElementById('fabricOnlyBtn');

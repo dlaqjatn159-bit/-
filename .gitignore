@@ -9,3 +9,6 @@ Claude outputs/
 
 # 원단 사진은 기기에만 둠 (53번). 하위 폴더 mood·feel·comp·blind는 그대로 올림
 photos/*.jpg
+
+# 색상표·품목목록 CSV는 올리지 않음 (64번)
+*.csv
