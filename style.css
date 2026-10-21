@@ -1483,6 +1483,12 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .arch-layer-box .arch-bot-floor { flex: none; height: 15px; display: flex; align-items: center; justify-content: center; border-top: 1px solid rgba(43, 34, 26, 0.08); }
 .arch-layer-box .arch-bot-floor span { font-size: 0.62rem; font-weight: 400; letter-spacing: 0.04em; color: rgba(43, 34, 26, 0.58); }
 .arch-layer-box .arch-bot-floor.is-dark span { color: rgba(255, 255, 255, 0.85); }
+/* 가구: 바닥 위에 서서 커튼 앞에 있는 색 상자 (67번) */
+.arch-layer-box { position: relative; }
+.arch-layer-box .arch-fur { position: absolute; display: block; border-radius: 2px 2px 0 0; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.16), 0 1px 3px rgba(43, 34, 26, 0.14); pointer-events: none; }
+.arch-layer-box .arch-fur.is-rug { border-radius: 1px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.14); }
+.arch-layer-box .arch-bot-floor span { position: relative; z-index: 1; }
+.arch-layer-box .arch-mid-window.has-fur > div { align-items: flex-start; padding-top: 4px; }      /* 가구가 있으면 커튼 글자는 위로 (가구에 가리지 않게) */
 
 /* 공간 카드 헤더 정돈 (41-10, 41-11) */
 .dos-rname { display: flex; align-items: baseline; gap: 8px; font-size: 1.15rem; color: #2b221a; }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261085';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261086';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -698,12 +698,33 @@
                     topSegs += seg('벽', wHex, wallSideFlex);
                 }
             } else {
-                topSegs += seg('벽', wHex, 4.0);
-                if (furs[0] && furs[0].hex) topSegs += seg(furLabelOf(furs[0].n), furs[0].hex, 1.2);
+                topSegs += seg('벽', wHex, TOTAL_FLEX);      // 가구는 아래에서 바닥 위에 세움 (67번)
             }
             const midWindowH = baseWallHeight > 0 ? (48 - baseWallHeight) : 48;
             const wallBaseHtml = baseWallHeight > 0 ? `<div class="arch-wall-base" style="height:${baseWallHeight}px;background:${wHex}"></div>` : '';
-            h += `<div class="arch-layer-box"><div class="arch-mid-window" style="height:${midWindowH}px">${topSegs}</div>${wallBaseHtml}<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div></div>`;
+            // 가구: 이름 없이 색 상자로 바닥 위에 세워 커튼 앞에 둠. 양옆 벽에 붙여 왼쪽·오른쪽 번갈아 (67번)
+            //  높이: 커튼의 절반, 키 큰 가구는 벽 높이의 2/3, 이불은 낮게. 러그는 바닥 띠 위에 얇게. 다 합쳐 폭의 절반까지
+            let furHtml = '';
+            if (furs.length) {
+                const ABOVE = 49, FLOOR = 15, curtH = ABOVE - baseWallHeight;      // 바닥 위 높이(64 − 바닥 15), 커튼 높이
+                const sideP = wallSideFlex / TOTAL_FLEX * 100, areaP = 100 - sideP * 2;
+                const FUR_W = { 소파: 24, 침대: 24, '식탁·책상': 16, '붙박이장·수납장': 16, 책장: 10, '이불·침구': 20, 기타: 10 };
+                const FUR_TALL = { '붙박이장·수납장': true, 책장: true };
+                const kinds = furs.map(f => furLabelOf(f.n));
+                const stand = furs.map((f, i) => ({ f, k: kinds[i] })).filter(x => x.k !== '러그·카펫');
+                const sum = stand.reduce((a, x) => a + (FUR_W[x.k] || 10), 0);
+                const scale = sum ? Math.min(1, 50 / sum, (areaP - 2) / sum) : 1;
+                let curL = sideP, curR = sideP;
+                stand.forEach((x, i) => {
+                    const w = (FUR_W[x.k] || 10) * scale;
+                    const ht = FUR_TALL[x.k] ? Math.round(ABOVE * 2 / 3) : x.k === '이불·침구' ? Math.max(8, Math.round(curtH / 4)) : Math.max(14, Math.round(curtH / 2));
+                    const pos = i % 2 === 0 ? `left:${curL.toFixed(1)}%` : `right:${curR.toFixed(1)}%`;
+                    if (i % 2 === 0) curL += w; else curR += w;
+                    furHtml += `<i class="arch-fur" style="${pos};width:${w.toFixed(1)}%;height:${ht}px;bottom:${FLOOR}px;background:${x.f.hex}"></i>`;
+                });
+                furs.forEach((f, i) => { if (kinds[i] === '러그·카펫') furHtml += `<i class="arch-fur is-rug" style="left:${(sideP + 4).toFixed(1)}%;width:30%;height:5px;bottom:5px;background:${f.hex}"></i>`; });
+            }
+            h += `<div class="arch-layer-box"><div class="arch-mid-window${furHtml ? ' has-fur' : ''}" style="height:${midWindowH}px">${topSegs}</div>${wallBaseHtml}<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div>${furHtml}</div>`;
             if (!r.isConfigured) { h += '<p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 채워져요.</p></section>'; return; }
             // 이유 한 줄: 색 잇기를 골랐으면 그 방향("벽과 바닥 사이를 잇는 색으로 골랐어요. …"), 아니면 견적서와 같은 추천 이유
             const reason = (r.linkDir && LINK_WORD[r.linkDir]) ? `${LINK_WORD[r.linkDir]}으로 골랐어요. ${LINK_WHY[r.linkDir]}`
