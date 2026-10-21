@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261083';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261084';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1417,7 +1417,7 @@
         let h = '<div class="fin-ed-bar">';
         h += '<button type="button" class="fin-ed-back" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button>';
         h += '<nav class="fin-ed-nav" aria-label="제안서 목차">';
-        if (showHouse) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecHouse\')">공간의 색</button>';
+        if (showHouse) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecHouse\')">공간의 색과 빛</button>';
         if (showWhy) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">공간 제안</button>';
         h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
         h += '</nav></div>';
@@ -1428,15 +1428,15 @@
         h += `<div class="fin-ed-meta"><div class="fin-ed-for font-serif-kr">${esc(data.proposalFor)}</div><div class="fin-ed-date">${esc(String(data.date || '').replace(/\./g, '. '))}</div></div>`;
         h += '</header>';
 
-        // 1장. 공간의 색 (원단을 담은 공간 2곳 이상 + 색 값이 있을 때)
+        // 1장. 공간의 색과 빛 (65번) (원단을 담은 공간 2곳 이상 + 색 값이 있을 때)
         if (showHouse) {
             const chNum = CH_WORDS[chIdx++] || '하나';
             const brief = (typeof houseBrief === 'function') ? houseBrief(sp) : [];
             const hasFur = sp.some(s => s.fur && s.fur.length);
             h += '<section class="fin-chapter" id="finSecHouse"><div class="fin-ch-grid">';
-            h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간의 색</h2>`;
+            h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간의 색과 빛</h2>`;
             h += '<p class="fin-ch-sub">공간마다 잰 벽·바닥·가구 색과 고른 원단이 어떻게 조화를 이루는지 모았어요.</p>'; // 41번: 조화를 이루는지
-            h += '<div class="pleat-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>';
+            h += '</div>';      // 왼쪽 주름 세로선은 뺌 (65번: 2·3번과 같게)
             h += '<div>';
             // 그림이 위로 (41-2)
             h += '<div class="fin-map-wrap"><canvas id="finEdMapCanvas" class="fin-ed-map" width="1800" height="940"></canvas>';
@@ -1448,94 +1448,26 @@
             if (brief.length) h += `<p class="fin-house-lead font-serif-kr">${esc(brief.join(' '))}</p>`; // 41번: 총평 글이 아래로 이동
             // 공간별 창가 색 띠 (3단 창가 입면 띠: 1단 상단 벽 빔 · 2단 중간 창/커튼 · 3단 하단 바닥, 43번)
             h += '<div class="fin-layer-strips">';
-            const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
-            const seg = (k, bg, f) => `<div class="${dark(bg) ? 'is-dark' : ''}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;
             sp.forEach(s => {
                 const cartRoom = state.roomsCart.find(r => r.name === s.name);
                 const rm = data.rooms.find(r => r.name === s.name);
                 const raw = cartRoom || (rm && rm.raw) || (rm || {});
                 const dirTxt = raw.windowDir ? windowDirText(windowDirOf(raw.windowDir)) : '';
-                const baseParts = [];
-                if (s.wall) baseParts.push('벽 ' + s.wall.name);
-                if (s.floor) baseParts.push('바닥 ' + s.floor.name);
-                (s.fur || []).forEach(fu => baseParts.push((fu.n + ' ' + (fu.name || '')).trim()));
-                const fabSpans = (s.fabs || []).map(f => {
-                    const k = (f.k === '블라인드' && f.nm && f.nm.includes('블라인드')) ? '' : f.k;
-                    return `<span>${k ? `${esc(k)} · ` : ''}${esc(f.nm)}</span>`;
-                }).join('');
-                const wHex = s.wall && s.wall.hex ? s.wall.hex : '#f2eee8';
-                const fHex = s.floor && s.floor.hex ? s.floor.hex : '#e5ddcf';
-                const fabs = s.fabs || [];
-
-                // 부분 치수가 있어서 벽이 남는 경우에만 벽 연결 및 비율 계산 (43번)
-                const sW = Number(raw.spaceWidth) || 0, cW = Number(raw.width) || 0;
-                const sH = Number(raw.spaceHeight) || 0, cH = Number(raw.height) || 0;
-                const isPartMode = raw.sizeMode === 'part' || raw.sizeMode === 'partial';
-                const hasPartialW = (sW > 0 && cW > 0 && sW > cW);
-                const hasPartialH = (sH > 0 && cH > 0 && sH > cH);
-                const isPartial = isPartMode || hasPartialW || hasPartialH;
-
-                const TOTAL_FLEX = 10.0;
-                let curtTotalFlex = 8.8; // 전체 모드 기본: 커튼이 88% 차지 (시원한 전체 창)
-                let wallSideFlex = 0.6;  // 양옆 벽은 6%씩
-                let baseWallHeight = 0;  // 전체 모드: 바닥까지 닿음 (하단 벽 없음)
-
-                if (isPartial) {
-                    if (hasPartialW) {
-                        // 가로가 줄어들면 가운데 커튼이 비례적으로 폭이 줄어듦 (43번)
-                        const curtRatio = Math.max(0.18, Math.min(0.85, cW / sW));
-                        curtTotalFlex = TOTAL_FLEX * curtRatio;
-                        wallSideFlex = (TOTAL_FLEX - curtTotalFlex) / 2;
-                    } else if (isPartMode) {
-                        curtTotalFlex = 6.0;
-                        wallSideFlex = 2.0;
-                    }
-                    if (hasPartialH) {
-                        // 높이가 다를 때만(커튼이 바닥까지 닿지 않을 때만) 하단 벽 연결 (43번)
-                        const wallHRatio = Math.max(0.12, Math.min(0.55, (sH - cH) / sH));
-                        baseWallHeight = Math.round(41 * wallHRatio);
-                    } else {
-                        baseWallHeight = 0; // 높이가 같으면 바닥까지 닿으므로 하단 벽 절대 연결 안 됨!
-                    }
-                }
-
-                let midSegs = '';
-                if (fabs.length === 2 && fabs.some(f => f.k === '속지') && fabs.some(f => f.k === '겉지')) {
-                    const drape = fabs.find(f => f.k === '겉지'), sheer = fabs.find(f => f.k === '속지');
-                    const drapeFlex = curtTotalFlex * 0.25;
-                    const sheerFlex = curtTotalFlex * 0.5;
-                    midSegs += seg('벽', wHex, wallSideFlex);
-                    midSegs += seg('겉지', drape.hex, drapeFlex);
-                    midSegs += seg('속지', sheer.hex, sheerFlex);
-                    midSegs += seg('겉지', drape.hex, drapeFlex);
-                    midSegs += seg('벽', wHex, wallSideFlex);
-                } else if (fabs.length === 1) {
-                    midSegs += seg('벽', wHex, wallSideFlex);
-                    midSegs += seg(fabs[0].k, fabs[0].hex, curtTotalFlex);
-                    midSegs += seg('벽', wHex, wallSideFlex);
-                } else if (fabs.length > 0) {
-                    midSegs += seg('벽', wHex, wallSideFlex);
-                    const eachFlex = curtTotalFlex / fabs.length;
-                    fabs.forEach(f => { midSegs += seg(f.k, f.hex, eachFlex); });
-                    midSegs += seg('벽', wHex, wallSideFlex);
-                } else {
-                    midSegs += seg('벽', wHex, 4.0);
-                    if (s.fur && s.fur[0]) midSegs += seg(s.fur[0].n || '가구', s.fur[0].hex, 1.2);
-                }
-                const midWindowH = baseWallHeight > 0 ? (41 - baseWallHeight) : 41;
-                const wallBaseHtml = baseWallHeight > 0 ? `<div class="arch-wall-base" style="height:${baseWallHeight}px;background:${wHex}"></div>` : '';
+                // 위에서 아래로 [공간 이름 · 향] / [색 띠 한 줄 가득] / [진단 문장] (65번, 가로 그림과 같은 모양)
+                const st = houseStripOf(s, raw), MID = 41;
+                const baseH = st.baseR ? Math.round(MID * st.baseR) : 0;
+                const midSegs = st.mid.map(m => `<div style="flex:${m.f};background:${m.hex}"></div>`).join('');
                 const swatchHtml = `<div class="arch-layer-box is-mini">`
-                    + `<div class="arch-mid-window" style="height:${midWindowH}px">${midSegs}</div>`
-                    + wallBaseHtml
-                    + `<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div>`
+                    + `<div class="arch-mid-window" style="height:${MID - baseH}px">${midSegs}</div>`
+                    + (baseH ? `<div class="arch-wall-base" style="height:${baseH}px;background:${st.wHex}"></div>` : '')
+                    + `<div class="arch-bot-floor" style="background:${st.fHex}"></div>`
                     + `</div>`;
+                const diag = houseDiagnosis(s, raw);
                 h += '<div class="fin-layer-row">';
-                h += `<div class="fin-layer-rname font-serif-kr">${esc(s.name)}${dirTxt ? `<small>${esc(dirTxt)}향</small>` : ''}</div>`; // 41번: 남향
+                h += `<div class="fin-layer-rname font-serif-kr">${esc(s.name)}${dirTxt ? `<small>${esc(dirTxt)}향</small>` : ''}</div>`;
                 h += `<div class="arch-swatch">${swatchHtml}</div>`;
-                h += '<div class="fin-layer-txts">';
-                if (baseParts.length) h += `<div class="fin-layer-base">${esc(baseParts.join(' · '))}</div>`;
-                h += `<div class="fin-layer-fab">${fabSpans}</div>`;
-                h += '</div></div>';
+                if (diag.length) h += `<p class="fin-layer-diag">${esc(diag.join(' '))}</p>`;
+                h += '</div>';
             });
             h += '</div></div></div></section>';
         }
@@ -1573,14 +1505,13 @@
                 }
 
                 const curtainsHtml = R.sets.map(s => {
-                    const bookNm = s.it.bookName || s.it.name;      // 최종 제안 화면은 지금처럼 원단 이름 (61번)
-                    const baseName = s.it.colorDesc ? bookNm.replace(' (' + s.it.colorDesc + ')', '') : bookNm;
+                    const baseName = s.it.name;      // 가로 그림과 같은 "색 이름 · 재질", 원단 이름은 안 씀 (65번)
                     const hideKind = s.it.kind === '블라인드' && baseName.includes('블라인드');
                     return `<div class="fin-curtain-col">`
                         + `<div class="drape-swatch" style="${fabricFillStyle(s.it.fabricId, s.it.colorName)}"></div>`
                         + `<div>`
                         + `<div class="fin-curtain-meta">${hideKind ? '' : `<span>${esc(s.it.kind)}</span>`}${s.hex ? `<span class="hex-code">${esc(s.hex)}</span>` : ''}</div>`
-                        + `<div class="fin-curtain-name font-serif-kr">${esc(baseName)}${s.it.colorDesc ? `<span>${esc(s.it.colorDesc)}</span>` : ''}</div>`
+                        + `<div class="fin-curtain-name font-serif-kr">${esc(baseName)}</div>`
                         + (s.lines && s.lines.length ? `<p class="fin-curtain-why">${esc(s.lines.join(' '))}</p>` : '')
                         + (s.note ? `<p class="fin-curtain-honest">${esc(s.note)}</p>` : '')
                         + `</div></div>`;
@@ -1624,7 +1555,7 @@
                 h += '<div class="fin-est-line">';
                 h += `<div class="fin-est-chip" style="${fabricFillStyle(it.fabricId, it.colorName)}"></div>`;
                 h += `<span class="fin-est-k">${esc(it.kind)}</span>`;
-                h += `<span class="fin-est-nm font-serif-kr">${esc(it.bookName || it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
+                h += `<span class="fin-est-nm font-serif-kr">${esc(it.tone ? `${it.name} · ${it.tone}` : it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
                 h += `<span class="fin-est-sz">${esc(it.size || '')}</span>`;
                 h += `<span class="fin-est-pr font-serif-kr">${it.sampleOnly ? '' : `${it.price.toLocaleString()}원`}</span>`;
                 h += '</div>';
@@ -1697,7 +1628,7 @@
         const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
         // 쪽 묶음 (37번): [0, house) = 우리 집 색 · [house, card) = 원단을 고른 이유 · [card, n) = 견적서
         const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : 'ticket');
-        const nextWord = { why: '공간 제안', ticket: '견적서 보기' }, prevWord = { house: '공간의 색', why: '공간 제안' };
+        const nextWord = { why: '공간 제안', ticket: '견적서 보기' }, prevWord = { house: '공간의 색과 빛', why: '공간 제안' };
         const pager = document.getElementById('finPager');
         if (pager) {
             // 세로 모드에서는 [← 이전 (맨 왼쪽)] · [쪽 번호 + 크게 보기 (가운데)] · [다음 → (맨 오른쪽)] 자리가 고정됨 (39번)
@@ -1731,7 +1662,7 @@
             finalHouseCount = houseCount || 0;
             canvases.forEach((c, k) => {
                 const img = document.createElement('img');
-                img.alt = k < finalHouseCount ? '공간의 색' : ((k < finalCardCount) ? '공간 제안' : '견적서');
+                img.alt = k < finalHouseCount ? '공간의 색과 빛' : ((k < finalCardCount) ? '공간 제안' : '견적서');
                 img.src = c.toDataURL('image/png');
                 box.appendChild(img);
             });
