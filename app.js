@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261082';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261083';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261082';
+const REDAM_BUILD = '20261083';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3512,7 +3512,7 @@ function whyItemCands(F, R, facts) {
     }
     return list;
 }
-// 회색 안내(한 원단에 1개, 36번): 맞은편 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5) 솔직한 안내
+// 회색 안내(한 원단에 1개, 36번): 맞은편 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5)·햇빛에 옅어 보임(F10, 63번) 솔직한 안내
 function whyItemNote(F, R, cands) {
     if (R.opp) {
         if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '맞은편 창으로 방 안이 밝은 낮엔 비침이 조금 늘어요. 신경 쓰이면 겉지를 살짝 쳐 주세요.';
@@ -3522,6 +3522,8 @@ function whyItemNote(F, R, cands) {
     const ids = (cands || []).map(x => x.id);
     if (ids.includes('F4')) return '커튼 옆과 위로 새는 빛은 조금 남아요.';
     if (ids.includes('C5') && !(F.it.toneStep < 0)) return '차분한 쪽이 좋으시면 한 톤 밝은 색도 같이 볼 수 있어요.';
+    // F10 (63번): 완전암막이 아닌 겉지는 햇빛이 비치면 색이 옅어 보임. 암막 정도를 모르는 겉지엔 안 붙임
+    if (F.kind === 'drape' && ['none', 'mid', 'life'].includes(blackoutLevel(F.f))) return '햇빛이 강하게 비치면 원단 색이 조금 옅고 밝게 보여요.';
     return '';
 }
 // 카드에 들어갈 공간·원단 묶음 (비어 있으면 카드 없음). 같은 재료는 카드 안에서 한 번만: 두 번째는 "나" 말, 세 번째부터는 건너뜀 (손님 말 F만은 공간마다 다시 씀)
