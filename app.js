@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261086';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261087';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261086';
+const REDAM_BUILD = '20261087';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -4247,6 +4247,28 @@ function saveBlobAsFile(blob, name) {
     setTimeout(() => URL.revokeObjectURL(link.href), 2000);
 }
 
+// 여러 쪽(우리 집 색 → 이유 카드 → 견적서)을 세로로 이어 붙여 긴 한 장으로 (68번)
+//  탭 브라우저가 두 번째 내려받기부터 막아 첫 장만 저장되던 일을 막음. 장 사이는 앱 바탕색
+//  탭 그림판 크기 한계(세로 약 16,000px · 넓이 약 1,600만 칸)를 넘으면 전체를 조금 줄여서 맞춤
+const TICKET_JOIN_GAP = 24, TICKET_JOIN_MAX_H = 14800;
+function joinTicketCanvases(canvases) {
+    if (canvases.length === 1) return canvases[0];
+    const W = Math.max(...canvases.map(c => c.width));
+    const fullH = canvases.reduce((h, c) => h + c.height, 0) + TICKET_JOIN_GAP * (canvases.length - 1);
+    const k = Math.min(1, TICKET_JOIN_MAX_H / fullH);
+    const out = document.createElement('canvas');
+    out.width = Math.round(W * k); out.height = Math.round(fullH * k);
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#fbf9f5'; ctx.fillRect(0, 0, out.width, out.height);      // 고객 화면 바탕색 (종이 #fffdf9보다 조금 어두워 장이 나뉘어 보임)
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    let y = 0;
+    canvases.forEach(c => {
+        ctx.drawImage(c, Math.round((W - c.width) / 2 * k), Math.round(y * k), Math.round(c.width * k), Math.round(c.height * k));
+        y += c.height + TICKET_JOIN_GAP;
+    });
+    return out;
+}
+
 // 견적서 저장: 예전 "카톡용"과 "고화질" 저장을 하나로 합침.
 // 선명한 JPG로 갤러리에 저장 → 카카오톡에서 사진으로 보내면 됨 (탭에서 공유 창이 끝없이 로딩돼 "공유" 대신 "저장")
 let __saveBusy = false;
@@ -4255,13 +4277,12 @@ async function saveTicketImage() {
     __saveBusy = true;
     showToast("견적서 만드는 중...", "info");
     try {
-        const { blobs } = await makeTicketBlobs({ type: 'image/jpeg' });
-        const names = ticketFileNames(blobs.length, 'jpg', false);
-        for (let i = 0; i < blobs.length; i++) {
-            saveBlobAsFile(blobs[i], names[i]);
-            if (i < blobs.length - 1) await new Promise(r => setTimeout(r, 400));   // 여러 장은 간격을 두고 저장
-        }
-        showToast(`${blobs.length > 1 ? blobs.length + '장 ' : ''}저장했어요. 카카오톡 → 사진(갤러리)에서 골라 보내 주세요.`, "success");
+        const { canvases } = await makeTicketBlobs({ canvasOnly: true });
+        const one = joinTicketCanvases(canvases);      // 여러 쪽도 긴 한 장으로 (68번)
+        const blob = await new Promise(res => one.toBlob(res, 'image/jpeg', 0.95));
+        if (!blob) throw new Error('견적서 그림을 만들지 못함');
+        saveBlobAsFile(blob, ticketFileNames(1, 'jpg', false)[0]);
+        showToast("한 장으로 저장했어요. 카카오톡 → 사진(갤러리)에서 골라 보내 주세요.", "success");
     } catch (err) {
         console.error(err);
         showToast("견적서 저장 중 오류가 발생했습니다.", "error");
