@@ -1961,3 +1961,22 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .cm-dot-fur { margin: -17px 0 0; transform: translateX(-50%); }
 .rc-pin-fur { border-radius: 6px; background: #5b6b4a; }
 .rc-dot-fur { border-radius: 1px; transform: rotate(45deg) scale(0.85); }
+/* 가구 따로 찍기·고치기 (66번) */
+.fur-chips button.on { border-color: #91401a; background: #91401a; color: #fff; }
+.cm-fur .fur-chips { margin-top: 0.2rem; }
+.cm-res i.cm-fur-dm { width: 34px; height: 34px; margin: 0 10px; transform: rotate(45deg); }
+.fur-edit { display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem; flex: 1; min-width: 0; }
+.fur-edit .fur-row { width: 100%; }
+.fur-edit .fur-row > span:first-of-type { flex: 1; min-width: 0; }
+.fur-edit .fur-acts { display: inline-flex; gap: 0.8rem; margin-left: auto; }
+.fur-edit .fur-acts button { background: none; border: none; padding: 0; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: #8a7a6a; text-decoration: underline; text-underline-offset: 3px; }
+.fur-edit .fur-chips button { text-decoration: none; }
+.fur-edit .fur-chg { font-size: 0.72rem; color: #a89a8b; }
+.rc-fur-line { align-items: flex-start; }
+.rc-fur-edit .fur-row { font-size: 0.8rem; gap: 0.5rem; }
+.rc-fur-edit .fur-row i { width: 12px; height: 12px; }
+.rc-fur-edit .fur-chips button { padding: 0.3rem 0.7rem; font-size: 0.75rem; }
+.rc-fur-edit .fur-add { font-size: 0.78rem; padding: 0.1rem 0; }
+.ed-fur { align-items: flex-start; }
+.ed-fur .dos-wfk { padding-top: 0.2rem; }
+.ed-fur-edit .fur-row { font-size: 0.9rem; }

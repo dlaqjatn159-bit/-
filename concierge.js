@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261084';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261085';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -455,6 +455,8 @@
     }
     // 가구 색 (37번): measuredColor.furniture = [{ n: '소파', L, a, b, hex }]. 벽·바닥과 달리 공간마다 달라 "같아요"로 이어받지 않음
     function hasFurniture(mc) { return !!(mc && mc.furniture && mc.furniture.length); }
+    function furCount(r) { return (r && r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.length : 0; }
+    function furLabelOf(n) { return (window.RoomColor && RoomColor.furLabel) ? RoomColor.furLabel(n) : (n || '가구'); }      // 예전 이름(수납장·식탁)도 새 이름으로 (66번)
     // k: 이어주는 색 비율(벽 쪽 무게). 없으면 기본. furniture: 그 공간의 가구 색 (있으면 그대로 붙임)
     function withBridge(wall, floor, k, furniture) {
         const mc = { wall: wall || null, floor: floor || null, at: Date.now() };
@@ -633,7 +635,7 @@
             const metaParts = [dirTxt ? dirTxt + '향' : '', size ? `${size.w} × ${size.h}cm` : ''].filter(Boolean).join(' · '); // 41번: 남향 및 크기 옆 배치
             h += '<section class="dos-room">';
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
-                + `<span class="dos-rhead-r">${r.isConfigured ? `<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button>` : `<button type="button" class="dos-todo" onclick="window.concierge.openRoomCart(${r.id})">상담하기</button>`}</span></div>`;
+                + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured ? `<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button>` : `<button type="button" class="dos-todo" onclick="window.concierge.openRoomCart(${r.id})">상담하기</button>`}</span></div>`;
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f, cls) => `<div class="${(dark(bg) ? 'is-dark ' : '') + (cls || '')}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;
@@ -697,7 +699,7 @@
                 }
             } else {
                 topSegs += seg('벽', wHex, 4.0);
-                if (furs[0] && furs[0].hex) topSegs += seg(furs[0].n || '가구', furs[0].hex, 1.2);
+                if (furs[0] && furs[0].hex) topSegs += seg(furLabelOf(furs[0].n), furs[0].hex, 1.2);
             }
             const midWindowH = baseWallHeight > 0 ? (48 - baseWallHeight) : 48;
             const wallBaseHtml = baseWallHeight > 0 ? `<div class="arch-wall-base" style="height:${baseWallHeight}px;background:${wHex}"></div>` : '';
@@ -792,6 +794,10 @@
             '</div>'; // 41번, 43번
         h += `<div class="ed-color">${row('벽', 'wall')}${row('바닥', 'floor')}`;
         if (house) h += '<button type="button" class="ed-sub" onclick="window.concierge.editRoomUseHouse()">집 기본 색으로 맞추기</button>';
+        // 가구 (66번): 벽·바닥과 따로 찍어 더하고 빼기 · 종류 바꾸기. 저장을 눌러야 공간에 들어감
+        if (window.RoomColor && RoomColor.furEditorHtml) {
+            h += `<div class="dos-wfrow ed-fur"><span class="dos-wfk">가구</span>${RoomColor.furEditorHtml(ed.measuredColor && ed.measuredColor.furniture, 'window.concierge.editFur(', typeof ed.furOpen === 'number' ? ed.furOpen : -1, 'ed-fur-edit')}</div>`;
+        }
         h += '</div>' + dirPickerHtml();
         // 창 구성 선택 (48번): 상담을 마친 공간이면 이중 커튼 · 속지만 · 겉지만 · 블라인드로 즉시/스마트하게 변경
         if (r.isConfigured) {
@@ -2449,6 +2455,32 @@
                 ed.colorSrc = (ed.colorSrc === 'house' || ed.colorSrc === part) ? part : (next.wall && next.floor ? 'measured' : null);
                 render();
             }, function() { goToStep(part === 'wall' ? "2-Base-Wall" : "2-Base-Floor"); });
+        },
+        // 수정하기의 가구 (66번): 'add' 찍어 담기 · 'del' 빼기 · 'open' 종류 칩 펼치기 · 'kind' 종류 바꾸기. 벽·바닥 색은 그대로
+        editFur: function(act, i, n) {
+            const ed = state.editingRoom;
+            if (!ed || !ed.editOnly || !window.RoomColor) return;
+            if (act === 'open') { ed.furOpen = i >= 0 ? i : null; render(); return; }
+            ed.furOpen = null;
+            RoomColor.furListEdit(ed.measuredColor && ed.measuredColor.furniture, act, i, n, ed.name, function(list) {
+                if (state.editingRoom !== ed) return;
+                ed.measuredColor = RoomColor.withFurniture(ed.measuredColor, list);
+                render();
+            });
+        },
+        // 중심 화면 공간 카드의 [+ 가구] (66번): 상담 전·후 언제든 가구 하나를 찍어 바로 담음 (빼기·종류 바꾸기는 수정하기에서)
+        addFurniture: function(roomId) {
+            const r = state.roomsCart.find(x => x.id === roomId);
+            if (!r || !window.RoomColor) return;
+            hideKeypadDirectly();
+            RoomColor.furListEdit(r.measuredColor && r.measuredColor.furniture, 'add', -1, null, r.name, function(list) {
+                const r2 = state.roomsCart.find(x => x.id === roomId);
+                if (!r2) return;
+                r2.measuredColor = RoomColor.withFurniture(r2.measuredColor, list);
+                if (r2.isConfigured) syncToV1MasterRooms();
+                spaceToast(`${r2.name}: 가구를 담았어요`);
+                render();
+            });
         },
         editRoomUseHouse: function() {
             const ed = state.editingRoom, house = houseColor();

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261084';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261085';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -11,11 +11,13 @@
     const GRAY_L = 50, WHITE_L = 95;          // 카드 목표 밝기 (회색 카드 L50, 흰 카드 L95)
     const SAMPLE = 21;                        // 카드: 누른 자리 주변 21×21px 평균
     const AREA_R = 0.07;                      // 바닥·벽: 반지름 = 사진 짧은 쪽의 7% (1600×1200 사진이면 지름 약 170px)
-    const FUR_R = 0.04;                       // 가구(37번): 가구는 작아서 반지름 4%. 한 번 누르기, 밝고 어두운 15% 빼는 건 같음
-    const FUR_MAX = 3;                        // 가구는 3개까지
-    const FUR_NAMES = ['소파', '침대', '수납장', '식탁', '책장', '기타'];
-    const FUR_WOOD = { 수납장: true, 식탁: true, 책장: true };      // 나무 가구는 바닥 이름 규칙(오크·월넛), 나머지는 벽 이름 규칙
-    const MULTI = { floor: true, wall: true };// 여러 곳을 눌러 평균하는 자리
+    // 가구 (66번): 벽·바닥과 따로, 카드와 함께 가까이 찍은 사진 한 장 → 넓은 면 3곳 평균(벽·바닥과 같은 방식)
+    const FUR_MAX = 5;                        // 가구는 공간마다 5개까지 (66번, 처음 값)
+    const FUR_NAMES = ['소파', '침대', '이불·침구', '러그·카펫', '붙박이장·수납장', '식탁·책상', '책장', '기타'];
+    const FUR_OLD = { 수납장: '붙박이장·수납장', 식탁: '식탁·책상' };      // 예전(37번) 저장 이름 → 새 이름
+    const FUR_WOOD = { '붙박이장·수납장': true, '식탁·책상': true, 책장: true };      // 나무 가구는 바닥 이름 규칙(오크·월넛), 나머지는 벽 이름 규칙
+    const FUR_CHANGE = { '이불·침구': true, '러그·카펫': true };      // 계절·기분에 따라 바뀌는 것 (66번: 표시만, 추천에는 아직 안 씀)
+    const MULTI = { floor: true, wall: true, fur: true };// 여러 곳을 눌러 평균하는 자리
     const AREA_POINTS = 3;                    // 바닥·벽은 3곳씩 눌러 평균 (카드는 1곳). 다 누르면 다음 자리로 저절로 넘어감
     const AREA_TRIM = 0.15;                   // 바닥·벽: 가장 어두운 15% · 가장 밝은 15%는 빼고 평균
     const SHADOW_DL = 6.0;                    // 카드 안 위아래·좌우 밝기 차이가 이 이상이면 그림자 안내
@@ -31,11 +33,13 @@
         { key: 'floor', label: '③ 바닥',      sub: '마루·타일',   color: '#8a4a22' },
         { key: 'wall',  label: '④ 벽',        sub: '벽지·도장',   color: '#2b221a' }
     ];
-    const PIN_WORD = { gray: '회색', white: '흰', floor: '바닥', wall: '벽' };      // 사진 위 점에 쓰는 말
+    const PIN_WORD = { gray: '회색', white: '흰', floor: '바닥', wall: '벽', fur: '가구' };      // 사진 위 점에 쓰는 말
     const HIT_PX = 22;                        // 이미 찍은 점에서 이만큼 안을 누르면 그 점을 지움
     // 찍는 방법 (37번): 방 문 앞에서 창 쪽을 넓게. 창 아래는 역광이라 카드가 어둡게 찍혀서 카드는 바닥 가운데쯤
     const SHOOT_GUIDE = '방 문 앞에 서서 <b>창 쪽을 넓게</b> 찍어 주세요<br>(광각 0.6배)';
     const SHOOT_CARD = '카드는 창 바로 아래가 아닌, 바닥 가운데쯤에 두면 빛이 고르게 받아요.';
+    const SHOOT_FUR = '가구 위나 바로 옆에 회색·흰 카드를 두고<br><b>가까이</b> 찍어 주세요';      // 66번
+    const SHOOT_FUR_SUB = '카드와 가구가 같은 빛을 받게 붙여 두면 색이 정확해요. 한 장에 가구 하나예요.';
 
     // st: 지금 열린 측정 창 상태. photos[0] = 카드가 있는 사진, photos[1] = 따로 찍은 벽 사진
     let st = null;
@@ -183,29 +187,29 @@
     }
     function dropPins(v) {      // 그 사진에 찍은 점은 모두 지움 (사진을 바꾸거나 뺄 때)
         Object.keys(st.pins).forEach(k => { st.pins[k] = st.pins[k].filter(p => p.v !== v); if (!st.pins[k].length) delete st.pins[k]; });
-        if (st.fur) st.fur = st.fur.filter(p => p.v !== v);
-        if (st.furPending && st.furPending.v === v) st.furPending = null;
     }
     function areaRadiusPx(cv, rFrac) { return Math.max(rFrac ? 8 : 12, Math.round(Math.min(cv.width, cv.height) * (rFrac || AREA_R))); }
-    // 가구 점 (37번): st.fur = [{ v, x, y, n: '소파', t }]. 이름을 고르기 전 점은 st.furPending
-    function furOf() { return (st && st.fur) || []; }
-    function furKind(n) { return FUR_WOOD[n] ? 'floor' : 'wall'; }
+    // 가구 종류 이름 (66번): 예전 이름(수납장·식탁)은 새 이름으로 읽음
+    function furLabel(n) { return FUR_OLD[n] || n || '가구'; }
+    function furKind(n) { return FUR_WOOD[furLabel(n)] ? 'floor' : 'wall'; }
     function furName(f) { const nm = f && colorName(furKind(f.n), f); return nm ? nm.name : ''; }
+    function furStays(n) { return !FUR_CHANGE[furLabel(n)]; }
 
     // 두 카드로 보정: 빨강·초록·파랑을 따로, 회색 카드는 L50 회색 · 흰 카드는 L95 흰색이 되도록 곧게 늘임
     // (카메라의 노출과 색 틀어짐을 함께 바로잡음. Lab에서 색기만 빼는 것보다 진한 색에서 정확)
     function compute() {
         const s = {};
-        STEPS.forEach(stp => {
-            const ps = pinsOf(stp.key);
-            if (!ps.length) { s[stp.key] = null; return; }
-            if (!MULTI[stp.key]) { s[stp.key] = samplePin(ps[0]); return; }      // 카드는 작은 칸 하나
-            // 바닥·벽: 누른 곳마다 넓은 동그라미 평균 → 그것들을 다시 평균 (판자·타일마다 색이 다른 바닥)
-            const parts = ps.map(sampleArea).filter(Boolean);
+        STEPS.map(stp => stp.key).concat(['fur']).forEach(key => {
+            const ps = pinsOf(key);
+            if (!ps.length) { s[key] = null; return; }
+            if (!MULTI[key]) { s[key] = samplePin(ps[0]); return; }      // 카드는 작은 칸 하나
+            // 바닥·벽·가구: 누른 곳마다 넓은 동그라미 평균 → 그것들을 다시 평균 (판자·타일마다 색이 다른 바닥)
+            // (66번 고침: map에 sampleArea를 바로 넘기면 순번이 반지름 칸으로 들어가 2·3번째 점이 사진 전체를 읽었음)
+            const parts = ps.map(p => sampleArea(p)).filter(Boolean);
             const lin = [0, 1, 2].map(k => parts.reduce((t, p) => t + p.lin[k], 0) / parts.length);
-            s[stp.key] = { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0, n: parts.length };
+            s[key] = { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0, n: parts.length };
         });
-        const res = { raw: s, wall: null, floor: null, furniture: [], cardsSwapped: false, shadow: 0 };
+        const res = { raw: s, wall: null, floor: null, fur: null, cardsSwapped: false, shadow: 0 };
         if (!s.gray || !s.white) return res;
         res.cardsSwapped = s.white.lab.L < s.gray.lab.L;
         res.shadow = Math.max(s.gray.diff, s.white.diff);
@@ -225,7 +229,7 @@
         };
         if (s.wall) res.wall = fix(s.wall);
         if (s.floor) res.floor = fix(s.floor);
-        furOf().forEach(f => { const raw = sampleArea(f, FUR_R); if (raw) res.furniture.push(Object.assign(fix(raw), { n: f.n })); });
+        if (s.fur) res.fur = fix(s.fur);
         return res;
     }
 
@@ -290,27 +294,44 @@
         return h + '</div></div></div>';
     }
 
-    // ---- 가구 색 (37번): 바닥·벽을 다 찍은 뒤 "+ 가구 찍기" → 사진 한 번 누르기 → 이름 칩. 안 눌러도 담기는 그대로 ----
+    // ---- 가구 색 (66번): 벽·바닥과 따로 찍음. 공간마다 [+ 가구 추가] → 사진 한 장 → 회색·흰 카드 → 가구 3곳 → 종류 칩 → 담기 ----
     function furRowHtml(f) {
-        return `<div class="fur-row"><i style="background:${f.hex}"></i><span><b>${esc(f.n)}</b> · ${esc(furName(f))} <em class="hex-code">${esc(String(f.hex).toUpperCase())}</em></span></div>`;
+        return `<div class="fur-row"><i style="background:${f.hex}"></i><span><b>${esc(furLabel(f.n))}</b> · ${esc(furName(f))} <em class="hex-code">${esc(String(f.hex).toUpperCase())}</em></span></div>`;
     }
-    function furSectionHtml(res, cls) {
-        const list = res.furniture;
-        let h = `<div class="fur-box ${cls}"><span class="fur-lbl">큰 가구 색도 담을까요? <small>(선택)</small></span>`;
-        list.forEach(f => { h += furRowHtml(f); });
-        if (st.furPending) {
-            h += '<p class="fur-ask">사진에서 누른 곳은 어떤 가구인가요?</p><div class="fur-chips">'
-                + FUR_NAMES.map(n => `<button type="button" onclick="RoomColor.furPick('${n}')">${n}</button>`).join('')
-                + '<button type="button" class="fur-cancel" onclick="RoomColor.furCancel()">취소</button></div>';
-        } else if (st.furMode) {
-            h += '<p class="fur-ask">사진에서 가구를 <b>한 번</b> 눌러 주세요 <button type="button" class="fur-cancel" onclick="RoomColor.furCancel()">취소</button></p>';
-        } else if (list.length < FUR_MAX) {
-            h += `<button type="button" class="fur-add" onclick="RoomColor.furStart()">+ 가구 찍기</button>`;
-        }
-        if (list.length && !st.furMode && !st.furPending) h += `<small class="fur-hint">${list.length >= FUR_MAX ? `가구는 ${FUR_MAX}개까지예요. ` : ''}사진의 가구 점을 누르면 지워져요.</small>`;
+    // 가구 목록 고치기 (직원 화면 공간 카드 · 고객 수정하기가 같이 씀): 종류 바꾸기 · 빼기 · + 가구 추가
+    //  call: 단추가 부를 함수 앞부분 (예: "RoomColor.staffFur(12, " → "RoomColor.staffFur(12, 'del', 0)"), openIdx: 종류 칩을 펼친 가구 번호
+    function furEditorHtml(list, call, openIdx, cls) {
+        list = list || [];
+        let h = `<div class="fur-edit ${cls || ''}">`;
+        list.forEach((f, i) => {
+            h += `<div class="fur-row"><i style="background:${esc(f.hex)}"></i><span><b>${esc(furLabel(f.n))}</b> · ${esc(furName(f))}${furStays(f.n) ? '' : ' <small class="fur-chg">자주 바뀌는 것</small>'}</span>`
+                + `<span class="fur-acts"><button type="button" onclick="${call}'open', ${i})">종류</button><button type="button" onclick="${call}'del', ${i})">빼기</button></span></div>`;
+            if (openIdx === i) {
+                h += '<div class="fur-chips">' + FUR_NAMES.map(n => `<button type="button" class="${furLabel(f.n) === n ? 'on' : ''}" onclick="${call}'kind', ${i}, '${n}')">${n}</button>`).join('')
+                    + `<button type="button" class="fur-cancel" onclick="${call}'open', -1)">닫기</button></div>`;
+            }
+        });
+        if (list.length < FUR_MAX) h += `<button type="button" class="fur-add" onclick="${call}'add')">+ 가구 추가</button>`;
+        else h += `<small class="fur-hint">가구는 ${FUR_MAX}개까지예요.</small>`;
         return h + '</div>';
     }
-    function rerender() { if (!st) return; if (st.cust) renderCust(); else render(); }
+    // 가구 목록 고치기 (66번): list는 바꾸지 않고 새 목록을 돌려줌. 'add'는 찍기 화면을 띄우고 done(새 목록)으로 돌려줌
+    function furListEdit(list, act, i, n, name, done) {
+        list = (list || []).slice();
+        if (act === 'add') {
+            if (list.length >= FUR_MAX) return;
+            openFurniture({ name, onDone: f => done(list.concat([f]).slice(0, FUR_MAX)) });
+            return;
+        }
+        if (act === 'del' && list[i]) { list.splice(i, 1); done(list); return; }
+        if (act === 'kind' && list[i] && FUR_NAMES.includes(n)) { list[i] = Object.assign({}, list[i], { n, stay: furStays(n) }); done(list); }
+    }
+    // 가구 목록을 잰 색에 넣음: 벽·바닥은 그대로. 다 빼고 벽·바닥도 없으면 null
+    function withFurniture(mc, list) {
+        const out = Object.assign({ wall: null, floor: null, bridge: null }, mc || {});
+        if (list && list.length) out.furniture = list; else delete out.furniture;
+        return (out.wall || out.floor || out.furniture) ? out : null;
+    }
 
     // 벽과 바닥을 이어주는 색: 커튼은 벽에 걸리니 벽 쪽에 더 가깝게 (밝기와 색기 무게를 따로 — 현장 시험 대상)
     //  k = 벽 쪽 무게(밝기). 공간마다 직원 화면 밀기 막대로 바꿀 수 있음(measuredColor.bridgeK, 10-15 사장님: 벽이 많이 보이는 집 / 가구가 많아 바닥이 많이 보이는 집)
@@ -347,16 +368,17 @@
         const r = v => Math.round(v * 10) / 10;
         return { L: r(c.L), a: r(c.a), b: r(c.b), hex: c.hex, light: c.cls.light, tone: c.cls.tone };
     }
-    // 가구 색 저장 모양 (37번): [{ n: '소파', L, a, b, hex }] — 이름(다크 그레이 등)은 저장하지 않고 그때그때 colorName으로
-    function packFurniture(list) {
+    // 가구 색 저장 모양 (37번 → 66번): { n: '소파', L, a, b, hex, stay } — 이름(다크 그레이 등)은 저장하지 않고 그때그때 colorName으로
+    //  stay: 그대로 두는 가구(true) / 자주 바뀌는 것(false, 이불·러그). 66번은 표시만, 나중에 추천 점수에서 무게를 다르게
+    function packFurOne(c, n) {
         const r = v => Math.round(v * 10) / 10;
-        return (list || []).filter(f => f && f.n).slice(0, FUR_MAX).map(f => ({ n: f.n, L: r(f.L), a: r(f.a), b: r(f.b), hex: f.hex }));
+        return { n, L: r(c.L), a: r(c.a), b: r(c.b), hex: c.hex, stay: furStays(n) };
     }
     function findRoom(id) { return (typeof rooms !== 'undefined' ? rooms : []).find(r => r.id === id); }      // data.js의 rooms
 
     function apply(goFinder) {
         const res = compute(), room = findRoom(st.roomId);
-        if (!room || !(res.wall || res.floor || res.furniture.length)) return;
+        if (!room || !(res.wall || res.floor)) return;
         const old = room.measuredColor || {};
         const mc = {
             wall: res.wall ? packColor(res.wall) : (old.wall || null),
@@ -366,8 +388,7 @@
         };
         if (typeof old.bridgeK === 'number') mc.bridgeK = old.bridgeK;      // 다시 재도 밀기 막대로 정한 비율은 그대로
         mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor, mc.bridgeK) : null;
-        const fur = res.furniture.length ? packFurniture(res.furniture) : (old.furniture || []);      // 이번에 가구를 안 찍었으면 지난번 가구 그대로
-        if (fur.length) mc.furniture = fur;
+        if (old.furniture && old.furniture.length) mc.furniture = old.furniture;      // 가구는 따로 찍으니(66번) 벽·바닥을 다시 재도 그대로
         room.measuredColor = mc;
         // 중심 화면 색 출처: 직원 화면에서 다시 쟀으면 "이 공간에서 잰 색"(한쪽만 쟀으면 출처는 비우고 부분별로 적음). 잰 부분은 카드 표시를 지움
         room.colorSrc = mc.wall && mc.floor ? 'measured' : null;
@@ -426,11 +447,6 @@
                     h += `<span class="rc-pin${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%;background:${s2.color}">${PIN_WORD[s2.key]}</span>`;
                 });
             });
-            furOf().concat(st.furPending ? [st.furPending] : []).forEach(p => {      // 가구 점 (37번)
-                if (p.v !== st.view) return;
-                h += `<span class="rc-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv, FUR_R) / cv.width * 100).toFixed(2)}%;border-color:#5b6b4a"></span>`;
-                h += `<span class="rc-pin rc-pin-fur" style="left:${p.x * 100}%;top:${p.y * 100}%">${esc(p.n || '?')}</span>`;
-            });
             h += '</div>';
             const anyPin = Object.values(st.pins).some(ps => ps.length);
             h += `<div class="rc-guide"><span>${stp && MULTI[stp.key] ? `${stp.label.slice(2)}은 동그라미 안을 평균해요. 판자·타일·무늬가 다른 <b>${AREA_POINTS}곳</b>을 눌러 주세요.` : (stp ? '카드는 가운데를 한 번 눌러 주세요.' : '')} 잘못 찍은 점은 <b>점을 누르면 지워져요.</b></span>`
@@ -465,7 +481,7 @@
             h += `<p class="rc-note">지난번에 잰 값이에요${saved.at ? ` (${new Date(saved.at).toLocaleDateString('ko-KR')})` : ''}. 다시 재려면 사진을 불러와 주세요.</p>`;
             h += resultCard('wall', saved.wall, '재지 않았어요');
             h += resultCard('floor', saved.floor, '재지 않았어요');
-            if (saved.furniture && saved.furniture.length) h += '<div class="fur-box rc-fur"><span class="fur-lbl">가구</span>' + saved.furniture.map(furRowHtml).join('') + '</div>';
+            if (saved.furniture && saved.furniture.length) h += '<div class="fur-box rc-fur"><span class="fur-lbl">가구 <small>(공간 카드에서 따로 고쳐요)</small></span>' + saved.furniture.map(furRowHtml).join('') + '</div>';
         } else {
             if (st.photos[0] && (!res.raw.gray || !res.raw.white)) {
                 h += '<p class="rc-note">먼저 ① 회색 카드와 ② 흰 카드를 눌러 주세요. 두 카드로 사진의 밝기와 색기를 바로잡아요.</p>';
@@ -479,7 +495,6 @@
                 h += `<div class="rc-bridge-bar"><i style="background:${res.wall.hex}"></i><span style="background:linear-gradient(90deg, ${res.wall.hex}, ${br.hex} ${(1 - k) * 100}%, ${res.floor.hex})"><b style="left:${(1 - k) * 100}%;background:${br.hex}"></b></span><i style="background:${res.floor.hex}"></i></div>`;
                 h += `<span class="rc-res-lab">${bridgeRatioText(k)} · ${classifyLab(br).text} · 밝기 L ${br.L.toFixed(1)} (반영 뒤 공간 카드의 막대로 조절)</span></div>`;
             }
-            if (st.photos[0] && res.raw.gray && res.raw.white && !res.cardsSwapped) h += furSectionHtml(res, 'rc-fur');      // 가구 (37번)
             if (res.raw.gray && res.raw.white) {
                 h += `<p class="rc-cards">카드 읽은 값: 회색 L ${res.raw.gray.lab.L.toFixed(1)} · 흰 L ${res.raw.white.lab.L.toFixed(1)}`
                    + (st.photos[1] && pinsOf('wall').some(p => p.v === 1) ? '<br>벽 사진에는 카드가 없어 카드 사진의 두 카드로 보정했어요.' : '') + '</p>';
@@ -488,7 +503,7 @@
         h += '</div></div>';
 
         // 아래: 반영
-        const canApply = !!(res.wall || res.floor || res.furniture.length);
+        const canApply = !!(res.wall || res.floor);
         h += '<div class="rc-foot"><span>고객 화면에는 숫자 없이 "밝은 웜" 같은 말과 바닥·벽 카드만 쓰여요. 사진은 저장되지 않아요.</span>';
         h += `<div class="rc-foot-btns"><button type="button" class="staff-btn" onclick="RoomColor.apply()"${canApply ? '' : ' disabled'}>이 공간에 반영</button>`;
         h += `<button type="button" class="staff-btn rc-apply" onclick="RoomColor.apply(true)"${canApply ? '' : ' disabled'}>${res.wall && res.floor ? '반영 후 조화로운 원단 찾기 →' : '반영 후 원단 찾기 →'}</button></div></div>`; // 41번
@@ -509,14 +524,7 @@
         const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
         const keys = stepKeys();
-        // 가구 찍기 중이면 누른 자리가 가구 (이름 칩을 고르기 전에 다시 누르면 자리만 옮김, 37번)
-        if (st.furMode || st.furPending) {
-            st.furPending = { v: st.view, x, y, t: ++st.seq };
-            st.furMode = false;
-            rerender();
-            return;
-        }
-        // 찍어 둔 점을 누르면 그 점을 지우고 그 자리를 다시 찍게 (가구 점은 지우기만)
+        // 찍어 둔 점을 누르면 그 점을 지우고 그 자리를 다시 찍게
         let hit = null, best = HIT_PX;
         const near = p => Math.hypot((p.x - x) * rect.width, (p.y - y) * rect.height);
         keys.forEach(k => pinsOf(k).forEach(p => {
@@ -524,10 +532,7 @@
             const d = near(p);
             if (d < best) { best = d; hit = { k, p }; }
         }));
-        furOf().forEach(p => { if (p.v === st.view && near(p) < best) { best = near(p); hit = { fur: p }; } });
-        if (hit && hit.fur) {
-            st.fur = furOf().filter(p => p !== hit.fur);
-        } else if (hit) {
+        if (hit) {
             removePin(hit.k, hit.p);
             goStep(keys.indexOf(hit.k));
         } else {
@@ -542,13 +547,8 @@
     // 방금 찍은 점 하나 지우기
     function undo() {
         if (!st) return;
-        if (st.furMode) { st.furMode = false; rerender(); return; }      // 가구 찍기를 막 눌렀으면 그것부터 취소
         let last = null;
         Object.keys(st.pins).forEach(k => st.pins[k].forEach(p => { if (!last || (p.t || 0) > (last.p.t || 0)) last = { k, p }; }));
-        // 가구 점이 더 나중이면 그것부터 (이름을 고르기 전 점 → 찍은 가구 순)
-        if (st.furPending) { st.furPending = null; rerender(); return; }
-        const lf = furOf().reduce((a, p) => (!a || (p.t || 0) > (a.t || 0)) ? p : a, null);
-        if (lf && (!last || (lf.t || 0) > (last.p.t || 0))) { st.fur = furOf().filter(p => p !== lf); rerender(); return; }
         if (!last) return;
         removePin(last.k, last.p);
         goStep(stepKeys().indexOf(last.k));
@@ -557,7 +557,6 @@
     // 목록·단추를 누름: 다 찍은 자리면 그 자리만 지우고 다시 찍기, 덜 찍은 자리면 이어서 찍기
     function pickStep(i) {
         if (!st || !st.photos[0]) return;
-        st.furMode = false; st.furPending = null;      // 다른 자리를 다시 찍으면 가구 찍기는 그만
         const k = stepKeys()[i];
         if (!k) return;
         if (isFull(k)) delete st.pins[k];
@@ -571,14 +570,14 @@
     //  opts: { name, parts: 'both' | 'wall' | 'floor', doneLabel, onDone(mc), onSkip?(), onCancel(), bridgeK?(막대 처음 값) }
     //  바닥·벽을 둘 다 찍으면 결과 아래에 이어주는 색 막대 → mc.bridgeK (30번)
     // ==============================================================
-    const CUST_LABEL = { gray: '회색 카드', white: '흰 카드', floor: '바닥', wall: '벽' };
+    const CUST_LABEL = { gray: '회색 카드', white: '흰 카드', floor: '바닥', wall: '벽', fur: '가구' };
     const CUST_ASK = { gray: '<b>회색 카드</b> 가운데를 눌러 주세요', white: '<b>흰 카드</b> 가운데를 눌러 주세요',
-                       floor: `<b>바닥</b>을 ${AREA_POINTS}곳 눌러 주세요`, wall: `<b>벽</b>을 ${AREA_POINTS}곳 눌러 주세요` };
+                       floor: `<b>바닥</b>을 ${AREA_POINTS}곳 눌러 주세요`, wall: `<b>벽</b>을 ${AREA_POINTS}곳 눌러 주세요`,
+                       fur: `<b>가구</b>의 넓은 면을 ${AREA_POINTS}곳 눌러 주세요` };
     function packResult(res, k) {
         const mc = { wall: res.wall ? packColor(res.wall) : null, floor: res.floor ? packColor(res.floor) : null, shadow: Math.round(res.shadow * 10) / 10, at: Date.now() };
         if (typeof k === 'number') mc.bridgeK = k;
         mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor, mc.bridgeK) : null;
-        if (res.furniture && res.furniture.length) mc.furniture = packFurniture(res.furniture);      // 가구 (37번, 안 찍었으면 넣지 않음)
         return mc;
     }
     // 바닥·벽을 다 찍은 뒤 나오는 이어주는 색 막대 (30번): 직원 화면 공간 카드 막대와 같은 모양·같은 값(bridgeK). 밀면 색 칸만 바뀜
@@ -607,7 +606,7 @@
         const ov = document.getElementById('roomColorCust');
         if (!ov || !st || !st.cust) return;
         const o = st.cust, keys = stepKeys(), res = compute(), cv = st.photos[0];
-        const done = keys.every(isFull);
+        const done = keys.every(isFull), furOnly = !!o.furOnly;      // furOnly: 가구 따로 찍기 (66번)
         let h = '<button type="button" class="cm-back" onclick="RoomColor.cancelCustomer()" aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button>';
         h += '<div class="cm-stage">';
         // 왼쪽: 사진 (없으면 찍기·불러오기)
@@ -618,22 +617,18 @@
                 if (MULTI[k]) h += `<span class="cm-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv) / cv.width * 100).toFixed(2)}%"></span>`;
                 h += `<span class="cm-dot cm-dot-${k}${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%">${PIN_WORD[k]}</span>`;
             }));
-            furOf().concat(st.furPending ? [st.furPending] : []).forEach(p => {      // 가구 점 (37번)
-                h += `<span class="cm-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv, FUR_R) / cv.width * 100).toFixed(2)}%"></span>`;
-                h += `<span class="cm-dot cm-dot-fur${p === st.furPending ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%">${esc(p.n || '?')}</span>`;
-            });
             h += '</div>';
         } else {
-            h += `<div class="cm-empty"><p class="font-serif-kr">${SHOOT_GUIDE}</p><p class="cm-note">${SHOOT_CARD}</p>`;
+            h += `<div class="cm-empty"><p class="font-serif-kr">${furOnly ? SHOOT_FUR : SHOOT_GUIDE}</p><p class="cm-note">${furOnly ? SHOOT_FUR_SUB : SHOOT_CARD}</p>`;
             h += '<label class="cm-go font-serif-kr">사진 찍기 · 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
             h += '<p class="cm-note">사진은 저장되지 않아요</p></div>';
         }
         h += '</div>';
         // 오른쪽: 차례 목록 → 결과
         h += '<div class="cm-side">';
-        h += `<span class="q-meta">${esc(o.name)} · 색</span>`;
-        const furAsk = done && (st.furPending ? '누른 곳은 어떤 가구인가요?' : (st.furMode ? '사진에서 <b>가구</b>를 한 번 눌러 주세요' : ''));
-        h += `<h2 class="cm-title font-serif-kr">${furAsk ? furAsk : done ? '이 공간의 색을 찾았어요' :(cv ? (keys[st.active] ? `사진에서 ${CUST_ASK[keys[st.active]]}` : '사진을 눌러 주세요') : '먼저 사진을 찍어 주세요')}</h2>`;
+        h += `<span class="q-meta">${esc(o.name)} · ${furOnly ? '가구' : '색'}</span>`;
+        const doneTitle = furOnly ? (st.furKind ? '가구 색을 찾았어요' : '어떤 가구인가요?') : '이 공간의 색을 찾았어요';
+        h += `<h2 class="cm-title font-serif-kr">${done ? doneTitle : (cv ? (keys[st.active] ? `사진에서 ${CUST_ASK[keys[st.active]]}` : '사진을 눌러 주세요') : '먼저 사진을 찍어 주세요')}</h2>`;
         h += `<p class="cm-sub">${done ? (o.doneNote || '') : (cv ? '잘못 찍은 점은 누르면 지워져요. 목록을 누르면 그것만 다시 찍어요.' : '회색·흰 카드로 사진의 빛을 맞춰서 실제 색을 찾아요.')}</p>`;
         h += '<ul class="cm-steps">';
         keys.forEach((k, i) => {
@@ -646,7 +641,16 @@
         h += '</ul>';
         if (res.cardsSwapped) h += '<p class="cm-alert">흰 카드와 회색 카드를 바꿔 누른 것 같아요. 목록에서 카드를 눌러 다시 찍어 주세요.</p>';
         else if (res.shadow >= SHADOW_DL) h += '<p class="cm-alert">카드에 그림자가 졌어요. 그대로 써도 되고, 조금 옮겨 다시 찍으면 더 정확해요.</p>';
-        if (done && !res.cardsSwapped) {
+        if (done && !res.cardsSwapped && furOnly) {
+            // 가구 (66번): 색 한 줄 + 종류 칩. 종류를 골라야 담기
+            const c = res.fur;
+            if (c) {
+                const kindNm = st.furKind || '가구', nm = colorName(furKind(st.furKind), c);
+                h += `<div class="cm-res"><div><i class="cm-fur-dm" style="background:${c.hex}"></i><span><b class="font-serif-kr">${esc(nm.name)}<em class="hex-code">${esc(String(c.hex).toUpperCase())}</em></b><small>${esc(kindNm)} · ${esc(nm.note)}</small></span></div></div>`;
+            }
+            h += '<div class="fur-box cm-fur"><span class="fur-lbl">어떤 가구인가요?</span><div class="fur-chips">'
+                + FUR_NAMES.map(n => `<button type="button" class="${st.furKind === n ? 'on' : ''}" onclick="RoomColor.furKindPick('${n}')">${n}</button>`).join('') + '</div></div>';
+        } else if (done && !res.cardsSwapped) {
             h += '<div class="cm-res">';
             ['floor', 'wall'].forEach(k => {
                 const c = res[k];
@@ -656,7 +660,6 @@
             });
             h += '</div>';
             if (res.wall && res.floor) h += custBridgeHtml(res);
-            h += furSectionHtml(res, 'cm-fur');      // 큰 가구 색 (37번, 선택)
             // 공간 추가 때: 결과 아래 창 방향 버튼 (35번, concierge.js가 그리고 값을 가짐)
             if (o.dirPick && window.concierge && window.concierge.dirPickerHtml) h += window.concierge.dirPickerHtml();
         }
@@ -664,11 +667,46 @@
         h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">지금은 못 재요 · 상담 때 카드로</button>' : '<span></span>';
         if (cv && Object.values(st.pins).some(ps => ps.length)) h += '<button type="button" class="cm-skip" onclick="RoomColor.undo()">방금 것 지우기</button>';
         if (cv) h += '<label class="cm-skip">사진 바꾸기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
-        if (done && !res.cardsSwapped) h += `<button type="button" class="cm-go font-serif-kr" onclick="RoomColor.finishCustomer()">${esc(o.doneLabel || '담기')}</button>`;
+        if (done && !res.cardsSwapped && !(furOnly && !st.furKind)) h += `<button type="button" class="cm-go font-serif-kr" onclick="RoomColor.finishCustomer()">${esc(o.doneLabel || '담기')}</button>`;
         h += '</div></div></div>';
         ov.innerHTML = h;
         const wrap = document.getElementById('cmWrap');
         if (wrap && cv) { wrap.prepend(cv); wrap.onpointerdown = onTap; }
+    }
+    // 가구 따로 찍기 (66번): 고객 화면 모양을 그대로 쓰고 자리만 회색 카드 · 흰 카드 · 가구. opts: { name, onDone(가구 하나), onCancel? }
+    //  직원 화면에서도 같은 화면 (사진 한 장에 가구 하나, 그 사진의 카드로만 보정)
+    function openFurniture(opts) {
+        st = { roomId: null, photos: [null, null], view: 0, active: 0, pins: {}, seq: 0, keys: ['gray', 'white', 'fur'], furKind: null,
+               cust: { name: opts.name || '', doneLabel: '가구 담기', furOnly: true, onDone: opts.onDone, onCancel: opts.onCancel || function() {} } };
+        let ov = document.getElementById('roomColorCust');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'roomColorCust';
+            ov.className = 'cm-overlay';
+            document.body.appendChild(ov);
+        }
+        ov.hidden = false;
+        renderCust();
+    }
+    // 직원 화면 공간 카드의 가구 고치기 (66번): 공간 카드에서 바로 바뀌고 자동 저장
+    let staffFurOpen = null;      // { id, i }: 종류 칩을 펼친 가구
+    function staffFur(roomId, act, i, n) {
+        const room = findRoom(roomId);
+        if (!room) return;
+        const redraw = () => {
+            if (typeof renderRooms === 'function') renderRooms();
+            if (typeof calculateAll === 'function') calculateAll();
+            if (typeof saveDraftTick === 'function') saveDraftTick();
+        };
+        if (act === 'open') { staffFurOpen = i >= 0 ? { id: roomId, i } : null; redraw(); return; }
+        staffFurOpen = null;
+        furListEdit(room.measuredColor && room.measuredColor.furniture, act, i, n, room.name, list => {
+            const r2 = findRoom(roomId);
+            if (!r2) return;
+            r2.measuredColor = withFurniture(r2.measuredColor, list);
+            redraw();
+            if (act === 'add' && typeof showToast === 'function') showToast(`[${r2.name}] 가구를 담았어요.`);
+        });
     }
     function closeCustomer() {
         const ov = document.getElementById('roomColorCust');
@@ -701,9 +739,9 @@
         // 직원 화면 공간 카드 안 한 줄: 잰 색 + 맞춘 카드 (고객이 다른 카드를 고르면 그것도 표시)
         summaryHtml(room) {
             const mc = room && room.measuredColor;
-            // 가구 칩 한 줄 (37번): "가구 ◆ 소파 다크 그레이 · ◆ 책장 월넛"
-            const furLine = mc && mc.furniture && mc.furniture.length
-                ? `<div class="rc-summary"><span class="rc-sum-lbl">가구</span>${mc.furniture.map(f => `<span class="rc-sum-part"><i class="rc-dot rc-dot-fur" style="background:${f.hex}"></i> ${esc(f.n)} <b>${esc(furName(f))}</b></span>`).join('')}</div>` : '';
+            // 가구 (66번): 공간마다 따로 찍어 더하고 빼기. 종류 바꾸기도 여기서
+            const openI = staffFurOpen && staffFurOpen.id === room.id ? staffFurOpen.i : -1;
+            const furLine = `<div class="rc-summary rc-fur-line"><span class="rc-sum-lbl">가구</span>${furEditorHtml(mc && mc.furniture, `RoomColor.staffFur(${room.id}, `, openI, 'rc-fur-edit')}</div>`;
             if (!mc || !(mc.wall || mc.floor)) return furLine;
             const part = (kind, c) => {
                 if (!c) return '';
@@ -743,22 +781,28 @@
         },
         isCustomerOpen() { return !!(st && st.cust); },
         custStep: pickStep,      // 목록을 눌러 그 자리를 다시 찍음
-        // 가구 찍기 (37번): 시작 → 사진 한 번 누르기 → 이름 칩
-        furStart() { if (!st || furOf().length >= FUR_MAX) return; st.furMode = true; st.furPending = null; rerender(); },
-        furPick(n) {
-            if (!st || !st.furPending || !FUR_NAMES.includes(n)) return;
-            st.fur = furOf().concat([Object.assign({}, st.furPending, { n })]).slice(0, FUR_MAX);
-            st.furPending = null;
-            rerender();
-        },
-        furCancel() { if (!st) return; st.furMode = false; st.furPending = null; rerender(); },
-        furName,                 // 저장된 가구 색의 이름 (소파·침대·기타 = 벽 규칙, 수납장·식탁·책장 = 바닥 규칙)
+        // 가구 따로 찍기 (66번)
+        openFurniture,
+        furKindPick(n) { if (!st || !st.cust || !st.cust.furOnly || !FUR_NAMES.includes(n)) return; st.furKind = n; renderCust(); },
+        staffFur,
+        furEditorHtml, furListEdit, withFurniture,
+        furName,                 // 저장된 가구 색의 이름 (붙박이장·수납장·식탁·책상·책장 = 바닥 규칙, 나머지 = 벽 규칙)
+        furLabel,                // 가구 종류 이름 (예전 수납장·식탁 → 새 이름)
+        furStays,                // 그대로 두는 가구인지 (이불·러그는 자주 바뀌는 것)
+        FUR_MAX,
         custBridge,              // 이어주는 색 막대 (30번)
         cancelCustomer() { const o = st && st.cust; closeCustomer(); if (o && o.onCancel) o.onCancel(); },
         skipCustomer() { const o = st && st.cust; closeCustomer(); if (o && o.onSkip) o.onSkip(); },
         finishCustomer() {
             if (!st || !st.cust) return;
             const o = st.cust, res = compute();
+            if (o.furOnly) {      // 가구 하나 (66번)
+                if (!res.fur || res.cardsSwapped || !st.furKind) return;
+                const f = packFurOne(res.fur, st.furKind);
+                closeCustomer();
+                o.onDone(f);
+                return;
+            }
             if (!(res.wall || res.floor) || res.cardsSwapped) return;
             const mc = packResult(res, (res.wall && res.floor) ? custK() : undefined);
             closeCustomer();

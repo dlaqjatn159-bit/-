@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261084';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261085';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261084';
+const REDAM_BUILD = '20261085';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1922,7 +1922,7 @@ function spaceMoreMapHtml(d) {
     // 가구: 작은 마름모(18px, 45° 돌린 네모) + 이름 ("소파"). 점 위에 그림
     fur.forEach(f => {
         const fx = X(f.b), fy = Y(f.L);
-        top += `<g class="more-home"><rect x="${(fx - 9).toFixed(1)}" y="${(fy - 9).toFixed(1)}" width="18" height="18" fill="${f.hex}" stroke="#fff" stroke-width="2" transform="rotate(45 ${fx.toFixed(1)} ${fy.toFixed(1)})"/><text class="more-halo" x="${(fx + 18).toFixed(1)}" y="${(fy + 5).toFixed(1)}">${moreEsc(f.n)}</text></g>`;
+        top += `<g class="more-home"><rect x="${(fx - 9).toFixed(1)}" y="${(fy - 9).toFixed(1)}" width="18" height="18" fill="${f.hex}" stroke="#fff" stroke-width="2" transform="rotate(45 ${fx.toFixed(1)} ${fy.toFixed(1)})"/><text class="more-halo" x="${(fx + 18).toFixed(1)}" y="${(fy + 5).toFixed(1)}">${moreEsc(window.RoomColor && RoomColor.furLabel ? RoomColor.furLabel(f.n) : f.n)}</text></g>`;
     });
     // 겹친 점은 서로 밀어 살짝 띄움 (위치는 보기용, 색 값은 그대로)
     const pts = pool.map(e => ({ e, x: X(e.b), y: Y(e.L) }));
@@ -3812,8 +3812,11 @@ function houseSpacesOf(data) {
         if (!items.length) return null;
         const mc = (room.raw && room.raw.measuredColor) || {};
         const part = k => (okLab(mc[k]) && okHex(mc[k].hex)) ? { L: mc[k].L, a: mc[k].a, b: mc[k].b, hex: mc[k].hex.toUpperCase(), name: nameOf(k, mc[k]) } : null;
+        // 가구 (66번): 종류 이름은 새 이름으로(예전 수납장·식탁도), 그대로 두는 가구를 앞에 (이불·러그는 뒤로, 같은 쪽끼리는 찍은 순서)
+        const RC = window.RoomColor || {};
         const fur = (Array.isArray(mc.furniture) ? mc.furniture : []).filter(f => okLab(f) && okHex(f.hex))
-            .map(f => ({ n: f.n, L: f.L, a: f.a, b: f.b, hex: f.hex.toUpperCase(), name: (window.RoomColor && RoomColor.furName) ? RoomColor.furName(f) : '' }));
+            .map(f => ({ n: RC.furLabel ? RC.furLabel(f.n) : f.n, L: f.L, a: f.a, b: f.b, hex: f.hex.toUpperCase(), name: RC.furName ? RC.furName(f) : '', stay: RC.furStays ? RC.furStays(f.n) : true }))
+            .sort((x, y) => (y.stay ? 1 : 0) - (x.stay ? 1 : 0));
         const fabs = items.map(it => {
             const col = whyFabricColor(it.fabricId, it.colorName);
             const lab = col && typeof col.L === 'number' ? { L: col.L, a: col.a, b: col.b } : null;
@@ -3882,13 +3885,16 @@ function houseDiagnosis(s, raw) {
     }
     const wall = s.wall && houseColorWord(s.wall), floor = s.floor && houseColorWord(s.floor);
     const base = wall && floor ? `${wall} 벽과 ${floor} 바닥` : (wall ? `${wall} 벽` : (floor ? `${floor} 바닥` : ''));
-    const f = (s.fur || [])[0], fur = f ? `${f.name ? houseColorWord(f) + ' ' : ''}${f.n}` : '';
-    if (base && fur) out.push(`${base}이 바탕이고, ${fur}${houseJosa(f.n, '이', '가')} 함께 놓여 있어요.`);
+    // 가구 (66번 사장님: 현장에서 공간에 크게 영향을 준다고 본 것만 찍으니 모두): "다크 그레이 소파, 월넛 책장과 아이보리 이불·침구가"
+    const fl = s.fur || [], word = f => `${f.name ? houseColorWord(f) + ' ' : ''}${f.n}`, last = fl[fl.length - 1];
+    const fur = !fl.length ? '' : fl.length === 1 ? word(fl[0])
+        : fl.slice(0, -1).map(word).join(', ') + houseJosa(fl[fl.length - 2].n, '과', '와') + ' ' + word(last);
+    if (base && fur) out.push(`${base}이 바탕이고, ${fur}${houseJosa(last.n, '이', '가')} 함께 놓여 있어요.`);
     else if (base) out.push(`${base}이 바탕이에요.`);
-    else if (fur) out.push(`${fur}${houseJosa(f.n, '이', '가')} 함께 놓여 있어요.`);
+    else if (fur) out.push(`${fur}${houseJosa(last.n, '이', '가')} 함께 놓여 있어요.`);
     return out;
 }
-// 총평 (37-4): ① 흐름(한 문장) → ② 속지(속지 공간 2곳 이상일 때) → ③ 가구(가구를 찍은 첫 공간, 첫 가구 하나, 진단 말투 65번) · 최대 3문장
+// 총평 (37-4): ① 흐름(한 문장) → ② 속지(속지 공간 2곳 이상일 때) → ③ 가구(집 전체 가구 중 가장 진한·밝은 것, 없으면 첫 가구, 진단 말투 65번·66번) · 최대 3문장
 function houseBrief(sp) {
     const out = [], S = sp.filter(houseRep), reps = S.map(s => houseRep(s).lab);
     const maxDist = list => { let m = 0; list.forEach((p, i) => list.forEach((q, j) => { if (j > i) m = Math.max(m, whyDE(p, q)); })); return m; };
@@ -3930,14 +3936,22 @@ function houseBrief(sp) {
         }
     }
     // ③ 가구 (65번: 진단 말투 — 커튼을 어떻게 골랐는지는 2번 몫이라 안 씀)
-    const fs = sp.find(s => s.fur.length);
-    if (fs) {
-        const f = fs.fur[0], nm = f.name ? f.name + ' ' : '', is = houseJosa(fs.name, '은', '는'), ga = houseJosa(f.n, '이', '가');
-        const others = [];
-        sp.forEach(s => { if (s.wall) others.push(s.wall); if (s.floor) others.push(s.floor); s.fur.forEach(o => { if (o !== f) others.push(o); }); });
+    //  66번: 가구가 여러 개여도 한 문장. 집에서 가장 진한 가구 → 가장 밝은 가구 → 없으면 첫 공간의 첫 가구(그대로 두는 가구가 앞)
+    const furs = [];
+    sp.forEach(s => s.fur.forEach(f => furs.push({ s, f })));
+    if (furs.length) {
+        const othersOf = f => {
+            const o = [];
+            sp.forEach(s => { if (s.wall) o.push(s.wall); if (s.floor) o.push(s.floor); s.fur.forEach(x => { if (x !== f) o.push(x); }); });
+            return o;
+        };
+        const darkest = furs.find(({ f }) => { const o = othersOf(f); return o.length && o.every(x => f.L < x.L); });
+        const lightest = darkest ? null : furs.find(({ f }) => { const o = othersOf(f); return o.length && o.every(x => f.L > x.L); });
+        const { s: fs, f } = darkest || lightest || furs[0];
+        const nm = f.name ? f.name + ' ' : '', is = houseJosa(fs.name, '은', '는'), ga = houseJosa(f.n, '이', '가');
         const base = [fs.wall, fs.floor].filter(Boolean);
-        if (others.length && others.every(o => f.L < o.L)) out.push(`${fs.name}${is} ${nm}${f.n}${ga} 집에서 가장 진한 색이에요.`);
-        else if (others.length && others.every(o => f.L > o.L)) out.push(`${fs.name}${is} ${nm}${f.n}${ga} 집에서 가장 밝은 색이에요.`);
+        if (darkest) out.push(`${fs.name}${is} ${nm}${f.n}${ga} 집에서 가장 진한 색이에요.`);
+        else if (lightest) out.push(`${fs.name}${is} ${nm}${f.n}${ga} 집에서 가장 밝은 색이에요.`);
         else if (base.length && Math.min(...base.map(o => whyDE(f, o))) <= HOUSE_FUR_NEAR) out.push(`${fs.name}${is} ${f.n}${ga} 벽·바닥과 비슷한 색이라 공간이 한 톤으로 이어져요.`);
         else out.push(`${fs.name}${is} ${nm}${f.n}${ga} 바탕색 사이에서 또렷하게 보여요.`);
     }
