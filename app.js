@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261092';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261095';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261092';
+const REDAM_BUILD = '20261095';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1745,13 +1745,13 @@ const MORE_FILTERS = {
 const MORE_SORTS = { fit: '추천 순', sameColor: '지금 색과 가까운 순', light: '밝은 순', dark: '진한 순' };      // 72번
 const MORE_DIRS = ['wall', 'bridge', 'floor'];      // 잇는 방향 (28번 · 72번): 벽 색 기준 / 벽·바닥 사이 / 바닥 색 기준 — 색 잇기 화면과 같은 말
 const MORE_MAP_W = 900, MORE_MAP_H = 640;      // 지도 비율 (72번: 오른쪽 자리에 맞춰 900×500 → 900×640)
-let spaceMore = null;       // { roomId, idx, view: 'cards' | 'map', stars: [키], focus: 키, sel: { 묶음: Set }, sameFab, sort, sheet: 키, dir: 잇는 방향(이 화면에서만) }
+let spaceMore = null;       // { roomId, idx, view: 'cards' | 'map', face: 'color' | 'photo'(74번), stars: [키], focus: 키, sel: { 묶음: Set }, sameFab, sort, sheet: 키, dir: 잇는 방향(이 화면에서만) }
 function openSpaceMore(roomId, idx) {
     const slot = window.concierge && window.concierge.spaceSlot(roomId, idx);
     if (!slot) return;
     // 잇는 방향 처음 값 = 그 칸에서 고른 방향 → 공간의 색 잇기 답 → 그 중간으로. 바꿔도 공간의 답(room.linkDir)은 그대로
     const mc = slot.room.measuredColor, dir = (mc && mc.wall && mc.floor) ? (slot.curtain.pickDir || slot.room.linkDir || 'bridge') : null;
-    spaceMore = { roomId, idx, view: 'cards', stars: [], focus: null, sel: { bright: new Set(), tex: new Set(), see: new Set(), block: new Set() }, sameFab: false, sort: 'fit', sheet: null, dir, mapK: 1 };
+    spaceMore = { roomId, idx, view: 'cards', face: 'color', stars: [], focus: null, sel: { bright: new Set(), tex: new Set(), see: new Set(), block: new Set() }, sameFab: false, sort: 'fit', sheet: null, dir, mapK: 1 };
     let ov = document.getElementById('spaceMore');
     if (!ov) {
         ov = document.createElement('div');
@@ -1801,7 +1801,7 @@ const moreEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/
 function renderSpaceMore() {
     const ov = document.getElementById('spaceMore'), d = spaceMore && spaceMoreData();
     if (!ov || !d) { closeSpaceMore(); return; }
-    const { slot, curFabName, sameFabCount } = d, room = slot.room, kindWord = slot.kind === 'sheer' ? '속지' : '겉지';
+    const { slot, curFabName, sameFabCount } = d, room = slot.room;
     const mc = room.measuredColor, measured = !!(mc && mc.wall && mc.floor);
     const keep = (ov.querySelector('.more-body') || {}).scrollTop || 0, keepSide = (ov.querySelector('.more-side') || {}).scrollTop || 0;
     // 거름망 (지도에서는 순서 없음). 여러 개 고를 수 있음. 이름표(밝기·결 …) 없이 칩 말만 (72번)
@@ -1811,10 +1811,11 @@ function renderSpaceMore() {
         return '<div class="more-fg">' + Object.keys(f.opts).map(v => `<button type="button" class="more-chip${spaceMore.sel[k].has(v) ? ' on' : ''}" data-mf="${k}:${v}" aria-pressed="${spaceMore.sel[k].has(v)}">${f.opts[v]}</button>`).join('') + '</div>';
     };
     const any = Object.values(spaceMore.sel).some(s => s.size) || spaceMore.sameFab || (spaceMore.sort !== 'fit');
-    // 왼쪽 세로 판 (72번): 뒤로 · 공간 이름 → 카드/색 지도 → 잇는 방향 → 조건 → 후보 칸 4개 → 후보 비교하기
+    // 왼쪽 세로 판 (72번): 뒤로 + 카드/색 지도 → 잇는 방향 → 조건 → (카드) 색·사진 → 후보 칸 4개 → 후보 비교하기
+    //  74번: 공간 이름·겉지 글자는 뺌(그 칸을 눌러 들어왔으니)
     let h = '<aside class="more-side">';
-    h += `<div class="more-name"><button type="button" class="more-back" data-mclose aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button><b class="font-serif-kr">${moreEsc(room.name)}</b><span>${kindWord}</span></div>`;
-    h += `<div class="more-seg"><button type="button" class="${spaceMore.view === 'cards' ? 'on' : ''}" data-mview="cards">카드</button><button type="button" class="${spaceMore.view === 'map' ? 'on' : ''}" data-mview="map">색 지도</button></div>`;
+    h += '<div class="more-top"><button type="button" class="more-back" data-mclose aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button>';
+    h += `<div class="more-seg"><button type="button" class="${spaceMore.view === 'cards' ? 'on' : ''}" data-mview="cards">카드</button><button type="button" class="${spaceMore.view === 'map' ? 'on' : ''}" data-mview="map">색 지도</button></div></div>`;
     // 잇는 방향 (벽·바닥을 둘 다 잰 공간만, 카드·지도 둘 다): 세 줄이 늘 보이고 고른 줄만 왼쪽 선. 카드 "추천 순"과 지도 점선 원이 따라 바뀜
     if (measured) h += '<div class="more-dirs">' + MORE_DIRS.map(k => `<button type="button" class="${spaceMore.dir === k ? 'on' : ''}" data-mdir="${k}" aria-pressed="${spaceMore.dir === k}">${window.concierge.linkWord(k)}</button>`).join('') + '</div>';
     h += '<div class="more-fbar">';
@@ -1823,6 +1824,15 @@ function renderSpaceMore() {
     if (spaceMore.view === 'cards') h += '<select class="more-sort" data-msort aria-label="순서">' + Object.keys(MORE_SORTS).map(k => `<option value="${k}"${spaceMore.sort === k ? ' selected' : ''}>${MORE_SORTS[k]}</option>`).join('') + '</select>';
     if (any) h += '<button type="button" class="more-clear" data-mclear>조건 풀기</button>';
     h += '</div>';
+    // 색·사진 (74번, 카드 보기에서만): 카드를 한꺼번에 색 장 / 사진 장으로. 견본은 지금 원단(사진이 없으면 사진 있는 첫 색). 사진이 하나도 없으면 안 보임
+    if (spaceMore.view === 'cards') {
+        const withPh = [d.cur].concat(d.all).filter(Boolean).map(e => ({ e, ph: photoFor(e.fabricId, e.color) })).find(x => x.ph);
+        if (withPh) {
+            const hex = (d.cur && d.cur.hex) || withPh.e.hex || 'var(--brand-panel)';
+            const face = (f, bg, word) => `<button type="button" class="${spaceMore.face === f ? 'on' : ''}" data-mface="${f}" aria-pressed="${spaceMore.face === f}"><i style="background:${bg}"></i><span>${word}</span></button>`;
+            h += '<div class="more-face">' + face('color', hex, '색') + face('photo', `url('${moreEsc(withPh.ph)}') center / cover no-repeat, ${hex}`, '사진') + '</div>';
+        }
+    }
     // 후보 칸 4개: 처음부터 빈 칸이 보이고, 담으면 색과 번호가 채워짐. 칸을 누르면 빠짐
     h += '<div class="more-cands">' + Array.from({ length: MORE_STAR_MAX }, (_, i) => {
         const k = spaceMore.stars[i], e = k && d.all.find(x => x.key === k);
@@ -1836,6 +1846,8 @@ function renderSpaceMore() {
     const body = ov.querySelector('.more-body'), side = ov.querySelector('.more-side');
     if (body) body.scrollTop = spaceMore.focus ? 0 : keep;
     if (side) side.scrollTop = keepSide;
+    // 사진으로 보기 (74번): 사진이 있는 카드는 둘째 장(사진)으로 넘겨 둠. 다시 그려도(후보 담기 등) 사진 그대로
+    if (spaceMore.view === 'cards' && spaceMore.face === 'photo') ov.querySelectorAll('.more-card .finder-sw-track').forEach(t => { if (t.children.length > 1) t.scrollLeft = t.clientWidth; });
     // 지도 글씨: 그려진 크기를 재서 실제로 보이는 글씨가 14px이 되게 맞춤 (72번). 크기가 달라졌으면 한 번 다시 그림
     const svg = spaceMore.view === 'map' && ov.querySelector('.more-map svg');
     if (svg) {
@@ -1973,6 +1985,7 @@ function spaceMoreClick(ev) {
     const t = ev.target, by = sel => t.closest(sel);
     let b;
     if (by('[data-mclose]')) { closeSpaceMore(); return; }
+    if ((b = by('[data-mface]'))) { spaceMore.face = b.dataset.mface; renderSpaceMore(); return; }      // 색·사진 한꺼번에 (74번)
     if ((b = by('[data-mview]'))) { spaceMore.view = b.dataset.mview; spaceMore.sheet = null; spaceMore.focus = null; renderSpaceMore(); return; }
     if ((b = by('[data-mdir]'))) { spaceMore.dir = b.dataset.mdir; spaceMore.focus = null; renderSpaceMore(); return; }      // 잇는 방향 (72번: 고르는 상자 → 세 줄)
     if ((b = by('[data-mf]'))) { const [k, v] = b.dataset.mf.split(':'), s = spaceMore.sel[k]; s.has(v) ? s.delete(v) : s.add(v); renderSpaceMore(); return; }
@@ -3116,8 +3129,7 @@ function ticketData() {
     const d = new Date();
     const pad = n => String(n).padStart(2, '0');
     return {
-        recipient: custName ? `${custName} 고객님 귀하` : '고객님 귀하',
-        proposalFor: custName ? `${custName} 공간 제안서` : '공간 제안서',      // "원단을 고른 이유" 카드 머리글 (41번)
+        recipient: custName ? `${custName} 고객님 귀하` : '고객님 귀하',      // 고객 이름·날짜는 견적서 머리글에만 (74번)
         date: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`,
         rooms: rooms.map(r => {
             const items = r.curtains.map(c => {
@@ -3616,6 +3628,7 @@ function drawWhy(ctx, data, W, compact, title) {
         return lines;
     };
     // 머리글: 견적서(drawTicket hdr)와 같은 자리·같은 모양. 오른쪽 제목만 "원단을 고른 이유" (우리 집 색 쪽은 title로 바꿔 씀, 37번)
+    //  74번: 고객 이름·날짜 줄은 뺌 — 견적서 쪽에만 있음(견적서만 따로 보내도 그 쪽에 다 있게)
     function hdr() {
         setFont(400, 48, SERIF); spacing('1.7px');
         const wRe = ctx.measureText('Re').width, wDot = ctx.measureText('Re.').width;
@@ -3624,8 +3637,6 @@ function drawWhy(ctx, data, W, compact, title) {
         setFont(400, 26, SERIF);
         if (canSpace) { spacing('5px'); text(title || '공간 제안', RX + 5, 108, 'right', DARK); spacing('0px'); }
         else text(title || '공간 제안', RX, 108, 'right', DARK);
-        setFont(400, 24, SERIF); text(data.proposalFor, CX, 154, 'left', MUTED);
-        setFont(400, 20, SANS); label(data.date, RX, 154, 'right', 2);
         hline(CX, RX, HEAD_Y, DARK, 2.5);
     }
     // 원단 한 묶음: [■ 색 칩 + 코드] 속지 · 원단 이름 색 이름 → 이유 1~3문장 → 회색 안내. 볼드 없이 색 농도(DARK / MUTED / SOFT)로 위계 (39번)

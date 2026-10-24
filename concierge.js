@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261092';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261095';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -413,9 +413,12 @@
     const PHOTO_INTRO = { firstText: 1200, firstHold: 900, nextText: 350, nextHold: 550, veil: 450, focus: 800 };
     const PHOTO_INTRO_STEPS = ["2-Base-Floor", "2-Base-Wall", "2-Base-SheerFeel", "2-Base-BlindKind", "2-Base-Mood", "3-Config-Style"];      // 원단 화면은 "골랐습니다" 화면·찾는 중 화면이 이미 앞에 있음
     let introWant = false, introRoomKey = null, introTimers = [], photoQuestion = '';
+    // 안내 장면(1~2초) 동안은 뒤로를 숨김 — 지나가는 장면이라 누를 일이 없음 (74번)
+    function quietBack(on) { const btn = document.getElementById("v2FloatingPrevBtn"); if (btn) btn.classList.toggle('is-quiet', !!on); }
     function stopPhotoIntro() {
         introTimers.forEach(clearTimeout);
         introTimers = [];
+        quietBack(false);
         ['photoIntro', 'photoVeil'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
     }
     function playPhotoIntro(question) {
@@ -434,7 +437,7 @@
         box.innerHTML = progHtml() + `<h2 class="q-title font-serif-kr"><span class="photo-intro-q">${question}</span></h2>`;
         stage.classList.add(reduced ? 'is-hidden' : 'is-soft');
         vp.appendChild(box);
-        syncBack(false);
+        quietBack(true);
         let done = false;
         const settle = () => {      // 사진이 맺힘 (움직임 줄이기: 서서히 나타나기만)
             stage.classList.add('is-focusing');
@@ -450,6 +453,7 @@
             introTimers.forEach(clearTimeout);
             introTimers = [];
             box.remove();
+            quietBack(false);
             syncBack(true);
             if (now) { stage.classList.remove('is-soft', 'is-hidden'); const v = document.getElementById('photoVeil'); if (v) v.remove(); return; }
             settle();
@@ -1418,7 +1422,6 @@
                 html += `<div class="fin-stage${finalZoom ? ' is-zoom' : ''}">`;
                 html += '<div class="fin-paper" id="finPaper"><p class="fin-wait font-serif-kr">견적서를 준비하고 있어요</p></div>';
                 html += '<aside class="fin-side">';
-                html += `<p class="fin-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${esc(currentCust)} ` : ''}공간 제안서</p>`; // 41번
                 html += '<div class="fin-pager font-serif-kr" id="finPager"></div>';
                 html += '<div class="fin-main font-serif-kr">';
                 html += '<button type="button" class="dos-act is-main" id="finSave" onclick="window.concierge.saveQuote()">견적서 저장</button>';
@@ -1495,8 +1498,7 @@
         const sp = showHouse && (typeof houseSpacesOf === 'function') ? houseSpacesOf(data) : [];
         const whyInfo = (typeof whySetsOf === 'function') ? whySetsOf(data) : { rooms: [] };
         const showWhy = !!(whyInfo.rooms && whyInfo.rooms.length);
-        const CH_WORDS = ['하나', '둘', '셋'];
-        let chIdx = 0;
+        // 74번: 장 번호(하나·둘·셋)는 뺌 — 견적서만 따로 봐도 어색하지 않게. 고객 이름·날짜는 견적서 장 머리글에만
 
         let h = '<div class="fin-ed-bar">';
         h += '<button type="button" class="fin-ed-back" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button>';
@@ -1509,16 +1511,14 @@
         h += '<div class="fin-ed-doc">';
         h += '<header class="fin-ed-head">';
         h += '<div class="fin-ed-logo font-serif-kr" data-staff-hold>Re<i>.</i>dam</div>';
-        h += `<div class="fin-ed-meta"><div class="fin-ed-for font-serif-kr">${esc(data.proposalFor)}</div><div class="fin-ed-date">${esc(String(data.date || '').replace(/\./g, '. '))}</div></div>`;
         h += '</header>';
 
         // 1장. 공간의 색과 빛 (65번) (원단을 담은 공간 2곳 이상 + 색 값이 있을 때)
         if (showHouse) {
-            const chNum = CH_WORDS[chIdx++] || '하나';
             const brief = (typeof houseBrief === 'function') ? houseBrief(sp) : [];
             const hasFur = sp.some(s => s.fur && s.fur.length);
             h += '<section class="fin-chapter" id="finSecHouse"><div class="fin-ch-grid">';
-            h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간의 색과 빛</h2>`;
+            h += '<div class="fin-ch-side"><h2 class="fin-ch-ttl font-serif-kr">공간의 색과 빛</h2>';
             h += '<p class="fin-ch-sub">공간마다 잰 벽·바닥·가구 색과 고른 원단이 어떻게 조화를 이루는지 모았어요.</p>'; // 41번: 조화를 이루는지
             h += '</div>';      // 왼쪽 주름 세로선은 뺌 (65번: 2·3번과 같게)
             h += '<div>';
@@ -1558,11 +1558,10 @@
 
         // 2장. 공간 제안 (손님이 상담에서 답한 공간들)
         if (showWhy) {
-            const chNum = CH_WORDS[chIdx++] || '둘';
             h += '<section class="fin-chapter" id="finSecWhy">';
-            // 2장 대주제 헤더: [둘] 공간 제안 (42번/43번: 사족 문구 및 브랜드 4선 제거, 담백한 헤더)
+            // 2장 대주제 헤더: 공간 제안 (42번/43번: 사족 문구 및 브랜드 4선 제거, 담백한 헤더)
             h += '<div class="fin-ch-intro">';
-            h += `<span class="fin-ch-num font-serif-kr">${chNum}</span><h2 class="fin-ch-ttl font-serif-kr">공간 제안</h2>`;
+            h += '<h2 class="fin-ch-ttl font-serif-kr">공간 제안</h2>';
             h += '</div>';
 
             whyInfo.rooms.forEach((R, idx) => {
@@ -1627,11 +1626,11 @@
         }
 
         // 3장. 견적서
-        const chEst = CH_WORDS[chIdx++] || '셋';
         h += '<section class="fin-chapter" id="finSecEst"><div class="fin-ch-grid">';
-        h += `<div class="fin-ch-side"><span class="fin-ch-num font-serif-kr">${chEst}</span><h2 class="fin-ch-ttl font-serif-kr">견적서</h2>`;
+        h += '<div class="fin-ch-side"><h2 class="fin-ch-ttl font-serif-kr">견적서</h2>';
         h += '<p class="fin-ch-sub">실측한 크기와 고르신 부자재·가공을 반영한 내역이에요.</p></div>';
-        h += '<div><div class="fin-est-table">';
+        // 74번: 견적서 모양은 그대로, 표 바로 위에 이름·날짜 한 줄 (저장되는 견적서 종이 머리글과 같은 자리) — 견적서만 따로 봐도 그 장에 다 있게
+        h += `<div><div class="fin-est-meta"><span class="font-serif-kr">${esc(data.recipient)}</span><span class="fin-est-date">${esc(String(data.date || '').replace(/\./g, '. '))}</span></div><div class="fin-est-table">`;
         (data.rooms || []).forEach(room => {
             h += '<div class="fin-est-space">';
             h += `<div class="fin-est-hd"><span class="fin-est-rname font-serif-kr">${esc(room.name)}</span>${room.sampleOnly ? '' : `<span class="fin-est-rsum font-serif-kr">${room.total.toLocaleString()}원</span>`}</div>`;
