@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261088';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261089';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -771,8 +771,15 @@ function photoFallback(el) {
 //  - 견적서·발주서에는 "블랑 3번"처럼 표시됩니다.
 // ==============================================================
 let __colorsCache = null;
+// 엑셀용 글자 모양 ="01" → 01 (색 재기 파일이 번호 앞 0을 지키려고 이렇게 씀, 70번)
+function stripExcelText(v) {
+    if (v == null) return v;
+    const m = /^\s*="(.*)"\s*$/.exec(String(v));
+    return m ? m[1] : v;
+}
 function normalizeColorName(v) {
-    const s = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+    const t = stripExcelText(v);
+    const s = String(t == null ? '' : t).trim().replace(/\s+/g, ' ');
     if (!s) return '';
     const m = /^(\d+)\s*번?$/.exec(s);
     return m ? String(parseInt(m[1], 10)) : s;
@@ -901,6 +908,7 @@ const BLIND_NAME_ALIASES = {
 };
 // 색상 입력표(엑셀/CSV) 행을 읽어 반영: 열 이름에 "원단 ID", "색상", "톤"이 들어 있으면 됩니다. ("색 이름", "밝기", "색상코드", "붉은기", "노란기" 열은 있으면 읽음)
 function importColorRows(rows) {
+    rows = (rows || []).map(r => (r || []).map(stripExcelText)); // 칸마다 ="…" 겉모양 벗기기 (70번)
     let hi = -1;
     for (let i = 0; i < Math.min(rows.length, 15); i++) {
         const t = (rows[i] || []).map(x => String(x == null ? '' : x)).join('|');
