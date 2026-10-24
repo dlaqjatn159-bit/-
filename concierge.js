@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261089';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261090';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1371,6 +1371,7 @@
             // 세로(탭 세로·휴대폰)에서는 한 권의 도록처럼 위에서 아래로 이어 읽는 연속 스크롤 에디토리얼 제안서(40-2)로 보여 줌
             case "7-Final-Dossier": {
                 if (lastRenderedStep !== "7-Final-Dossier") { finalPage = 0; finalZoom = false; }      // 최종 제안에 새로 들어오면 첫 쪽·기본 크기부터
+                const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');      // 고객 이름을 적으면 이 칸이 없어 최종 제안이 안 열리던 일 (71번)
                 html += `<div class="fin-stage${finalZoom ? ' is-zoom' : ''}">`;
                 html += '<div class="fin-paper" id="finPaper"><p class="fin-wait font-serif-kr">견적서를 준비하고 있어요</p></div>';
                 html += '<aside class="fin-side">';
