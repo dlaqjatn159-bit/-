@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261090';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261091';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1150,9 +1150,9 @@
                 const mc = state.editingRoom.measuredColor;
                 const bar = pos => `<span class="link-prev" aria-hidden="true"><span class="link-bar" style="background:linear-gradient(90deg, ${mc.wall.hex}, ${mc.bridge.hex} 35%, ${mc.floor.hex})"></span><span class="link-mk" style="left:${pos}%"></span><span class="link-ends"><em>벽</em><em>바닥</em></span></span>`;
                 html += askStage('공간의 톤을 어떻게 맞출까요?', '답변을 확인해 보니 어울릴 색이 보여요.', [ // 41번
-                    { label: '넓어 보이게', desc: '넓어 보이는 색', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) }, // 41번
-                    { label: '그 중간으로', desc: '벽과 바닥의 중간 톤', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) }, // 41번
-                    { label: '바닥과 어울리게', desc: '바닥 톤을 따르는 색', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
+                    { label: '벽 색 기준', desc: '공간이 넓어 보여요', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) }, // 41번 · 72번(판정 대신 기준 말)
+                    { label: '벽·바닥 사이', desc: '벽과 바닥을 이어 줘요', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) }, // 41번
+                    { label: '바닥 색 기준', desc: '공간이 따뜻해 보여요', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
                 ]);
                 break;
             }
@@ -2995,7 +2995,7 @@
             const btn = document.querySelector('#finPager .fin-zoom');
             if (btn) btn.textContent = finalZoom ? '기본 크기' : '크게 보기';
         },
-        linkWord: function(dir) { return { wall: '넓어 보이게', bridge: '그 중간으로', floor: '바닥과 어울리게' }[dir] || ''; },
+        linkWord: function(dir) { return { wall: '벽 색 기준', bridge: '벽·바닥 사이', floor: '바닥 색 기준' }[dir] || ''; },      // 72번: 색 잇기 질문·더 보기 잇는 방향·지도 원 이름표
         cardNameParts: function(fabricId, colorTag) {
             const f = getLiveDb().find(x => x.id === fabricId);
             return f ? splitNameColor(f, colorTag || '') : null;
