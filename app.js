@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261091';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261092';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261091';
+const REDAM_BUILD = '20261092';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2051,7 +2051,7 @@ function finderMapHtml(all, on, ref, mc) {
         }
         if (mc.bridge) {
             const bx = x(mc.bridge.b), by = y(mc.bridge.L);
-            over += `<g class="finder-map-bridge" pointer-events="none"><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="12" fill="none" stroke="#91401a" stroke-width="2.5"/><text x="${(bx - 16).toFixed(1)}" y="${(by + 4).toFixed(1)}" text-anchor="end" fill="#91401a" font-weight="700">이어주는 색</text></g>`;
+            over += `<g class="finder-map-bridge" pointer-events="none"><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="12" fill="none" stroke="#8a4a22" stroke-width="2.5"/><text x="${(bx - 16).toFixed(1)}" y="${(by + 4).toFixed(1)}" text-anchor="end" fill="#8a4a22" font-weight="700">이어주는 색</text></g>`;
         }
         if (mc.wall) over += mark(mc.wall, '벽', '#2b221a');
         if (mc.floor) over += mark(mc.floor, '바닥', '#8a4a22');

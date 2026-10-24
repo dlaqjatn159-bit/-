@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261091';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261092';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -264,6 +264,7 @@
             stepHistory.push({ step: state.step, idx: state.currentItemIndex });
         }
         state.step = nextStep;
+        introWant = pushHistory !== false && PHOTO_INTRO_STEPS.includes(nextStep);      // 사진 화면 앞 안내 장면은 앞으로 갈 때만 (뒤로 오면 건너뜀, 73번)
         updatePrevButtonVisibility();
         render();
     }
@@ -368,22 +369,102 @@
     // 색 잇기 방향과 어울리는 분위기 카드 (추천 표시만, 점수는 그대로 — 사장님이 써 보며 정함)
     const LINK_MOODS = { wall: ['urban_clean', 'airy_bright'], bridge: ['balanced_neutral'], floor: ['soft_warm', 'textured_linen'] };
     // 글 질문 화면 ("제안합니다" 화면과 같은 분위기): 큰 질문 + 글자 선택지. 사진이 필요 없는 질문에 사용
+    // 화면 규칙표 (73번): 선택지는 이름만(설명은 사장님이 말로), "잘 모르겠어요"·"지금은 못 재요" 같은 조용한 보조 행동(quiet)은 아래 작게. 공간 이름은 왼쪽 위 뒤로 가기에
     function askStage(question, sub, opts, o) {
         o = o || {};
-        const steps = diagnosisSteps(), at = steps.indexOf(state.step);
-        let h = '<div class="ambient-stage ask-stage"><div class="ambient-light-glow"></div>';
-        if (at >= 0) h += '<div class="step-dots ask-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
+        let h = '<div class="ambient-stage ask-stage">' + progHtml();
         if (o.top) h += o.top;
-        if (!o.noRoom && state.editingRoom && state.editingRoom.name) h += `<span class="q-meta">${state.editingRoom.name}</span>`;
         h += `<h2 class="q-title font-serif-kr">${question}</h2>`;
         if (sub) h += `<p class="q-sub">${sub}</p>`;
         if (o.extra) h += o.extra;
-        h += `<div class="ask-opts${opts.length > 4 ? ' is-many' : ''}">`;
-        opts.forEach(op => {
-            h += `<button type="button" class="ask-opt${op.rec ? ' is-rec' : ''}${op.was ? ' was-picked' : ''}" onclick="${op.on}"><span class="ask-label font-serif-kr">${op.label}</span>${op.desc ? `<span class="ask-desc">${op.desc}</span>` : ''}${op.extra || ''}</button>`;
+        const main = opts.filter(op => !op.quiet), quiet = opts.filter(op => op.quiet);
+        h += `<div class="ask-opts${main.length > 4 ? ' is-many' : ''}">`;
+        main.forEach(op => {
+            h += `<button type="button" class="ask-opt${op.rec ? ' is-rec' : ''}${op.was ? ' was-picked' : ''}" onclick="${op.on}"><span class="ask-label font-serif-kr">${op.label}</span>${op.extra || ''}</button>`;
         });
-        h += '</div></div>';
+        h += '</div>';
+        if (quiet.length) h += '<div class="ask-quiet">' + quiet.map(op => `<button type="button" class="r-quiet${op.was ? ' was-picked' : ''}" onclick="${op.on}">${op.label}</button>`).join('') + '</div>';
+        h += '</div>';
         return h;
+    }
+    // ---- 화면 규칙표 (73번): 진행 선 · 뒤로 가기 · 사진 화면 앞 안내 장면 ----
+    // 진행 선: 화면 맨 위 가는 선(흙빛이 차오름). 공간 추가(종류 → 크기 → 색)와 공간 상담(질문들 → 원단 → 마무리)을 따로 셈
+    const ADD_STEPS = ["1.5-Room-Type", "1.6-Add-Size", "1.7-Add-Same", "1.8-Add-Dir"];
+    function progHtml() {
+        let steps = ADD_STEPS, at = steps.indexOf(state.step);
+        if (at < 0) { steps = diagnosisSteps().concat(["3.5-Bridge", "4-Fabric-Queue", "6-Finish"]); at = steps.indexOf(state.step); }
+        if (at < 0) return '';
+        return `<div class="r-prog"><i style="width:${Math.round((at + 1) / steps.length * 100)}%"></i></div>`;
+    }
+    // 뒤로 가기는 늘 왼쪽 위 한 곳: 공간 안에서는 "← 공간 이름"(위치 표시 겸함), 사진 화면은 종이색 작은 네모 "←"
+    const PHOTO_STEPS = ["2-Base-Floor", "2-Base-Wall", "2-Base-SheerFeel", "2-Base-BlindKind", "2-Base-Mood", "3-Config-Style", "4-Fabric-Queue"];
+    const NO_ROOM_STEPS = ["0-Start", "0-Welcome", "1-Space", "1.5-Room-Type", "7-Final-Dossier"];
+    function syncBack(photo) {
+        const btn = document.getElementById("v2FloatingPrevBtn");
+        if (!btn) return;
+        const nm = !NO_ROOM_STEPS.includes(state.step) && state.editingRoom && state.editingRoom.name;
+        btn.textContent = photo ? '←' : `← ${nm ? nm + (state.step === "1-Space-Edit" ? ' · 수정하기' : '') : '이전'}`;
+        btn.classList.toggle('is-tab', !!photo);
+        btn.setAttribute('aria-label', '뒤로');
+    }
+    // 사진 화면 앞 안내 장면: 종이 화면에 질문 한 줄 → 흰빛이 차오름 → 사진이 흐릿하고 밝은 상태에서 또렷해짐 (로고 모션의 뜻만, 점은 안 씀)
+    //  그 공간의 첫 사진 화면은 글자가 흰빛 속에서 살구빛을 거쳐 먹색으로 맺히고(약 3.4초), 그다음은 글자가 그냥 나타남(약 2.2초)
+    //  누르지 않아도 넘어가고, 안내 중 아무 데나 누르면 바로 사진으로. 시간(밀리초)은 여기 한 곳에서 조절
+    const PHOTO_INTRO = { firstText: 1200, firstHold: 900, nextText: 350, nextHold: 550, veil: 450, focus: 800 };
+    const PHOTO_INTRO_STEPS = ["2-Base-Floor", "2-Base-Wall", "2-Base-SheerFeel", "2-Base-BlindKind", "2-Base-Mood", "3-Config-Style"];      // 원단 화면은 "골랐습니다" 화면·찾는 중 화면이 이미 앞에 있음
+    let introWant = false, introRoomKey = null, introTimers = [], photoQuestion = '';
+    function stopPhotoIntro() {
+        introTimers.forEach(clearTimeout);
+        introTimers = [];
+        ['photoIntro', 'photoVeil'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
+    }
+    function playPhotoIntro(question) {
+        const stage = document.querySelector('#v2Viewport .bookmark-stage'), vp = document.getElementById('v2Viewport');
+        if (!stage || !vp || !question) return;
+        const key = state.editingRoomId != null ? state.editingRoomId : (state.editingRoom && state.editingRoom.name);
+        const first = introRoomKey !== key;
+        introRoomKey = key;
+        let reduced = false;
+        try { reduced = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+        const T = PHOTO_INTRO, hold = first ? T.firstText + T.firstHold : T.nextText + T.nextHold;
+        [['--pi-first', T.firstText], ['--pi-next', T.nextText], ['--pi-veil', T.veil], ['--pi-focus', T.focus]].forEach(([k, ms]) => vp.style.setProperty(k, ms + 'ms'));
+        const box = document.createElement('div');
+        box.id = 'photoIntro';
+        box.className = 'photo-intro' + (first && !reduced ? ' is-first' : '') + (reduced ? ' is-reduced' : '');
+        box.innerHTML = progHtml() + `<h2 class="q-title font-serif-kr"><span class="photo-intro-q">${question}</span></h2>`;
+        stage.classList.add(reduced ? 'is-hidden' : 'is-soft');
+        vp.appendChild(box);
+        syncBack(false);
+        let done = false;
+        const settle = () => {      // 사진이 맺힘 (움직임 줄이기: 서서히 나타나기만)
+            stage.classList.add('is-focusing');
+            void stage.offsetWidth;      // 바뀌기 전 모습을 한 번 그려 둬야 서서히 바뀜
+            stage.classList.remove('is-soft', 'is-hidden');
+            const v = document.getElementById('photoVeil');
+            if (v) v.classList.remove('on');
+            introTimers.push(setTimeout(() => { stage.classList.remove('is-focusing'); const v = document.getElementById('photoVeil'); if (v) v.remove(); }, T.focus + 50));
+        };
+        const reveal = (now) => {
+            if (done) return;
+            done = true;
+            introTimers.forEach(clearTimeout);
+            introTimers = [];
+            box.remove();
+            syncBack(true);
+            if (now) { stage.classList.remove('is-soft', 'is-hidden'); const v = document.getElementById('photoVeil'); if (v) v.remove(); return; }
+            settle();
+        };
+        box.onclick = () => reveal(true);
+        if (reduced) { introTimers.push(setTimeout(() => reveal(false), hold)); return; }
+        introTimers.push(setTimeout(() => {      // 흰빛이 차오름
+            const veil = document.createElement('div');
+            veil.id = 'photoVeil';
+            veil.className = 'photo-veil';
+            vp.appendChild(veil);
+            void veil.offsetWidth;
+            veil.classList.add('on');
+            introTimers.push(setTimeout(() => reveal(false), T.veil));
+        }, hold));
     }
     // 고른 원단으로 칸을 채우는 스타일: 톤 색 위에 사진(있으면)을 덮음. 첫 화면 공간 칸·제안서 원단 칸이 함께 씀
     function fabricFillStyle(fabricId, colorName) {
@@ -478,13 +559,14 @@
     //  공간 추가의 색 단계(색 재기 결과 아래 · "같나요?" · 못 재면 따로 한 화면)와 수정하기에 같은 모양. 값은 state.editingRoom.windowDir
     function dirPickerHtml(noTitle) {
         const ed = state.editingRoom || {}, cur = windowDirOf(ed.windowDir), txt = windowDirText(cur);
-        let h = '<div class="dir-pick">' + (noTitle ? '' : '<span class="dir-pick-k">빛은 어디에서 들어오나요?</span>') + '<div class="dir-btns">';
+        let h = '<div class="dir-pick">' + (noTitle ? '' : '<span class="dir-pick-k font-serif-kr">빛은 어디에서 들어오나요?</span>') + '<div class="dir-btns">';
         ['E', 'W', 'S', 'N'].forEach(d => {
             const on = cur.includes(d), off = !on && (cur.includes(WINDOW_DIR_OPP[d]) || cur.length >= 2);
             h += `<button type="button" class="dir-btn font-serif-kr${on ? ' on' : ''}"${off ? ' disabled' : ''} aria-pressed="${on}" onclick="event.stopPropagation(); window.concierge.toggleDir('${d}')">${WINDOW_DIR_WORD[d]}</button>`;
         });
-        h += `<button type="button" class="dir-btn dir-none${ed.dirUnknown && !cur.length ? ' on' : ''}" onclick="event.stopPropagation(); window.concierge.toggleDir('')">잘 모르겠어요</button></div>`;
-        h += `<span class="dir-pick-val">${txt ? `<b class="font-serif-kr">${txt}향</b>` : (ed.dirUnknown ? '방향은 몰라도 괜찮아요' : '')}</span></div>`; // 41번
+        h += '</div>';
+        // 고른 방향은 흙빛 밑줄로 바로 보이므로 "남향" 확인 글은 뺌 (73번). "잘 모르겠어요"는 조용한 보조 행동
+        h += `<button type="button" class="r-quiet dir-none${ed.dirUnknown && !cur.length ? ' on' : ''}" onclick="event.stopPropagation(); window.concierge.toggleDir('')">잘 모르겠어요</button></div>`;
         return h;
     }
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
@@ -784,34 +866,23 @@
         const curW = isPart ? (ed.partWidth != null ? ed.partWidth : ed.width) : (ed.spaceWidth != null ? ed.spaceWidth : ed.width);
         const curH = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
         const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-        const measureBox = (target, label, val, steps) =>
-            `<div id="measureBox_${target}" class="measure-box msr-box" onclick="window.concierge.openKeypad('${target}')">` +
-            `<span class="msr-label">${label}</span>` +
-            `<div class="msr-num-wrap">` +
-            `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${val}</span><small>cm</small></div>` +
-            stepperHtml(target, label) +
-            `</div>` +
-            '<span class="msr-hint">숫자를 누르면 직접 입력</span>' + nudgeRowHtml(target, steps) + '</div>';
         const row = (k, part) => {
             const p = roomPart(ed, part);
             return `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 안 쟀어요'}</span>${hexCode(p)}`
                 + `<button type="button" class="ed-btn" onclick="window.concierge.editRoomColor('${part}')">${p ? '다시 재기' : '재기'}</button></div>`;
         };
         const house = houseColor();
-        let h = '<div class="msr-stage">';
-        h += '<div class="msr-top-bar">';
-        h += `<span class="q-meta">${esc(r.name)} · 수정하기</span>`;
+        let h = '<div class="msr-stage msr-edit">';      // 공간 이름 · 수정하기는 왼쪽 위 뒤로 가기에 (73번)
         h += '<div class="msr-mode-switch" role="tablist" aria-label="크기 측정 모드">' +
-            `<button type="button" class="msr-mode-btn ${!isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('full')">전체</button>` +
-            `<button type="button" class="msr-mode-btn ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
-            '</div></div>';
-        h += '<h2 class="msr-title font-serif-kr">크기와 색을 고칠게요</h2>';
+            `<button type="button" class="msr-mode-btn font-serif-kr ${!isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('full')">전체</button>` +
+            `<button type="button" class="msr-mode-btn font-serif-kr ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
+            '</div>';
         if (isPart && ((ed.spaceWidth || ed.width) > 0 || (ed.spaceHeight || ed.height) > 0)) {
             h += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${ed.spaceWidth || ed.width || 0} × ${ed.spaceHeight || ed.height || 0}cm</b></p>`;
         }
         h += '<div class="msr-grid">' +
-            measureBox('width', isPart ? '창 넓이' : '공간 넓이', curW, [-10, -5, -1, 1, 5, 10]) +
-            measureBox('height', isPart ? '창 높이' : '공간 높이', curH, [-10, -5, -1, 1, 5, 10]) +
+            msrBoxHtml('width', isPart ? '창 넓이' : '공간 넓이', curW) +
+            msrBoxHtml('height', isPart ? '창 높이' : '공간 높이', curH) +
             '</div>'; // 41번, 43번
         h += `<div class="ed-color">${row('벽', 'wall')}${row('바닥', 'floor')}`;
         if (house) h += '<button type="button" class="ed-sub" onclick="window.concierge.editRoomUseHouse()">집 기본 색으로 맞추기</button>';
@@ -839,15 +910,22 @@
                 const on = (curComp === k);
                 h += `<button type="button" class="ed-comp-btn font-serif-kr${on ? ' on' : ''}" onclick="window.concierge.switchComposition('${k}')">${txt}</button>`;
             });
-            h += `</div><span class="ed-comp-hint">${compHints[curComp] || ''}</span></div>`;
+            h += '</div></div>';      // 구성 설명 줄은 뺌 (73번, 사장님이 말로)
         }
-        if (r.isConfigured) h += '<p class="q-sub ed-note">고른 원단은 그대로 두고, 바뀐 색이나 구성으로 어울림을 살펴요.</p>';
+        if (r.isConfigured) h += '<p class="q-sub ed-note">고른 원단은 그대로 두고, 바뀐 색이나 구성으로 다시 살펴요.</p>';
         h += '<div class="ed-acts font-serif-kr"><button type="button" class="msr-add" onclick="window.concierge.saveRoomEdit()">저장</button>';
         h += `<button type="button" class="ed-sub" onclick="window.concierge.deleteRoom(${r.id})">이 공간 삭제</button></div>`;
         h += '</div>';
         return h;
     }
-    // 치수 100 단위 증감 꺽쇠 버튼 (위 +100, 아래 −100, 42번)
+    const NUDGE_STEPS = [-100, -10, -1, 1, 10, 100];
+    function msrBoxHtml(target, label, val) {
+        return `<div id="measureBox_${target}" class="measure-box msr-box" onclick="window.concierge.openKeypad('${target}')">` +
+            `<span class="msr-label font-serif-kr">${label}</span>` +
+            `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${val}</span><small> cm</small></div>` +
+            nudgeRowHtml(target, NUDGE_STEPS) + '</div>';
+    }
+    // 치수 100 단위 증감 꺽쇠 버튼 (위 +100, 아래 −100, 42번) — 73번부터는 숫자 줄(±100)로 합쳐 안 씀
     function stepperHtml(target, label) {
         return '<div class="msr-stepper">' +
             `<button type="button" class="msr-step-btn up" aria-label="${label} 100cm 올리기" onclick="event.stopPropagation(); window.concierge.nudge('${target}', 100)"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>` +
@@ -860,12 +938,10 @@
             `<button type="button" class="nudge-btn font-serif-kr" aria-label="${target === 'width' ? '넓이' : '높이'} ${s > 0 ? '+' : '−'}${Math.abs(s)}cm" onclick="event.stopPropagation(); window.concierge.nudge('${target}', ${s})">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`
         ).join('') + '</div>';
     }
-    function stepHead(question, sub) {
-        const steps = diagnosisSteps();
-        const at = steps.indexOf(state.step);
-        let dots = '';
-        if (at >= 0) dots = '<div class="step-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
-        return `<div class="step-head">${dots}<p class="step-q font-serif-kr">${question}</p>${sub ? `<p class="step-sub">${sub}</p>` : ''}</div>`;
+    // 사진 화면의 질문: 사진 위 어두운 알약 대신 앞의 안내 장면에서 보여 줌 (73번). 사진 위에는 진행 선만
+    function stepHead(question) {
+        photoQuestion = question;
+        return progHtml();
     }
 
     // ---- 옵션 설명 그림 (적용 전 / 적용 후). 가격 대신 "무엇이 좋아지는지"를 보여줌 ----
@@ -940,6 +1016,8 @@
     function render() {
         const main = document.getElementById("v2Viewport");
         if (!main) return;
+        stopPhotoIntro();
+        photoQuestion = '';
         // 공간이 하나도 없으면(모두 삭제 등) 첫 화면으로, 구성을 마친 공간이 없으면 최종 제안 대신 공간 화면으로
         if (state.step === "7-Final-Dossier" && !state.roomsCart.some(r => r.isConfigured)) state.step = "1-Space";
         if (state.step === "1-Space" && state.roomsCart.length === 0) {
@@ -984,14 +1062,14 @@
             // [Step 1.5: 7종 공간 선택]
             case "1.5-Room-Type":
                 html += askStage('어느 공간의 창인가요?', '', [
-                    { label: '거실', desc: '빛과 쉼의 중심', on: "window.concierge.chooseRoomType('거실')" },
-                    { label: '방', desc: '편안한 잠과 쉼', on: "window.concierge.chooseRoomType('방')" },
-                    { label: '서재', desc: '몰입을 위한 빛', on: "window.concierge.chooseRoomType('서재')" },
-                    { label: '주방', desc: '단정하고 깨끗하게', on: "window.concierge.chooseRoomType('주방')" },
-                    { label: '알파룸', desc: '다목적 공간', on: "window.concierge.chooseRoomType('알파룸')" },
-                    { label: '드레스룸', desc: '옷감 보호', on: "window.concierge.chooseRoomType('드레스룸')" },
-                    { label: '베란다', desc: '직사광 조절', on: "window.concierge.chooseRoomType('베란다')" }
-                ], { noRoom: true });
+                    { label: '거실', on: "window.concierge.chooseRoomType('거실')" },
+                    { label: '방', on: "window.concierge.chooseRoomType('방')" },
+                    { label: '서재', on: "window.concierge.chooseRoomType('서재')" },
+                    { label: '주방', on: "window.concierge.chooseRoomType('주방')" },
+                    { label: '알파룸', on: "window.concierge.chooseRoomType('알파룸')" },
+                    { label: '드레스룸', on: "window.concierge.chooseRoomType('드레스룸')" },
+                    { label: '베란다', on: "window.concierge.chooseRoomType('베란다')" }
+                ]);
                 break;
 
             // [공간 추가 ② 크기] 실측 화면 모양 (옵션은 원단을 고른 뒤 마무리에서)
@@ -1002,32 +1080,20 @@
                 const curW = isPart ? (d.partWidth != null ? d.partWidth : d.width) : (d.spaceWidth != null ? d.spaceWidth : d.width);
                 const curH = isPart ? (d.partHeight != null ? d.partHeight : d.height) : (d.spaceHeight != null ? d.spaceHeight : d.height);
 
-                const measureBox = (target, label, val, steps) =>
-                    `<div id="measureBox_${target}" class="measure-box msr-box" onclick="window.concierge.openKeypad('${target}')">` +
-                    `<span class="msr-label">${label}</span>` +
-                    `<div class="msr-num-wrap">` +
-                    `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${val}</span><small>cm</small></div>` +
-                    stepperHtml(target, label) +
-                    `</div>` +
-                    '<span class="msr-hint">숫자를 누르면 직접 입력</span>' + nudgeRowHtml(target, steps) + '</div>';
-
-                html += '<div class="msr-stage">';
-                html += '<div class="msr-top-bar">';
-                html += `<span class="q-meta">${d.name} · ${isPart ? '부분 크기 (창)' : '공간 크기 (전체)'}</span>`;
+                // 시안대로 (73번): 제목·"숫자를 누르면 직접 입력" 없이 커다란 숫자 두 칸, 전체/부분은 오른쪽 위 선택지
+                html += '<div class="msr-stage">' + progHtml();
                 html += '<div class="msr-mode-switch" role="tablist" aria-label="크기 측정 모드">' +
-                    `<button type="button" class="msr-mode-btn ${!isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('full')">전체</button>` +
-                    `<button type="button" class="msr-mode-btn ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
-                    '</div></div>';
-
-                html += `<h2 class="msr-title font-serif-kr">${isPart ? '창 크기를 적어 주세요' : '크기를 적어 주세요'}</h2>`;
+                    `<button type="button" class="msr-mode-btn font-serif-kr ${!isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('full')">전체</button>` +
+                    `<button type="button" class="msr-mode-btn font-serif-kr ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
+                    '</div>';
                 if (isPart && ((d.spaceWidth || d.width) > 0 || (d.spaceHeight || d.height) > 0)) {
                     html += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${d.spaceWidth || d.width || 0} × ${d.spaceHeight || d.height || 0}cm</b></p>`;
                 }
                 html += '<div class="msr-grid">' +
-                    measureBox('width', isPart ? '창 넓이' : '넓이', curW, [-10, -5, -1, 1, 5, 10]) +
-                    measureBox('height', isPart ? '창 높이' : '높이', curH, [-10, -5, -1, 1, 5, 10]) +
+                    msrBoxHtml('width', isPart ? '창 넓이' : '넓이', curW) +
+                    msrBoxHtml('height', isPart ? '창 높이' : '높이', curH) +
                     '</div>'; // 41번, 43번
-                html += '<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.addRoomColor()">다음 · 색 →</button>';
+                html += '<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.addRoomColor()">다음 →</button>';
                 html += '</div>';
                 break;
             }
@@ -1038,11 +1104,11 @@
                 const wf = (k, c, part) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? measuredName(part, c) : '아직 안 쟀어요'}</span>${hexCode(c && { hex: c.hex, src: 'measured' })}</div>`;
                 const extra = (hc ? `<div class="ask-house"><span class="ask-house-k">이 집의 기본 색</span>${wf('벽', hc.wall, 'wall')}${wf('바닥', hc.floor, 'floor')}</div>` : '') + dirPickerHtml();      // 창 방향은 공간마다 (이어받지 않음)
                 html += askStage('앞 공간과 바닥 · 벽이 같나요?', '', [
-                    { label: '같아요', desc: '집 기본 색 그대로', rec: true, on: "window.concierge.finishAddRoom('house')" },
-                    { label: '벽만 달라요', desc: '벽만 다시 재요', on: "window.concierge.measureNewRoom('wall')" },
-                    { label: '바닥만 달라요', desc: '바닥만 다시 재요', on: "window.concierge.measureNewRoom('floor')" },
-                    { label: '둘 다 달라요', desc: '바닥·벽 다시 재요', on: "window.concierge.measureNewRoom('both')" },
-                    { label: '지금은 못 재요', desc: '상담 때 카드로 골라요', on: "window.concierge.finishAddRoom('none')" }
+                    { label: '같아요', rec: true, on: "window.concierge.finishAddRoom('house')" },
+                    { label: '벽만 달라요', on: "window.concierge.measureNewRoom('wall')" },
+                    { label: '바닥만 달라요', on: "window.concierge.measureNewRoom('floor')" },
+                    { label: '둘 다 달라요', on: "window.concierge.measureNewRoom('both')" },
+                    { label: '지금은 못 재요', quiet: true, on: "window.concierge.finishAddRoom('none')" }
                 ], { extra });
                 break;
             }
@@ -1050,10 +1116,8 @@
             // [창 방향 (35번)] 첫 공간에서 색을 못 쟀을 때(공간 추가) · "이렇게 들었어요"에서 방향 줄을 눌렀을 때
             case "1.8-Add-Dir": {
                 const ed = state.editingRoom;
-                html += '<div class="ambient-stage ask-stage">';
-                html += `<span class="q-meta">${ed.name} · 창</span>`;
+                html += '<div class="ambient-stage ask-stage">' + progHtml();
                 html += '<h2 class="q-title font-serif-kr">빛은 어디에서 들어오나요?</h2>';
-                html += '<p class="q-sub">해가 드는 때와 빛의 색을 공간 제안에 담아 드려요</p>';
                 html += dirPickerHtml(true);
                 html += `<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.dirDone()">${ed.addDraft ? `${ed.name} 담기` : '다음'}</button>`;
                 html += '</div>';
@@ -1067,8 +1131,8 @@
                 const srcDesc = src ? [sp.floor ? `바닥 ${sp.floor.name}` : (FLOOR_NAMES[src.floorTone] && `바닥 ${FLOOR_NAMES[src.floorTone]}`),
                     sp.wall ? `벽 ${sp.wall.name}` : (WALL_NAMES[src.wallTone] && `벽 ${WALL_NAMES[src.wallTone]}`)].filter(Boolean).join(' / ') : '';
                 html += askStage(src ? `${withGwa(src.name)} 바닥·벽이 같은가요?` : '바닥·벽을 골라 주세요', srcDesc, [
-                    { label: '네, 같아요', desc: '바닥·벽 선택을 건너뛰어요', on: 'window.concierge.copyBaseFromPrev(true)' },
-                    { label: '아니요, 새로 고를게요', desc: '이 공간의 톤을 직접 골라요', on: 'window.concierge.copyBaseFromPrev(false)' }
+                    { label: '네, 같아요', on: 'window.concierge.copyBaseFromPrev(true)' },
+                    { label: '아니요, 새로 고를게요', on: 'window.concierge.copyBaseFromPrev(false)' }
                 ]);
                 break;
             }
@@ -1078,10 +1142,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard(FLOOR_NAMES.warm, "밝은 원목", "", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
-                html += renderBookmarkCard(FLOOR_NAMES.cool, "밝은 타일·대리석", "", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
-                html += renderBookmarkCard(FLOOR_NAMES.neutral, "회색 마루·타일", "", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); }, 'vdesc' + was('floorTone', 'neutral'));
-                html += renderBookmarkCard(FLOOR_NAMES.deep, "진한 원목 마루", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); }, 'vdesc' + was('floorTone', 'deep'));
+                html += renderBookmarkCard(FLOOR_NAMES.warm, "", "", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
+                html += renderBookmarkCard(FLOOR_NAMES.cool, "", "", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
+                html += renderBookmarkCard(FLOOR_NAMES.neutral, "", "", SOLID_TEXTURES.neutral, function() { window.concierge.selectFloorTone('neutral'); }, 'vdesc' + was('floorTone', 'neutral'));
+                html += renderBookmarkCard(FLOOR_NAMES.deep, "", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectFloorTone('deep'); }, 'vdesc' + was('floorTone', 'deep'));
                 html += '</div></div>';
                 break;
 
@@ -1090,10 +1154,10 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead(state.editingRoom && state.editingRoom.editOnly ? '벽 톤을 골라 주세요' : '벽 톤도 골라 주세요');
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard(WALL_NAMES.warm, "따뜻한 흰 벽지", "", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
-                html += renderBookmarkCard(WALL_NAMES.cool, "맑은 흰 벽지", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
-                html += renderBookmarkCard(WALL_NAMES.neutral, "회색 벽지", "", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); }, 'vdesc' + was('wallTone', 'neutral'));
-                html += renderBookmarkCard(WALL_NAMES.deep, "진한 나무 벽", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); }, 'vdesc' + was('wallTone', 'deep'));
+                html += renderBookmarkCard(WALL_NAMES.warm, "", "", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
+                html += renderBookmarkCard(WALL_NAMES.cool, "", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
+                html += renderBookmarkCard(WALL_NAMES.neutral, "", "", SOLID_TEXTURES.greige, function() { window.concierge.selectWallTone('neutral'); }, 'vdesc' + was('wallTone', 'neutral'));
+                html += renderBookmarkCard(WALL_NAMES.deep, "", "", SOLID_TEXTURES.walnut, function() { window.concierge.selectWallTone('deep'); }, 'vdesc' + was('wallTone', 'deep'));
                 html += '</div></div>';
                 break;
 
@@ -1104,9 +1168,9 @@
                 const chip = ed.askCards ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
                     + `<button type="button" onclick="window.concierge.fixRoomColors()">${wall && floor ? '다르면 수정' : '카드로 고르기'}</button></div>`;
                 html += askStage('창으로 햇빛은 얼마나 들어오나요?', '', [
-                    { label: '풍부해요', desc: '눈부신 직사광', on: "window.concierge.selectLightLevel('high')", was: was('lightLevel', 'high') },
-                    { label: '은은해요', desc: '부드러운 햇살', on: "window.concierge.selectLightLevel('mid')", was: was('lightLevel', 'mid') },
-                    { label: '차분해요', desc: '낮은 채광', on: "window.concierge.selectLightLevel('low')", was: was('lightLevel', 'low') }
+                    { label: '풍부해요', on: "window.concierge.selectLightLevel('high')", was: was('lightLevel', 'high') },
+                    { label: '은은해요', on: "window.concierge.selectLightLevel('mid')", was: was('lightLevel', 'mid') },
+                    { label: '차분해요', on: "window.concierge.selectLightLevel('low')", was: was('lightLevel', 'low') }
                 ], { top: chip });
                 break;
             }
@@ -1116,7 +1180,6 @@
                 // 숨 고르기 화면 (23번): 손님이 한 답을 한 줄씩 되받음. 줄을 누르면 그 질문으로 가서 고침. 자동으로 넘기지 않음
                 const ed = state.editingRoom, mc = ed.measuredColor;
                 ed.backHome = false;
-                const steps = diagnosisSteps(), at = steps.indexOf(state.step);
                 const heard = (stepName, text) => `<button type="button" class="heard-row" onclick="window.concierge.fixHeard('${stepName}')"><span class="font-serif-kr">${text}</span><i aria-hidden="true">수정</i></button>`;
                 const dot = c => `<i class="heard-dot" style="background:${c.hex}"></i>`;
                 let rows = '';
@@ -1134,9 +1197,7 @@
                     if (mc.wall) parts.push(`${dot(mc.wall)}벽 <b>${measuredName('wall', mc.wall)}</b>`);
                     rows += `<div class="heard-row is-static"><span class="font-serif-kr">${parts.join(' · ')}</span></div>`;
                 }
-                html += '<div class="ambient-stage ask-stage home-stage">';
-                html += '<div class="step-dots ask-dots">' + steps.map((_, i) => `<span class="${i === at ? 'on' : (i < at ? 'done' : '')}"></span>`).join('') + '</div>';
-                html += `<span class="q-meta">${ed.name}</span>`;
+                html += '<div class="ambient-stage ask-stage home-stage">' + progHtml();
                 html += '<h2 class="q-title font-serif-kr">이렇게 들었어요. 맞나요?</h2>';
                 html += '<p class="q-sub">커튼은 이 답변 안에서 방향을 찾아요<br>다른 점이 있다면 눌러서 수정해 주세요</p>'; // 41번
                 html += `<div class="heard-list">${rows}</div>`;
@@ -1149,10 +1210,10 @@
             case "2-Base-Link": {
                 const mc = state.editingRoom.measuredColor;
                 const bar = pos => `<span class="link-prev" aria-hidden="true"><span class="link-bar" style="background:linear-gradient(90deg, ${mc.wall.hex}, ${mc.bridge.hex} 35%, ${mc.floor.hex})"></span><span class="link-mk" style="left:${pos}%"></span><span class="link-ends"><em>벽</em><em>바닥</em></span></span>`;
-                html += askStage('공간의 톤을 어떻게 맞출까요?', '답변을 확인해 보니 어울릴 색이 보여요.', [ // 41번
-                    { label: '벽 색 기준', desc: '공간이 넓어 보여요', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) }, // 41번 · 72번(판정 대신 기준 말)
-                    { label: '벽·바닥 사이', desc: '벽과 바닥을 이어 줘요', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) }, // 41번
-                    { label: '바닥 색 기준', desc: '공간이 따뜻해 보여요', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
+                html += askStage('공간의 톤을 어떻게 맞출까요?', '', [ // 41번 · 73번(판정 말·설명 뺌)
+                    { label: '벽 색 기준', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) }, // 41번 · 72번(판정 대신 기준 말)
+                    { label: '벽·바닥 사이', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) }, // 41번
+                    { label: '바닥 색 기준', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
                 ]);
                 break;
             }
@@ -1160,18 +1221,18 @@
             // [빛 가림: 모든 공간에서 (구성 추천과 겉지 암막·블라인드 추천에 사용)]
             case "2-Base-Block":
                 html += askStage('빛을 얼마나 가리고 싶으세요?', '', [
-                    { label: '들어와도 괜찮아요', desc: '햇살이 은은하게 스미도록', on: "window.concierge.selectLightBlock('light')", was: was('lightBlock', 'light') },
-                    { label: '적당히 가려 주세요', desc: '눈부심만 줄이고 아늑하게', on: "window.concierge.selectLightBlock('soft')", was: was('lightBlock', 'soft') },
-                    { label: '완전히 어둡게', desc: '빛을 거의 막는 암막', on: "window.concierge.selectLightBlock('dark')", was: was('lightBlock', 'dark') }
+                    { label: '들어와도 괜찮아요', on: "window.concierge.selectLightBlock('light')", was: was('lightBlock', 'light') },
+                    { label: '적당히 가려 주세요', on: "window.concierge.selectLightBlock('soft')", was: was('lightBlock', 'soft') },
+                    { label: '완전히 어둡게', on: "window.concierge.selectLightBlock('dark')", was: was('lightBlock', 'dark') }
                 ]);
                 break;
 
             // [바깥 시선: 모든 공간에서 (구성 추천과 속지 비침 추천에 사용)]
             case "2-Base-Privacy":
                 html += askStage('밖에서 안이 보이는 게 신경 쓰이세요?', '', [
-                    { label: '괜찮아요', desc: '높은 층이거나 앞이 트여 있어요', on: "window.concierge.selectPrivacy('open')", was: was('privacy', 'open') },
-                    { label: '조금 신경 쓰여요', desc: '낮에 적당히 가려지면 좋겠어요', on: "window.concierge.selectPrivacy('some')", was: was('privacy', 'some') },
-                    { label: '많이 신경 쓰여요', desc: '저층이거나 앞 건물이 가까워요', on: "window.concierge.selectPrivacy('high')", was: was('privacy', 'high') }
+                    { label: '괜찮아요', on: "window.concierge.selectPrivacy('open')", was: was('privacy', 'open') },
+                    { label: '조금 신경 쓰여요', on: "window.concierge.selectPrivacy('some')", was: was('privacy', 'some') },
+                    { label: '많이 신경 쓰여요', on: "window.concierge.selectPrivacy('high')", was: was('privacy', 'high') }
                 ]);
                 break;
 
@@ -1180,11 +1241,11 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('속지는 어떤 느낌이 좋으세요?');
                 // "추천대로"는 사진 칸 대신 질문 판 아래 작은 글자 버튼 (10-15 사장님: 큰 색 칸이 네 번째 원단처럼 보임)
-                html += `<button type="button" class="step-skip${was('sheerFeel', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectSheerFeel('any')">잘 모르겠어요 · 추천대로</button>`;
+                html += `<button type="button" class="step-skip${was('sheerFeel', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectSheerFeel('any')">잘 모르겠어요</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
-                html += renderBookmarkCard("매끈한", "쉬폰처럼", "", sheerFeelBg('feel_smooth', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc' + was('sheerFeel', 'smooth'));
-                html += renderBookmarkCard("결 있는", "린넨처럼", "", sheerFeelBg('feel_textured', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc' + was('sheerFeel', 'textured'));
-                html += renderBookmarkCard("도톰한", "보송하게", "", sheerFeelBg('feel_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc' + was('sheerFeel', 'cozy'));
+                html += renderBookmarkCard("매끈한", "", "", sheerFeelBg('feel_smooth', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc' + was('sheerFeel', 'smooth'));
+                html += renderBookmarkCard("결 있는", "", "", sheerFeelBg('feel_textured', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc' + was('sheerFeel', 'textured'));
+                html += renderBookmarkCard("도톰한", "", "", sheerFeelBg('feel_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc' + was('sheerFeel', 'cozy'));
                 html += '</div></div>';
                 break;
 
@@ -1192,12 +1253,12 @@
             case "2-Base-BlindKind":
                 html += '<div class="bookmark-stage">';
                 html += stepHead('어떤 블라인드가 좋으세요?');
-                html += `<button type="button" class="step-skip${was('blindWant', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectBlindKind('any')">잘 모르겠어요 · 추천대로</button>`;
+                html += `<button type="button" class="step-skip${was('blindWant', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectBlindKind('any')">잘 모르겠어요</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("콤비", "빛을 들일 만큼만", "", blindBg('blind_combi', SOLID_TEXTURES.l1), function() { window.concierge.selectBlindKind('combi'); }, 'vdesc' + was('blindWant', 'combi'));
-                html += renderBookmarkCard("롤", "실용적인 기본", "", blindBg('blind_roll', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectBlindKind('roll'); }, 'vdesc' + was('blindWant', 'roll'));
-                html += renderBookmarkCard("우드", "나무 결 그대로", "", blindBg('blind_wood', SOLID_TEXTURES.oak), function() { window.concierge.selectBlindKind('wood'); }, 'vdesc' + was('blindWant', 'wood'));
-                html += renderBookmarkCard("알루미늄", "얇고 깨끗하게", "", blindBg('blind_alu', SOLID_TEXTURES.tile), function() { window.concierge.selectBlindKind('alu'); }, 'vdesc' + was('blindWant', 'alu'));
+                html += renderBookmarkCard("콤비", "", "", blindBg('blind_combi', SOLID_TEXTURES.l1), function() { window.concierge.selectBlindKind('combi'); }, 'vdesc' + was('blindWant', 'combi'));
+                html += renderBookmarkCard("롤", "", "", blindBg('blind_roll', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectBlindKind('roll'); }, 'vdesc' + was('blindWant', 'roll'));
+                html += renderBookmarkCard("우드", "", "", blindBg('blind_wood', SOLID_TEXTURES.oak), function() { window.concierge.selectBlindKind('wood'); }, 'vdesc' + was('blindWant', 'wood'));
+                html += renderBookmarkCard("알루미늄", "", "", blindBg('blind_alu', SOLID_TEXTURES.tile), function() { window.concierge.selectBlindKind('alu'); }, 'vdesc' + was('blindWant', 'alu'));
                 html += '</div></div>';
                 break;
 
@@ -1210,12 +1271,12 @@
                 html += stepHead('원하시는 분위기를 골라 주세요', ''); // 42번: 사족 설명 제거
                 const recList = state.__recMoods || [];
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
-                html += renderBookmarkCard("포근한", "아이보리·베이지", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick expand-pick' + (recList.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
-                html += renderBookmarkCard("깔끔한", "화이트·그레이", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick expand-pick' + (recList.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
-                html += renderBookmarkCard("은은한", "그레이지", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc pause-pick expand-pick' + (recList.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
-                html += renderBookmarkCard("자연스러운", "린넨의 결", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc pause-pick expand-pick' + (recList.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
-                html += renderBookmarkCard("아늑한", "차콜·브라운", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc pause-pick expand-pick' + (recList.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
-                html += renderBookmarkCard("화사한", "밝고 가벼운", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc pause-pick expand-pick' + (recList.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
+                html += renderBookmarkCard("포근한", "", "", moodBg('mood_01_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectMood('soft_warm'); }, 'vdesc pause-pick expand-pick' + (recList.includes('soft_warm') ? ' is-recommended' : '') + was('wantMood', 'soft_warm'));
+                html += renderBookmarkCard("깔끔한", "", "", moodBg('mood_02_clean', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectMood('urban_clean'); }, 'vdesc pause-pick expand-pick' + (recList.includes('urban_clean') ? ' is-recommended' : '') + was('wantMood', 'urban_clean'));
+                html += renderBookmarkCard("은은한", "", "", moodBg('mood_03_subtle', SOLID_TEXTURES.greige), function() { window.concierge.selectMood('balanced_neutral'); }, 'vdesc pause-pick expand-pick' + (recList.includes('balanced_neutral') ? ' is-recommended' : '') + was('wantMood', 'balanced_neutral'));
+                html += renderBookmarkCard("자연스러운", "", "", moodBg('mood_04_natural', SOLID_TEXTURES.oak), function() { window.concierge.selectMood('textured_linen'); }, 'vdesc pause-pick expand-pick' + (recList.includes('textured_linen') ? ' is-recommended' : '') + was('wantMood', 'textured_linen'));
+                html += renderBookmarkCard("아늑한", "", "", moodBg('mood_05_warm', SOLID_TEXTURES.l4), function() { window.concierge.selectMood('deep_private'); }, 'vdesc pause-pick expand-pick' + (recList.includes('deep_private') ? ' is-recommended' : '') + was('wantMood', 'deep_private'));
+                html += renderBookmarkCard("화사한", "", "", moodBg('mood_06_bright', SOLID_TEXTURES.cream), function() { window.concierge.selectMood('airy_bright'); }, 'vdesc pause-pick expand-pick' + (recList.includes('airy_bright') ? ' is-recommended' : '') + was('wantMood', 'airy_bright'));
                 html += '</div></div>';
                 break;
 
@@ -1227,12 +1288,12 @@
                 html += '<div class="bookmark-stage">';
                 html += stepHead('창을 어떻게 구성할까요?', ''); // 42번: 사족 설명 제거
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("이중 커튼", "호텔처럼", "", compBg('comp_double', SOLID_TEXTURES.l1), function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
+                html += renderBookmarkCard("이중 커튼", "", "", compBg('comp_double', SOLID_TEXTURES.l1), function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
                 // 바깥 시선이 신경 쓰이는 공간: 속지만이면 밤에는 그림자가 비칠 수 있다고 솔직하게 (33번, 이중커튼은 겉지가 가려 줌)
                 const sheerNight = (state.editingRoom.privacy === 'high' || state.editingRoom.privacy === 'some') ? SHEER_NIGHT_NOTE : '';
-                html += renderBookmarkCard("속지 커튼", "은은한 채광", "", compBg('comp_sheer', SOLID_TEXTURES.l2), function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'), sheerNight);
-                html += renderBookmarkCard("겉지 커튼", "빛 차단", "", compBg('comp_drape', SOLID_TEXTURES.l3), function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
-                html += renderBookmarkCard("블라인드", "창틀 안에 깔끔하게", "", compBg('comp_blind', SOLID_TEXTURES.oak), function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
+                html += renderBookmarkCard("속지 커튼", "", "", compBg('comp_sheer', SOLID_TEXTURES.l2), function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'), sheerNight);
+                html += renderBookmarkCard("겉지 커튼", "", "", compBg('comp_drape', SOLID_TEXTURES.l3), function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
+                html += renderBookmarkCard("블라인드", "", "", compBg('comp_blind', SOLID_TEXTURES.oak), function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
                 html += '</div></div>';
                 break;
 
@@ -1246,9 +1307,7 @@
                     const subText = bw === 'wood' ? '나무 결과 색감은 창가에서 실제로 대 보며 고르는 편이 정확해요.'
                         : (bw === 'alu' ? '슬랫 두께와 색감은 창가에서 실제로 대 보며 고르는 편이 정확해요.'
                         : '실제 샘플을 창가에 대 보며 어울리는 색을 골라 드려요.');
-                    html += '<div class="ambient-stage" onclick="window.concierge.proceedSampleBlind()">';
-                    html += '<div class="ambient-light-glow"></div>';
-                    html += `<span class="q-meta">${state.editingRoom.name} · 블라인드 안내</span>`;
+                    html += '<div class="ambient-stage" onclick="window.concierge.proceedSampleBlind()">' + progHtml();
                     html += `<h2 class="q-title font-serif-kr">${kindName} 블라인드는 상담 때<br>실물 샘플로 보여 드릴게요.</h2>`;
                     html += `<p class="q-sub font-serif-kr">${subText}</p>`;
                     html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.proceedSampleBlind()">이 공간에 담아 두기 →</button>'; // 42번
@@ -1256,9 +1315,7 @@
                     break;
                 }
                 const typeLabel = curItem.presetType === 'sheer' ? '속지' : (curItem.presetType === 'drape' ? '겉지' : '블라인드');
-                html += '<div class="ambient-stage" onclick="window.concierge.proceedToFabricQueue()">';
-                html += '<div class="ambient-light-glow"></div>';
-                html += `<span class="q-meta">${state.editingRoom.name} · 원단 제안</span>`;
+                html += '<div class="ambient-stage" onclick="window.concierge.proceedToFabricQueue()">' + progHtml();
                 html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br>${typeLabel}를 골랐습니다.</h2>`;
                 html += '<p class="q-sub font-serif-kr">바닥·벽의 색과 들어오는 햇빛을 보고 고른 원단입니다.</p>';
                 html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.proceedToFabricQueue()">원단 보기 →</button>'; // 42번
@@ -1293,26 +1350,13 @@
                 const hasSheer = curRoom.items.some(i => i.presetType === 'sheer');
                 const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
                 const hasCurtain = hasSheer || hasDrape;
-                const kinds = curRoom.items.map(i => i.presetType === 'blind' ? '블라인드' : (i.presetType === 'sheer' ? '속지' : (i.presetType === 'drape' ? '겉지' : '커튼'))).join(' + ');
-                const measureBox = (target, label, steps) =>
-                    `<div id="measureBox_${target}" class="measure-box msr-box" onclick="window.concierge.openKeypad('${target}')">` +
-                    `<span class="msr-label">${label}</span>` +
-                    `<div class="msr-num-wrap">` +
-                    `<div class="msr-num font-serif-kr"><span id="displayVal_${target}">${curRoom[target]}</span><small>cm</small></div>` +
-                    stepperHtml(target, label) +
-                    `</div>` +
-                    '<span class="msr-hint">숫자를 누르면 직접 입력</span>' +
-                    nudgeRowHtml(target, steps) + '</div>';
                 const optBtn = (key, label, on, fn) =>
                     `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" onclick="${fn}">${label}</button>`;
 
                 html += '<div class="msr-stage">';
-                html += `<span class="q-meta">${curRoom.name} · ${kinds}</span>`;
-                html += '<h2 class="msr-title font-serif-kr">창의 크기를 적어 주세요</h2>';
-
                 html += '<div class="msr-grid">';
-                html += measureBox('width', '넓이', [-10, -5, -1, 1, 5, 10]); // 41번
-                html += measureBox('height', '높이', [-10, -5, -1, 1, 5, 10]); // 41번
+                html += msrBoxHtml('width', '넓이', curRoom.width); // 41번 · 73번
+                html += msrBoxHtml('height', '높이', curRoom.height);
                 html += '</div>';
 
                 if (hasCurtain) {
@@ -1338,8 +1382,7 @@
                 const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
                 const optBtn = (key, label, on, fn) =>
                     `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" onclick="${fn}">${label}</button>`;
-                html += '<div class="msr-stage">';
-                html += `<span class="q-meta">${curRoom.name} · 마무리</span>`;
+                html += '<div class="msr-stage msr-finish">' + progHtml();
                 // 옵션은 처음부터 모두 켜져 있음 → "더할 것"이 아니라 "이렇게 마무리" + 뺄 것을 누르게 (10-15 사장님)
                 html += '<h2 class="msr-title font-serif-kr">이렇게 마무리해 드려요</h2>';
                 html += '<p class="q-sub">빼고 싶은 것은 눌러 주세요</p>';
@@ -1398,6 +1441,19 @@
         html += '</div>';
         main.innerHTML = html;
         lastRenderedStep = state.step;
+        // 뒤로 가기 · 사진 화면 (73번): 사진 띠 이름은 모두 같은 크기 → 가장 긴 이름이 들어가도록 띠 높이만 맞춤. 앞으로 왔으면 안내 장면부터
+        const photo = PHOTO_STEPS.includes(state.step);
+        syncBack(photo);
+        if (photo) {
+            const st = main.querySelector('.bookmark-stage');
+            if (st) {
+                let tall = 0;
+                st.querySelectorAll('.fab-vname, .fab-vdesc').forEach(el => { tall = Math.max(tall, el.offsetHeight); });
+                if (tall) st.style.setProperty('--band-h', Math.max(205, Math.ceil(tall + 52)) + 'px');
+            }
+            if (introWant && photoQuestion) playPhotoIntro(photoQuestion);
+        }
+        introWant = false;
         // 스크롤 복원 (48번)
         if (state.step === "1-Space") {
             if (prevRightScroll) {
