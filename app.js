@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261096';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261097';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261096';
+const REDAM_BUILD = '20261097';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3244,7 +3244,7 @@ function drawTicket(ctx, data, W, slim) {
         else text('견적서', RX, 108, 'right', DARK);
         setFont(400, PAPER_F3, SERIF); text(data.recipient, CX, 154, 'left', MUTED);
         setFont(400, PAPER_F4, SANS); label(data.date, RX, 154, 'right', 2);
-        hline(CX, RX, HEAD_Y, DARK, 2.5);
+        hline(CX, RX, HEAD_Y, DARK, 1);
         setFont(400, PAPER_F4, SANS);
         label('품목', CX, HEAD_Y + 36, 'left', 3);
         label('금액', RX, HEAD_Y + 36, 'right', 3);
@@ -3278,7 +3278,7 @@ function drawTicket(ctx, data, W, slim) {
     // 공간 한 묶음을 y 위치에 그림: 위 가는 선 → 공간 이름·소계 → 품목(원단 칸 · 종류 · 이름·옵션 · 크기 · 금액)
     function drawRoom(L, y) {
         const { room, px, iw, tx, nx, blocks, headH } = L;
-        hline(px, px + iw, y, LINE, 1);
+        hline(px, px + iw, y, LINE, 0.6);
         setFont(400, PAPER_F2, SERIF); text(room.name, px, y + (slim ? 46 : 50), 'left', DARK);
         if (!room.sampleOnly) { setFont(400, PAPER_F3, SERIF); text(won(room.total), px + iw, y + (slim ? 46 : 50), 'right', DARK); }
         let by = y + headH;
@@ -3326,12 +3326,12 @@ function drawTicket(ctx, data, W, slim) {
     }
     function drawFooter(F, y) {
         if (data.install > 0) {
-            hline(CX, RX, y, LINE, 1);
+            hline(CX, RX, y, LINE, 0.6);
             setFont(400, PAPER_F3, SANS); text('시공 및 설치비', CX, y + 48, 'left', MUTED);
             setFont(400, PAPER_F3, SERIF); text(won(data.install), RX, y + 48, 'right', DARK);
             y += 76;
         }
-        hline(CX, RX, y, DARK, 2);
+        hline(CX, RX, y, DARK, 1);
         y += 96;
         setFont(400, PAPER_F4, SANS); label('합계 금액 (시공비 포함)', CX, y - 6, 'left', 3);
         setFont(400, PAPER_F3, SERIF);
@@ -3347,7 +3347,7 @@ function drawTicket(ctx, data, W, slim) {
         };
         F.rows.forEach(r => infoRow(r.label, r.lines, MUTED));
         if (F.sup.length) {
-            hline(CX, RX, y - 18, LINE, 1);
+            hline(CX, RX, y - 18, LINE, 0.6);
             y += 30;
             infoRow('공급자', F.sup, MUTED);
         }
@@ -3657,7 +3657,7 @@ function drawWhy(ctx, data, W, compact, title) {
         setFont(400, PAPER_F2, SERIF);
         if (canSpace) { spacing('5px'); text(title || '공간 제안', RX + 5, 108, 'right', DARK); spacing('0px'); }
         else text(title || '공간 제안', RX, 108, 'right', DARK);
-        hline(CX, RX, HEAD_Y, DARK, 2.5);
+        hline(CX, RX, HEAD_Y, DARK, 1);
     }
     // 원단 한 묶음: [■ 색 칩 + 코드] 속지 · 원단 이름 색 이름 → 이유 1~3문장 → 회색 안내. 볼드 없이 색 농도(DARK / MUTED / SOFT)로 위계 (39번)
     function layoutSet(set, colW) {
@@ -3759,7 +3759,7 @@ function drawWhy(ctx, data, W, compact, title) {
         return x + 28;
     }
     function drawRoom(L, y) {
-        if (y > START_Y) hline(CX, RX, y, LINE, 1);      // 첫 공간 윗선은 머리글 굵은 선을 그대로 쓰고, 다음 공간부터는 1·3쪽과 같은 가는 베이지 실선 (39번)
+        if (y > START_Y) hline(CX, RX, y, LINE, 0.6);      // 첫 공간 윗선은 머리글 선을 그대로 쓰고, 다음 공간부터는 1·3쪽과 같은 가는 베이지 실선 (39·76번)
         setFont(400, R_SIZE, SERIF); text(L.R.name, CX, y + 44, 'left', DARK);
         setFont(400, Q_SIZE, SERIF);
         L.qLines.forEach((ln, i) => text(ln, L.QX, y + 44 + i * Q_LH, 'left', DARK));
@@ -4003,7 +4003,7 @@ function houseBrief(sp) {
 // 색 지도 (고객 더 보기 지도와 같은 축·같은 말): 900×470 좌표에 그림. ctx는 미리 옮기고 늘려 둠
 //  ● 고른 원단(같은 원단·같은 색은 하나로, "거실·안방 속지") · ■ 벽·바닥(모든 공간이 같으면 "벽") · ◆ 가구
 function drawHouseMap(ctx, sp) {
-    const MAPF = PAPER_F4 * 900 / (PAPER_W - TICKET_PAD * 2);
+    const MAPF = 15;
     const W = 900, H = 470, P = { l: 76, r: 76, t: 34, b: 40 };
     const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
     const PAPER = '#fffdf9';
@@ -4031,15 +4031,15 @@ function drawHouseMap(ctx, sp) {
     if (bmax - bmin < 14) { const m = (bmax + bmin) / 2; bmin = m - 7; bmax = m + 7; }
     const X = b => P.l + (b - bmin) / (bmax - bmin) * (W - P.l - P.r), Y = L => P.t + (Lmax - L) / (Lmax - Lmin) * (H - P.t - P.b);
     const line = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
-    ctx.strokeStyle = '#e5dcd0'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#e5dcd0'; ctx.lineWidth = 0.75;
     [0.25, 0.5, 0.75].forEach(f => { const y = P.t + (H - P.t - P.b) * f; line(P.l, y, W - P.r, y); });
     [1 / 3, 2 / 3].forEach(f => { const x = P.l + (W - P.l - P.r) * f; line(x, P.t, x, H - P.b); });
-    ctx.font = `400 ${MAPF}px ${SANS}`; ctx.fillStyle = '#6f5f4f';      // 종이에서 28 (지도는 늘려 그림, 75번)
+    ctx.font = `400 ${MAPF}px ${SANS}`; ctx.fillStyle = '#6f5f4f';      // 76번: 정돈된 스케일과 0.5px 초세선
     ctx.textAlign = 'center'; ctx.fillText('↑ 밝은 색', W / 2, P.t - 12); ctx.fillText('↓ 진한 색', W / 2, H - 10);
     ctx.textAlign = 'right'; ctx.fillText('차가운 색', P.l - 12, H / 2);
     ctx.textAlign = 'left'; ctx.fillText('따뜻한 색', W - P.r + 12, H / 2);
     // 자리 + 겹친 점 밀기
-    const pts = marks.map(m => ({ m, x: X(m.c.b), y: Y(m.c.L), r: m.t === 'c' ? 20 : 12 }));
+    const pts = marks.map(m => ({ m, x: X(m.c.b), y: Y(m.c.L), r: m.t === 'c' ? 13 : 9 }));
     for (let k = 0; k < 60; k++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
         const a = pts[i], c = pts[j], dx = c.x - a.x, dy = c.y - a.y, dd = Math.hypot(dx, dy) || 0.01, need = a.r + c.r + 6;
         if (dd < need) { const mv = (need - dd) / 2, ux = dx / dd, uy = dy / dd; a.x -= ux * mv; a.y -= uy * mv; c.x += ux * mv; c.y += uy * mv; }
@@ -4049,15 +4049,15 @@ function drawHouseMap(ctx, sp) {
     pts.filter(p => p.m.t !== 'c').forEach(p => {
         ctx.save(); ctx.translate(p.x, p.y);
         if (p.m.t === 'd') ctx.rotate(Math.PI / 4);
-        const s = p.m.t === 's' ? 22 : 18;
+        const s = p.m.t === 's' ? 15 : 13;
         ctx.fillStyle = p.m.c.hex; ctx.fillRect(-s / 2, -s / 2, s, s);
-        ctx.strokeStyle = 'rgba(43,34,26,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(-s / 2 + 0.5, -s / 2 + 0.5, s - 1, s - 1);
+        ctx.strokeStyle = 'rgba(43,34,26,0.22)'; ctx.lineWidth = 0.75; ctx.strokeRect(-s / 2 + 0.5, -s / 2 + 0.5, s - 1, s - 1);
         ctx.restore();
     });
     pts.filter(p => p.m.t === 'c').forEach(p => {
-        ctx.beginPath(); ctx.arc(p.x, p.y, 19, 0, Math.PI * 2); ctx.fillStyle = p.m.c.hex; ctx.fill();
-        ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
-        ctx.beginPath(); ctx.arc(p.x, p.y, 20.5, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(43,34,26,0.25)'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI * 2); ctx.fillStyle = p.m.c.hex; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, Math.PI * 2); ctx.lineWidth = 0.75; ctx.strokeStyle = 'rgba(43,34,26,0.22)'; ctx.stroke();
     });
     // 글자: 오른쪽 → 왼쪽 → 위 → 아래 중 다른 글자·점과 안 겹치는 자리 (원단 글자를 먼저)
     const boxes = pts.map(p => ({ x1: p.x - p.r, y1: p.y - p.r, x2: p.x + p.r, y2: p.y + p.r }));
@@ -4158,13 +4158,13 @@ function planHouse(data) {
                     lx += lw[i] + 30;
                 });
                 if (bLines.length) {
-                    hline(CX, RX, briefLineY, LINE, 1);
+                    hline(CX, RX, briefLineY, LINE, 0.6);
                     c.font = `400 ${Q_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
                     bLines.forEach((ln, i) => c.fillText(ln, CX, bY + i * Q_LH));
                 }
             }
             const rows = pages[pi].rows;
-            if (rows.length) hline(CX, RX, rows[0].y, LINE, 1);
+            if (rows.length) hline(CX, RX, rows[0].y, LINE, 0.6);
             rows.forEach(({ R, y: ry }) => {
                 c.font = `400 ${N_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
                 const nameY = ry + 20 + N_SIZE;
@@ -4184,12 +4184,12 @@ function planHouse(data) {
                 });
                 if (baseH) { c.fillStyle = R.strip.wHex; c.fillRect(CX, sy + winH, CW, baseH); }
                 c.fillStyle = R.strip.fHex; c.fillRect(CX, sy + MID_H, CW, FLOOR_H);
-                hline(CX, RX, sy + MID_H, 'rgba(43,34,26,0.08)', 1);
-                c.strokeStyle = 'rgba(43,34,26,0.12)'; c.lineWidth = 1; c.strokeRect(CX + 0.5, sy + 0.5, CW - 1, STRIP_H - 1);
+                hline(CX, RX, sy + MID_H, 'rgba(43,34,26,0.08)', 0.6);
+                c.strokeStyle = 'rgba(43,34,26,0.12)'; c.lineWidth = 0.6; c.strokeRect(CX + 0.5, sy + 0.5, CW - 1, STRIP_H - 1);
                 // 진단 문장
                 c.font = `400 ${F_SIZE}px ${SANS}`; c.fillStyle = MUTED; c.textAlign = 'left';
                 R.dLines.forEach((ln, i) => c.fillText(ln, CX, sy + STRIP_H + 14 + F_SIZE + i * F_LH));
-                hline(CX, RX, ry + R.h, LINE, 1);
+                hline(CX, RX, ry + R.h, LINE, 0.6);
             });
             label();
         };
