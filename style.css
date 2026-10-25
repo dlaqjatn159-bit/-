@@ -1658,10 +1658,10 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 /* ===== 최종 제안 (= 견적서): 가운데에 견적서 종이 한 장(저장·인쇄되는 이미지 그대로), 버튼·시공비 입력은 종이 밖 오른쪽 ===== */
 .fin-stage { width: 100vw; height: 100vh; height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fbf9f5; box-sizing: border-box; display: flex; justify-content: center; align-items: flex-start; gap: 3.2rem; padding: 2rem 2rem 2rem 6rem; color: #2b221a; }
 .fin-paper { flex: 0 1 auto; display: flex; flex-direction: column; gap: 1.2rem; }
-/* 종이: A4 세로 한 장이 화면 높이에 꼭 맞게. 그림자 없이 가는 테두리만 */
+/* 종이: 폭 540px로 보여 줌(그림 폭 1080의 절반 → 글자가 손님 화면과 같은 30·20·16·14), 길면 위아래로 밀어 봄 (75번). 그림자 없이 가는 테두리만 */
 .fin-paper img:not(.is-on) { display: none; }      /* 한 쪽씩 보여 줌: 원단을 고른 이유 → 견적서 */
-.fin-paper img { display: block; height: calc(100vh - 4rem); height: calc(100dvh - 4rem); width: auto; max-width: 100%; border: 1px solid #ddd3c6; box-sizing: border-box; }
-.fin-wait { width: calc((100vh - 4rem) / 1.414); max-width: 100%; height: calc(100vh - 4rem); display: flex; align-items: center; justify-content: center; border: 1px solid #ddd3c6; background: #fffdf9; box-sizing: border-box; font-size: 1rem; color: #6f5f4f; }
+.fin-paper img { display: block; width: 540px; max-width: 100%; height: auto; border: 1px solid #ddd3c6; box-sizing: border-box; }
+.fin-wait { width: 540px; max-width: 100%; height: calc(100vh - 4rem); display: flex; align-items: center; justify-content: center; border: 1px solid #ddd3c6; background: #fffdf9; box-sizing: border-box; font-size: 1rem; color: #6f5f4f; }
 .fin-side { position: sticky; top: 0; flex: 0 0 13.5rem; min-height: calc(100vh - 4rem); min-height: calc(100dvh - 4rem); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
 .fin-pager { display: flex; flex-direction: column; align-items: flex-start; gap: 0.9rem; margin-bottom: 2.2rem; }
 .fin-pager:empty, .fin-pager:not(:has(.fin-pg)) { display: none; }

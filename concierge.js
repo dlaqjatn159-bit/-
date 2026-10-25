@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261095';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261096';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1638,7 +1638,8 @@
                 h += '<div class="fin-est-line">';
                 h += `<div class="fin-est-chip" style="${fabricFillStyle(it.fabricId, it.colorName)}"></div>`;
                 h += `<span class="fin-est-k">${esc(it.kind)}</span>`;
-                h += `<span class="fin-est-nm font-serif-kr">${esc(it.tone ? `${it.name} · ${it.tone}` : it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
+                // 원단 이름: 가로 견적서 그림과 같은 책자 원단 이름 + 색 번호, 예) 블랑 1번 (75번)
+                h += `<span class="fin-est-nm font-serif-kr">${esc(it.bookName || it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
                 h += `<span class="fin-est-sz">${esc(it.size || '')}</span>`;
                 h += `<span class="fin-est-pr font-serif-kr">${it.sampleOnly ? '' : `${it.price.toLocaleString()}원`}</span>`;
                 h += '</div>';
