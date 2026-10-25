@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261108';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261109';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -12,6 +12,9 @@ function calculateAll() {
     let sumFabricCost = 0;
     let sumLaborCost = 0;
     let sumHwCost = 0;
+    // 배수용 묶음 (86번): 커튼·블라인드 따로 제품 판매가·매입가(부가세 포함)를 모음. 시공비는 넣지 않음
+    const mx = (typeof loadMultiples === 'function') ? loadMultiples() : null;
+    const grp = { curtain: { sell: 0, buy: 0, miss: false }, blind: { sell: 0, buy: 0, miss: false } };
 
     const summaryListContainer = document.getElementById('summaryRoomList');
     if (summaryListContainer) summaryListContainer.innerHTML = '';
@@ -47,6 +50,15 @@ function calculateAll() {
                 sumFabricCost += cost.fabricSupplyCost;
                 sumLaborCost += (cost.laborCost + cost.leadBandCost);
                 sumHwCost += cost.hwCost;
+            }
+
+            if (staff) {
+                const g = grp[p.calcType === 'hebe' ? 'blind' : 'curtain'];
+                if (cost) {
+                    // 리드밴드는 원가=판매가라 부가세를 얹지 않음
+                    g.sell += p.curtainSubtotal;
+                    g.buy += (cost.curtainCostTotal - cost.leadBandCost) * (mx && mx.vat ? 1.1 : 1) + cost.leadBandCost;
+                } else g.miss = true;
             }
 
             roomSubtotalSum += p.curtainSubtotal;
@@ -94,7 +106,9 @@ function calculateAll() {
         setText('resCostFabric', `${sumFabricCost.toLocaleString()}원`);
         setText('resCostLabor', `${sumLaborCost.toLocaleString()}원`);
         setText('resCostHardware', `${sumHwCost.toLocaleString()}원`);
+        if (typeof renderMultiples === 'function') renderMultiples(grp, mx);
     } else {
+        if (typeof renderMultiples === 'function') renderMultiples(null, null);
         // 고객 모드이거나 원가 데이터가 없으면 원가 칸을 비워 둡니다.
         ['resTotalCost', 'resNetProfit', 'resMarginRateBadge', 'resCostFabric', 'resCostLabor', 'resCostHardware']
             .forEach(id => setText(id, '-'));

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261108';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261109';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261108';
+const REDAM_BUILD = '20261109';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3160,6 +3160,50 @@ function saveQuoteValidDays(v) {
     const n = Number(v);
     try { if (v === '' || !Number.isFinite(n) || n < 0) localStorage.removeItem(QUOTE_VALID_KEY); else localStorage.setItem(QUOTE_VALID_KEY, String(Math.min(365, Math.round(n)))); } catch (e) {}
 }
+// 직원 화면 배수 표시 (86번): 기준 배수는 설정에 저장, 표시는 견적 요약 원가 "보기" 안에만
+const MULTIPLES_KEY = 'redam_multiples_v1', MULTIPLES_DEFAULT = { cT: 2.5, cF: 2.2, bF: 2.0, vat: true };
+function loadMultiples() {
+    const m = Object.assign({}, MULTIPLES_DEFAULT);
+    try {
+        const o = JSON.parse(localStorage.getItem(MULTIPLES_KEY) || 'null') || {};
+        ['cT', 'cF', 'bF'].forEach(k => { if (Number.isFinite(o[k]) && o[k] > 0) m[k] = o[k]; });
+        if (typeof o.vat === 'boolean') m.vat = o.vat;
+    } catch (e) {}
+    return m;
+}
+function saveMultiples() {
+    const num = (id, def) => { const el = document.getElementById(id), n = el ? Number(el.value) : NaN; return (el && el.value !== '' && Number.isFinite(n) && n > 0) ? n : def; };
+    const vat = document.getElementById('mxVat');
+    const o = { cT: num('mxCurtainTarget', MULTIPLES_DEFAULT.cT), cF: num('mxCurtainFloor', MULTIPLES_DEFAULT.cF), bF: num('mxBlindFloor', MULTIPLES_DEFAULT.bF), vat: vat ? vat.checked : MULTIPLES_DEFAULT.vat };
+    try { localStorage.setItem(MULTIPLES_KEY, JSON.stringify(o)); } catch (e) {}
+    if (typeof calculateAll === 'function') calculateAll();
+}
+function initMultiplesInputs() {
+    const m = loadMultiples(), set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    set('mxCurtainTarget', m.cT); set('mxCurtainFloor', m.cF); set('mxBlindFloor', m.bF);
+    const vat = document.getElementById('mxVat'); if (vat) vat.checked = m.vat;
+}
+// 만 원 글자: 천 원 단위 내림 (예: 125,000 → "12만 5천 원")
+function fmtManWon(n) {
+    const v = Math.floor(Math.abs(n) / 1000) * 1000, man = Math.floor(v / 10000), chon = (v % 10000) / 1000;
+    if (v === 0) return '0원';
+    return (man ? `${man}만 ` : '') + (chon ? `${chon}천 ` : '') + '원';
+}
+// 커튼·블라인드 두 줄. grp가 없으면(고객 모드) 비움
+function renderMultiples(grp, m) {
+    const box = document.getElementById('resMultiples'); if (!box) return;
+    if (!grp || !m) { box.innerHTML = ''; return; }
+    const row = (name, g, target, floor) => {
+        if (g.sell <= 0 && !g.miss) return '';
+        const note = g.miss ? '<span class="staff-mx-note"> 원가 없는 품목 있음</span>' : '';
+        if (g.buy <= 0) return `<div class="staff-sum-line"><span>${name} ―${note}</span><span></span></div>`;
+        const x = g.sell / g.buy, slack = g.sell - g.buy * floor;
+        const cls = x >= target ? '' : (x >= floor ? 'mx-mid' : 'mx-low');
+        const tail = slack >= 0 ? `바닥까지 ${fmtManWon(slack)}` : `바닥보다 ${fmtManWon(slack)} 낮음`;
+        return `<div class="staff-sum-line ${cls}"><span>${name} ×${x.toFixed(1)}${note}</span><span>${tail}</span></div>`;
+    };
+    box.innerHTML = row('커튼', grp.curtain, m.cT, m.cF) + row('블라인드', grp.blind, m.bF, m.bF);
+}
 // 이 상담만 유효기간을 바꿈 — 비우면 설정 값 (85번)
 function setQuoteValidOverride(v) {
     const n = Number(v);
@@ -3176,6 +3220,7 @@ function initTicketNoteInput() {
     Object.keys(TICKET_TEXT_INPUTS).forEach(k => { const t = document.getElementById(TICKET_TEXT_INPUTS[k]); if (t) t.value = loadTicketText(k); });
     const fee = document.getElementById('defaultInstallFeeInput'); if (fee) fee.value = loadDefaultInstallFee();
     const vd = document.getElementById('quoteValidDaysInput'); if (vd) vd.value = loadQuoteValidDays();
+    initMultiplesInputs();
     renderOptionPriceSettings();
 }
 // 설정 › 가공·부자재 단가 (29번): 줄마다 판매가 · 원가 · 남는 돈. 칸을 고치면 바로 저장되고 그 줄의 남는 돈만 다시 씀

@@ -715,6 +715,9 @@ body[data-finder-only] .staff-nav .badge { display: none; }
 .staff-sum-badge { margin-left: 0.35rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--brand-light); font-size: 0.7rem; font-weight: 700; color: var(--brand-accent); }
 .staff-eye { padding: 0.15rem 0.75rem; border: 1px solid var(--brand-border); border-radius: 999px; background: #fff; font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); }
 .staff-sum-cost #marginCollapsibleContent { margin-top: 0.4rem; }
+.staff-sum-line.mx-mid > span { color: #8A4A22; }          /* 배수: 목표와 바닥 사이 (86번) */
+.staff-sum-line.mx-low > span { color: #b0392b; }          /* 배수: 바닥 아래 */
+.staff-mx-note { font-size: 0.68rem; color: var(--brand-muted); }
 .staff-sum-line.profit > span:last-child { font-weight: 700; color: #3f6b45; }
 .staff-sum-sub { margin-top: 0.3rem; padding-top: 0.3rem; border-top: 1px solid var(--brand-border); }
 .staff-sum-sub .staff-sum-line { padding: 0.14rem 0; font-size: 0.75rem; }
