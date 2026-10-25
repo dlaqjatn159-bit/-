@@ -101,6 +101,7 @@
                 </nav>
                 <div class="staff-side-foot">
                     <button type="button" class="btn-new" onclick="startNewConsultation()">+ 새 상담</button>
+                    <button type="button" onclick="endConsultation()">상담 끝내기</button>
                     <button type="button" onclick="lockStaff()">지금 잠그기</button>
                     <button type="button" onclick="exitStaffMode()">잠그고 나가기</button>
                     <div class="lock-hint" id="lockHint">15분 동안 손대지 않으면 잠깁니다</div>
@@ -113,6 +114,7 @@
                     <span class="font-serif-kr">Re<i class="logo-dot">.</i>dam</span>
                     <span class="staff-topbar-acts">
                         <button type="button" onclick="startNewConsultation()">새 상담</button>
+                        <button type="button" onclick="endConsultation()">상담 끝내기</button>
                         <button type="button" onclick="lockStaff()">지금 잠그기</button>
                         <button type="button" onclick="exitStaffMode()">잠그고 나가기</button>
                     </span>
@@ -695,13 +697,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261106"></script>
-    <script src="costing.js?v=20261106"></script>
-    <script src="data.js?v=20261106"></script>
-    <script src="calculator.js?v=20261106"></script>
-    <script src="concierge.js?v=20261106"></script>
-    <script src="app.js?v=20261106"></script>
-    <script src="room-color.js?v=20261106"></script>
+    <script src="pricing.js?v=20261107"></script>
+    <script src="costing.js?v=20261107"></script>
+    <script src="data.js?v=20261107"></script>
+    <script src="calculator.js?v=20261107"></script>
+    <script src="concierge.js?v=20261107"></script>
+    <script src="app.js?v=20261107"></script>
+    <script src="room-color.js?v=20261107"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

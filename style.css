@@ -2291,3 +2291,16 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .heard-row { border: none !important; padding: 18px 4px; }
 .heard-row > span { text-decoration: underline transparent; text-decoration-thickness: 1px; text-underline-offset: 6px; transition: text-decoration-color 0.15s; }
 .heard-row:not(.is-static):hover > span, .heard-row:not(.is-static):active > span { text-decoration-color: var(--earth); }
+
+/* 상담 결과 창 (84번) */
+.outcome-dialog { position: fixed; inset: 0; z-index: 9000; background: rgba(40, 28, 21, 0.45); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.outcome-card { background: #fff; border-radius: 14px; padding: 1.25rem; width: 100%; max-width: 26rem; color: #281c15; }
+.outcome-card h3 { font-weight: 700; font-size: 1.05rem; }
+.outcome-sub { font-size: 0.75rem; color: #8a7a6a; margin: 0.25rem 0 0.6rem; }
+.outcome-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
+.outcome-row button { border: 1px solid #d8cdbf; border-radius: 999px; padding: 0.5rem 0.9rem; font-size: 0.85rem; font-weight: 600; }
+.outcome-row button.on { background: #8A4A22; border-color: #8A4A22; color: #fff; }
+.outcome-note { width: 100%; border: 1px solid #d8cdbf; border-radius: 8px; padding: 0.5rem 0.65rem; font-size: 0.85rem; margin-bottom: 0.7rem; }
+.outcome-acts { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
+.outcome-acts button { border: 1px solid #d8cdbf; border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.85rem; }
+.outcome-acts button.primary { background: #281c15; border-color: #281c15; color: #fff; font-weight: 600; }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261106';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261107';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261106';
+const REDAM_BUILD = '20261107';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -257,12 +257,84 @@ function formatPhone(v) {
     return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
 }
 
+// 상담 결과 (84번): 계약 / 보류 / 안 됨(+이유). 상담 기록과 같이 저장되고 고객 화면·견적서에는 나오지 않음
+let consultOutcome = null;      // { result: 'won'|'hold'|'lost', reasons: [], note: '', at: 시각 }
+const OUTCOME_LABEL = { won: '계약', hold: '생각해 보신다', lost: '안 됨' };
+const OUTCOME_REASONS = ['가격', '다른 업체', '시기 미룸', '색·디자인', '연락 끊김', '기타'];
+function outcomeText(o) {
+    if (!o || !OUTCOME_LABEL[o.result]) return '';
+    const why = o.result === 'lost' ? [].concat(o.reasons || [], o.note ? ['"' + o.note + '"'] : []).join(' · ') : '';
+    return OUTCOME_LABEL[o.result] + (why ? ' — ' + why : '');
+}
+// 결과 고르기 창. opts: { initial, skipLabel, onSave(outcome), onSkip() }
+function openOutcomeDialog(opts) {
+    const old = document.getElementById('outcomeDialog'); if (old) old.remove();
+    const cur = opts.initial || {};
+    let result = OUTCOME_LABEL[cur.result] ? cur.result : null;
+    const reasons = new Set(cur.reasons || []);
+    const wrap = document.createElement('div');
+    wrap.id = 'outcomeDialog'; wrap.className = 'outcome-dialog';
+    wrap.innerHTML = `<div class="outcome-card" role="dialog" aria-label="상담 결과">
+        <h3>상담 결과</h3>
+        <p class="outcome-sub">이 기록은 직원 화면에만 남고, 손님 화면·견적서에는 나오지 않습니다.</p>
+        <div class="outcome-row" data-grp="result">${Object.keys(OUTCOME_LABEL).map(k => `<button type="button" data-v="${k}">${OUTCOME_LABEL[k]}</button>`).join('')}</div>
+        <div class="outcome-why" hidden>
+            <p class="outcome-sub">안 된 이유 (여러 개 고를 수 있어요)</p>
+            <div class="outcome-row" data-grp="reason">${OUTCOME_REASONS.map(r => `<button type="button" data-v="${r}">${r}</button>`).join('')}</div>
+            <input type="text" class="outcome-note" maxlength="60" placeholder="기타 — 한 줄로 적기" autocomplete="off">
+        </div>
+        <div class="outcome-acts">
+            ${opts.skipLabel ? `<button type="button" data-act="skip">${opts.skipLabel}</button>` : ''}
+            <button type="button" data-act="cancel">닫기</button>
+            <button type="button" data-act="save" class="primary">저장</button>
+        </div></div>`;
+    document.body.appendChild(wrap);
+    const note = wrap.querySelector('.outcome-note'); note.value = cur.note || '';
+    const paint = () => {
+        wrap.querySelectorAll('[data-grp="result"] button').forEach(b => b.classList.toggle('on', b.dataset.v === result));
+        wrap.querySelectorAll('[data-grp="reason"] button').forEach(b => b.classList.toggle('on', reasons.has(b.dataset.v)));
+        wrap.querySelector('.outcome-why').hidden = result !== 'lost';
+    };
+    const close = () => wrap.remove();
+    wrap.addEventListener('click', e => {
+        if (e.target === wrap) return close();
+        const b = e.target.closest('button'); if (!b) return;
+        const grp = b.parentElement && b.parentElement.dataset.grp;
+        if (grp === 'result') { result = b.dataset.v; paint(); }
+        else if (grp === 'reason') { reasons.has(b.dataset.v) ? reasons.delete(b.dataset.v) : reasons.add(b.dataset.v); paint(); }
+        else if (b.dataset.act === 'cancel') close();
+        else if (b.dataset.act === 'skip') { close(); opts.onSkip && opts.onSkip(); }
+        else if (b.dataset.act === 'save') {
+            if (!result) { showToast('결과를 하나 골라 주세요.', 'error'); return; }
+            const out = { result, reasons: result === 'lost' ? OUTCOME_REASONS.filter(r => reasons.has(r)) : [], note: result === 'lost' ? note.value.trim() : '', at: Date.now() };
+            close(); opts.onSave && opts.onSave(out);
+        }
+    });
+    paint();
+}
+// [상담 끝내기]: 지금 상담의 결과를 남김 (새 상담을 누를 때 다시 묻지 않음)
+function endConsultation() {
+    if (collectConsultation().rooms.length === 0) { showToast('남길 상담이 없습니다.', 'info'); return; }
+    openOutcomeDialog({ initial: consultOutcome, onSave: out => {
+        consultOutcome = out; saveDraftTick();
+        showToast('상담 결과를 남겼습니다: ' + outcomeText(out), 'info');
+    } });
+}
+
 // 새 상담 시작: 이전 고객의 입력을 전부 비움
 function startNewConsultation() {
     if (finderGate(startNewConsultation)) return;
+    if (!consultOutcome && collectConsultation().rooms.length > 0) {      // 결과를 안 남긴 상담이면 먼저 물음 (건너뛰기 가능)
+        openOutcomeDialog({ skipLabel: '건너뛰고 새 상담', onSave: out => { consultOutcome = out; saveDraftTick(); startNewConsultationConfirmed(); }, onSkip: startNewConsultationConfirmed });
+        return;
+    }
+    startNewConsultationConfirmed();
+}
+function startNewConsultationConfirmed() {
     if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
     archiveConsultation(collectConsultation(), Date.now());
     clearDraft();
+    consultOutcome = null;
     initDefaultRooms();
     collapsedRooms.clear(); openCurtainDetails.clear();
     finderTarget = null; finderView = 'grid'; finderPicks = []; resetFinderFilters(true);
@@ -490,7 +562,8 @@ function collectConsultation() {
         installFee: globalInstallFee,
         vat: globalVatOption,
         jogakboSeed: window.getJogakboSeed(),      // 조각보 모양 고정 (79번)
-        picks: finderPicks.slice()          // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
+        picks: finderPicks.slice(),         // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
+        outcome: consultOutcome || null     // 상담 결과 (84번)
     };
 }
 
@@ -571,6 +644,7 @@ function applySnapshot(snap) {
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
     jogakboSeed = (Number.isInteger(snap.jogakboSeed) && snap.jogakboSeed > 0) ? snap.jogakboSeed : newJogakboSeed();      // 옛 상담은 새 번호 (79번)
+    consultOutcome = (snap.outcome && OUTCOME_LABEL[snap.outcome.result]) ? snap.outcome : null;      // 84번
     finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set('custName', snap.name || ''); set('expressCustName', snap.name || '');
@@ -619,12 +693,16 @@ function renderHistory() {
         const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         const nm = ((h.name || '(이름 없음)') + (h.snapshot && h.snapshot.phone ? ' · ' + h.snapshot.phone : '')).replace(/</g, '&lt;');
         const nRooms = h.snapshot.rooms.length;
+        const oc = outcomeText(h.snapshot.outcome).replace(/</g, '&lt;');
+        const ocTone = h.snapshot.outcome ? ({ won: 'text-emerald-700', hold: 'text-amber-700', lost: 'text-rose-600' }[h.snapshot.outcome.result] || '') : '';
         return `<div class="flex items-center justify-between gap-2 py-2 border-b border-slate-100 text-xs">
             <div class="min-w-0">
                 <div class="font-bold text-slate-800 truncate">${nm}</div>
                 <div class="text-[11px] text-slate-400">${when} · 공간 ${nRooms}개 · ${(h.total || 0).toLocaleString()}원</div>
+                <div class="text-[11px] font-bold ${ocTone}">${oc || '<span class="text-slate-300">결과 없음</span>'}</div>
             </div>
             <div class="flex gap-1.5 flex-shrink-0">
+                <button onclick="editHistoryOutcome('${h.id}')" class="bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap">결과</button>
                 <button onclick="loadHistoryItem('${h.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap">불러오기</button>
                 <button onclick="deleteHistoryItem('${h.id}')" class="text-rose-500 hover:bg-rose-50 font-bold px-2 py-1.5 rounded-lg">삭제</button>
             </div>
@@ -645,6 +723,18 @@ function loadHistoryItem(id) {
     renderHistory();
     warnIfQuoteFabricsMissing();
     showToast('상담을 불러왔습니다. 현재 단가표 기준으로 다시 계산했습니다.', 'info');
+}
+
+// 상담 기록의 결과 고치기 (보류 → 계약/안 됨 등, 84번)
+function editHistoryOutcome(id) {
+    const item = loadHistory().find(h => h.id === id);
+    if (!item) return;
+    openOutcomeDialog({ initial: item.snapshot.outcome, onSave: out => {
+        const list = loadHistory(), t = list.find(h => h.id === id);
+        if (!t) return;
+        t.snapshot.outcome = out; t.updatedAt = Date.now();
+        saveHistory(list); renderHistory();
+    } });
 }
 
 function deleteHistoryItem(id) {
