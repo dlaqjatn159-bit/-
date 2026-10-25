@@ -98,6 +98,7 @@
                     <button type="button" data-view="history" onclick="showStaffView('history')"><i class="fa-solid fa-clock-rotate-left"></i>상담 기록<span class="badge" id="historyNavCount"></span></button>
                     <button type="button" data-view="fabric" onclick="showStaffView('fabric')"><i class="fa-solid fa-swatchbook"></i>원단</button>
                     <button type="button" data-view="settings" onclick="showStaffView('settings')"><i class="fa-solid fa-gear"></i>설정</button>
+                    <button type="button" data-view="test" onclick="showStaffView('test')"><i class="fa-solid fa-flask"></i>시험</button>
                 </nav>
                 <div class="staff-side-foot">
                     <button type="button" class="btn-new" onclick="startNewConsultation()">+ 새 상담</button>
@@ -496,6 +497,21 @@
                     </div>
                 </section>
 
+                <!-- ===== 시험 (89번): 가짜 손님으로 추천 확인. 열 때만 fake-guest.js를 불러옴. 손님 화면에는 없음 ===== -->
+                <section class="staff-view" id="view-test">
+                    <h1 class="staff-h1 font-serif-kr">시험</h1>
+                    <p class="staff-sub">사진 없이 벽·바닥 색과 답을 넣은 가짜 손님 56명으로 추천을 돌려 봅니다. 여기서 누른 판정은 이 칸에만 저장되고 상담·백업에는 섞이지 않습니다.</p>
+                    <div class="fg-bar-top" id="fakeGuestBar">
+                        <button type="button" class="on" data-fgview="guests">손님</button>
+                        <button type="button" data-fgview="stats">쏠림</button>
+                        <button type="button" data-fgview="colors">벽·바닥 색값</button>
+                        <select id="fgAns"><option value="fixed">답 같게</option><option value="mix">답 섞기</option></select>
+                        <select id="fgLink"><option value="">색 잇기 없음</option><option value="wall">벽 색에</option><option value="bridge">벽과 바닥 사이에</option><option value="floor">바닥 색에</option></select>
+                        <button type="button" id="fgExport">판정 내려받기</button>
+                    </div>
+                    <div id="fakeGuestOut"></div>
+                </section>
+
                 <!-- ===== 설정: 한 번 정해 두면 잘 안 바꾸는 것들 ===== -->
                 <section class="staff-view" id="view-settings">
                     <h1 class="staff-h1 font-serif-kr">설정</h1>
@@ -721,13 +737,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261112"></script>
-    <script src="costing.js?v=20261112"></script>
-    <script src="data.js?v=20261112"></script>
-    <script src="calculator.js?v=20261112"></script>
-    <script src="concierge.js?v=20261112"></script>
-    <script src="app.js?v=20261112"></script>
-    <script src="room-color.js?v=20261112"></script>
+    <script src="pricing.js?v=20261113"></script>
+    <script src="costing.js?v=20261113"></script>
+    <script src="data.js?v=20261113"></script>
+    <script src="calculator.js?v=20261113"></script>
+    <script src="concierge.js?v=20261113"></script>
+    <script src="app.js?v=20261113"></script>
+    <script src="room-color.js?v=20261113"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

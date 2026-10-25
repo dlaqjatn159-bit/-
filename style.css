@@ -2336,3 +2336,38 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .outcome-acts { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
 .outcome-acts button { border: 1px solid #d8cdbf; border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.85rem; }
 .outcome-acts button.primary { background: #281c15; border-color: #281c15; color: #fff; font-weight: 600; }
+
+/* ===== 시험 칸 (89번, fake-guest.js): 가짜 손님 56명으로 추천 확인. 직원 화면 전용 ===== */
+.fg-bar-top { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+.fg-bar-top button, .fg-bar-top select, #view-test .fg-colors > button { border: 1px solid #d8cdbf; background: #fff; border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+.fg-bar-top button.on { background: #281c15; border-color: #281c15; color: #fff; }
+.fg-warn { background: #fff3e0; border: 1px solid #f0c890; padding: 0.6rem 0.9rem; border-radius: 8px; margin-bottom: 0.9rem; font-size: 0.85rem; }
+.fg-guest { display: grid; grid-template-columns: 220px 1fr 1fr; gap: 1rem; background: #fff; border: 1px solid #e5dcd0; border-radius: 12px; padding: 0.9rem; margin-bottom: 0.75rem; }
+.fg-who b { font-size: 1rem; }
+.fg-ans { color: #8c7b69; font-size: 0.8rem; margin-top: 0.4rem; }
+.fg-sw { display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.12); vertical-align: -4px; margin-right: 4px; }
+.fg-room { width: 100%; max-width: 200px; border-radius: 8px; margin-top: 0.5rem; display: block; }
+.fg-cat h3 { margin: 0 0 0.4rem; font-size: 0.85rem; color: #8c7b69; font-weight: 600; }
+.fg-pick { display: grid; grid-template-columns: 44px 1fr auto; gap: 0.6rem; align-items: center; padding: 0.35rem; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+.fg-pick.sel { border-color: #946f4e; }
+.fg-chip { width: 44px; height: 44px; border-radius: 6px; border: 1px solid rgba(0,0,0,.12); }
+.fg-nm { font-size: 0.85rem; }
+.fg-sc { font-size: 0.75rem; color: #8c7b69; }
+.fg-judge { display: flex; gap: 4px; }
+.fg-judge button { border: 1px solid #d8cdbf; background: #fff; border-radius: 8px; padding: 0.2rem 0.5rem; font-size: 0.8rem; }
+.fg-judge button.j-ok.on { background: #4f7a52; border-color: #4f7a52; color: #fff; }
+.fg-judge button.j-mid.on { background: #b08a3c; border-color: #b08a3c; color: #fff; }
+.fg-judge button.j-no.on { background: #a5503f; border-color: #a5503f; color: #fff; }
+.fg-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.fg-stats section { background: #fff; border: 1px solid #e5dcd0; border-radius: 12px; padding: 0.9rem; }
+.fg-stats h2 { font-size: 1rem; margin: 0 0 0.5rem; font-weight: 700; }
+.fg-stats h3 { font-size: 0.85rem; margin: 0.8rem 0 0.3rem; color: #8c7b69; }
+.fg-bar { display: grid; grid-template-columns: 200px 1fr 40px; gap: 0.5rem; align-items: center; font-size: 0.8rem; margin: 3px 0; }
+.fg-bar i { display: block; height: 10px; background: #946f4e; border-radius: 5px; }
+.fg-zero { font-size: 0.8rem; color: #a5503f; }
+.fg-big { font-size: 1.75rem; font-weight: 700; }
+.fg-colors p { font-size: 0.85rem; color: #6d5e4f; margin-bottom: 0.6rem; }
+.fg-crow { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 4px 0; font-size: 0.8rem; }
+.fg-crow input { border: 1px solid #e5dcd0; border-radius: 6px; padding: 0.15rem 0.4rem; width: 4.5rem; }
+.fg-crow input.fg-cname { width: 9rem; }
+@media (max-width: 900px) { .fg-guest, .fg-stats { grid-template-columns: 1fr; } }

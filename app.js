@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261112';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261113';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261112';
+const REDAM_BUILD = '20261113';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -223,7 +223,17 @@ function showStaffView(view) {
     document.querySelectorAll('.staff-view').forEach(s => s.classList.toggle('on', s.id === 'view-' + view));
     if (view !== 'fabric') hideDbPrices();
     if (view === 'fabric') renderFinder();      // 분류·색상을 고친 뒤 돌아와도 새 값으로 보이게, 열 때마다 다시 그림
+    if (view === 'test') openFakeGuest();
     window.scrollTo(0, 0);
+}
+// 시험 칸 (89번): 처음 열 때만 fake-guest.js를 불러옴. 열 때마다 새 원단·색 값으로 다시 돌림
+function openFakeGuest() {
+    if (window.FakeGuest) { window.FakeGuest.open(); return; }
+    const s = document.createElement('script');
+    s.src = 'fake-guest.js?v=' + REDAM_BUILD;
+    s.onload = () => window.FakeGuest && window.FakeGuest.open();
+    s.onerror = () => { const o = document.getElementById('fakeGuestOut'); if (o) o.textContent = '시험 파일을 불러오지 못했습니다. 인터넷을 확인하고 다시 열어 주세요.'; };
+    document.head.appendChild(s);
 }
 // 원단 메뉴의 탭 6개: 찾기(find) · 색 사전(dict, 직원 전용 색 이름) · 원단 목록(list) · 분류(tag) · 색상(color) · 사진(photo)
 function showFabricTab(tab) {

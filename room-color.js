@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261112';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261113';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -732,6 +732,8 @@
             if (ov) { ov.hidden = true; ov.innerHTML = ''; }
             st = null;      // 사진은 버림
         },
+        // 직원 화면 "시험" 칸(fake-guest.js)이 같은 톤 나누기·이어주는 색을 쓰도록 꺼냄 (89번, 화면 변화 없음)
+        classifyLab, bridgeOf, labToHex,
         step: pickStep,      // 다 찍은 자리면 그 자리만 다시 찍기
         undo,
         view(v) { st.view = v; render(); },

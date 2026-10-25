@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261112';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261113';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -2381,6 +2381,8 @@
 
     window.concierge = {
         // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
+        // 직원 화면 "시험" 칸(fake-guest.js)이 고객 화면과 같은 원단 모음을 고르도록 꺼냄 (89번, 화면 변화 없음)
+        categoryPool: cat => getLiveCategoryPool(cat),
         jogakboTree: data => buildJogakboTree(data),
         showroomRows: data => showroomRowsOf(data),
         start: function() {
