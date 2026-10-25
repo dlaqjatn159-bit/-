@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261118';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261119';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -457,24 +457,12 @@ function isManualTagged(f) { return !!(f && f.manual && hasMoodInput(f) && (f.ma
 function calculateFabricMatchScore(fabric, room, category) {
     let score = 0;
     const fTone = fabric.tone || 'neutral';
-    const floorT = room.floorTone || 'warm';
-    const wallT = room.wallTone || 'warm';
     const wantMood = room.wantMood || null;                    // 고객이 직접 고른 희망 분위기
     const targetMood = wantMood || deriveRoomMood(room);       // 고르지 않았으면 바닥·벽 톤으로 추정
     const fMood = moodOf(fabric);
 
-    // 톤: 바닥·벽과의 어울림
-    if (floorT === wallT) {
-        if (fTone === floorT) score += 4;
-        else if (fTone === 'neutral') score += 2;
-    } else {
-        if (fTone === 'neutral') score += 5;
-        else if (fTone === floorT || fTone === wallT) score += 2;
-    }
-
-    if ((floorT === 'deep' || wallT === 'deep') && (fTone === 'deep' || fMood === 'deep_private')) {
-        score += 4;
-    }
+    // 톤 이름 맞추기 점수(웜·쿨·뉴트럴 같으면 +2~5)와 딥 규칙(벽·바닥 딥이면 짙은 원단 +4)은 뺌 (92번, 10-26 결정)
+    //  → 색 잇기(Lab)·90번 분위기·91번 보정이 맡음. 딥 +4가 색 잇기 '벽에'를 골라도 차콜을 밀어 올렸음
 
     // 분위기: 고객이 직접 고른 경우 더 크게 반영
     if (fMood === targetMood) {
@@ -1054,12 +1042,16 @@ function importColorRows(rows) {
 
     return { fabrics: Object.keys(next).length, colors: colorCount, unlisted: Array.from(unlisted) };
 }
-// 한 원단에서 공간(바닥·벽·분위기·채광)에 가장 잘 어울리는 색을 고름
+// 잰 색값이 있는 색인지 / 그런 색이 하나라도 있는 원단인지 (92번: 색값 없이는 추천하지 않음)
+function colorHasLab(c) { return !!c && typeof c.light === 'number' && typeof c.a === 'number' && typeof c.b === 'number'; }
+function fabricHasLabColor(f) { return !!f && getFabricColors(f.id).some(colorHasLab); }
+// 한 원단에서 공간(바닥·벽·분위기·채광)에 가장 잘 어울리는 색을 고름. 잰 색값이 있는 색이 있으면 그 색들 중에서만 (92번)
 function rankColorsFor(fabric, room, category) {
-    const colors = getFabricColors(fabric.id);
+    const all = getFabricColors(fabric.id), withLab = all.filter(colorHasLab);
+    const colors = withLab.length ? withLab : all;
     const ranked = colors.map(c => {
         const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, chroma: (typeof c.a === 'number' && typeof c.b === 'number') ? Math.hypot(c.a, c.b) : null, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
-        const link = category === '블라인드' ? 0 : (room && room.linkDir ? roomLinkBonus(c, room) : roomSoftBonus(c, room));      // 고객이 고른 색 잇기 방향 (20번) / 안 골랐으면 잰 색값으로 작게 (91번)
+        const link = (room && room.linkDir ? roomLinkBonus(c, room) : roomSoftBonus(c, room));      // 고객이 고른 색 잇기 방향 (20번) / 안 골랐으면 잰 색값으로 작게 (91번). 블라인드도 같음 (92번)
         return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + link + (c.tone ? 0.5 : 0) };
     });
     ranked.sort((a, b) => (b.score - a.score) || colorSort(a, b));

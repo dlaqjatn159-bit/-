@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261118';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261119';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -118,7 +118,12 @@
         return !!f && (f.categoryType === "블라인드" || f.calcType === "hebe");
     }
 
+    // 손님 추천 후보: 잰 색값(밝기·붉은기·노란기)이 있는 색이 하나라도 있는 원단만 (92번: 색 없이는 추천하지 않음. 원단 찾기에는 그대로)
     function getLiveCategoryPool(categoryType) {
+        const list = getCategoryPoolAll(categoryType);
+        return (typeof fabricHasLabColor === 'function') ? list.filter(fabricHasLabColor) : list;
+    }
+    function getCategoryPoolAll(categoryType) {
         // 고객 추천에서 숨긴 원단(예: 비고 "원단만 시킬때")은 빼고 고름. 직원 화면 빠른 견적에는 그대로 있음
         const all = getLiveDb();
         let pool = (typeof isCustomerHidden === 'function') ? all.filter(f => !isCustomerHidden(f)) : all;
@@ -342,10 +347,15 @@
         if (!want || want === 'any') return true;
         return getLiveCategoryPool('블라인드').some(f => typeof blindKind === 'function' && blindKind(f) === want);
     }
-    // 색 잇기를 물을 수 있는 공간: 벽·바닥을 둘 다 잰 색이 있고(카드로만 고른 공간은 아님), 블라인드가 아님 (블라인드 색 데이터 없음)
+    // 색 잇기를 물을 수 있는 공간: 벽·바닥을 둘 다 잰 색이 있음(카드로만 고른 공간은 아님). 블라인드도 물음 (92번: 블라인드 색값 다 들어 있음)
+    // 벽·바닥 모두 잰 색값(밝기·붉은기·노란기)이 있는지 (92번)
+    function roomHasLab(ed) {
+        const mc = ed && ed.measuredColor, ok = c => !!c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number';
+        return !!(mc && ok(mc.wall) && ok(mc.floor));
+    }
     function canLink(ed) {
         const mc = ed && ed.measuredColor;
-        return !!(mc && mc.wall && mc.floor && mc.bridge) && !(ed.items || []).some(i => i.presetType === 'blind');
+        return !!(mc && mc.wall && mc.floor && mc.bridge);
     }
     // "이렇게 들었어요" 화면에서 줄을 눌러 그 질문으로 가서 고치면, 답한 뒤 이 화면으로 돌아옴 (뒤로 가기 목록에 같은 화면이 쌓이지 않게 정리)
     function returnHomeIfFixing() {
@@ -1254,7 +1264,8 @@
             case "2-Base-Link": {
                 const mc = state.editingRoom.measuredColor;
                 const bar = pos => `<span class="link-prev" aria-hidden="true"><span class="link-bar" style="background:linear-gradient(90deg, ${mc.wall.hex}, ${mc.bridge.hex} 35%, ${mc.floor.hex})"></span><span class="link-mk" style="left:${pos}%"></span><span class="link-ends"><em>벽</em><em>바닥</em></span></span>`;
-                html += askStage('커튼 색은 어디에 맞출까요?', '', [ // 41번 · 73번(판정 말·설명 뺌) · 83번
+                const onlyBlind = (state.editingRoom.items || []).length > 0 && state.editingRoom.items.every(i => i.presetType === 'blind');      // 블라인드만 단 공간은 말만 바꿈 (92번)
+                html += askStage(onlyBlind ? '블라인드 색은 어디에 맞출까요?' : '커튼 색은 어디에 맞출까요?', '', [ // 41번 · 73번(판정 말·설명 뺌) · 83번
                     { label: '벽 색에', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) }, // 41번 · 72번(판정 대신 기준 말)
                     { label: '벽과 바닥 사이에', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) }, // 41번
                     { label: '바닥 색에', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
@@ -1368,8 +1379,20 @@
 
             // [Step 4: 실제 FABRIC_DB 기반 원단 3종 쇼케이스]
             case "4-Fabric-Queue":
+                // 벽·바닥 둘 다 잰 색값이 없으면 추천하지 않고 다시 재기 안내 (92번: 카드로만 고른 공간·재기 실패는 추측하지 않음)
+                if (!roomHasLab(state.editingRoom)) {
+                    const mc0 = (state.editingRoom && state.editingRoom.measuredColor) || {};
+                    const need = ['wall', 'floor'].filter(p => !(mc0[p] && typeof mc0[p].L === 'number'));
+                    html += askStage('벽·바닥 색을 재야 원단을 추천할 수 있습니다', '', need.map(p => (
+                        { label: p === 'wall' ? '벽 색 재기' : '바닥 색 재기', on: `window.concierge.measureForFabric('${p}')` })));
+                    break;
+                }
                 const { queueItem, targetCategory, showcaseList } = fabricShowcase();
                 state.colorPick = state.colorPick || {};
+                if (!showcaseList.length) {      // 잰 색값이 있는 원단이 없으면 추천하지 않음 (92번)
+                    html += askStage('색을 잰 원단이 아직 없어 추천할 수 없습니다', '직원 화면 › 원단 색상 › 색 안 잰 원단에서 확인할 수 있습니다', []);
+                    break;
+                }
 
                 const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
                 html += '<div class="bookmark-stage">';
@@ -2681,6 +2704,20 @@
                 windowDir: windowDirOf(r.windowDir)
             };
             goToStep("1-Space-Edit");
+        },
+        // 원단 화면에서 못 잰 벽·바닥 재기 (92번): 다 재면 원단 추천으로. "지금은 못 재요"면 카드로 넘기지 않고 같은 안내에 머묾
+        measureForFabric: function(part) {
+            const ed = state.editingRoom;
+            if (!ed) return;
+            openMeasure(ed.name, part, '이 색으로', '', function(mc) {
+                const old = ed.measuredColor || {};
+                const next = withBridge(part === 'wall' ? mc.wall : old.wall, part === 'floor' ? mc.floor : old.floor, old.bridgeK,
+                    hasFurniture(mc) ? mc.furniture : old.furniture);
+                setRoomColor(ed, next);
+                if (ed.cardParts) delete ed.cardParts[part];
+                ed.colorSrc = next.wall && next.floor ? 'measured' : part;
+                render();
+            }, function() { render(); });
         },
         // 벽·바닥 다시 재기: 공간 추가 때와 같은 색 재기 화면 (그 부분만). "지금은 못 재요"면 바닥·벽 카드 화면으로
         editRoomColor: function(part) {

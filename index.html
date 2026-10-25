@@ -466,6 +466,11 @@
                                 <span class="text-[10px] text-slate-500 w-full">색이 많을 때 비슷한 번호를 한 번에 지정합니다. (예: 1~8번을 쿨) 지정 뒤 개별 번호는 아래에서 고칠 수 있습니다</span>
                             </div>
                             <div id="colorEditor" class="max-h-[55vh] overflow-y-auto custom-scrollbar"></div>
+                            <!-- 색 안 잰 원단 (92번): 잰 색값이 없어 손님 추천에서 빠진 원단. 원단 찾기에는 그대로 나옴 -->
+                            <details class="text-xs bg-slate-50 border border-slate-200 rounded-xl p-2" ontoggle="if(this.open) renderNoLabList()">
+                                <summary class="font-bold text-slate-700 cursor-pointer">색 안 잰 원단 (손님 추천에서 빠짐)</summary>
+                                <div id="noLabList" class="mt-2 text-slate-600 leading-relaxed"></div>
+                            </details>
                         </div>
                     </div>
 
@@ -738,13 +743,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261118"></script>
-    <script src="costing.js?v=20261118"></script>
-    <script src="data.js?v=20261118"></script>
-    <script src="calculator.js?v=20261118"></script>
-    <script src="concierge.js?v=20261118"></script>
-    <script src="app.js?v=20261118"></script>
-    <script src="room-color.js?v=20261118"></script>
+    <script src="pricing.js?v=20261119"></script>
+    <script src="costing.js?v=20261119"></script>
+    <script src="data.js?v=20261119"></script>
+    <script src="calculator.js?v=20261119"></script>
+    <script src="concierge.js?v=20261119"></script>
+    <script src="app.js?v=20261119"></script>
+    <script src="room-color.js?v=20261119"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

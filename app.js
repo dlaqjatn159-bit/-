@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261118';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261119';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261118';
+const REDAM_BUILD = '20261119';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -5023,3 +5023,16 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
     renderRooms();
 };
 
+
+// 색 안 잰 원단 목록 (92번): 손님에게 보이는 원단 중 잰 색값(밝기·붉은기·노란기)이 있는 색이 하나도 없는 것 → 손님 추천에서 빠짐
+function renderNoLabList() {
+    const box = document.getElementById('noLabList');
+    if (!box || typeof fabricHasLabColor !== 'function') return;
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const list = (typeof FABRIC_DB !== 'undefined' ? FABRIC_DB : []).filter(f => !(typeof isCustomerHidden === 'function' && isCustomerHidden(f)) && !fabricHasLabColor(f));
+    if (!list.length) { box.textContent = '모든 원단에 잰 색값이 있습니다.'; return; }
+    const groups = {};
+    list.forEach(f => { const k = f.categoryType || '기타'; (groups[k] = groups[k] || []).push(f); });
+    box.innerHTML = `<p class="mb-1">${list.length}개 · 색상 입력표에 밝기·붉은기·노란기를 넣으면 추천에 들어갑니다.</p>`
+        + Object.keys(groups).map(k => `<p><b>${esc(k)} ${groups[k].length}</b> — ${groups[k].map(f => esc((f.book ? f.book + ' ' : '') + f.name)).join(', ')}</p>`).join('');
+}
