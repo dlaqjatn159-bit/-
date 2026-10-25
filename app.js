@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261107';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261108';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261107';
+const REDAM_BUILD = '20261108';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -258,6 +258,8 @@ function formatPhone(v) {
 }
 
 // 상담 결과 (84번): 계약 / 보류 / 안 됨(+이유). 상담 기록과 같이 저장되고 고객 화면·견적서에는 나오지 않음
+let quoteValidOverride = null;      // 이 상담만의 유효기간(일). null이면 설정 값 (85번)
+let quoteDate = null;      // 견적을 처음 만든 날 'YYYY-MM-DD' — 상담에 저장, 불러와도 안 바뀜 (85번)
 let consultOutcome = null;      // { result: 'won'|'hold'|'lost', reasons: [], note: '', at: 시각 }
 const OUTCOME_LABEL = { won: '계약', hold: '생각해 보신다', lost: '안 됨' };
 const OUTCOME_REASONS = ['가격', '다른 업체', '시기 미룸', '색·디자인', '연락 끊김', '기타'];
@@ -334,7 +336,8 @@ function startNewConsultationConfirmed() {
     if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
     archiveConsultation(collectConsultation(), Date.now());
     clearDraft();
-    consultOutcome = null;
+    consultOutcome = null; quoteDate = null; quoteValidOverride = null;
+    const qv0 = document.getElementById('quoteValidOverrideInput'); if (qv0) qv0.value = '';
     initDefaultRooms();
     collapsedRooms.clear(); openCurtainDetails.clear();
     finderTarget = null; finderView = 'grid'; finderPicks = []; resetFinderFilters(true);
@@ -563,6 +566,7 @@ function collectConsultation() {
         vat: globalVatOption,
         jogakboSeed: window.getJogakboSeed(),      // 조각보 모양 고정 (79번)
         picks: finderPicks.slice(),         // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
+        quoteDate: quoteDate || null, quoteValid: quoteValidOverride,      // 견적 날짜 (85번)
         outcome: consultOutcome || null     // 상담 결과 (84번)
     };
 }
@@ -644,6 +648,9 @@ function applySnapshot(snap) {
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
     jogakboSeed = (Number.isInteger(snap.jogakboSeed) && snap.jogakboSeed > 0) ? snap.jogakboSeed : newJogakboSeed();      // 옛 상담은 새 번호 (79번)
+    quoteDate = /^\d{4}-\d{2}-\d{2}$/.test(snap.quoteDate || '') ? snap.quoteDate : null;      // 옛 상담은 처음 견적을 만들 때 정함 (85번)
+    quoteValidOverride = (Number.isFinite(snap.quoteValid) && snap.quoteValid >= 0) ? Math.min(365, Math.round(snap.quoteValid)) : null;
+    const qv1 = document.getElementById('quoteValidOverrideInput'); if (qv1) qv1.value = quoteValidOverride === null ? '' : quoteValidOverride;
     consultOutcome = (snap.outcome && OUTCOME_LABEL[snap.outcome.result]) ? snap.outcome : null;      // 84번
     finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
@@ -3143,6 +3150,23 @@ const TICKET_NOTE_KEY = 'redam_ticket_note_v1';
 function loadTicketNote() { try { return (localStorage.getItem(TICKET_NOTE_KEY) || '').trim(); } catch (e) { return ''; } }
 function saveTicketNote(v) { try { localStorage.setItem(TICKET_NOTE_KEY, String(v || '').trim()); } catch (e) {} }
 // 견적서 아래쪽 글: 결제 조건 / 맞춤 제작 안내 / 공급자 정보 (여러 줄). 사업자 정보가 들어가므로 코드에 적지 않고 이 기기에만 저장 (비공개 팩으로 옮김)
+// 견적서 유효기간(일) — 설정에서 바꿈, 기본 14일, 0이면 표시 안 함 (85번)
+const QUOTE_VALID_KEY = 'redam_quote_valid_days_v1', QUOTE_VALID_DEFAULT = 14;
+function loadQuoteValidDays() {
+    try { const v = localStorage.getItem(QUOTE_VALID_KEY), n = Number(v); if (v !== null && v !== '' && Number.isFinite(n) && n >= 0) return Math.min(365, Math.round(n)); } catch (e) {}
+    return QUOTE_VALID_DEFAULT;
+}
+function saveQuoteValidDays(v) {
+    const n = Number(v);
+    try { if (v === '' || !Number.isFinite(n) || n < 0) localStorage.removeItem(QUOTE_VALID_KEY); else localStorage.setItem(QUOTE_VALID_KEY, String(Math.min(365, Math.round(n)))); } catch (e) {}
+}
+// 이 상담만 유효기간을 바꿈 — 비우면 설정 값 (85번)
+function setQuoteValidOverride(v) {
+    const n = Number(v);
+    quoteValidOverride = (v === '' || !Number.isFinite(n) || n < 0) ? null : Math.min(365, Math.round(n));
+    if (typeof saveDraftTick === 'function') saveDraftTick();
+}
+function localYmd(d) { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
 const TICKET_TEXT_KEYS = { pay: 'redam_ticket_pay_v1', custom: 'redam_ticket_custom_v1', supplier: 'redam_ticket_supplier_v1' };
 const TICKET_TEXT_INPUTS = { pay: 'ticketPayInput', custom: 'ticketCustomInput', supplier: 'ticketSupplierInput' };
 function loadTicketText(k) { try { return (localStorage.getItem(TICKET_TEXT_KEYS[k]) || '').trim(); } catch (e) { return ''; } }
@@ -3151,6 +3175,7 @@ function initTicketNoteInput() {
     const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote();
     Object.keys(TICKET_TEXT_INPUTS).forEach(k => { const t = document.getElementById(TICKET_TEXT_INPUTS[k]); if (t) t.value = loadTicketText(k); });
     const fee = document.getElementById('defaultInstallFeeInput'); if (fee) fee.value = loadDefaultInstallFee();
+    const vd = document.getElementById('quoteValidDaysInput'); if (vd) vd.value = loadQuoteValidDays();
     renderOptionPriceSettings();
 }
 // 설정 › 가공·부자재 단가 (29번): 줄마다 판매가 · 원가 · 남는 돈. 칸을 고치면 바로 저장되고 그 줄의 남는 돈만 다시 씀
@@ -3197,11 +3222,12 @@ function optionGainUpdate(row) {
 // 비공개 팩에 함께 담는 견적서 글 (불러올 때는 팩에 적힌 것만 덮어씀 — 비어 있으면 이 기기 것을 그대로 둠)
 function ticketTextsForPack() {
     const fee = storedDefaultInstallFee();          // 기본 시공비는 이 기기에서 정한 적이 있을 때만 팩에 담음
-    return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'), fee: fee === null ? undefined : fee };
+    return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'), fee: fee === null ? undefined : fee, valid: loadQuoteValidDays() };
 }
 function applyTicketTextsFromPack(t) {
     if (!t || typeof t !== 'object') return;
     if (typeof t.note === 'string' && t.note.trim()) saveTicketNote(t.note);
+    if (typeof t.valid === 'number' && Number.isFinite(t.valid) && t.valid >= 0) saveQuoteValidDays(t.valid);
     if (typeof t.fee === 'number' && Number.isFinite(t.fee) && t.fee >= 0) saveDefaultInstallFee(t.fee);
     Object.keys(TICKET_TEXT_KEYS).forEach(k => { if (typeof t[k] === 'string' && t[k].trim()) saveTicketText(k, t[k]); });
     initTicketNoteInput();
@@ -3239,9 +3265,12 @@ async function loadTicketPhotos(data) {
 function ticketData() {
     calculateAll();
     const custName = (document.getElementById('custName').value || '').trim();
-    const d = new Date();
+    if (!quoteDate) { quoteDate = localYmd(new Date()); if (typeof saveDraftTick === 'function') saveDraftTick(); }      // 처음 만든 날로 고정 (85번)
+    const [qy, qm, qd] = quoteDate.split('-').map(Number), d = new Date(qy, qm - 1, qd);
     const pad = n => String(n).padStart(2, '0');
+    const validDays = quoteValidOverride === null ? loadQuoteValidDays() : quoteValidOverride, until = new Date(qy, qm - 1, qd + validDays);
     return {
+        validText: validDays > 0 ? `${until.getMonth() + 1}월 ${until.getDate()}일까지 유효` : '',
         recipient: custName ? `${custName} 고객님 귀하` : '고객님 귀하',      // 고객 이름·날짜는 견적서 머리글에만 (74번)
         date: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`,
         rooms: rooms.map(r => {
@@ -3340,7 +3369,7 @@ function drawTicket(ctx, data, W, slim) {
         if (canSpace) { spacing('5px'); text('견적서', RX + 5, 108, 'right', DARK); spacing('0px'); }
         else text('견적서', RX, 108, 'right', DARK);
         setFont(400, PAPER_F3, SERIF); text(data.recipient, CX, 154, 'left', MUTED);
-        setFont(400, PAPER_F4, SANS); label(data.date, RX, 154, 'right', 2);
+        setFont(400, PAPER_F4, SANS); label(data.date + (data.validText ? '  ·  ' + data.validText : ''), RX, 154, 'right', 2);
         hline(CX, RX, HEAD_Y, DARK, 1);
         setFont(400, PAPER_F4, SANS);
         label('품목', CX, HEAD_Y + 36, 'left', 3);
@@ -4652,7 +4681,7 @@ function ticketKakaoText(data) {
     data = data || ticketData();
     const out = [], why = whySetsOf(data), won = n => `${Number(n || 0).toLocaleString()}원`;
     const custName = (document.getElementById('custName').value || '').trim();
-    out.push(`[Re.dam] ${custName ? custName + ' 고객님 ' : ''}공간 제안 · ${data.date}`);
+    out.push(`[Re.dam] ${custName ? custName + ' 고객님 ' : ''}공간 제안 · ${data.date}${data.validText ? ' (' + data.validText + ')' : ''}`);
     const nameOf = it => (it.kind === '블라인드' && it.name.includes('블라인드')) ? it.name : `${it.kind} · ${it.name}`;
     if (why.rooms.length) {
         out.push('', '〈원단을 고른 이유〉');

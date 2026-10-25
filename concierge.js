@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261107';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261108';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1762,7 +1762,7 @@
         // [마지막 섹션] 호텔 인보이스 스타일 견적서 (0.5px 초세선, 76번)
         h += '<section class="jg-invoice-sec" id="finSecEst">';
         h += '<div class="jg-sec-head" style="margin-bottom:2rem;"><h2 class="jg-sec-ttl font-serif-kr">견적서</h2></div>';
-        h += `<div class="fin-est-meta"><span class="font-serif-kr">${esc(data.recipient)}</span><span class="fin-est-date">${esc(String(data.date || '').replace(/\./g, '. '))}</span></div><div class="fin-est-table">`;
+        h += `<div class="fin-est-meta"><span class="font-serif-kr">${esc(data.recipient)}</span><span class="fin-est-date">${esc(String(data.date || '').replace(/\./g, '. '))}${data.validText ? ' · ' + esc(data.validText) : ''}</span></div><div class="fin-est-table">`;
         (data.rooms || []).forEach(room => {
             h += '<div class="fin-est-space">';
             h += `<div class="fin-est-hd"><span class="fin-est-rname font-serif-kr">${esc(room.name)}</span>${room.sampleOnly ? '' : `<span class="fin-est-rsum font-serif-kr">${room.total.toLocaleString()}원</span>`}</div>`;
