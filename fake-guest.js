@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261115';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261116';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님" 56명(벽 8 × 바닥 7)으로 앱 추천을 돌려 봄.
@@ -59,6 +59,7 @@
         const out = [];
         let i = 0;
         colors.walls.forEach(w => colors.floors.forEach(f => {
+            const j = (i * 9) % 56;      // 손님 번호를 벽·바닥 순서와 엇갈리게 섞은 번호 (9와 56은 서로소라 56명이 모두 다른 번호). 이 번호의 자릿수로 세 답을 정해 3×3×3 조합이 고르게 퍼짐
             const pick = (k, s, shift) => ANS[k][(i * s + (shift || 0) + 1) % ANS[k].length];      // 건너뛰는 칸 수 s와 답 개수가 서로소여야 모든 답이 나옴
             const fixed = ansMode === 'fixed';
             const wc = Object.assign({ tone: RC().classifyLab(w).tone }, w);
@@ -71,9 +72,9 @@
                 wallName: w.n, floorName: f.n,
                 measuredColor: mc,
                 wallTone: wc.tone, floorTone: fc.tone,
-                privacy: fixed ? 'some' : pick('privacy', 7),
-                lightLevel: fixed ? 'mid' : pick('lightLevel', 5),
-                lightBlock: fixed ? 'soft' : pick('lightBlock', 4, Math.floor(i / 3)),
+                privacy: fixed ? 'some' : ANS.privacy[j % 3],
+                lightLevel: fixed ? 'mid' : ANS.lightLevel[Math.floor(j / 3) % 3],
+                lightBlock: fixed ? 'soft' : ANS.lightBlock[Math.floor(j / 9) % 3],
                 sheerFeel: fixed ? null : pick('sheerFeel', 11),
                 wantMood: fixed ? null : pick('wantMood', 13),
                 linkDir: linkDir || null,
