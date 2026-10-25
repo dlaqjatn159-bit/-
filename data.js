@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261117';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261118';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -393,16 +393,13 @@ function normalizeDensityInput(v) {
 function deriveRoomMood(room) {
     const wc = room.measuredColor && room.measuredColor.wall;
     if (wc && typeof wc.L === 'number' && typeof wc.a === 'number' && typeof wc.b === 'number') {
-        // 바닥 보조 (91번, 10-26 결정): 잰 바닥이 짙음(밝기 50 미만)이면 벽이 밝아도 아늑한 (예전 deep 규칙과 같게)
-        const fc = room.measuredColor.floor;
-        if (fc && typeof fc.L === 'number' && fc.L < MOOD_CUTS['겉지'].dark) return 'deep_private';
+        // 바닥 보조(짙은 바닥이면 아늑한)는 뺌 (91번 보완, 10-26 결정: 한쪽만 잰 공간·카드 공간에서 차콜로 쏠림). 집 분위기는 벽으로만
         const m = moodByColor({ categoryType: '겉지', light: wc.L, chroma: Math.hypot(wc.a, wc.b), tone: wc.tone || room.wallTone || 'neutral' });
         if (m !== undefined) return m;
     }
-    const f = room.floorTone || 'warm', w = room.wallTone || 'warm';
-    if (f === 'deep' || w === 'deep') return 'deep_private';
-    if (f === w) return f === 'warm' ? 'soft_warm' : (f === 'cool' ? 'urban_clean' : 'balanced_neutral');
-    return 'balanced_neutral';
+    // 잰 벽 색값이 없으면 벽 톤 이름으로만 (91번 보완: 바닥 톤은 집 분위기에 안 씀)
+    const w = room.wallTone || 'warm';
+    return w === 'deep' ? 'deep_private' : (w === 'warm' ? 'soft_warm' : (w === 'cool' ? 'urban_clean' : 'balanced_neutral'));
 }
 
 // 원단(또는 색)의 분위기: ① 사장님이 직접 고른 분위기 ② 색 값(밝기)이 있으면 색마다 자동 계산(90번) ③ 없으면 질감·톤·비침, 그것도 없으면 예전 이름 추측
@@ -1242,7 +1239,7 @@ function roomLinkBonus(c, room) {
 }
 // 색 잇기를 고르지 않은 손님 (91번): 집 분위기(잰 벽 색, deriveRoomMood) 뒤의 보조 점수. 원단 색이 이어주는 색(벽~바닥 중간)에 가까울수록 최대 +SOFT_WEIGHT
 //  - 톤 점수 차이(2점 이상)보다 작게. 중간색(은은한)으로 쏠릴 위험이 있어 시험 칸에서 켜고 끄며 비교(window.ROOM_SOFT_ON)
-const SOFT_WEIGHT = 1.5, SOFT_RANGE = 25;
+const SOFT_WEIGHT = 1.5, SOFT_RANGE = 12;      // 색감(a·b) 거리 12 이상이면 0 (밝기를 뺐으니 25에서 줄임, 임시값)
 if (typeof window !== 'undefined' && window.ROOM_SOFT_ON === undefined) window.ROOM_SOFT_ON = true;
 function roomSoftBonus(c, room) {
     if (typeof window !== 'undefined' && window.ROOM_SOFT_ON === false) return 0;
@@ -1250,7 +1247,8 @@ function roomSoftBonus(c, room) {
     if (!mc || !c || typeof c.light !== 'number' || typeof c.a !== 'number' || typeof c.b !== 'number') return 0;
     const target = mc.bridge || mc.wall || mc.floor;
     if (!finderHasLab(target)) return 0;
-    const d = colorDistance({ L: c.light, a: c.a, b: c.b }, target);
+    // 밝기(L)는 빼고 색감(a·b)만 비교 (91번 보완, 10-26 결정: 밝기는 90번 분위기·집 분위기가 정함. 색 있는 속지도 집 색감에 맞으면 올라오게). 속지·겉지 같음
+    const d = Math.hypot(c.a - target.a, c.b - target.b);
     return SOFT_WEIGHT * Math.max(0, 1 - d / SOFT_RANGE);
 }
 function colorDistanceWord(d) { return d < 3 ? '거의 같음' : (d < 6 ? '아주 비슷' : (d < 10 ? '비슷' : '조금 다름')); }
