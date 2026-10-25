@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261097';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261098';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -692,34 +692,63 @@
         clearTimeout(spaceToastTimer);
         spaceToastTimer = setTimeout(() => t.classList.remove('on'), undo ? 3500 : 1800);
     }
-    // ---- 중심 화면(1-Space): 가로 대화면에서는 왼쪽 여백 기둥(집 전체 호흡·기본 색·액션) + 오른쪽 2열 무박스 공간 보드 (40-1) ----
+    // ---- 중심 화면(1-Space): 왼쪽 여백 기둥(집 전체 호흡·공간 목차·액션) + 오른쪽 '한 공간씩 크게 보기' 작업대 (+ 전체 한눈에 전환, 77번) ----
     function spaceHtml(currentCust) {
         spaceEntries = (typeof finderEntries === 'function') ? finderEntries() : [];
         const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
         const list = state.roomsCart, doneN = list.filter(r => r.isConfigured).length;
         const fresh = state.justFilledRoomId, freshIdx = state.justFilledIdx;        // 방금 원단을 고른 공간(한 톤 바꾸기면 그 칸만): 색 칸이 차오르는 움직임
+        if (fresh != null) state.activeSpaceId = fresh;
         state.justFilledRoomId = null; state.justFilledIdx = null;
+        if (!state.activeSpaceId || !list.some(r => r.id === state.activeSpaceId)) {
+            const firstTodo = list.find(r => !r.isConfigured);
+            state.activeSpaceId = (firstTodo || list[0] || {}).id || null;
+        }
+        const isAllMode = !!state.spaceViewAll;
         const fillCls = (r, i) => (r.id === fresh && (freshIdx == null || freshIdx === i)) ? ' fill-in' : '';
-        let h = '<div class="dos-stage"><div class="dos-sheet">';
+
+        let h = `<div class="dos-stage"><div class="dos-sheet${isAllMode ? ' is-all-mode' : ' is-single-mode'}">`;
         h += '<div class="dos-left">';
         h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>Re<i class="logo-dot">.</i>dam</h1></div>'; // 42번: 빛과 공간 제거
         h += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${esc(currentCust)} 고객님` : '고객님'}의 공간</p>`;
         h += doneN ? '<h2 class="dos-lead font-serif-kr">공간마다 알맞은<br>빛의 결을 찾았어요</h2>' // 42번: 사족 설명 제거
                    : '<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴볼게요</h2>';
-        // 맨 위 공간 전체 색 띠: 처음엔 빈 띠, 공간마다 빈 칸이 생기고 원단을 고르면 그 칸이 색으로 채워짐
-        const strip = list.length ? list.map(r => r.isConfigured && r.curtains.length
-            ? r.curtains.map((c, i) => `<i class="${fillCls(r, i).trim()}" style="background:${colorFillOf(c.fabricId, c.colorName)}"></i>`).join('')
-            : `<i style="background:${HATCH}"></i>`).join('') : `<i style="background:${HATCH}"></i>`;
-        const cap = list.length ? list.map(r => `<span style="flex:${r.isConfigured && r.curtains.length ? r.curtains.length : 1}">${esc(r.name)}</span>`).join('') : '<span>공간을 담으면 여기에 색이 채워져요</span>';
-        h += `<div class="dos-house"><div class="dos-house-lbl"><span>공간 전체 색 흐름</span></div><div class="dos-house-strip">${strip}</div><div class="dos-house-cap">${cap}</div></div>`; // 41번: 기계적 카운터 제거
-        h += '</div>';
+        // 맨 위 공간 전체 색 띠: 칸을 누르면 그 공간으로 이동 (77번)
+        const strip = list.length ? list.map(r => {
+            const isSel = !isAllMode && r.id === state.activeSpaceId;
+            const inner = r.isConfigured && r.curtains.length
+                ? r.curtains.map((c, i) => `<i class="${fillCls(r, i).trim()}" style="background:${colorFillOf(c.fabricId, c.colorName)}"></i>`).join('')
+                : `<i style="background:${HATCH}"></i>`;
+            return `<button type="button" class="dos-strip-seg${isSel ? ' is-active' : ''}" style="flex:${r.isConfigured && r.curtains.length ? r.curtains.length : 1}" onclick="window.concierge.selectSpaceRoom(${r.id})" aria-label="${esc(r.name)} 보기">${inner}</button>`;
+        }).join('') : `<i style="background:${HATCH}"></i>`;
+        h += `<div class="dos-house"><div class="dos-house-lbl"><span>공간 전체 색 흐름</span></div><div class="dos-house-strip">${strip}</div>`;
+        if (list.length) {
+            h += '<div class="dos-nav-list">';
+            list.forEach(r => {
+                const isSel = !isAllMode && r.id === state.activeSpaceId;
+                const swDots = r.isConfigured && r.curtains.length
+                    ? r.curtains.map(c => `<i style="background:${colorFillOf(c.fabricId, c.colorName)}"></i>`).join('')
+                    : `<i class="is-empty" style="background:${HATCH}"></i>`;
+                h += `<button type="button" class="dos-nav-item font-serif-kr${isSel ? ' is-active' : ''}" onclick="window.concierge.selectSpaceRoom(${r.id})">`
+                    + `<span class="dos-nav-nm">${esc(r.name)}</span>`
+                    + `<span class="dos-nav-dots">${swDots}</span>`
+                    + `</button>`;
+            });
+            h += '</div>';
+        }
+        h += '</div></div>';
 
         h += '<div class="dos-right">';
-        list.forEach(r => {
+        if (list.length > 1) {
+            h += `<div class="dos-view-bar"><button type="button" class="dos-view-toggle" onclick="window.concierge.toggleSpaceViewMode()">${isAllMode ? '한 공간씩 크게 보기' : '전체 한눈에 보기'}</button></div>`;
+        }
+        const visibleRooms = isAllMode ? list : list.filter(r => r.id === state.activeSpaceId);
+        visibleRooms.forEach(r => {
             const wall = roomPart(r, 'wall'), floor = roomPart(r, 'floor'), size = roomSize(r);
             const dirTxt = windowDirText(windowDirOf(r.windowDir));
             const metaParts = [dirTxt ? dirTxt + '향' : '', size ? `${size.w} × ${size.h}cm` : ''].filter(Boolean).join(' · '); // 41번: 남향 및 크기 옆 배치
-            h += '<section class="dos-room">';
+            const boxH = isAllMode ? 54 : 84, floorH = isAllMode ? 11 : 16, aboveH = boxH - floorH;
+            h += `<section class="dos-room${isAllMode ? '' : ' is-hero'}">`;
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
                 + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured ? `<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button>` : `<button type="button" class="dos-todo" onclick="window.concierge.openRoomCart(${r.id})">상담하기</button>`}</span></div>`;
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
@@ -752,9 +781,9 @@
                     wallSideFlex = 2.0;
                 }
                 if (hasPartialH) {
-                    // 높이가 다를 때만(커튼이 바닥까지 닿지 않을 때만) 하단 벽 연결 (43번 · 76번: 52px 박스 기준 창 41px, 바닥 11px)
+                    // 높이가 다를 때만(커튼이 바닥까지 닿지 않을 때만) 하단 벽 연결 (43번 · 76·77번)
                     const wallHRatio = Math.max(0.12, Math.min(0.55, (sH - cH) / sH));
-                    baseWallHeight = Math.round(41 * wallHRatio);
+                    baseWallHeight = Math.round(aboveH * wallHRatio);
                 } else {
                     baseWallHeight = 0; // 높이가 같으면 바닥까지 닿으므로 하단 벽 절대 연결 안 됨!
                 }
@@ -786,13 +815,12 @@
             } else {
                 topSegs += seg('벽', wHex, TOTAL_FLEX);      // 가구는 아래에서 바닥 위에 세움 (67번)
             }
-            const midWindowH = baseWallHeight > 0 ? (41 - baseWallHeight) : 41;
+            const midWindowH = baseWallHeight > 0 ? (aboveH - baseWallHeight) : aboveH;
             const wallBaseHtml = baseWallHeight > 0 ? `<div class="arch-wall-base" style="height:${baseWallHeight}px;background:${wHex}"></div>` : '';
             // 가구: 이름 없이 색 상자로 바닥 위에 세워 커튼 앞에 둠. 양옆 벽에 붙여 왼쪽·오른쪽 번갈아 (67번)
-            //  높이: 커튼의 절반, 키 큰 가구는 벽 높이의 2/3, 이불은 낮게. 러그는 바닥 띠 위에 얇게. 다 합쳐 폭의 절반까지
             let furHtml = '';
             if (furs.length) {
-                const ABOVE = 41, FLOOR = 11, curtH = ABOVE - baseWallHeight;      // 바닥 위 높이(52 − 바닥 11), 커튼 높이 (76번)
+                const ABOVE = aboveH, FLOOR = floorH, curtH = ABOVE - baseWallHeight;
                 const sideP = wallSideFlex / TOTAL_FLEX * 100, areaP = 100 - sideP * 2;
                 const FUR_W = { 소파: 24, 침대: 24, '식탁·책상': 16, '붙박이장·수납장': 16, 책장: 10, '이불·침구': 20, 기타: 10 };
                 const FUR_TALL = { '붙박이장·수납장': true, 책장: true };
@@ -810,14 +838,15 @@
                 });
                 furs.forEach((f, i) => { if (kinds[i] === '러그·카펫') furHtml += `<i class="arch-fur is-rug" style="left:${(sideP + 4).toFixed(1)}%;width:30%;height:4px;bottom:4px;background:${f.hex}"></i>`; });
             }
-            h += `<div class="arch-layer-box"><div class="arch-mid-window${furHtml ? ' has-fur' : ''}" style="height:${midWindowH}px">${topSegs}</div>${wallBaseHtml}<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="background:${fHex}"><span>바닥</span></div>${furHtml}</div>`;
-            if (!r.isConfigured) { h += '<p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 채워져요.</p></section>'; return; }
-            // 이유 한 줄: 색 잇기를 골랐으면 그 방향("벽과 바닥 사이를 잇는 색으로 골랐어요. …"), 아니면 견적서와 같은 추천 이유
-            const reason = (r.linkDir && LINK_WORD[r.linkDir]) ? `${LINK_WORD[r.linkDir]}으로 골랐어요. ${LINK_WHY[r.linkDir]}`
-                : ((typeof ticketItemReason === 'function' && r.curtains[0]) ? ticketItemReason(r, r.curtains[0]) : '');
-            if (reason) h += `<p class="dos-why">${reason}</p>`;
-            // 원단 줄: 고른 뒤에만. 세로 색 조각(사진이 있으면 사진)이 아래에서 위로 채워짐
-            // 원단 줄마다 "더 보기"(다른 색 찾기) · 한 톤 밝게 / 한 톤 진하게(누르면 바로 바뀜, 알림에 되돌리기)
+            h += `<div class="arch-layer-box" style="height:${boxH}px"><div class="arch-mid-window${furHtml ? ' has-fur' : ''}" style="height:${midWindowH}px">${topSegs}</div>${wallBaseHtml}<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="height:${floorH}px;background:${fHex}"><span>바닥</span></div>${furHtml}</div>`;
+            if (!r.isConfigured) {
+                h += `<div class="dos-empty-cta"><p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 채워져요.</p>`
+                    + (!isAllMode ? `<button type="button" class="txt-cta font-serif-kr" onclick="window.concierge.openRoomCart(${r.id})">${esc(r.name)} 상담 시작 →</button>` : '')
+                    + `</div></section>`;
+                return;
+            }
+            // 중심 화면에서는 이유 설명 문장("벽과 바닥의 중간 톤으로 골랐어요…")을 빼서 여백과 원단 스와치에 집중 (77번 사장님 확정 — 이유는 최종 제안 쇼룸 시트에만)
+            h += `<div class="dos-items-wrap${r.curtains.length >= 2 ? ' is-pair' : ' is-one'}">`;
             r.curtains.forEach((c, i) => {
                 const opts = [];
                 if (c.shapeFee > 0) opts.push('형상기억');
@@ -833,8 +862,7 @@
                 h += '<div class="dos-item-main">';
                 h += `<div class="dos-sw${fillCls(r, i)}" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
                 h += `<div class="dos-txt">${isBlindDupe ? '' : `<div class="dos-kind">${kindOf(c)}</div>`}`;
-                h += `<div class="dos-fab font-serif-kr"><span class="dos-fname">${esc(baseFabName)}</span>${showColLbl ? `<span class="dos-fcolor">${esc(colLbl)}</span>` : ''}${opts.length ? `<em>· ${opts.join(' · ')}</em>` : ''}</div>`;
-                h += '</div></div>';
+                h += `<div class="dos-fab font-serif-kr"><span class="dos-fname">${esc(baseFabName)}</span>${showColLbl ? `<span class="dos-fcolor">${esc(colLbl)}</span>` : ''}${opts.length ? `<em class="dos-fopts">· ${opts.join(' · ')}</em>` : ''}</div>`;
                 h += '<div class="dos-item-sub">';
                 if (c.presetType !== 'blind') {
                     h += `<button type="button" class="dos-more" onclick="openSpaceMore(${r.id}, ${i})">더 보기</button>`;
@@ -845,11 +873,14 @@
                     h += `<div class="dos-tone">${toneBtn(tones.lighter, '한 톤 밝게', 1)}${toneBtn(tones.darker, '한 톤 진하게', -1)}</div>`;
                 }
                 h += '</div>';
+                h += '</div></div>';
                 h += '</div>';
             });
-            h += '</section>';
+            h += '</div></section>';
         });
-        h += '<section class="dos-room dos-add"><button type="button" class="dos-addbtn font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button></section>'; // 42번: 사족 설명 제거
+        if (isAllMode) {
+            h += '<section class="dos-room dos-add"><button type="button" class="dos-addbtn font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button></section>';
+        }
         h += '</div>';
 
         // 아래 버튼: 남은 공간이 있으면 "상담 시작 / 다음 공간 상담하기", 모두 끝났으면 "최종 제안 보기". 가로 대화면에서는 왼쪽 기둥 하단에 고정 (40-1)
@@ -1480,50 +1511,75 @@
     function buildJogakboHtml(data) {
         const rooms = (data.rooms || []).filter(r => r.items && r.items.length);
         if (!rooms.length) return '<div class="jg-tile" style="flex:1;background:#efe9df"></div>';
-        const tiles = rooms.map(rm => {
+        // 77번: 가로·세로 교차 몬드리안 비대칭 조각보 (각 공간 안에서도 원단 비례 + 벽·바닥 색면이 비대칭으로 맞물림)
+        const tiles = rooms.map((rm, idx) => {
             const cartRoom = state.roomsCart.find(r => r.name === rm.name);
             const raw = cartRoom || rm.raw || rm || {};
             const sz = roomSize(raw) || { w: 240, h: 235 };
-            const area = Math.max(1200, (Number(sz.w) || 240) * (Number(sz.h) || 235));
+            // 실제 창 면적을 기준으로 하되, 똑같은 치수(340×235 등)가 연속되어도 쌍둥이 사각형이 되지 않도록 미세한 황금비 변주를 줌
+            const baseArea = Math.max(1200, (Number(sz.w) || 240) * (Number(sz.h) || 235));
+            const area = Math.round(baseArea * (1 + ((idx * 37) % 5 - 2) * 0.045));
             const items = rm.items || [];
-            let segs = '';
+            const wallP = roomPart(raw, 'wall'), floorP = roomPart(raw, 'floor');
+            const wHex = (wallP && wallP.hex) || '#f2eee8';
+            const fHex = (floorP && floorP.hex) || '#e5ddcf';
             const hasDrape = items.some(i => i.kindKey === 'drape' || i.kind === '겉지');
             const hasSheer = items.some(i => i.kindKey === 'sheer' || i.kind === '속지');
-            if (items.length === 2 && hasDrape && hasSheer) {
+            const pat = idx % 4;      // 타일마다 벽·바닥·원단 색면이 맞물리는 방향을 다르게
+            let inner = '';
+            if (items.length >= 2 && hasDrape && hasSheer) {
                 const drape = items.find(i => i.kindKey === 'drape' || i.kind === '겉지') || items[0];
                 const sheer = items.find(i => i.kindKey === 'sheer' || i.kind === '속지') || items[1];
                 const dHex = colorFillOf(drape.fabricId, drape.colorName) || drape.fill || '#b8a894';
                 const sHex = colorFillOf(sheer.fabricId, sheer.colorName) || sheer.fill || '#efede7';
-                segs = `<div style="flex:0.36;background:${dHex}"></div><div style="flex:0.64;background:${sHex}"></div>`;
+                if (pat === 0) {
+                    // 좌측 겉지(38%) + 우측 속지(62%) + 하단 얇은 바닥 띠
+                    inner = `<div class="jg-t-main"><div class="jg-t-fab"><div style="flex:0.38;background:${dHex}"></div><div style="flex:0.62;background:${sHex}"></div></div></div><div class="jg-t-bar" style="flex:0.13;background:${fHex}"></div>`;
+                } else if (pat === 1) {
+                    // 좌측 벽 띠(14%) + 상하 분할(속지 64% / 겉지 36%)
+                    inner = `<div class="jg-t-main"><div style="flex:0.14;background:${wHex}"></div><div class="jg-t-col" style="flex:0.86"><div style="flex:0.64;background:${sHex}"></div><div style="flex:0.36;background:${dHex}"></div></div></div>`;
+                } else if (pat === 2) {
+                    // 좌측 속지(64%) + 우측 겉지(36%) 순수 비대칭 면
+                    inner = `<div class="jg-t-main"><div class="jg-t-fab"><div style="flex:0.64;background:${sHex}"></div><div style="flex:0.36;background:${dHex}"></div></div></div>`;
+                } else {
+                    // 상단 속지(62%) + 하단(겉지 76% + 바닥 24%)
+                    inner = `<div class="jg-t-col" style="flex:1"><div style="flex:0.62;background:${sHex}"></div><div class="jg-t-main" style="flex:0.38"><div style="flex:0.76;background:${dHex}"></div><div style="flex:0.24;background:${fHex}"></div></div></div>`;
+                }
             } else {
-                segs = items.map(it => {
-                    const hex = colorFillOf(it.fabricId, it.colorName) || it.fill || '#d9cdbb';
-                    return `<div style="flex:1;background:${hex}"></div>`;
-                }).join('');
+                const it0 = items[0] || {};
+                const hex = colorFillOf(it0.fabricId, it0.colorName) || it0.fill || '#d9cdbb';
+                if (pat === 0) {
+                    inner = `<div class="jg-t-main"><div style="flex:0.84;background:${hex}"></div><div style="flex:0.16;background:${wHex}"></div></div>`;
+                } else if (pat === 1) {
+                    inner = `<div class="jg-t-col" style="flex:1"><div style="flex:0.85;background:${hex}"></div><div style="flex:0.15;background:${fHex}"></div></div>`;
+                } else if (pat === 2) {
+                    inner = `<div class="jg-t-main"><div style="flex:1;background:${hex}"></div></div>`;
+                } else {
+                    inner = `<div class="jg-t-main"><div style="flex:0.14;background:${wHex}"></div><div style="flex:0.86;background:${hex}"></div></div>`;
+                }
             }
-            const html = `<div class="jg-tile" style="flex:${area}"><div class="jg-t-main"><div class="jg-t-fab">${segs}</div></div></div>`;
-            return { area, html };
+            const html = `<div class="jg-tile" style="flex:${area}">${inner}</div>`;
+            return { area, html, idx };
         });
 
+        // 면적 순으로 정렬한 뒤 [큰 조각, 작은 조각, 두 번째 큰 조각...] 지그재그로 섞어 한쪽에 같은 크기가 몰리지 않게 함
+        const sorted = tiles.slice().sort((a, b) => b.area - a.area);
+        const arranged = [];
+        let l = 0, r = sorted.length - 1;
+        while (l <= r) {
+            arranged.push(sorted[l++]);
+            if (l <= r) arranged.push(sorted[r--]);
+        }
+
+        // 가로(row) ↔ 세로(col)를 번갈아 가며 황금비(0.38 ~ 0.62) 근처에서 재귀 분할 → 진짜 몬드리안 구도
         function slice(list, dir, depth) {
             if (list.length === 1) return list[0].html;
             const total = list.reduce((s, x) => s + x.area, 0) || 1;
-            // 최상위(depth 0)에서 공간이 5개 이상이면 시안처럼 3기둥 비대칭 벤토 그리드로 분할 (면적 비례 100% 유지)
-            if (depth === 0 && list.length >= 5 && dir === 'row') {
-                const n1 = Math.max(1, Math.round(list.length / 3));
-                const n2 = Math.max(1, Math.round((list.length - n1) / 2));
-                const g1 = list.slice(0, n1), g2 = list.slice(n1, n1 + n2), g3 = list.slice(n1 + n2);
-                const cols = [g1, g2, g3].filter(g => g.length);
-                return cols.map(g => {
-                    const gSum = g.reduce((s, x) => s + x.area, 0) || 1;
-                    if (g.length === 1) return g[0].html;
-                    return `<div class="jg-group is-col" style="flex:${gSum}">${slice(g, 'col', depth + 1)}</div>`;
-                }).join('');
-            }
+            const targetRatio = (depth % 2 === 0) ? 0.42 : 0.58;
             let acc = 0, splitIdx = 1, bestDiff = Infinity;
             for (let i = 1; i < list.length; i++) {
                 acc += list[i - 1].area;
-                const diff = Math.abs(acc / total - 0.46);
+                const diff = Math.abs(acc / total - targetRatio);
                 if (diff < bestDiff) { bestDiff = diff; splitIdx = i; }
             }
             const a = list.slice(0, splitIdx), b = list.slice(splitIdx);
@@ -1534,7 +1590,7 @@
             const htmlB = b.length === 1 ? b[0].html : `<div class="jg-group is-${nextDir}" style="flex:${sumB}">${slice(b, nextDir, depth + 1)}</div>`;
             return htmlA + htmlB;
         }
-        return slice(tiles, 'row', 0);
+        return slice(arranged, 'row', 0);
     }
 
     function renderFinalEditorial() {
@@ -2368,7 +2424,9 @@
             else if (src === 'wall' && mc) setRoomColor(room, withBridge(mc.wall, house && house.floor, house && house.bridgeK, mc.furniture));
             else if (src === 'floor' && mc) setRoomColor(room, withBridge(house && house.wall, mc.floor, house && house.bridgeK, mc.furniture));
             if (src === 'first' && mc && (mc.wall || mc.floor)) state.house = houseOf(mc, room.id);
+            room.id = newRoomId();
             state.roomsCart.push(room);
+            state.activeSpaceId = room.id;
             state.editingRoom = null;
             // 공간 추가 단계(종류·크기·같나요)는 뒤로 가기 목록에서 지움 → 중심 화면에서 ← 는 공간 추가 전 화면으로
             const at = stepHistory.map(x => x.step).lastIndexOf("1.5-Room-Type");
@@ -2536,6 +2594,16 @@
                 return;
             }
             goToStep("2-Base-Light");
+        },
+        // ---- 중심 화면: 공간 목차 선택 · 한 공간 크게 보기 ↔ 전체 한눈에 전환 (77번) ----
+        selectSpaceRoom: function(roomId) {
+            state.activeSpaceId = roomId;
+            state.spaceViewAll = false;
+            render();
+        },
+        toggleSpaceViewMode: function() {
+            state.spaceViewAll = !state.spaceViewAll;
+            render();
         },
         // ---- 중심 화면 › 수정하기 ----
         editRoom: function(roomId) {
