@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261113';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261114';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -396,12 +396,29 @@ function deriveRoomMood(room) {
     return 'balanced_neutral';
 }
 
-// 원단(또는 색)의 분위기: ① 사장님이 직접 고른 분위기 ② 질감이 있으면 톤·비침·질감으로 자동 ③ 둘 다 없으면 예전 이름 추측
+// 원단(또는 색)의 분위기: ① 사장님이 직접 고른 분위기 ② 색 값(밝기)이 있으면 색마다 자동 계산(90번) ③ 없으면 질감·톤·비침, 그것도 없으면 예전 이름 추측
 // 색상별 톤이 다르면 분위기도 색마다 달라짐 (예: 블랑 1번 웜 → 포근한, 7번 쿨 → 깔끔한)
+// 분위기를 색마다 계산 (90번): 밝기 L·채도·톤·비침으로 자리를 정함. 경계는 겉지·속지 따로
+//  - 포인트 색(채도 19 이상) = 분위기 없음(null) / 아주 밝음·중간·짙음 × 비치는 속지 / 덜 비침
+const MOOD_CUTS = { '속지': { bright: 90, dark: 77 }, '겉지': { bright: 70, dark: 50 } };
+const MOOD_POINT_CHROMA = 19;
+function moodByColor(f) {
+    const cut = MOOD_CUTS[f.categoryType];
+    if (!cut || typeof f.light !== 'number') return undefined;
+    if (typeof f.chroma === 'number' && f.chroma >= MOOD_POINT_CHROMA) return null;
+    const tone = f.tone || 'neutral';
+    const byTone = tone === 'cool' ? 'urban_clean' : (tone === 'warm' ? 'soft_warm' : 'balanced_neutral');
+    const sheer = f.categoryType === '속지' && (f.density === 'light' || f.density === 'medium' || (!f.density && /쉬폰|보일/.test(String(f.name || ''))));
+    if (f.light >= cut.bright) return sheer ? 'airy_bright' : byTone;
+    if (f.light >= cut.dark) return sheer ? 'balanced_neutral' : byTone;
+    return sheer ? 'balanced_neutral' : 'deep_private';
+}
 function moodOf(f) {
     if (!f) return null;
     const m = f.manual || {};
     if (m.mood && MOOD_LABELS[f.mood]) return f.mood;
+    const byColor = moodByColor(f);
+    if (byColor !== undefined) return byColor;
     if (!f.texture || !TEXTURE_LABELS[f.texture]) return f.mood || null;
     const tone = f.tone || 'neutral';
     const thin = f.categoryType === '속지' && (f.density === 'light' || (!m.density && /쉬폰|보일/.test(String(f.name || ''))));
@@ -413,6 +430,20 @@ function moodOf(f) {
     if (f.texture === 'cozy' || tone === 'warm') return 'soft_warm';
     if (tone === 'cool') return 'urban_clean';
     return 'balanced_neutral';
+}
+// 원단 하나의 분위기(분류 화면 표시용): 색들 중 가장 많은 분위기. 색 값이 없으면 원단 자체로 (90번)
+function fabricMoodOf(f) {
+    if (!f) return null;
+    const m = f.manual || {};
+    if (m.mood && MOOD_LABELS[f.mood]) return f.mood;
+    const count = {};
+    getFabricColors(f.id).forEach(c => {
+        if (typeof c.light !== 'number') return;
+        const k = moodOf(Object.assign({}, f, { tone: c.tone || f.tone, light: c.light, chroma: (typeof c.a === 'number' && typeof c.b === 'number') ? Math.hypot(c.a, c.b) : null }));
+        if (k) count[k] = (count[k] || 0) + 1;
+    });
+    const top = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+    return top || moodOf(f);
 }
 function hasMoodInput(f) { const m = (f && f.manual) || {}; return !!(m.mood || (f && f.texture && TEXTURE_LABELS[f.texture])); }
 function isManualTagged(f) { return !!(f && f.manual && hasMoodInput(f) && (f.manual.tone || hasColorTones(f.id))); }
@@ -1021,7 +1052,7 @@ function importColorRows(rows) {
 function rankColorsFor(fabric, room, category) {
     const colors = getFabricColors(fabric.id);
     const ranked = colors.map(c => {
-        const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
+        const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, chroma: (typeof c.a === 'number' && typeof c.b === 'number') ? Math.hypot(c.a, c.b) : null, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
         const link = category === '블라인드' ? 0 : roomLinkBonus(c, room);      // 고객이 고른 색 잇기 방향 (20번)
         return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + link + (c.tone ? 0.5 : 0) };
     });
@@ -1138,7 +1169,7 @@ function finderEntries() {
             const hasAb = !!(c && typeof c.a === 'number' && typeof c.b === 'number');
             const C = hasAb ? Math.hypot(c.a, c.b) : null;
             // 느낌은 색마다: 색의 톤·밝기를 덮어써서 계산 (rankColorsFor와 같은 방식)
-            const view = c ? Object.assign({}, f, { tone: c.tone || f.tone, light: L, manual: Object.assign({}, m, { tone: !!c.tone || !!m.tone }) }) : f;
+            const view = c ? Object.assign({}, f, { tone: c.tone || f.tone, light: L, chroma: C, manual: Object.assign({}, m, { tone: !!c.tone || !!m.tone }) }) : f;
             return {
                 key: f.id + '__' + (c ? c.name : ''), fabric: f, fabricId: f.id, group, twins: twinsOf[group] || [f.id], book: f.book, fabName: f.name, cat: blind ? 'blind' : (sheer ? 'sheer' : 'drape'),
                 color: c ? c.name : '', no: c ? colorNoLabel(c.name) : '', label: (c && c.label) || '',
@@ -1151,7 +1182,7 @@ function finderEntries() {
                 specCm: blind ? null : (f.specCm || null), wide: (blind || !f.specCm) ? null : (f.specCm >= WIDE_SPEC_CM ? 'wide' : 'normal'),
                 price: f.price || 0, priceTier: tiers[f.id].tier, priceRank: tiers[f.id].rank,
                 view,       // 이 색의 톤·밝기를 입힌 원단 (공간에 어울리는 점수를 낼 때 씀)
-                mood: hasMoodInput(f) ? moodOf(view) : null
+                mood: (hasMoodInput(f) || L != null) ? moodOf(view) : null
             };
         };
         const colors = getFabricColors(f.id).filter(c => !had.has(c.name));
