@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261098';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261099';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1511,71 +1511,85 @@
     function buildJogakboHtml(data) {
         const rooms = (data.rooms || []).filter(r => r.items && r.items.length);
         if (!rooms.length) return '<div class="jg-tile" style="flex:1;background:#efe9df"></div>';
-        // 77번: 가로·세로 교차 몬드리안 비대칭 조각보 (각 공간 안에서도 원단 비례 + 벽·바닥 색면이 비대칭으로 맞물림)
-        const tiles = rooms.map((rm, idx) => {
+        // 78번: 칸마다 반복되던 벽·바닥 얇은 띠를 없애고 모든 조각을 100% 순수 단색 사각형으로 구성.
+        // 공간 위계(거실 > 안방 > 방 > 서재/알파룸 > 드레스룸/베란다 + 창 면적)를 반영하되,
+        // 같은 벽 색·바닥 색·원단 색은 여러 사각형으로 중복 분할하지 않고 면적을 합산해 하나의 큰 면으로 표현.
+        const normHex = h => String(h || '#d9cdbb').trim().toLowerCase();
+        const typeWeightOf = name => {
+            const n = String(name || '').trim();
+            if (/^거실\s*1?$|^거실$/.test(n)) return 1.45;
+            if (/거실/.test(n)) return 1.15;
+            if (/안방|침실/.test(n)) return 1.22;
+            if (/방/.test(n)) return 0.95;
+            if (/주방|다이닝|서재|알파/.test(n)) return 0.80;
+            if (/드레스|베란다|발코니|다용도/.test(n)) return 0.62;
+            return 0.90;
+        };
+        const buckets = new Map();
+        const addBucket = (key, hex, addArea, extraRate) => {
+            const cur = buckets.get(key);
+            if (!cur) {
+                buckets.set(key, { key, hex, area: Math.round(addArea), count: 1 });
+            } else {
+                cur.area += Math.round(addArea * extraRate);
+                cur.count += 1;
+            }
+        };
+
+        rooms.forEach(rm => {
             const cartRoom = state.roomsCart.find(r => r.name === rm.name);
             const raw = cartRoom || rm.raw || rm || {};
             const sz = roomSize(raw) || { w: 240, h: 235 };
-            // 실제 창 면적을 기준으로 하되, 똑같은 치수(340×235 등)가 연속되어도 쌍둥이 사각형이 되지 않도록 미세한 황금비 변주를 줌
-            const baseArea = Math.max(1200, (Number(sz.w) || 240) * (Number(sz.h) || 235));
-            const area = Math.round(baseArea * (1 + ((idx * 37) % 5 - 2) * 0.045));
-            const items = rm.items || [];
+            const rawArea = Math.max(1200, (Number(sz.w) || 240) * (Number(sz.h) || 235));
+            const sizeFactor = Math.max(0.48, Math.min(1.80, Math.pow(rawArea / 55000, 0.62)));
+            const W = 1000 * typeWeightOf(rm.name) * sizeFactor;
+
             const wallP = roomPart(raw, 'wall'), floorP = roomPart(raw, 'floor');
             const wHex = (wallP && wallP.hex) || '#f2eee8';
             const fHex = (floorP && floorP.hex) || '#e5ddcf';
+            // 벽·바닥: 모든 방이 같은 색이면 합쳐져 집 전체의 큰 바탕 면이 되고, 방마다 다르면 거실 > 안방 > 작은방 비례로 나뉨
+            addBucket('wall__' + normHex(wHex), wHex, W * 0.56, 0.36);
+            addBucket('floor__' + normHex(fHex), fHex, W * 0.40, 0.34);
+
+            // 원단: 여러 방에서 같은 원단 색을 쓰면 하나의 면적으로 합산하고, 다르면 공간 크기에 비례해 각자의 면적을 가짐
+            const items = rm.items || [];
             const hasDrape = items.some(i => i.kindKey === 'drape' || i.kind === '겉지');
             const hasSheer = items.some(i => i.kindKey === 'sheer' || i.kind === '속지');
-            const pat = idx % 4;      // 타일마다 벽·바닥·원단 색면이 맞물리는 방향을 다르게
-            let inner = '';
             if (items.length >= 2 && hasDrape && hasSheer) {
                 const drape = items.find(i => i.kindKey === 'drape' || i.kind === '겉지') || items[0];
                 const sheer = items.find(i => i.kindKey === 'sheer' || i.kind === '속지') || items[1];
                 const dHex = colorFillOf(drape.fabricId, drape.colorName) || drape.fill || '#b8a894';
                 const sHex = colorFillOf(sheer.fabricId, sheer.colorName) || sheer.fill || '#efede7';
-                if (pat === 0) {
-                    // 좌측 겉지(38%) + 우측 속지(62%) + 하단 얇은 바닥 띠
-                    inner = `<div class="jg-t-main"><div class="jg-t-fab"><div style="flex:0.38;background:${dHex}"></div><div style="flex:0.62;background:${sHex}"></div></div></div><div class="jg-t-bar" style="flex:0.13;background:${fHex}"></div>`;
-                } else if (pat === 1) {
-                    // 좌측 벽 띠(14%) + 상하 분할(속지 64% / 겉지 36%)
-                    inner = `<div class="jg-t-main"><div style="flex:0.14;background:${wHex}"></div><div class="jg-t-col" style="flex:0.86"><div style="flex:0.64;background:${sHex}"></div><div style="flex:0.36;background:${dHex}"></div></div></div>`;
-                } else if (pat === 2) {
-                    // 좌측 속지(64%) + 우측 겉지(36%) 순수 비대칭 면
-                    inner = `<div class="jg-t-main"><div class="jg-t-fab"><div style="flex:0.64;background:${sHex}"></div><div style="flex:0.36;background:${dHex}"></div></div></div>`;
-                } else {
-                    // 상단 속지(62%) + 하단(겉지 76% + 바닥 24%)
-                    inner = `<div class="jg-t-col" style="flex:1"><div style="flex:0.62;background:${sHex}"></div><div class="jg-t-main" style="flex:0.38"><div style="flex:0.76;background:${dHex}"></div><div style="flex:0.24;background:${fHex}"></div></div></div>`;
-                }
+                addBucket('fab__' + normHex(sHex), sHex, W * 0.60, 0.52);
+                addBucket('fab__' + normHex(dHex), dHex, W * 0.42, 0.52);
             } else {
                 const it0 = items[0] || {};
-                const hex = colorFillOf(it0.fabricId, it0.colorName) || it0.fill || '#d9cdbb';
-                if (pat === 0) {
-                    inner = `<div class="jg-t-main"><div style="flex:0.84;background:${hex}"></div><div style="flex:0.16;background:${wHex}"></div></div>`;
-                } else if (pat === 1) {
-                    inner = `<div class="jg-t-col" style="flex:1"><div style="flex:0.85;background:${hex}"></div><div style="flex:0.15;background:${fHex}"></div></div>`;
-                } else if (pat === 2) {
-                    inner = `<div class="jg-t-main"><div style="flex:1;background:${hex}"></div></div>`;
-                } else {
-                    inner = `<div class="jg-t-main"><div style="flex:0.14;background:${wHex}"></div><div style="flex:0.86;background:${hex}"></div></div>`;
-                }
+                const cHex = colorFillOf(it0.fabricId, it0.colorName) || it0.fill || '#d9cdbb';
+                addBucket('fab__' + normHex(cHex), cHex, W * 0.82, 0.52);
             }
-            const html = `<div class="jg-tile" style="flex:${area}">${inner}</div>`;
-            return { area, html, idx };
         });
 
-        // 면적 순으로 정렬한 뒤 [큰 조각, 작은 조각, 두 번째 큰 조각...] 지그재그로 섞어 한쪽에 같은 크기가 몰리지 않게 함
-        const sorted = tiles.slice().sort((a, b) => b.area - a.area);
-        const arranged = [];
-        let l = 0, r = sorted.length - 1;
-        while (l <= r) {
-            arranged.push(sorted[l++]);
-            if (l <= r) arranged.push(sorted[r--]);
+        const planes = Array.from(buckets.values()).map((b, idx) => {
+            // 같은 면적이 우연히 겹쳐도 기계적인 이등분이 되지 않도록 미세한 황금비 변주만 더함
+            const area = Math.max(180, Math.round(b.area * (1 + ((idx * 37) % 5 - 2) * 0.03)));
+            const html = `<div class="jg-tile" style="flex:${area};background:${b.hex}"></div>`;
+            return { area, html, hex: b.hex };
+        });
+
+        // 조각 순서를 무작위로 섞되(Fisher-Yates), 각 조각의 면적(flex 비율)은 그대로 유지하여
+        // 벽·바닥·원단의 실제 면적 비례는 100% 지키면서 구도는 매번 역동적인 몬드리안 추상화로 배치 (78번)
+        const arranged = planes.slice();
+        for (let i = arranged.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const tmp = arranged[i]; arranged[i] = arranged[j]; arranged[j] = tmp;
         }
 
-        // 가로(row) ↔ 세로(col)를 번갈아 가며 황금비(0.38 ~ 0.62) 근처에서 재귀 분할 → 진짜 몬드리안 구도
-        function slice(list, dir, depth) {
+        // 현재 사각형의 가로·세로 비례(rectW, rectH)를 함께 계산해 지나치게 길쭉한 띠가 생기지 않도록 막으면서,
+        // 분할 비율(0.35~0.45 또는 0.55~0.65)과 방향을 역동적으로 교차
+        function slice(list, rectW, rectH) {
             if (list.length === 1) return list[0].html;
             const total = list.reduce((s, x) => s + x.area, 0) || 1;
-            const targetRatio = (depth % 2 === 0) ? 0.42 : 0.58;
+            const targetRatio = Math.random() < 0.5 ? (0.36 + Math.random() * 0.08) : (0.56 + Math.random() * 0.08);
             let acc = 0, splitIdx = 1, bestDiff = Infinity;
             for (let i = 1; i < list.length; i++) {
                 acc += list[i - 1].area;
@@ -1585,12 +1599,17 @@
             const a = list.slice(0, splitIdx), b = list.slice(splitIdx);
             const sumA = a.reduce((s, x) => s + x.area, 0) || 1;
             const sumB = b.reduce((s, x) => s + x.area, 0) || 1;
-            const nextDir = dir === 'row' ? 'col' : 'row';
-            const htmlA = a.length === 1 ? a[0].html : `<div class="jg-group is-${nextDir}" style="flex:${sumA}">${slice(a, nextDir, depth + 1)}</div>`;
-            const htmlB = b.length === 1 ? b[0].html : `<div class="jg-group is-${nextDir}" style="flex:${sumB}">${slice(b, nextDir, depth + 1)}</div>`;
-            return htmlA + htmlB;
+            const fracA = sumA / (sumA + sumB), fracB = 1 - fracA;
+            const dir = (rectW / rectH > 1.32) ? 'row' : (rectH / rectW > 1.32) ? 'col' : (Math.random() < 0.5 ? 'row' : 'col');
+            const nextWA = dir === 'row' ? rectW * fracA : rectW;
+            const nextHA = dir === 'col' ? rectH * fracA : rectH;
+            const nextWB = dir === 'row' ? rectW * fracB : rectW;
+            const nextHB = dir === 'col' ? rectH * fracB : rectH;
+            const htmlA = a.length === 1 ? a[0].html : slice(a, nextWA, nextHA);
+            const htmlB = b.length === 1 ? b[0].html : slice(b, nextWB, nextHB);
+            return `<div class="jg-group is-${dir}" style="flex:${sumA + sumB}">${htmlA}${htmlB}</div>`;
         }
-        return slice(arranged, 'row', 0);
+        return slice(arranged, 16, 10);
     }
 
     function renderFinalEditorial() {
@@ -1682,8 +1701,9 @@
                     const isLayered = sets.length >= 2;
                     let swHtml = '';
                     if (isLayered) {
-                        const backSet = sets.find(x => x.it.kindKey === 'sheer' || x.it.kind === '속지') || sets[0];
-                        const frontSet = sets.find(x => x !== backSet && (x.it.kindKey === 'drape' || x.it.kind === '겉지')) || sets.find(x => x !== backSet) || sets[1];
+                        // 78번: 방 안에서 사람이 체감하는 느낌(겉지가 바깥 틀, 속지가 안쪽 주인공)에 맞춰 겉지를 뒤(.jg-sw-back), 속지를 앞(.jg-sw-front)에 배치
+                        const backSet = sets.find(x => x.it.kindKey === 'drape' || x.it.kind === '겉지') || sets[0];
+                        const frontSet = sets.find(x => x !== backSet && (x.it.kindKey === 'sheer' || x.it.kind === '속지')) || sets.find(x => x !== backSet) || sets[1];
                         swHtml = `<div class="jg-layered-sw">`
                             + `<div class="jg-sw-back" style="${fabricFillStyle(backSet.it.fabricId, backSet.it.colorName)}"></div>`
                             + `<div class="jg-sw-front" style="${fabricFillStyle(frontSet.it.fabricId, frontSet.it.colorName)}"></div>`
