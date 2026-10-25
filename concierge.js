@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261099';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261100';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1511,6 +1511,15 @@
     function buildJogakboHtml(data) {
         const rooms = (data.rooms || []).filter(r => r.items && r.items.length);
         if (!rooms.length) return '<div class="jg-tile" style="flex:1;background:#efe9df"></div>';
+        // 79번: 상담마다 정해진 조각보 번호로 만든 '정해진 순서의 무작위 수'(mulberry32) — 같은 번호·같은 공간·색이면 언제나 같은 그림
+        let seedState = (typeof window.getJogakboSeed === 'function' ? window.getJogakboSeed() : 1) >>> 0;
+        const rand = () => {
+            seedState = (seedState + 0x6D2B79F5) >>> 0;
+            let t = seedState;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
         // 78번: 칸마다 반복되던 벽·바닥 얇은 띠를 없애고 모든 조각을 100% 순수 단색 사각형으로 구성.
         // 공간 위계(거실 > 안방 > 방 > 서재/알파룸 > 드레스룸/베란다 + 창 면적)를 반영하되,
         // 같은 벽 색·바닥 색·원단 색은 여러 사각형으로 중복 분할하지 않고 면적을 합산해 하나의 큰 면으로 표현.
@@ -1580,7 +1589,7 @@
         // 벽·바닥·원단의 실제 면적 비례는 100% 지키면서 구도는 매번 역동적인 몬드리안 추상화로 배치 (78번)
         const arranged = planes.slice();
         for (let i = arranged.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(rand() * (i + 1));
             const tmp = arranged[i]; arranged[i] = arranged[j]; arranged[j] = tmp;
         }
 
@@ -1589,7 +1598,7 @@
         function slice(list, rectW, rectH) {
             if (list.length === 1) return list[0].html;
             const total = list.reduce((s, x) => s + x.area, 0) || 1;
-            const targetRatio = Math.random() < 0.5 ? (0.36 + Math.random() * 0.08) : (0.56 + Math.random() * 0.08);
+            const targetRatio = rand() < 0.5 ? (0.36 + rand() * 0.08) : (0.56 + rand() * 0.08);
             let acc = 0, splitIdx = 1, bestDiff = Infinity;
             for (let i = 1; i < list.length; i++) {
                 acc += list[i - 1].area;
@@ -1600,7 +1609,7 @@
             const sumA = a.reduce((s, x) => s + x.area, 0) || 1;
             const sumB = b.reduce((s, x) => s + x.area, 0) || 1;
             const fracA = sumA / (sumA + sumB), fracB = 1 - fracA;
-            const dir = (rectW / rectH > 1.32) ? 'row' : (rectH / rectW > 1.32) ? 'col' : (Math.random() < 0.5 ? 'row' : 'col');
+            const dir = (rectW / rectH > 1.32) ? 'row' : (rectH / rectW > 1.32) ? 'col' : (rand() < 0.5 ? 'row' : 'col');
             const nextWA = dir === 'row' ? rectW * fracA : rectW;
             const nextHA = dir === 'col' ? rectH * fracA : rectH;
             const nextWB = dir === 'row' ? rectW * fracB : rectW;

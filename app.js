@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261099';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261100';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261099';
+const REDAM_BUILD = '20261100';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -266,6 +266,7 @@ function startNewConsultation() {
     initDefaultRooms();
     collapsedRooms.clear(); openCurtainDetails.clear();
     finderTarget = null; finderView = 'grid'; finderPicks = []; resetFinderFilters(true);
+    jogakboSeed = newJogakboSeed();      // 새 상담은 새 조각보 (79번)
     globalInstallFee = loadDefaultInstallFee();
     globalVatOption = 'consumer';
     const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
@@ -488,6 +489,7 @@ function collectConsultation() {
         })),
         installFee: globalInstallFee,
         vat: globalVatOption,
+        jogakboSeed: window.getJogakboSeed(),      // 조각보 모양 고정 (79번)
         picks: finderPicks.slice()          // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
     };
 }
@@ -568,6 +570,7 @@ function applySnapshot(snap) {
     rooms = ordered.filter(r => r.curtains.length);
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
+    jogakboSeed = (Number.isInteger(snap.jogakboSeed) && snap.jogakboSeed > 0) ? snap.jogakboSeed : newJogakboSeed();      // 옛 상담은 새 번호 (79번)
     finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set('custName', snap.name || ''); set('expressCustName', snap.name || '');
@@ -1129,6 +1132,10 @@ let finderSort = 'light';
 let finderRef = null;          // "비슷한 색"의 기준 색 (카드 key)
 let finderView = 'grid';       // 'grid'(색 카드) | 'map'(색 지도)
 const FINDER_PICK_MAX = 6;     // 후보는 6개까지 (고객에게는 2~6개를 나란히 보여 줌)
+// 조각보 번호(씨앗 숫자): 상담마다 하나, 최종 제안 조각보 모양을 고정 (79번)
+let jogakboSeed = 0;
+function newJogakboSeed() { return 1 + Math.floor(Math.random() * 2147483646); }
+window.getJogakboSeed = function() { if (!jogakboSeed) jogakboSeed = newJogakboSeed(); return jogakboSeed; };
 let finderPicks = [];          // 후보로 별표한 색 (카드 key). 상담에 같이 저장됨
 let finderMapPoints = [];      // 색 지도에 찍힌 점 (누른 자리에서 가장 가까운 점을 찾는 데 씀)
 function resetFinderFilters(silent) {
