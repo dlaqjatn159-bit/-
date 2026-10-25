@@ -1716,6 +1716,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .jg-sr-elev .arch-bot-floor { height: 10px; width: 100%; flex: none; border-top: 0.5px solid rgba(35, 28, 22, 0.1); }
 .jg-sr-elev span { display: none !important; }
 .jg-sr-comment { margin: 0.85rem 0 0; font-size: 13.5px; line-height: 1.65; color: #6f6256; word-break: keep-all; }
+.jg-sr-comment + .jg-sr-comment { margin-top: 0.45rem; } /* 83번: 네 칸 단락 ①②③ 사이 */
+.jg-sr-meta.is-line { line-height: 1.5; word-break: keep-all; } /* 83번: 이름표 없이 값만 한 줄 */
 .jg-sr-pair { margin-top: 2.2rem; display: grid; grid-template-columns: 156px minmax(0, 1fr); gap: 2.2rem; align-items: start; }
 .jg-sr-pair.is-single { grid-template-columns: 104px minmax(0, 1fr); }
 .jg-layered-sw { position: relative; width: 156px; height: 148px; flex: none; }

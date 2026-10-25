@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261105';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261106';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261105';
+const REDAM_BUILD = '20261106';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2927,7 +2927,7 @@ function closeTicketModal() {
 function ticketItemReason(r, c) {
     if (!r || !r.diagnosed || !c || !c.fabricId) return '';
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
-    if (sf) return '상담 때 실물 샘플로 보여 드릴게요';
+    if (sf) return '상담 때 실물 샘플로 보여 드리겠습니다';
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
@@ -2939,7 +2939,7 @@ function ticketItemReason(r, c) {
 function ticketKeepWord(r, c) {
     if (!r || !r.diagnosed || !c || !c.fabricId) return '';
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
-    if (sf) return '상담 때 실물 샘플로 보여 드릴게요.';
+    if (sf) return '상담 때 실물 샘플로 보여 드리겠습니다.';
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
@@ -3406,14 +3406,15 @@ function planTicket(data, s, slim) {
 // ==============================================================
 // 〈원단을 고른 이유〉 카드 (작업목록 24번 → 35번): 제안서 맨 앞장. 가격 없음. 견적서와 한 쌍(머리글·글꼴·선·쪽 표시 같음)
 //  공간마다 [공간 이름 · 손님 말(+창 방향) · 벽·바닥 잰 색 · 공간 문장(색 잇기)] → 원단마다 [색 칩 + 코드 · 원단 이름 · 이유 1~3문장 · 회색 안내].
-//  손님이 상담에서 실제로 답한 공간(diagnosed)만. 앞 공간과 같은 원단·같은 답이면 "○○과 같은 이유예요." + 새로 생긴 재료만
+//  손님이 상담에서 실제로 답한 공간(diagnosed)만. 앞 공간과 같은 원단·같은 답이면 "○○과 같은 이유로 골랐습니다." + 새로 생긴 재료만
 //  문장은 정해 둔 한 줄이 아니라 재료(손님 말 F · 공간 S · 색 C · 창 방향 D · 맞은편 창 O · 재질 T · 속지/겉지 짝 P · 그대로 K)를 계산해 섞음
 //  기준: Claude outputs/기준문서/11_이유_문장표.md (숫자 기준은 모두 처음 값)
 // ==============================================================
-const WHY_SAY = {
-    light: { high: '햇빛이 풍부해요', mid: '햇빛이 은은해요', low: '햇빛이 차분해요' },
-    block: { light: '빛은 들어와도 괜찮아요', soft: '빛은 적당히 가려 주세요', dark: '빛은 완전히 어둡게 하고 싶어요' },
-    privacy: { open: '밖에서 안이 보이는 게 괜찮아요', some: '밖에서 안이 보이는 게 조금 신경 쓰여요', high: '밖에서 안이 보이는 게 많이 신경 쓰여요' }
+const WHY_SAY = {      // 손님 말 인용 (83번): concierge.js HEARD("이렇게 들었습니다" 화면)와 같은 말
+    light: { high: '햇빛이 많이 들어요', mid: '햇빛이 은은하게 들어요', low: '햇빛이 적게 들어요' },
+    block: { light: '빛은 들어와도 좋아요', soft: '눈부심만 줄이고 싶어요', dark: '빛을 거의 막고 싶어요' },
+    privacy: { open: '밖의 시선은 신경 쓰이지 않아요', some: '낮엔 적당히 가려지면 좋아요', high: '밖에서 잘 안 보였으면 해요' },
+    feel: { smooth: '매끈한 느낌이 좋아요', textured: '결 있는 느낌이 좋아요', cozy: '도톰한 느낌이 좋아요' }
 };
 const whyQuote = (k, ans) => '“' + WHY_SAY[k][ans[k]] + '”';
 function whyJosa(name) {      // "거실과" / "안방과" / "방 2와" 처럼 받침에 따라
@@ -3468,154 +3469,191 @@ function whyItemFacts(it, R) {
     return { it, f, kind, hex: col && col.hex, lab: col && typeof col.L === 'number' ? col : null, link: it.pickDir || R.room.linkDir || null,
              tex: (f.texture && TEXTURE_LABELS[f.texture]) ? f.texture : null };
 }
-// S. 공간 문장 (색 잇기 방향, 공간에 한 번): 맞는 원단만 앞에 붙임 — 다 맞으면 주어 없이, 일부만 맞으면 "겉지는 / 속지는"
-const WHY_S = { wall: ['S1', '벽 색에 맞춰 공간이 넓어 보이게 했어요.'], bridge: ['S2', '벽과 바닥 사이 색으로 이었어요.'], floor: ['S3', '바닥 색에 맞춰 공간이 따뜻해 보이게 했어요.'] };
-function whySpaceCands(R, facts) {
-    const curtains = facts.filter(F => F.kind !== 'blind');
-    const fits = (F, dir) => {
-        const c = F.lab;
-        if (!c) return false;
-        if (dir === 'wall') return !!R.wall && whyDE(c, R.wall) < 8;
-        if (dir === 'bridge') return !!R.bridge && whyDE(c, R.bridge) < 8;
-        if (dir === 'floor') return !!R.floor && (whyDE(c, R.floor) < 10 || (!!c.fam && c.fam === R.floor.fam));
-        return false;
-    };
-    const out = [];
-    Object.keys(WHY_S).forEach(dir => {
-        const ok = curtains.filter(F => F.link === dir && fits(F, dir));
-        if (!ok.length) return;      // S0: 맞는 원단이 없으면 지어내지 않음
-        const subj = ok.length === curtains.length ? '' : ok.map(F => F.kind === 'sheer' ? '속지' : '겉지').filter((k, i, a) => a.indexOf(k) === i).join('와 ') + '는 ';
-        out.push({ id: WHY_S[dir][0], t: [subj + WHY_S[dir][1]] });
-    });
-    return out;
+// ③ 고른 것 (83번, 문장표 4장): 원단마다 F 조각(손님 답과 맞는 기능) + S 조각(색 잇기)을 "{속지}는 ~ 원단 가운데 ~ 색으로"로 묶음
+const WHY_F_FRAG = { F1: '낮에도 안이 비치지 않는', F2: '형태만 흐릿하게 비치는', F3: '풍경이 그대로 보이는 얇은', F8: '촘촘한', F9: '강한 햇빛에도 안이 잘 보이지 않는',
+    F4: '빛을 거의 막는', F5: '눈부심만 줄이는', F6: '빛을 조금 거르는', F7: '빛을 크게 막지 않는' };
+const WHY_S_FRAG = { wall: '벽 색에 맞춘', bridge: '벽과 바닥 사이', floor: '바닥 색에 맞춘' };
+// S. 색 잇기가 실제로 맞는 원단만 (S0: 맞지 않으면 조각 없음, 지어내지 않음)
+function whyLinkFits(F, R) {
+    const c = F.lab, dir = F.link;
+    if (!c || F.kind === 'blind') return false;
+    if (dir === 'wall') return !!R.wall && whyDE(c, R.wall) < 8;
+    if (dir === 'bridge') return !!R.bridge && whyDE(c, R.bridge) < 8;
+    if (dir === 'floor') return !!R.floor && (whyDE(c, R.floor) < 10 || (!!c.fam && c.fam === R.floor.fam));
+    return false;
 }
-// 원단 한 개의 재료를 순서대로: F → C(최대 2) → D → O3/T → P(겉지만). 회색 안내(O1·O2·F4·C5)는 따로 (36번)
+// 원단 한 개의 재료를 순서대로: F(③ 칸 조각) → C(최대 2) → D → O3/T → P(겉지만). 작은 안내(O1·O2·F4·C5·F10)는 따로 (36번 · 83번 문장표 5장)
 function whyItemCands(F, R, facts) {
     const list = [], c = F.lab, f = F.f, kind = F.kind, add = (g, id, a, b) => list.push({ g, id, t: [a, b || null] });
-    // F. 손님 말 ↔ 기능 (하나만)
+    // F. 손님 말 ↔ 기능 (하나만) — 문장이 아니라 ③ 칸 조각 (83번)
     if (kind === 'sheer') {
         const d = DENSITY_LABELS[f.density] ? f.density : null;
-        if (R.light === 'high' && d === 'day') add('F', 'F9', '햇빛이 강한 창이라, 낮에는 밖에서 안이 잘 보이지 않아요.');
-        else if (R.light === 'low' && (R.privacy === 'high' || R.privacy === 'some') && d === 'heavy') add('F', 'F8', '해가 덜 드는 창이라, 촘촘한 원단으로 골랐어요.');
-        else if (R.privacy === 'high' && (d === 'day' || d === 'heavy')) add('F', 'F1', '낮에도 밖에서 안이 보이지 않아요.');
-        else if (R.privacy === 'some' && (d === 'medium' || d === 'day')) add('F', 'F2', '밖에서는 형태만 흐릿하게 보여요.');
-        else if (R.privacy === 'open' && d === 'light') add('F', 'F3', '풍경과 햇빛이 그대로 들어와요.');
+        if (R.light === 'high' && d === 'day') add('F', 'F9', WHY_F_FRAG.F9);
+        else if (R.light === 'low' && (R.privacy === 'high' || R.privacy === 'some') && d === 'heavy') add('F', 'F8', WHY_F_FRAG.F8);
+        else if (R.privacy === 'high' && (d === 'day' || d === 'heavy')) add('F', 'F1', WHY_F_FRAG.F1);
+        else if (R.privacy === 'some' && (d === 'medium' || d === 'day')) add('F', 'F2', WHY_F_FRAG.F2);
+        else if (R.privacy === 'open' && d === 'light') add('F', 'F3', WHY_F_FRAG.F3);
     } else if (kind === 'drape') {
         const b = blackoutLevel(f);
-        if (R.block === 'dark' && b === 'full') add('F', 'F4', '빛을 거의 막아 낮에도 어둡게 쉴 수 있어요.');
-        else if (R.block === 'soft' && b === 'life') add('F', 'F5', '눈부심은 줄이고, 방이 캄캄해지지는 않아요.');
-        else if (R.block === 'soft' && (b === 'none' || b === 'mid')) add('F', 'F6', '빛을 살짝 걸러 줘요.');
-        else if (R.block === 'light' && (b === 'none' || b === 'mid')) add('F', 'F7', '햇빛을 크게 막지 않아 방이 밝아요.');
+        if (R.block === 'dark' && b === 'full') add('F', 'F4', WHY_F_FRAG.F4);
+        else if (R.block === 'soft' && b === 'life') add('F', 'F5', WHY_F_FRAG.F5);
+        else if (R.block === 'soft' && (b === 'none' || b === 'mid')) add('F', 'F6', WHY_F_FRAG.F6);
+        else if (R.block === 'light' && (b === 'none' || b === 'mid')) add('F', 'F7', WHY_F_FRAG.F7);
     } else if (F.it.keep) {
-        const k = /[.!?]$/.test(F.it.keep) ? F.it.keep : F.it.keep + '.';      // 블라인드: 지금까지의 한 줄 (빛 가림 답과 맞는 점)
-        add('F', 'FB:' + k, k);
+        // 블라인드: 지금까지의 한 줄(빛 가림 답과 맞는 점)을 "~습니다"로 — 원단 줄에 씀 (83번)
+        const k = String(F.it.keep).replace(/[.!?]$/, '');
+        add('B', 'FB:' + k, /(다|요)$/.test(k) ? k + '.' : k + '입니다.');
     }
     if (kind === 'blind') return list;
-    // C. 원단 색 ↔ 벽·바닥 (밝기 이야기 1 + 기운 이야기 1). 한 톤 밝게/진하게를 누른 칸은 그 문장이 C 대신 (K, 28번)
-    if (F.it.toneStep > 0) add('C', 'K+', '여기서 한 톤 밝게 바꿔 빛을 더 환하게 받도록 했어요.');
-    else if (F.it.toneStep < 0) add('C', 'K-', '여기서 한 톤 진하게 바꿔 차분한 무게를 더했어요.');
-    else if (c) {
-        if (kind === 'sheer' && c.L >= 88) add('C', 'C8', '밝은 흰색이라, 햇빛을 받으면 창 전체가 환해져요.', '흰빛이 밝아서 낮에 창 쪽이 환해요.');
+    // C. 원단 색 ↔ 벽·바닥 (밝기 이야기 1 + 기운 이야기 1). 한 톤 밝게/진하게를 누른 원단은 C를 쓰지 않음 (K는 ③ 칸에서 말함, 83번)
+    if (!F.it.toneStep && c) {
+        if (kind === 'sheer' && c.L >= 88) add('C', 'C8', '밝은 흰색이라, 쳐 두면 햇빛을 받아 커튼 전체가 환하게 보입니다.', '흰빛이 밝아, 쳐 두어도 낮에 창 쪽이 어둡지 않습니다.');
         else if (R.wall) {
             const dL = c.L - R.wall.L;
-            if (whyDE(c, R.wall) < 6) add('C', 'C1', '벽 색과 거의 같아서, 커튼을 쳐도 공간이 넓어 보여요.', '벽과 거의 같은 색이라, 커튼이 눈에 띄지 않아요.');
-            else if (dL > 15) add('C', 'C3', '벽보다 훨씬 밝은 색이라, 창 쪽이 가장 환해 보여요.', '밝은 색이라 창이 넓어 보여요.');
-            else if (dL >= 6) add('C', 'C2', '벽보다 한 톤 밝아서, 창 쪽이 환해 보여요.', '벽보다 살짝 밝은 색이라, 공간이 가벼워 보여요.');
-            else if (dL < -15) add('C', 'C5', '벽보다 훨씬 진해서, 창이 눈에 먼저 들어와요.', '진한 색이라 공간이 또렷하게 나뉘어 보여요.');
-            else if (dL <= -6) add('C', 'C4', '벽보다 한 톤 진해서, 창 쪽이 차분해 보여요.', '벽보다 살짝 진한 색이라, 공간이 정돈돼 보여요.');
+            if (whyDE(c, R.wall) < 6) add('C', 'C1', '벽 색과 거의 같아, 커튼을 쳐도 공간이 넓어 보입니다.', '벽과 거의 같은 색이라, 커튼이 눈에 띄지 않습니다.');
+            else if (dL > 15) add('C', 'C3', '벽보다 훨씬 밝은 색이라, 창 쪽이 가장 환해 보입니다.', '밝은 색이라 창이 넓어 보입니다.');
+            else if (dL >= 6) add('C', 'C2', '벽보다 한 톤 밝아, 창 쪽이 환해 보입니다.', '벽보다 조금 밝은 색이라, 공간이 가벼워 보입니다.');
+            else if (dL < -15) add('C', 'C5', '벽보다 훨씬 진해, 창이 먼저 눈에 들어옵니다.', '진한 색이라 공간이 또렷하게 나뉘어 보입니다.');
+            else if (dL <= -6) add('C', 'C4', '벽보다 한 톤 진해, 창 쪽이 차분해 보입니다.', '벽보다 조금 진한 색이라, 공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
-            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울려요.`, '바닥 나무색과 같은 쪽 색이라 잘 어울려요.');
-            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', '색 기운이 거의 없어서, 바닥 나무색이 그대로 보여요.', '맑은 색이라 바닥 색과 부딪히지 않아요.');
+            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울립니다.`, '바닥 나무색과 같은 쪽 색이라 잘 어울립니다.');
+            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', '색 기운이 거의 없어, 바닥 나무색과 부딪히지 않습니다.', '한쪽으로 치우친 색이 아니라, 바닥 색과 함께 두어도 차분합니다.');
         }
     }
-    // D. 창 방향 × 원단 (방향은 점수에 안 썼으니 모두 "~해요" 꼴). 하나만, 쓰임(빛 가림·잠) → 빛 → 색 순
+    // D. 창 방향이 만드는 결과 (방위 이름은 ② 칸에만). 하나만. D7~D9는 북쪽만 든 창에서만 (83번: 북서·북동은 동·서 문장)
     const lifeFull = kind === 'drape' && ['life', 'full'].includes(blackoutLevel(f));
     const warm = !!(c && c.fam && WHY_WARM_FAM.includes(c.fam));
+    const nOnly = R.N && !R.E && !R.W;
     const D = [
-        [R.E && R.bedroom && lifeFull, 'D1', '아침 해가 먼저 드는 창이라, 이른 햇빛에 잠이 덜 깨도록 가려 줘요.'],
-        [R.W && lifeFull, 'D5', '낮게 들어오는 오후 햇빛의 눈부심과 열기를 줄여 줘요.'],
-        [R.E && kind === 'sheer', 'D2', '아침 해가 드는 창이라, 아침엔 속지만 쳐도 방이 밝아요.'],
-        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '낮 내내 해가 드는 창이라, 속지로 빛을 고르게 걸러요.'],
-        [R.N && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 북향이라, 밝은 속지로 빛을 덜 막아요.'], // 41번
-        [R.W && warm && c.C >= 6, 'D3', '서향이라 오후엔 빛이 노래져서, 이 색이 조금 더 따뜻해 보여요.'], // 41번
-        [R.W && c && c.C < 4, 'D4', '색 기운이 적어서, 오후의 노란 빛에도 색이 크게 달라 보이지 않아요.'],
-        [R.N && warm, 'D7', '북향 빛은 푸르스름해서, 따뜻한 기운이 있는 이 색이 차가워 보이지 않아요.'], // 41번
-        [R.N && c && c.C < 4 && c.L >= 75, 'D8', '북향 빛은 하루 내내 고르게 들어서, 이 색이 시간마다 크게 달라 보이지 않아요.'] // 41번
+        [R.E && R.bedroom && lifeFull, 'D1', '이른 아침 햇빛을 가려, 잠이 덜 깹니다.'],
+        [R.W && lifeFull, 'D5', '낮게 드는 오후 햇빛의 눈부심과 열기가 줄어듭니다.'],
+        [R.E && kind === 'sheer', 'D2', '아침에는 속지만 쳐도 방이 밝습니다.'],
+        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '한낮의 강한 햇빛도 속지를 쳐 두면 눈부시지 않게 들어옵니다.'],
+        [R.W && warm && c.C >= 6, 'D3', '오후에는 빛이 노래져, 이 색이 조금 더 따뜻해 보입니다.'],
+        [R.W && c && c.C < 4, 'D4', '색 기운이 적어, 오후의 노란 빛에도 색이 크게 달라 보이지 않습니다.'],
+        [nOnly && warm, 'D7', '푸르스름한 북쪽 빛에도, 따뜻한 기운이 있어 차가워 보이지 않습니다.'],
+        [nOnly && c && c.C < 4 && c.L >= 75, 'D8', '하루 내내 밝기가 비슷해, 이 색이 시간마다 크게 달라 보이지 않습니다.'],
+        [nOnly && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 창이라, 밝은 속지로 빛을 덜 막습니다.']
     ].find(x => x[0]);
     if (D) add('D', D[1], D[2]);
     // O3 · T. 재질 (결 이야기는 하나만)
     const feelMatch = kind === 'sheer' && ((R.feel === 'textured' && F.tex === 'natural') || (R.feel === 'cozy' && F.tex === 'cozy'));
-    if (F.tex === 'natural' && R.opp) add('T', 'O3', '맞은편 창 빛이 앞면을 비춰서, 낮에도 결이 잘 보여요.');
-    if (feelMatch) add('T', 'T4', `고르신 ${R.feel === 'cozy' ? '도톰하고 보송한' : '결이 살아 있는'} 느낌 그대로예요.`);
-    if (F.tex === 'natural' && !R.opp && (R.E || R.W || R.light === 'high')) add('T', 'T1', '결이 있는 원단이라, 비스듬히 드는 햇빛에 결이 잘 보여요.');
-    else if (F.tex === 'cozy') add('T', 'T2', '도톰하고 보송한 원단이라, 만졌을 때 포근해요.');
-    else if (F.tex === 'smooth' && kind === 'sheer' && R.feel === 'smooth') add('T', 'T3', '매끈해서 주름이 곧고 깔끔하게 떨어져요.');
+    if (F.tex === 'natural' && R.opp) add('T', 'O3', '반대쪽 창에서 든 빛이 커튼 앞면을 비춰, 낮에도 결이 잘 보입니다.');
+    if (feelMatch) add('T', 'T4', `고르신 ${R.feel === 'cozy' ? '도톰하고 보송한' : '결이 살아 있는'} 느낌 그대로입니다.`);
+    if (F.tex === 'natural' && !R.opp && (R.E || R.W || R.light === 'high')) add('T', 'T1', '결이 있어, 비스듬히 드는 햇빛에 결이 잘 보입니다.');
+    else if (F.tex === 'cozy') add('T', 'T2', '도톰하고 보송해서, 만지면 포근합니다.');
+    else if (F.tex === 'smooth' && kind === 'sheer' && R.feel === 'smooth') add('T', 'T3', '매끈해서 주름이 곧고 깔끔하게 떨어집니다.');
     // P. 속지 ↔ 겉지 짝 (겉지 줄에만). 기운이 엇갈리는 짝(P4)은 문장 없음
     const sh = kind === 'drape' && c && facts.find(x => x.kind === 'sheer' && x.lab);
     if (sh) {
         const s = sh.lab;
-        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속지와 같은 계열에 한 톤 진한 색이라, 겹쳐 쳐도 어색하지 않아요.');
-        else if (s.C < 3 && s.L >= 88 && c.C >= 4) add('P', 'P2', `낮엔 흰 속지로 밝게, 밤엔 ${F.it.colorDesc ? F.it.colorDesc + ' ' : ''}겉지로 차분하게 쓸 수 있어요.`);
-        else if (whyDE(s, c) < 5) add('P', 'P3', '속지와 겉지 색이 거의 같아서, 겹쳐 쳐도 깔끔해요.');
+        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속지와 같은 계열에 한 톤 진한 색이라, 겹쳐 쳐도 어색하지 않습니다.');
+        else if (s.C < 3 && s.L >= 88 && c.C >= 4) add('P', 'P2', `낮에는 흰 속지로 밝게, 밤에는 ${F.it.colorDesc ? F.it.colorDesc + ' ' : ''}겉지로 차분하게 쓰실 수 있습니다.`);
+        else if (whyDE(s, c) < 5) add('P', 'P3', '속지와 색이 거의 같아, 겹쳐 쳐도 깔끔합니다.');
     }
     return list;
 }
-// 회색 안내(한 원단에 1개, 36번): 맞은편 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5)·햇빛에 옅어 보임(F10, 63번) 솔직한 안내
+// 작은 안내(한 원단에 1개, 36번 · 83번): 반대쪽 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5)·햇빛에 옅어 보임(F10, 63번)
 function whyItemNote(F, R, cands) {
     if (R.opp) {
-        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '맞은편 창으로 방 안이 밝은 낮엔 비침이 조금 늘어요. 신경 쓰이면 겉지를 살짝 쳐 주세요.';
-        if (F.kind === 'drape' && R.block === 'dark') return '다른 창에서도 빛이 들어, 그쪽도 가려야 방이 완전히 어두워져요.';
+        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '반대쪽 창으로 빛이 들어 방 안이 바깥보다 밝은 낮에는, 밖에서 안이 조금 비쳐 보일 수 있습니다. 신경 쓰이시면 겉지를 조금 쳐 두시면 됩니다.';
+        if (F.kind === 'drape' && R.block === 'dark') return '반대쪽 창에서도 빛이 들어, 그쪽도 가려야 방이 완전히 어두워집니다.';
     }
     if (R.room && R.room.night) return '';      // 속지만 밤 안내가 있는 공간은 안내가 이미 있음 (한 원단에 1개)
     const ids = (cands || []).map(x => x.id);
-    if (ids.includes('F4')) return '커튼 옆과 위로 새는 빛은 조금 남아요.';
-    if (ids.includes('C5') && !(F.it.toneStep < 0)) return '차분한 쪽이 좋으시면 한 톤 밝은 색도 같이 볼 수 있어요.';
-    // F10 (63번): 완전암막이 아닌 겉지는 햇빛이 비치면 색이 옅어 보임. 암막 정도를 모르는 겉지엔 안 붙임
-    if (F.kind === 'drape' && ['none', 'mid', 'life'].includes(blackoutLevel(F.f))) return '햇빛이 강하게 비치면 원단 색이 조금 옅고 밝게 보여요.';
+    if (ids.includes('F4')) return '커튼 옆과 위로 새는 빛은 조금 남습니다.';
+    if (ids.includes('C5') && !(F.it.toneStep < 0)) return '차분한 쪽이 좋으시면 한 톤 밝은 색도 같이 보실 수 있습니다.';
+    if (F.kind === 'drape' && ['none', 'mid', 'life'].includes(blackoutLevel(F.f))) return '햇빛이 강하게 비치면 원단 색이 조금 옅고 밝게 보입니다.';
     return '';
 }
-// 카드에 들어갈 공간·원단 묶음 (비어 있으면 카드 없음). 같은 재료는 카드 안에서 한 번만: 두 번째는 "나" 말, 세 번째부터는 건너뜀 (손님 말 F만은 공간마다 다시 씀)
+// ① 들은 말 (83번, 문장표 2장): 실제로 원단 고르는 데 쓰인 답만, 최대 2개 (바깥 시선 → 빛 가림 → 햇빛 양 → 속지 느낌)
+function whyHeardOf(R, all) {
+    const ids = all.map(x => x.id);
+    const has = list => list.some(id => ids.includes(id));
+    const q = [];
+    if (has(['F1', 'F2', 'F3', 'F8']) && WHY_SAY.privacy[R.privacy]) q.push(WHY_SAY.privacy[R.privacy]);
+    if ((has(['F4', 'F5', 'F6', 'F7']) || ids.some(id => String(id).startsWith('FB:'))) && WHY_SAY.block[R.block]) q.push(WHY_SAY.block[R.block]);
+    if (has(['F8', 'F9']) && WHY_SAY.light[R.light]) q.push(WHY_SAY.light[R.light]);
+    if (has(['T4']) && WHY_SAY.feel[R.feel]) q.push(WHY_SAY.feel[R.feel]);
+    const pick = q.slice(0, 2);
+    return pick.length ? pick.map(t => '“' + t + '”').join(', ') + '라고 말씀하셨습니다.' : '';
+}
+// ③ 고른 것 문장 (83번, 문장표 4장)
+function whyChoseOf(facts, candsList, R, heard) {
+    const parts = [];
+    facts.forEach((F, i) => {
+        if (F.kind === 'blind') return;
+        const k = F.kind === 'sheer' ? '속지' : '겉지';
+        const f = candsList[i].find(x => x.g === 'F'), s = whyLinkFits(F, R) ? WHY_S_FRAG[F.link] : '';
+        const fr = f ? f.t[0] : '';
+        if (fr && s) parts.push(`${k}는 ${fr} 원단 가운데 ${s} 색으로`);
+        else if (fr) parts.push(`${k}는 ${fr} 원단으로`);
+        else if (s) parts.push(`${k}는 ${s} 색으로`);
+    });
+    const out = [], lead = heard ? '그래서 ' : '';
+    if (parts.length) {
+        const one = lead + parts.join(', ') + ' 골랐습니다.';
+        if (one.length <= 60 || parts.length === 1) out.push(one);
+        else parts.forEach((p, i) => out.push((i === 0 ? lead : '') + p + ' 골랐습니다.'));
+    }
+    // K (한 톤 바꿈): 둘째 문장
+    const kf = facts.find(F => F.kind !== 'blind' && F.it.toneStep);
+    if (kf) {
+        const up = kf.it.toneStep > 0, kk = kf.kind === 'sheer' ? '속지' : '겉지';
+        const tail = up ? '한 톤 밝은 색으로 바꿔, 빛을 더 환하게 받도록 했습니다.' : '한 톤 진한 색으로 바꿔, 차분한 무게를 더했습니다.';
+        out.push(parts.length ? '그중 ' + tail : `${kk}는 ${tail}`);
+    }
+    return out;
+}
+// 카드에 들어갈 공간·원단 묶음 (비어 있으면 카드 없음) — 공간마다 ① heard · ③ chose, 원단마다 ④ lines·note (② 본 것은 houseDiagnosis)
+//  같은 재료(C·D·T·P)는 제안서 안에서 한 번만: 두 번째는 "나" 말, 세 번째부터는 건너뜀
 function whySetsOf(data) {
-    const out = [], seen = [], used = {}, shown = [];
+    const out = [], used = {}, shown = [];
     const nFab = data.rooms.reduce((a, r) => a + (r.diagnosed ? r.items.filter(i => i.fabricId).length : 0), 0);
-    const MAX = nFab >= 6 ? 2 : 3;      // 원단이 6개 이상이면 원단마다 2문장까지
+    const MAX = nFab >= 6 ? 1 : 2;      // 원단 줄은 원단마다 2문장까지, 원단이 6개 이상이면 1문장 (83번)
     const say = c => {
         const n = used[c.id] || 0, t = c.t[n] || null;
         if (t) used[c.id] = n + 1;
         return t;
     };
+    let prevRoom = null;
     data.rooms.forEach(room => {
         if (!room.diagnosed) return;
         const items = room.items.filter(it => it.fabricId);
         if (!items.length) return;
         const R = whyRoomCtx(room), facts = items.map(it => whyItemFacts(it, R));
-        const space = whySpaceCands(R, facts).map(say).filter(Boolean);
-        const sets = facts.map(F => {
-            const it = F.it, cands = whyItemCands(F, R, facts);
-            const key = [it.fabricId, it.colorName, it.kindKey, R.privacy, R.block, R.light, R.feel, F.link, it.toneStep].join('|');
-            const prev = seen.find(p => p.key === key);
-            const lines = [], per = {};
-            let pool = cands;
-            if (prev) { lines.push(`${prev.room}${whyJosa(prev.room)} 같은 이유예요.`); pool = cands.filter(x => !prev.ids.includes(x.id)); }      // 새로 생긴 재료만 (예: 방향이 달라 생긴 D)
-            // 재료마다 하나씩 먼저(F → C → D → O3/T → P), 자리가 남으면 C·T의 두 번째. 고른 뒤에는 원래 순서대로 놓음
-            //  (C를 먼저 둘 다 채우면 벽·바닥을 잰 공간에서 창 방향 문장이 거의 안 나와서 — 문장표 6장 예와 같게)
-            const picked = [];
+        const candsList = facts.map(F => whyItemCands(F, R, facts));
+        const keys = facts.map(F => [F.it.fabricId, F.it.colorName, F.it.kindKey, R.privacy, R.block, R.light, R.feel, F.link, F.it.toneStep].join('|'));
+        // 같은 이유: 바로 앞 공간과 원단·답·색 잇기가 모두 같으면 ①은 비우고 ③은 한 문장, ④는 새로 생긴 재료만(예: 방향이 달라 생긴 D)
+        const same = prevRoom && prevRoom.chose && prevRoom.keys.length === keys.length && keys.every(k => prevRoom.keys.includes(k)) ? prevRoom : null;
+        const sets = facts.map((F, fi) => {
+            const it = F.it, cands = candsList[fi];
+            const prevIds = same ? (same.ids[keys[fi]] || []) : [];
+            const pool = cands.filter(x => x.g !== 'F' && !prevIds.includes(x.id));
+            // 재료마다 하나씩 먼저(C → D → O3/T → P), 자리가 남으면 C·T의 두 번째. 고른 뒤에는 원래 순서대로 놓음
+            const picked = [], per = {};
             [1, 2].forEach(pass => pool.forEach((x, i) => {
-                if (lines.length + picked.length >= MAX || picked.some(p => p.i === i)) return;
+                if (picked.length >= MAX || picked.some(p => p.i === i)) return;
                 if ((per[x.g] || 0) >= (pass === 1 ? 1 : (x.g === 'C' || x.g === 'T' ? 2 : 1))) return;
-                const t = x.g === 'F' ? x.t[0] : say(x);      // 손님 말(F)은 공간마다 다시 씀 (사장님 10-16: 빠지면 그 공간 답이 안 보임)
-                if (t) { picked.push({ i, t }); per[x.g] = (per[x.g] || 0) + 1; }
+                const t = x.g === 'B' ? x.t[0] : say(x);
+                if (t) { picked.push({ i, t, id: x.id }); per[x.g] = (per[x.g] || 0) + 1; }
             }));
-            picked.sort((a, b) => a.i - b.i).forEach(p => lines.push(p.t));
-            seen.push({ key, room: room.name, ids: cands.map(x => x.id) });
-            return { it, hex: F.hex, lines, note: whyItemNote(F, R, cands) };
+            const lines = picked.sort((a, b) => a.i - b.i).map(p => p.t);
+            return { it, hex: F.hex, lines, note: whyItemNote(F, R, cands), shownIds: picked.map(p => p.id) };
         });
-        // 벽·바닥이 앞 공간과 같은 코드면 색 줄 대신 "벽과 바닥은 ○○과 같아요." (S4)
+        // ① 들은 말은 실제로 쓰인 재료로만: ③ 칸의 F 조각 + 원단 줄에 실린 T4·블라인드 한 줄
+        const usedIds = [].concat(...candsList.map(cs => cs.filter(x => x.g === 'F')), ...sets.map(st => st.shownIds.map(id => ({ id }))));
+        const heard = same ? '' : whyHeardOf(R, usedIds);
+        const chose = same ? [`${same.name}${whyJosa(same.name)} 같은 이유로 골랐습니다.`] : whyChoseOf(facts, candsList, R, heard);
+        const ids = {};
+        keys.forEach((k, i) => { ids[k] = candsList[i].map(x => x.id); });
+        prevRoom = { name: room.name, keys, ids, chose: chose.length > 0 };      // 앞 공간에 고른 이유가 있을 때만 "같은 이유"
+        // 벽·바닥이 앞 공간과 같은 코드면 ② 칸에 "벽과 바닥은 ○○과 같습니다." (S4)
         const colors = room.colors || [], code = k => (colors.find(c => c.k === k) || {}).hex || '';
-        const same = (code('벽') && code('바닥')) ? shown.find(p => p.wall === code('벽') && p.floor === code('바닥')) : null;
-        if (code('벽') && code('바닥') && !same) shown.push({ room: room.name, wall: code('벽'), floor: code('바닥') });
-        out.push({ name: room.name, sets, colors, sameAs: same ? same.room : '', dirText: R.dirText, space, night: !!room.night, ans: room.ans });
+        const sameC = (code('벽') && code('바닥')) ? shown.find(p => p.wall === code('벽') && p.floor === code('바닥')) : null;
+        if (code('벽') && code('바닥') && !sameC) shown.push({ room: room.name, wall: code('벽'), floor: code('바닥') });
+        out.push({ name: room.name, sets, colors, sameAs: sameC ? sameC.room : '', dirText: R.dirText, heard, chose, space: chose, night: !!room.night, ans: room.ans });
     });
     return { rooms: out };
 }
@@ -3718,7 +3756,7 @@ function drawWhy(ctx, data, W, compact, title) {
         if (qLines.length) {
             const lastW = ctx.measureText(qLines[qLines.length - 1]).width;
             setFont(400, PAPER_F4, SANS);
-            saidInline = lastW + 12 + ctx.measureText('하셨어요').width <= QW;
+            saidInline = lastW + 12 + ctx.measureText('말씀하셨습니다').width <= QW;
         }
         const qn = qLines.length + (qLines.length && !saidInline ? 1 : 0);
         let base = qn ? 44 + (qn - 1) * Q_LH : 0;      // 지금까지 쓴 마지막 줄의 글자 아랫선 (공간 윗선 기준)
@@ -3774,11 +3812,11 @@ function drawWhy(ctx, data, W, compact, title) {
             const lastY = y + 44 + (L.qLines.length - 1) * Q_LH;
             const lastW = ctx.measureText(L.qLines[L.qLines.length - 1]).width;
             setFont(400, PAPER_F4, SANS);
-            if (L.saidInline) text('하셨어요', L.QX + lastW + 12, lastY, 'left', SOFT);
-            else text('하셨어요', L.QX, lastY + Q_LH, 'left', SOFT);
+            if (L.saidInline) text('말씀하셨습니다', L.QX + lastW + 12, lastY, 'left', SOFT);
+            else text('말씀하셨습니다', L.QX, lastY + Q_LH, 'left', SOFT);
         }
         L.cRows.forEach((row, i) => { let x = L.QX; row.forEach(c => { x = drawColorPart(c, x, y + L.cY + i * C_LH); }); });
-        if (L.R.sameAs) { setFont(400, C_SIZE, SANS); text(`벽과 바닥은 ${L.R.sameAs}${whyJosa(L.R.sameAs)} 같아요.`, L.QX, y + L.sameY, 'left', MUTED); }
+        if (L.R.sameAs) { setFont(400, C_SIZE, SANS); text(`벽과 바닥은 ${L.R.sameAs}${whyJosa(L.R.sameAs)} 같습니다.`, L.QX, y + L.sameY, 'left', MUTED); }
         if (L.sLines.length) { setFont(400, B_SIZE, SANS); L.sLines.forEach((ln, i) => text(ln, L.QX, y + L.sY + i * B_LH, 'left', DARK)); }
         const top = y + L.headH;
         L.sets.forEach((b, i) => {
@@ -3915,10 +3953,13 @@ function houseStripOf(s, raw) {
     }
     return { mid, baseR, wHex, fHex };
 }
-// 1번 공간별 진단 문장 (65번): 창 방향(향) + 잰 벽·바닥·가구 색. 원단 이야기(빛 거르기·암막·손님 답·고른 이유)는 2번 몫이라 안 씀
-const HOUSE_DIR_SAY = {      // [앞에 올 때, 뒤에 올 때]
-    E: ['아침 해가 먼저 들고', '아침 해가 먼저 드는'], W: ['오후 햇빛이 길게 들고', '오후 햇빛이 길게 드는'],
-    S: ['하루 내내 밝고', '하루 내내 밝은'], N: ['빛이 고르고 은은하며', '빛이 고르고 은은한']
+// ② 본 것 (65번 → 83번 문장표 3장): 창 방향의 빛(방위 이름 없이) + 벽·바닥 색(+가구). 최대 2문장
+//  sameAs: 벽·바닥이 앞 공간과 같으면 "벽과 바닥은 ○○과 같습니다." (S4)
+const HOUSE_DIR_SAY = {
+    S: '하루 내내 밝은 창입니다.', E: '아침 해가 먼저 드는 창입니다.', W: '오후 햇빛이 길게 드는 창입니다.',
+    N: '해가 직접 들지 않아, 하루 내내 밝기가 크게 변하지 않는 창입니다.',
+    SE: '아침부터 한낮까지 해가 드는 창입니다.', SW: '한낮부터 오후까지 해가 길게 드는 창입니다.',
+    NE: '아침에 잠시 해가 들고, 그 뒤로는 밝기가 크게 변하지 않는 창입니다.', NW: '오후 늦게야 해가 드는 창입니다.'
 };
 function houseColorWord(c) {
     const nm = c.name || '';
@@ -3926,22 +3967,19 @@ function houseColorWord(c) {
     if (/^(라이트|딥|다크) |화이트|차콜|네이비/.test(nm)) return nm;      // 이름에 이미 밝기가 들어 있으면 그대로
     return (c.L >= 75 ? '밝은 ' : (c.L >= 55 ? '중간 톤 ' : '어두운 ')) + nm;
 }
-function houseDiagnosis(s, raw) {
+function houseDiagnosis(s, raw, sameAs) {
     const out = [];
-    const dirs = (typeof windowDirOf === 'function') ? windowDirOf(raw && raw.windowDir).sort((a, b) => 'SNEW'.indexOf(a) - 'SNEW'.indexOf(b)) : [];
-    if (dirs.length) {
-        const say = dirs.length === 2 ? `${HOUSE_DIR_SAY[dirs[0]][0]} ${HOUSE_DIR_SAY[dirs[1]][1]}` : HOUSE_DIR_SAY[dirs[0]][1];
-        out.push(`${say} ${windowDirText(dirs)}향이에요.`);
-    }
-    const wall = s.wall && houseColorWord(s.wall), floor = s.floor && houseColorWord(s.floor);
-    const base = wall && floor ? `${wall} 벽과 ${floor} 바닥` : (wall ? `${wall} 벽` : (floor ? `${floor} 바닥` : ''));
-    // 가구 (66번 사장님: 현장에서 공간에 크게 영향을 준다고 본 것만 찍으니 모두): "다크 그레이 소파, 월넛 책장과 아이보리 이불·침구가"
-    const fl = s.fur || [], word = f => `${f.name ? houseColorWord(f) + ' ' : ''}${f.n}`, last = fl[fl.length - 1];
+    const dirs = (typeof windowDirOf === 'function') ? windowDirOf(raw && raw.windowDir).slice().sort((a, b) => 'SNEW'.indexOf(a) - 'SNEW'.indexOf(b)) : [];
+    const say = HOUSE_DIR_SAY[dirs.join('')];
+    if (say) out.push(say);
+    const wall = s.wall && s.wall.name, floor = s.floor && s.floor.name;
+    const fl = s.fur || [], word = f => `${f.name ? f.name + ' ' : ''}${f.n}`, last = fl[fl.length - 1];
     const fur = !fl.length ? '' : fl.length === 1 ? word(fl[0])
         : fl.slice(0, -1).map(word).join(', ') + houseJosa(fl[fl.length - 2].n, '과', '와') + ' ' + word(last);
-    if (base && fur) out.push(`${base}이 바탕이고, ${fur}${houseJosa(last.n, '이', '가')} 함께 놓여 있어요.`);
-    else if (base) out.push(`${base}이 바탕이에요.`);
-    else if (fur) out.push(`${fur}${houseJosa(last.n, '이', '가')} 함께 놓여 있어요.`);
+    const furTail = fur ? `${fur}${houseJosa(last.n, '이', '가')} 함께 놓여 있습니다.` : '';
+    const base = sameAs ? `벽과 바닥은 ${sameAs}${houseJosa(sameAs, '과', '와')} 같` : (wall && floor ? `벽은 ${wall}, 바닥은 ${floor}` : (wall ? `벽은 ${wall}` : (floor ? `바닥은 ${floor}` : '')));
+    if (base) out.push(furTail ? `${base}${sameAs ? '고' : '이고'}, ${furTail}` : `${base}${sameAs ? '습니다.' : '입니다.'}`);
+    else if (furTail) out.push(furTail);
     return out;
 }
 // 총평 (37-4): ① 흐름(한 문장) → ② 속지(속지 공간 2곳 이상일 때) → ③ 가구(집 전체 가구 중 가장 진한·밝은 것, 없으면 첫 가구, 진단 말투 65번·66번) · 최대 3문장
@@ -3955,7 +3993,7 @@ function houseBrief(sp) {
         if (maxD <= HOUSE_UNIFY) {
             const L = avg(reps, 'L'), b = avg(reps, 'b');
             const fam = (L >= 80 ? '밝은 ' : (L >= 60 ? '부드러운 ' : '깊은 ')) + (b >= 12 ? '베이지' : (b >= 5 ? '아이보리·그레이지' : '그레이'));
-            out.push(`집 전체를 ${fam} 계열로 맞춰, 공간을 옮겨 다녀도 흐름이 끊기지 않아요.`);
+            out.push(`집 전체를 ${fam} 계열로 맞춰, 공간을 옮겨 다녀도 흐름이 끊기지 않습니다.`);
         } else {
             let point = null;
             if (S.length >= 3) S.forEach((s, i) => {
@@ -3966,11 +4004,11 @@ function houseBrief(sp) {
                 const o = reps[point.i], dL = o.L - avg(point.rest, 'L'), db = o.b - avg(point.rest, 'b');
                 const dir = Math.abs(dL) >= Math.abs(db) * 1.2 ? (dL > 0 ? '한 톤 밝게' : '한 톤 진하게') : (db > 0 ? '조금 따뜻하게' : '조금 차분하게');
                 const names = S.filter((_, j) => j !== point.i).map(s => s.name).join('·');
-                out.push(`${names}${houseJosa(names, '은', '는')} 같은 계열의 색으로 잇고, ${point.s.name}만 ${dir} 두어 분위기를 살려 제안합니다.`); // 41번
+                out.push(`${names}${houseJosa(names, '은', '는')} 같은 계열로 잇고, ${point.s.name}만 ${dir} 두어 분위기를 달리했습니다.`); // 41번 · 83번
             } else if (S.length === 2) {
-                out.push(`${S[0].name}${houseJosa(S[0].name, '과', '와')} ${S[1].name}의 빛과 바탕색에 맞춰, 각 공간의 고유한 분위기를 살려 제안합니다.`); // 41번
+                out.push(`${S[0].name}${houseJosa(S[0].name, '과', '와')} ${S[1].name}${houseJosa(S[1].name, '은', '는')} 각자의 빛과 바탕색에 맞춰 따로 골랐습니다.`); // 41번 · 83번
             } else {
-                out.push('각 공간의 빛과 바탕색에 맞춰, 고유한 분위기를 살려 제안합니다.'); // 41번
+                out.push('공간마다 빛과 바탕색이 달라, 각각에 맞춰 골랐습니다.'); // 41번 · 83번
             }
         }
     }
@@ -3980,9 +4018,9 @@ function houseBrief(sp) {
     if (sh.length >= 2) {
         if (sh.every(f => f.fabricId === sh[0].fabricId && f.colorName === sh[0].colorName)) {
             const who = withSheer.length === sp.length ? '모든 공간을' : withSheer.map(s => s.name).join('·') + ' 모두';
-            out.push(`속지는 ${who} 같은 색으로 맞춰, 밖에서 보면 창이 한결같아 보여요.`);
+            out.push(`속지는 ${who} 같은 색으로 맞춰, 밖에서 보면 창이 한결같아 보입니다.`);
         } else if (maxDist(sh.map(f => f.lab)) <= HOUSE_SHEER_SAME) {
-            out.push('속지는 비슷한 밝기로 맞춰, 밖에서 봐도 창이 고르게 보여요.');
+            out.push('속지는 비슷한 밝기로 맞춰, 밖에서 봐도 창이 고르게 보입니다.');
         }
     }
     // ③ 가구 (65번: 진단 말투 — 커튼을 어떻게 골랐는지는 2번 몫이라 안 씀)
@@ -4000,10 +4038,10 @@ function houseBrief(sp) {
         const { s: fs, f } = darkest || lightest || furs[0];
         const nm = f.name ? f.name + ' ' : '', is = houseJosa(fs.name, '은', '는'), ga = houseJosa(f.n, '이', '가');
         const base = [fs.wall, fs.floor].filter(Boolean);
-        if (darkest) out.push(`${fs.name}${is} ${nm}${f.n}${ga} 집에서 가장 진한 색이에요.`);
-        else if (lightest) out.push(`${fs.name}${is} ${nm}${f.n}${ga} 집에서 가장 밝은 색이에요.`);
-        else if (base.length && Math.min(...base.map(o => whyDE(f, o))) <= HOUSE_FUR_NEAR) out.push(`${fs.name}${is} ${f.n}${ga} 벽·바닥과 비슷한 색이라 공간이 한 톤으로 이어져요.`);
-        else out.push(`${fs.name}${is} ${nm}${f.n}${ga} 바탕색 사이에서 또렷하게 보여요.`);
+        if (darkest) out.push(`${fs.name}의 ${nm}${f.n}${ga} 집에서 가장 진한 색입니다.`);
+        else if (lightest) out.push(`${fs.name}의 ${nm}${f.n}${ga} 집에서 가장 밝은 색입니다.`);
+        else if (base.length && Math.min(...base.map(o => whyDE(f, o))) <= HOUSE_FUR_NEAR) out.push(`${fs.name}의 ${f.n}${houseJosa(f.n, '은', '는')} 벽·바닥과 비슷한 색이라, 공간이 한 톤으로 이어집니다.`);
+        else out.push(`${fs.name}의 ${nm}${f.n}${houseJosa(f.n, '은', '는')} 바탕색 사이에서 또렷하게 보입니다.`);
     }
     return out.slice(0, 3);
 }
@@ -4271,18 +4309,18 @@ function buildShowroomCanvas(data, pr, pageNo, total) {
     const fSans = `400 ${F4}px ${PAPER_SANS}`, fTitle = `400 ${F3}px ${PAPER_SERIF}`, fName = `400 ${F2}px ${PAPER_SERIF}`;
     // 미리 자리 재기
     const plans = rows.map(r => {
-        const meta = [];
-        if (r.dirTxt) meta.push(['빛의 방향', r.dirTxt + '향']);
-        if (r.sz) meta.push(['창의 크기', `${r.sz.w} × ${r.sz.h}cm`]);
-        if (r.compLabel) meta.push(['구성 방식', r.compLabel]);
+        const meta = r.metaLine ? [r.metaLine] : [];      // 83번: 이름표 없이 값만 한 줄
         let y = 44 + F2;                        // 공간 이름 글줄
         const nameY = y;
         const metaY = meta.length ? (y += 36) : 0;
         const stripY = (y += r.st ? 26 : 0);
         if (r.st) y += STRIP_H;
-        const cLines = r.commentTxt ? wrap(r.commentTxt, CW, fSans) : [];
+        // 네 칸 단락 ①②③ (83번): 단락마다 새 줄, 단락 사이 조금 띄움
+        const cLines = [];
+        (r.paras || (r.commentTxt ? [r.commentTxt] : [])).forEach((t, pi) => wrap(t, CW, fSans).forEach((ln, li) => cLines.push({ ln, gap: pi > 0 && li === 0 })));
         const cY = y + 16 + F4;
-        if (cLines.length) y = cY + (cLines.length - 1) * LH4;
+        cLines.forEach((c, k) => { c.y = cY + k * LH4 + cLines.slice(0, k + 1).filter(x => x.gap).length * 10; });
+        if (cLines.length) y = cLines[cLines.length - 1].y;
         const layered = !!r.back;
         const swW = layered ? BW + OFF : BW, swH = layered ? BH + 16 : BH;
         const DX = CX + swW + 28, DW = RX - DX;
@@ -4321,13 +4359,7 @@ function buildShowroomCanvas(data, pr, pageNo, total) {
         if (i > 0) hline(top, '#d5cbbd');
         text(r.name, CX, top + P.nameY, DARK, fName);
         // 공간 정보: 이름표(흐린 글) + 값, 한 줄에 이어 씀
-        if (P.meta.length) {
-            let mx = CX;
-            P.meta.forEach(([k, v]) => {
-                text(k, mx, top + P.metaY, SOFT, fSans); ctx.font = fSans; mx += ctx.measureText(k).width + 10;
-                text(v, mx, top + P.metaY, MUTED, fSans); mx += ctx.measureText(v).width + 28;
-            });
-        }
+        if (P.meta.length) text(P.meta[0], CX, top + P.metaY, MUTED, fSans);
         // 창가 색 띠: 가운데 창 줄(벽·원단) → 커튼 아래 벽(부분 치수일 때만) → 바닥. 글자 없음 (76번)
         if (r.st) {
             const sy = top + P.stripY, MID = STRIP_H - FLOOR_H;
@@ -4345,7 +4377,7 @@ function buildShowroomCanvas(data, pr, pageNo, total) {
             ctx.strokeStyle = 'rgba(35,28,22,0.1)'; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, sy + MID); ctx.lineTo(RX, sy + MID); ctx.stroke();
             ctx.strokeStyle = 'rgba(35,28,22,0.14)'; ctx.strokeRect(CX + PAPER_HL / 2, sy + PAPER_HL / 2, CW - PAPER_HL, STRIP_H - PAPER_HL);
         }
-        P.cLines.forEach((ln, k) => text(ln, CX, top + P.cY + k * LH4, MUTED, fSans));
+        P.cLines.forEach(c => text(c.ln, CX, top + c.y, MUTED, fSans));
         // 스와치: 겹치면 겉지(뒤, 왼쪽 위) → 속지(앞, 오른쪽 아래, 옅은 그림자) (78번)
         if (r.sets.length) {
             const py = top + P.pairY;
@@ -4534,17 +4566,16 @@ function ticketKakaoText(data) {
     const nameOf = it => (it.kind === '블라인드' && it.name.includes('블라인드')) ? it.name : `${it.kind} · ${it.name}`;
     if (why.rooms.length) {
         out.push('', '〈원단을 고른 이유〉');
+        const sp = (typeof houseSpacesOf === 'function') ? houseSpacesOf(data) : [];
         why.rooms.forEach(R => {
             out.push('', `■ ${R.name}`);
-            const keys = [];
-            R.sets.forEach(s => (s.it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light']).forEach(k => { if (R.ans[k] && WHY_SAY[k][R.ans[k]] && !keys.includes(k)) keys.push(k); }));
-            keys.sort((a, b) => ['light', 'privacy', 'block'].indexOf(a) - ['light', 'privacy', 'block'].indexOf(b));
-            const quotes = keys.map(k => whyQuote(k, R.ans));
-            if (R.dirText) quotes.push(`“${R.dirText}향이에요”`);
-            if (quotes.length) out.push(`${quotes.join(' ')} 하셨어요.`);
-            if (R.sameAs) out.push(`벽과 바닥은 ${R.sameAs}${whyJosa(R.sameAs)} 같아요.`);
-            else if (R.colors && R.colors.length) out.push(R.colors.map(c => `${c.k} ${c.name}`.trim()).join(' · '));
-            if (R.space.length) out.push(R.space.join(' '));
+            // 네 칸 단락 (83번): 값만 한 줄 → ① 들은 말 → ② 본 것 → ③ 고른 것 → 원단마다 ④ 원단 줄
+            const room = data.rooms.find(x => x.name === R.name) || {}, raw = room.raw || {};
+            const C = window.concierge, row = (C && typeof C.showroomRows === 'function') ? (C.showroomRows(data).find(x => x.name === R.name) || null) : null;
+            if (row && row.metaLine) out.push(row.metaLine);
+            const s0 = sp.find(x => x.name === R.name);
+            const paras = row ? row.paras : [R.heard, (s0 ? houseDiagnosis(s0, raw, R.sameAs) : []).join(' '), (R.chose || []).join(' ')].filter(Boolean);      // 화면 쇼룸 시트와 같은 글
+            paras.forEach(t => out.push(t));
             R.sets.forEach(s => {
                 out.push('', `· ${nameOf(s.it)}`);
                 if (s.lines.length) out.push(s.lines.join(' '));
