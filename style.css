@@ -1050,7 +1050,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 }
 
 /* 로고 Re.dam: 명조 보통 굵기, 색은 점에만 (밝은 바탕 흙빛 / 어두운 바탕·사진 위는 밝은 흙빛). 그러데이션·굵게·늘이기 금지 */
-.logo-dot { font-style: normal; color: #8a4a22; }
+.logo-dot { font-style: normal; color: #8a4a22; margin-inline-start: -0.03em; margin-inline-end: -0.035em; }   /* 82번: 점 둘레 간격을 새 로고와 맞춤 */
 .card-brand .logo-dot, #trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark .logo-dot { color: #d19a72; }
 
 /* 항상 보이는 브랜드 표시 (직원 모드 진입용 숨은 버튼 겸용) */
