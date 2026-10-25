@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261109';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261110';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261109';
+const REDAM_BUILD = '20261110';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3307,6 +3307,20 @@ async function loadTicketPhotos(data) {
     return data;
 }
 
+// 해당 품목에만 붙는 안내 (87번): 소폭 이음 제작 커튼이 있으면 이음선 안내, 완전 암막 겉지가 있으면 빛샘 안내 — 각 한 번씩
+const SEAM_NOTE = '원단 폭이 좁은 제품은 폭을 이어 제작하므로, 커튼에 세로 이음선이 있습니다. 제작 과정상 자연스러운 것이며 불량이 아닙니다.';
+const LIGHT_LEAK_NOTE = '완전 암막 원단도 커튼 옆과 위로는 빛이 새어 들어올 수 있습니다. 원단 자체의 문제가 아니라 설치 구조상 생기는 현상입니다.';
+function autoQuoteNotes(roomList) {
+    let seam = false, leak = false;
+    (roomList || []).forEach(r => (r.curtains || []).forEach(c => {
+        const k = c.calc || {};
+        const panel = c.pleat === 'panel' || c.pleatType === '패널' || c.pleatType === '판넬';
+        if (k.calcType && k.calcType !== 'width' && k.calcType !== 'hebe' && !panel && k.isSeamless === false && Number(c.width) > 0) seam = true;
+        const f = c.fabricId ? FABRIC_DB.find(x => x.id === c.fabricId) : null;
+        if (f && f.categoryType === '겉지' && blackoutLevel(f) === 'full') leak = true;
+    }));
+    return [seam ? SEAM_NOTE : '', leak ? LIGHT_LEAK_NOTE : ''].filter(Boolean);
+}
 function ticketData() {
     calculateAll();
     const custName = (document.getElementById('custName').value || '').trim();
@@ -3355,7 +3369,7 @@ function ticketData() {
         }),
         install: globalInstallFee,
         total: document.getElementById('totalGrandPrice').textContent,
-        note: loadTicketNote(),
+        note: [loadTicketNote(), ...autoQuoteNotes(rooms)].filter(Boolean).join('\n'),      // 직원이 적은 안내 + 해당 품목 안내 (87번)
         pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'),
         photos: {}
     };
