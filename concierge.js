@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261110';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261112';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -113,6 +113,11 @@
         return [];
     }
 
+    // 블라인드 원단인지 (88번)
+    function isBlindItem(f) {
+        return !!f && (f.categoryType === "블라인드" || f.calcType === "hebe");
+    }
+
     function getLiveCategoryPool(categoryType) {
         // 고객 추천에서 숨긴 원단(예: 비고 "원단만 시킬때")은 빼고 고름. 직원 화면 빠른 견적에는 그대로 있음
         const all = getLiveDb();
@@ -126,12 +131,13 @@
         }
 
         if (categoryType === "속지") {
-            const sheerPool = pool.filter(f => f.categoryType === "속지" || (f.name && (f.name.includes("쉬폰") || f.name.includes("차르르"))));
+            const sheerPool = pool.filter(f => !isBlindItem(f) && (f.categoryType === "속지" || (f.name && (f.name.includes("쉬폰") || f.name.includes("차르르")))));
             if (sheerPool.length > 0) return sheerPool;
         }
 
         if (categoryType === "겉지") {
-            const drapePool = pool.filter(f => f.categoryType === "겉지" || f.calcType === "width" || (f.name && (f.name.includes("암막") || f.name.includes("린넨"))));
+            // 블라인드 암막(BLISS B/O 등)이 이름에 "암막"이 있다고 겉지 후보에 끼지 않게 (88번)
+            const drapePool = pool.filter(f => !isBlindItem(f) && (f.categoryType === "겉지" || f.calcType === "width" || (f.name && (f.name.includes("암막") || f.name.includes("린넨")))));
             if (drapePool.length > 0) return drapePool;
         }
 
@@ -1327,9 +1333,8 @@
                 html += stepHead('창을 어떻게 구성할까요?', ''); // 42번: 사족 설명 제거
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard("이중 커튼", "", "", compBg('comp_double', SOLID_TEXTURES.l1), function() { window.concierge.chooseWindowComposition('double'); }, recCls('double') + ' vdesc' + was('comp', 'double'));
-                // 바깥 시선이 신경 쓰이는 공간: 속지만이면 밤에는 그림자가 비칠 수 있다고 솔직하게 (33번, 이중커튼은 겉지가 가려 줌)
-                const sheerNight = (state.editingRoom.privacy === 'high' || state.editingRoom.privacy === 'some') ? SHEER_NIGHT_NOTE : '';
-                html += renderBookmarkCard("속지 커튼", "", "", compBg('comp_sheer', SOLID_TEXTURES.l2), function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'), sheerNight);
+                // 속지 칸의 밤 안내 글은 뺌 (88번, 사장님이 말로 설명)
+                html += renderBookmarkCard("속지 커튼", "", "", compBg('comp_sheer', SOLID_TEXTURES.l2), function() { window.concierge.chooseWindowComposition('sheer_only'); }, recCls('sheer_only') + ' vdesc' + was('comp', 'sheer_only'));
                 html += renderBookmarkCard("겉지 커튼", "", "", compBg('comp_drape', SOLID_TEXTURES.l3), function() { window.concierge.chooseWindowComposition('drape_only'); }, recCls('drape_only') + ' vdesc' + was('comp', 'drape_only'));
                 html += renderBookmarkCard("블라인드", "", "", compBg('comp_blind', SOLID_TEXTURES.oak), function() { window.concierge.chooseWindowComposition('blind_only'); }, recCls('blind_only') + ' vdesc' + was('comp', 'blind_only'));
                 html += '</div></div>';
@@ -2170,7 +2175,6 @@
         const cards = Array.from(canvas.children);
         canvas.classList.add('has-expand');
         cards.forEach(c => c.classList.toggle('is-expanded', c === el));
-        if (!el.querySelector(".expand-hint")) { const h = document.createElement("span"); h.className = "expand-hint"; h.textContent = "한 번 더 누르면 선택됩니다"; el.appendChild(h); }
         canvas.style.gridTemplateColumns = cards.map(c => c === el ? '2.4fr' : '1fr').join(' ');
     }
     function collapseMoodCards(canvas) {

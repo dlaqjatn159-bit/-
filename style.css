@@ -2175,6 +2175,35 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .cm-dot-fur { outline-color: #5b6b4a; }
 .cm-side .q-meta { font-family: var(--sans); font-size: var(--t-small); font-weight: 400; letter-spacing: 0; color: var(--muted); }
 
+/* ===== 88번: 눌리는 범위 넓히기(안 보이게) — 글자·모양은 그대로, 옆 빈칸의 절반까지 · 높이 64 이상 ===== */
+.ask-opt, .dir-btn, .msr-mode-btn, .msr-opt, .ed-comp-btn, .fur-chips button, .nudge-btn, .r-quiet, .opt-info-link, .ed-sub, .cm-skip, .fur-chips .fur-cancel, .fur-ask .fur-cancel, .fur-edit .fur-acts button, .dos-subacts button, .fin-sub button, .dos-redit, .ed-btn, .fur-add, #trackCurationSection .txt-cta, #trackCurationSection .msr-add { position: relative; }
+.ask-opt::after, .dir-btn::after, .msr-mode-btn::after, .msr-opt::after, .ed-comp-btn::after, .fur-chips button::after, .nudge-btn::after, .r-quiet::after, .opt-info-link::after, .ed-sub::after, .cm-skip::after, .fur-chips .fur-cancel::after, .fur-ask .fur-cancel::after, .fur-edit .fur-acts button::after, .dos-subacts button::after, .fin-sub button::after, .dos-redit::after, .ed-btn::after, .fur-add::after, #trackCurationSection .txt-cta::after, #trackCurationSection .msr-add::after {
+    content: ""; position: absolute; top: -9px; bottom: -9px; left: -12px; right: -12px; }
+.ask-opt::after, .dir-btn::after { left: -26px; right: -26px; }
+.ask-opts.is-many .ask-opt::after, .msr-opt::after { left: -22px; right: -22px; }
+.ed-comp-btn::after { left: -18px; right: -18px; }
+.nudge-btn::after { top: -13px; bottom: -13px; left: -10px; right: -10px; }
+.r-quiet::after, .opt-info-link::after, .ed-sub::after, .cm-skip::after, .fur-chips .fur-cancel::after, .fur-ask .fur-cancel::after, .fur-edit .fur-acts button::after, .dos-subacts button::after, .fin-sub button::after, .dos-redit::after, .ed-btn::after { top: -14px; bottom: -14px; }
+/* 시작하기: 빈 화면에 하나뿐이라 30 (88번) */
+#trackCurationSection .wel-stage > .txt-cta:only-child { font-size: var(--t-title); }
+
+/* ===== 88번: 표 모양 화면은 선을 빼고 간격과 살짝 다른 종이색 면으로 ===== */
+.msr-grid { border-top: 0; gap: 32px; }
+.msr-stage .measure-box.msr-box, .msr-stage .measure-box.msr-box + .msr-box { background: #f4efe7; border: 0; }
+.cm-steps { border-top: 0; display: flex; flex-direction: column; gap: 8px; }
+.cm-steps li { padding: 14px 16px; border-bottom: 0; background: #f4efe7; }
+.cm-steps li.on { background: #efe8dd; }
+.cm-n, .cm-steps li.on .cm-n, .cm-steps li.done .cm-n { width: auto; height: auto; border: 0; border-radius: 0; background: none; }
+.cm-steps li.on .cm-n { color: var(--earth); }
+.cm-steps li.done .cm-n { color: var(--ink); }
+.cm-empty { border: 0; background: #f4efe7; }
+.cm-adj { border-top: 0; }
+.ed-color { border-bottom: 0; background: #f4efe7; }
+.ed-color + .dir-pick { border-bottom: 0; }
+.ask-house { border-top: 0; border-bottom: 0; background: #f4efe7; }
+.heard-list { border-top: 0; }
+.heard-row { border-bottom: 0; margin-bottom: 8px; background: #f4efe7; }
+
 /* ===== 공간 목록 (중심 화면): 왼쪽 목차 + 한 공간씩 크게 보기 작업대 (+ 전체 한눈에 2열 전환) + 이유 문구 제거 (76·77번) ===== */
 .dos-top h1 { font-size: 24px; font-weight: 400; letter-spacing: 0.035em; }
 .dos-who, .dos-stage .dos-who { font-family: var(--serif); font-size: 13.5px; color: var(--muted); margin: 0.45rem 0 0; }

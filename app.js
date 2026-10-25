@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261110';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261112';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261110';
+const REDAM_BUILD = '20261112';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1505,38 +1505,38 @@ function renderFinder() {
 // ==============================================================
 const PRO_COLOR_NAMES = [
     // 화이트
-    ['퓨어 화이트', 'Pure White', 94, 0, 0.5, 'white'], ['스노우', 'Snow', 93, -1, -3, 'white'], ['초크', 'Chalk', 93, -0.3, 4, 'white'],
-    ['아이보리', 'Ivory', 93, -0.3, 8, 'white'], ['바닐라', 'Vanilla', 92, 0.5, 13, 'white'], ['포슬린', 'Porcelain', 93, 3, 4.5, 'white'],
+    ['퓨어 화이트', 'Pure White', 94, 0, 0.5, 'white'], ['스노우', 'Snow', 93, -1, -3, 'white'], ['오프 화이트', 'Chalk', 93, -0.3, 4, 'white'],
+    ['아이보리', 'Ivory', 93, -0.3, 8, 'white'], ['바닐라', 'Vanilla', 92, 0.5, 13, 'white'], ['웜 화이트', 'Porcelain', 93, 3, 4.5, 'white'],
     // 그레이 (색 기운 거의 없음)
-    ['포그', 'Fog', 86, 0, 0.5, 'gray'], ['도브 그레이', 'Dove Gray', 79, 0, 0.5, 'gray'], ['애쉬', 'Ash', 72, 0, 0.5, 'gray'], ['페블', 'Pebble', 64, 0, 0.5, 'gray'],
-    ['퓨터', 'Pewter', 56, 0, 0.5, 'gray'], ['스모크', 'Smoke', 48, 0, 0.5, 'gray'], ['그래파이트', 'Graphite', 39, 0, 0.5, 'gray'], ['차콜', 'Charcoal', 30, 0, 0.5, 'gray'], ['오닉스', 'Onyx', 21, 0, 0.5, 'gray'],
+    ['페일 그레이', 'Fog', 86, 0, 0.5, 'gray'], ['라이트 그레이', 'Dove Gray', 79, 0, 0.5, 'gray'], ['애쉬 그레이', 'Ash', 72, 0, 0.5, 'gray'], ['시멘트 그레이', 'Pebble', 64, 0, 0.5, 'gray'],
+    ['미디엄 그레이', 'Pewter', 56, 0, 0.5, 'gray'], ['스모크 그레이', 'Smoke', 48, 0, 0.5, 'gray'], ['다크 그레이', 'Graphite', 39, 0, 0.5, 'gray'], ['차콜', 'Charcoal', 30, 0, 0.5, 'gray'], ['블랙', 'Onyx', 21, 0, 0.5, 'gray'],
     // 쿨 그레이 (푸른 기운)
-    ['미스트', 'Mist', 86, -1, -3, 'cool'], ['실버', 'Silver', 79, -1, -3, 'cool'], ['스틸 그레이', 'Steel Gray', 71, -1, -3, 'cool'], ['슬레이트 그레이', 'Slate Gray', 62, -1, -3, 'cool'],
-    ['건메탈', 'Gunmetal', 52, -1, -3, 'cool'], ['스톰', 'Storm', 41, -1, -3, 'cool'], ['미드나잇', 'Midnight', 31, -1, -3, 'cool'], ['잉크', 'Ink', 21, -1, -3, 'cool'],
+    ['아이스 그레이', 'Mist', 86, -1, -3, 'cool'], ['실버', 'Silver', 79, -1, -3, 'cool'], ['스틸 그레이', 'Steel Gray', 71, -1, -3, 'cool'], ['블루 그레이', 'Slate Gray', 62, -1, -3, 'cool'],
+    ['다크 쿨 그레이', 'Gunmetal', 52, -1, -3, 'cool'], ['딥 쿨 그레이', 'Storm', 41, -1, -3, 'cool'], ['다크 차콜', 'Midnight', 31, -1, -3, 'cool'], ['잉크 블랙', 'Ink', 21, -1, -3, 'cool'],
     // 그레이지 (회색 + 옅은 노란 기운)
-    ['리넨', 'Linen', 86, -0.3, 4, 'greige'], ['퍼티', 'Putty', 79, -0.3, 4, 'greige'], ['그레이지', 'Greige', 72, -0.3, 4, 'greige'], ['스톤', 'Stone', 64, -0.3, 4, 'greige'],
-    ['드리프트우드', 'Driftwood', 56, -0.3, 4, 'greige'], ['딥 그레이지', 'Deep Greige', 48, -0.3, 4, 'greige'], ['웜 차콜', 'Warm Charcoal', 39, -0.3, 4, 'greige'],
+    ['페일 그레이지', 'Linen', 86, -0.3, 4, 'greige'], ['라이트 그레이지', 'Putty', 79, -0.3, 4, 'greige'], ['그레이지', 'Greige', 72, -0.3, 4, 'greige'], ['스톤 그레이지', 'Stone', 64, -0.3, 4, 'greige'],
+    ['다크 그레이지', 'Driftwood', 56, -0.3, 4, 'greige'], ['딥 그레이지', 'Deep Greige', 48, -0.3, 4, 'greige'], ['웜 차콜', 'Warm Charcoal', 39, -0.3, 4, 'greige'],
     // 베이지·샌드 (노란 기운이 더)
-    ['에크루', 'Ecru', 86, -0.3, 8, 'beige'], ['오트밀', 'Oatmeal', 79, -0.3, 8, 'beige'], ['비스킷', 'Biscuit', 72, -0.3, 8, 'beige'], ['카키', 'Khaki', 64, -0.3, 8, 'beige'],
-    ['헤이즐', 'Hazel', 56, -0.3, 8, 'beige'], ['브론즈', 'Bronze', 48, -0.3, 8, 'beige'],
-    ['크림', 'Cream', 86, 0.5, 13, 'beige'], ['샌드', 'Sand', 79, 0.5, 13, 'beige'], ['위트', 'Wheat', 72, 0.5, 13, 'beige'], ['탄', 'Tan', 64, 0.5, 13, 'beige'],
-    ['토피', 'Toffee', 56, 0.5, 13, 'beige'], ['토바코', 'Tobacco', 47, 0.5, 13, 'beige'], ['카멜', 'Camel', 62, 6, 24, 'beige'],
+    ['라이트 베이지', 'Ecru', 86, -0.3, 8, 'beige'], ['오트밀', 'Oatmeal', 79, -0.3, 8, 'beige'], ['베이지', 'Biscuit', 72, -0.3, 8, 'beige'], ['다크 베이지', 'Khaki', 64, -0.3, 8, 'beige'],
+    ['헤이즐넛', 'Hazel', 56, -0.3, 8, 'beige'], ['딥 베이지', 'Bronze', 48, -0.3, 8, 'beige'],
+    ['크림', 'Cream', 86, 0.5, 13, 'beige'], ['샌드', 'Sand', 79, 0.5, 13, 'beige'], ['라떼', 'Wheat', 72, 0.5, 13, 'beige'], ['밀크티', 'Tan', 64, 0.5, 13, 'beige'],
+    ['캐러멜', 'Toffee', 56, 0.5, 13, 'beige'], ['시나몬', 'Tobacco', 47, 0.5, 13, 'beige'], ['카멜', 'Camel', 62, 6, 24, 'beige'],
     // 로즈 뉴트럴·브라운 (붉은 기운이 살짝)
-    ['쉘', 'Shell', 86, 3, 4.5, 'rose'], ['누드', 'Nude', 79, 3, 4.5, 'rose'], ['로즈 더스트', 'Rose Dust', 72, 3, 4.5, 'rose'], ['머쉬룸', 'Mushroom', 64, 3, 4.5, 'rose'],
+    ['로즈 아이보리', 'Shell', 86, 3, 4.5, 'rose'], ['로즈 베이지', 'Nude', 79, 3, 4.5, 'rose'], ['로즈 그레이지', 'Rose Dust', 72, 3, 4.5, 'rose'], ['머쉬룸', 'Mushroom', 64, 3, 4.5, 'rose'],
     ['토프', 'Taupe', 56, 3, 4.5, 'rose'], ['코코아', 'Cocoa', 48, 3, 4.5, 'rose'], ['모카', 'Mocha', 39, 3, 4.5, 'rose'], ['에스프레소', 'Espresso', 30, 3, 4.5, 'rose'],
     ['다크 초콜릿', 'Dark Chocolate', 21, 3, 4.5, 'rose'], ['초콜릿', 'Chocolate', 30, 8, 12, 'rose'],
     // 블루
     ['파우더 블루', 'Powder Blue', 82, -3, -8, 'blue'], ['스카이 블루', 'Sky Blue', 68, -2, -18, 'blue'], ['더스티 블루', 'Dusty Blue', 62, -3, -10, 'blue'],
     ['데님', 'Denim', 45, -3, -16, 'blue'], ['네이비', 'Navy', 28, 2, -14, 'blue'],
     // 그린
-    ['민트', 'Mint', 86, -9, 2, 'green'], ['덕에그', 'Duck Egg', 80, -6, -1, 'green'], ['시글라스', 'Sea Glass', 77, -3.5, 1, 'green'], ['유칼립투스', 'Eucalyptus', 62, -7, -1, 'green'],
-    ['세이지', 'Sage', 66, -6, 8, 'green'], ['모스', 'Moss', 54, -7, 14, 'green'], ['올리브', 'Olive', 46, -3, 17, 'green'], ['포레스트', 'Forest', 32, -12, 6, 'green'], ['라임', 'Lime', 68, -16, 50, 'green'],
+    ['민트', 'Mint', 86, -9, 2, 'green'], ['페일 민트', 'Duck Egg', 80, -6, -1, 'green'], ['그린 그레이', 'Sea Glass', 77, -3.5, 1, 'green'], ['유칼립투스', 'Eucalyptus', 62, -7, -1, 'green'],
+    ['세이지', 'Sage', 66, -6, 8, 'green'], ['모스 그린', 'Moss', 54, -7, 14, 'green'], ['올리브', 'Olive', 46, -3, 17, 'green'], ['포레스트 그린', 'Forest', 32, -12, 6, 'green'], ['라임', 'Lime', 68, -16, 50, 'green'],
     // 핑크·퍼플
-    ['블러쉬', 'Blush', 84, 7, 6, 'pink'], ['더스티 로즈', 'Dusty Rose', 66, 11, 7, 'pink'], ['라벤더', 'Lavender', 78, 6, -9, 'pink'], ['라일락', 'Lilac', 68, 8, -6, 'pink'],
-    ['모브', 'Mauve', 55, 8, 0, 'pink'], ['플럼', 'Plum', 32, 14, -4, 'pink'],
+    ['페일 핑크', 'Blush', 84, 7, 6, 'pink'], ['인디 핑크', 'Dusty Rose', 66, 11, 7, 'pink'], ['라벤더', 'Lavender', 78, 6, -9, 'pink'], ['라일락', 'Lilac', 68, 8, -6, 'pink'],
+    ['스모키 퍼플', 'Mauve', 55, 8, 0, 'pink'], ['딥 퍼플', 'Plum', 32, 14, -4, 'pink'],
     // 옐로·오렌지·레드
-    ['버터', 'Butter', 88, -1, 22, 'warm'], ['레몬', 'Lemon', 88, -6, 50, 'warm'], ['머스타드', 'Mustard', 72, 0, 40, 'warm'], ['오커', 'Ochre', 60, 8, 40, 'warm'],
-    ['피치', 'Peach', 82, 9, 17, 'warm'], ['코랄', 'Coral', 65, 25, 22, 'warm'], ['테라코타', 'Terracotta', 50, 22, 26, 'warm'], ['러스트', 'Rust', 42, 22, 30, 'warm'], ['와인', 'Wine', 30, 26, 8, 'warm']
+    ['버터', 'Butter', 88, -1, 22, 'warm'], ['레몬', 'Lemon', 88, -6, 50, 'warm'], ['머스타드', 'Mustard', 72, 0, 40, 'warm'], ['머스타드 브라운', 'Ochre', 60, 8, 40, 'warm'],
+    ['피치', 'Peach', 82, 9, 17, 'warm'], ['코랄', 'Coral', 65, 25, 22, 'warm'], ['테라코타', 'Terracotta', 50, 22, 26, 'warm'], ['브릭', 'Rust', 42, 22, 30, 'warm'], ['와인', 'Wine', 30, 26, 8, 'warm']
 ];
 const PRO_FAM_LABELS = { white: '화이트', gray: '그레이', cool: '쿨 그레이', greige: '그레이지', beige: '베이지·샌드', rose: '로즈 뉴트럴·브라운', blue: '블루', green: '그린', pink: '핑크·퍼플', warm: '옐로·오렌지·레드' };
 const PRO_NAME_L_WEIGHT = 0.5;       // 밝기 차이는 절반만 셈 (같은 밝기라도 색 기운이 다르면 다른 이름이 되게)
@@ -3081,7 +3081,8 @@ function ticketPlainName(c, calc) {
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return ticketFabricName(c, calc);
     // 색 이름: 직원이 붙인 색 이름 → 색 값으로 지은 이름 → 톤
-    let color = c.colorName ? colorLabelOf(f.id, c.colorName) : '';
+    let color = proNameOf(c.colorName ? whyFabricColor(f.id, c.colorName) : null);      // 색 이름은 색 사전 하나 (88번)
+    if (!color && c.colorName) color = colorLabelOf(f.id, c.colorName);
     if (!color) {
         const lab = whyFabricColor(f.id, c.colorName);
         const nm = (lab && typeof lab.L === 'number' && window.RoomColor && RoomColor.colorName) ? RoomColor.colorName('wall', lab) : null;
@@ -3358,7 +3359,7 @@ function ticketData() {
             // 잰 벽·바닥 색 (32번): 이유 카드 공간 줄 아래 "■ 벽 라이트 베이지 #D8CEBF · ■ 바닥 허니 오크 #B38A5E". 잰 공간만
             const mc = r.measuredColor || {}, nameOf = window.RoomColor && window.RoomColor.colorName;
             const colors = ['wall', 'floor'].filter(k => mc[k] && /^#[0-9a-f]{6}$/i.test(mc[k].hex || '') && nameOf)
-                .map(k => ({ k: k === 'wall' ? '벽' : '바닥', hex: mc[k].hex.toUpperCase(), name: (nameOf(k, mc[k]) || {}).name || '' }));
+                .map(k => ({ k: k === 'wall' ? '벽' : '바닥', hex: mc[k].hex.toUpperCase(), name: (k === 'wall' ? proNameOf(mc[k]) : '') || (nameOf(k, mc[k]) || {}).name || '' }));
             // 잇는 색은 넣지 않음 (사장님 10-16: 최종 제안에서는 고른 원단 자체가 잇는 색)
             // 속지만 + 바깥 시선이 신경 쓰이는 공간 (33번): 이유 카드 공간 아래 밤 안내 한 줄
             const night = (r.privacy === 'high' || r.privacy === 'some') && r.curtains.length > 0 && r.curtains.every(c => c.presetType === 'sheer');
@@ -3634,7 +3635,7 @@ function whyRoomCtx(room) {
     return {
         room, ans: room.ans, dir, dirText: windowDirText(dir),
         E: dir.includes('E'), W: dir.includes('W'), S: dir.includes('S'), N: dir.includes('N'),
-        wall, floor, bridge, floorName: floor ? nameOf('floor', mc.floor) : '',
+        wall, floor, bridge, floorName: floor ? nameOf('floor', mc.floor) : '', wallName: proNameOf(wall),      // 벽은 색 사전 이름 (88번)
         bedroom: /^(방|안방|아이방)/.test(String(raw.roomType || raw.name || '')),
         light: room.ans.light, privacy: room.ans.privacy, block: room.ans.block, feel: raw.sheerFeel || null,
         opp: room.opp || ''
@@ -3650,7 +3651,36 @@ function whyItemFacts(it, R) {
 // ③ 고른 것 (83번, 문장표 4장): 원단마다 F 조각(손님 답과 맞는 기능) + S 조각(색 잇기)을 "{속지}는 ~ 원단 가운데 ~ 색으로"로 묶음
 const WHY_F_FRAG = { F1: '낮에도 안이 비치지 않는', F2: '형태만 흐릿하게 비치는', F3: '풍경이 그대로 보이는 얇은', F8: '촘촘한', F9: '강한 햇빛에도 안이 잘 보이지 않는',
     F4: '빛을 거의 막는', F5: '눈부심만 줄이는', F6: '빛을 조금 거르는', F7: '빛을 크게 막지 않는' };
-const WHY_S_FRAG = { wall: '벽 색에 맞춘', bridge: '벽과 바닥 사이', floor: '바닥 색에 맞춘' };
+// 색 사전 이름 (88번): 벽·원단 색 이름은 제안서 어디서나 색 사전(PRO_COLOR_NAMES) 하나. 바닥은 나무 이름
+function proNameOf(c) {
+    const p = (c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number') ? proColorName(c.L, c.a, c.b) : null;
+    return p ? p.ko : '';
+}
+// 두 색의 사전 이름 관계: 'same'(같은 이름) · 'up'(other가 한 톤 밝음) · 'down'(한 톤 진함) · ''(말할 수 없음). 같은 계열·같은 기운 줄에서 밝기 한 칸 차이만 "한 톤"
+function proToneRel(base, other) {
+    const p = proColorName(base.L, base.a, base.b), q = proColorName(other.L, other.a, other.b);
+    if (!p || !q) return '';
+    if (p.ko === q.ko) return 'same';
+    if (p.fam !== q.fam || p.a !== q.a || p.b !== q.b) return '';
+    const line = PRO_COLOR_NAMES.filter(n => n[5] === p.fam && n[3] === p.a && n[4] === p.b).sort((x, y) => x[2] - y[2]);
+    const i = line.findIndex(n => n[0] === p.ko), j = line.findIndex(n => n[0] === q.ko);
+    return Math.abs(i - j) === 1 ? (j > i ? 'up' : 'down') : '';
+}
+const whyRo = name => { const code = String(name).slice(-1).charCodeAt(0), t = code >= 0xAC00 && code <= 0xD7A3 ? (code - 0xAC00) % 28 : 1; return (t === 0 || t === 8) ? '로' : '으로'; };
+// ③ 색 잇기 말: "{벽} 벽보다 한 톤 밝은 {원단색}으로" / "{벽} 벽과 {바닥} 바닥 사이의 {원단색}으로" / "{바닥} 바닥에 맞춘 {원단색}으로" (S0: 잰 값으로 말할 수 있는 것만)
+function whyColorRel(F, R) {
+    const fn = proNameOf(F.lab), wn = R.wallName;
+    if (!fn) return '';
+    const fc = fn + ' 색';
+    const wp = wn ? wn + ' 색 벽' : '벽', fp = R.floorName ? R.floorName + ' 바닥' : '바닥';
+    let t;
+    if (F.link === 'wall') {
+        const rel = R.wall ? proToneRel(R.wall, F.lab) : '';
+        t = rel === 'same' ? `벽과 같은 ${fc}` : rel === 'up' ? `${wp}보다 한 톤 밝은 ${fc}` : rel === 'down' ? `${wp}보다 한 톤 진한 ${fc}` : `${wp}에 맞춘 ${fc}`;
+    } else if (F.link === 'bridge') t = `${wp}과 ${fp} 사이의 ${fc}`;
+    else t = `${fp}에 맞춘 ${fc}`;
+    return t + whyRo(fc);
+}
 // S. 색 잇기가 실제로 맞는 원단만 (S0: 맞지 않으면 조각 없음, 지어내지 않음)
 function whyLinkFits(F, R) {
     const c = F.lab, dir = F.link;
@@ -3688,11 +3718,11 @@ function whyItemCands(F, R, facts) {
         if (kind === 'sheer' && c.L >= 88) add('C', 'C8', '밝은 흰색이라, 쳐 두면 햇빛을 받아 커튼 전체가 환하게 보입니다.', '흰빛이 밝아, 쳐 두어도 낮에 창 쪽이 어둡지 않습니다.');
         else if (R.wall) {
             const dL = c.L - R.wall.L;
-            if (whyDE(c, R.wall) < 6) add('C', 'C1', '벽 색과 거의 같아, 커튼을 쳐도 공간이 넓어 보입니다.', '벽과 거의 같은 색이라, 커튼이 눈에 띄지 않습니다.');
-            else if (dL > 15) add('C', 'C3', '벽보다 훨씬 밝은 색이라, 창 쪽이 가장 환해 보입니다.', '밝은 색이라 창이 넓어 보입니다.');
-            else if (dL >= 6) add('C', 'C2', '벽보다 한 톤 밝아, 창 쪽이 환해 보입니다.', '벽보다 조금 밝은 색이라, 공간이 가벼워 보입니다.');
-            else if (dL < -15) add('C', 'C5', '벽보다 훨씬 진해, 창이 먼저 눈에 들어옵니다.', '진한 색이라 공간이 또렷하게 나뉘어 보입니다.');
-            else if (dL <= -6) add('C', 'C4', '벽보다 한 톤 진해, 창 쪽이 차분해 보입니다.', '벽보다 조금 진한 색이라, 공간이 정돈되어 보입니다.');
+            if (whyDE(c, R.wall) < 6) add('C', 'C1', '커튼을 쳐도 공간이 넓어 보입니다.', '커튼이 눈에 띄지 않습니다.');
+            else if (dL > 15) add('C', 'C3', '창 쪽이 가장 환해 보입니다.', '창이 넓어 보입니다.');
+            else if (dL >= 6) add('C', 'C2', '창 쪽이 환해 보입니다.', '공간이 가벼워 보입니다.');
+            else if (dL < -15) add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '공간이 또렷하게 나뉘어 보입니다.');
+            else if (dL <= -6) add('C', 'C4', '창 쪽이 차분해 보입니다.', '공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
             if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울립니다.`, '바닥 나무색과 같은 쪽 색이라 잘 어울립니다.');
@@ -3763,18 +3793,14 @@ function whyChoseOf(facts, candsList, R, heard) {
     facts.forEach((F, i) => {
         if (F.kind === 'blind') return;
         const k = F.kind === 'sheer' ? '속지' : '겉지';
-        const f = candsList[i].find(x => x.g === 'F'), s = whyLinkFits(F, R) ? WHY_S_FRAG[F.link] : '';
+        const f = candsList[i].find(x => x.g === 'F'), rel = whyLinkFits(F, R) ? whyColorRel(F, R) : '';
         const fr = f ? f.t[0] : '';
-        if (fr && s) parts.push(`${k}는 ${fr} 원단 가운데 ${s} 색으로`);
-        else if (fr) parts.push(`${k}는 ${fr} 원단으로`);
-        else if (s) parts.push(`${k}는 ${s} 색으로`);
+        if (rel && fr) parts.push(`${k}는 ${rel}, ${fr} 원단입니다.`);
+        else if (rel) parts.push(`${k}는 ${rel} 골랐습니다.`);
+        else if (fr) parts.push(`${k}는 ${fr} 원단으로 골랐습니다.`);
     });
-    const out = [], lead = heard ? '그래서 ' : '';
-    if (parts.length) {
-        const one = lead + parts.join(', ') + ' 골랐습니다.';
-        if (one.length <= 60 || parts.length === 1) out.push(one);
-        else parts.forEach((p, i) => out.push((i === 0 ? lead : '') + p + ' 골랐습니다.'));
-    }
+    // 88번: "그래서"를 빼고 속지·겉지를 각각 한 문장으로 (앞 문장 '본 것' 때문에 고른 것처럼 들리지 않게)
+    const out = parts.slice();
     // K (한 톤 바꿈): 둘째 문장
     const kf = facts.find(F => F.kind !== 'blind' && F.it.toneStep);
     if (kf) {
@@ -4077,7 +4103,7 @@ function houseSpacesOf(data) {
         const items = room.items.filter(it => it.fabricId);
         if (!items.length) return null;
         const mc = (room.raw && room.raw.measuredColor) || {};
-        const part = k => (okLab(mc[k]) && okHex(mc[k].hex)) ? { L: mc[k].L, a: mc[k].a, b: mc[k].b, hex: mc[k].hex.toUpperCase(), name: nameOf(k, mc[k]) } : null;
+        const part = k => (okLab(mc[k]) && okHex(mc[k].hex)) ? { L: mc[k].L, a: mc[k].a, b: mc[k].b, hex: mc[k].hex.toUpperCase(), name: (k === 'wall' ? proNameOf(mc[k]) : '') || nameOf(k, mc[k]) } : null;
         // 가구 (66번): 종류 이름은 새 이름으로(예전 수납장·식탁도), 그대로 두는 가구를 앞에 (이불·러그는 뒤로, 같은 쪽끼리는 찍은 순서)
         const RC = window.RoomColor || {};
         const fur = (Array.isArray(mc.furniture) ? mc.furniture : []).filter(f => okLab(f) && okHex(f.hex))
