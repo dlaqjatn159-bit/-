@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261102';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261103';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261102';
+const REDAM_BUILD = '20261103';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3208,7 +3208,7 @@ function drawTicket(ctx, data, W, slim) {
     const HEAD_Y = TICKET_HEAD_Y;                   // 표 머리(굵은 선) 높이
     const START_Y = HEAD_Y + 56;                    // 첫 공간이 시작되는 높이 (표 머리 아래)
     const SW_W = slim ? 36 : 56, SW_H = slim ? 46 : 70;      // 원단 칸 (세로로 긴 네모)
-    const KIND_W = 76;                              // slim: 종류 이름표 칸 폭
+    const KIND_W = 100;                             // slim: 종류 이름표 칸 폭 ("블라인드" 넉 자가 이름과 겹치지 않게, 80번)
     const NAME_Y = slim ? 40 : 74, NAME_LH = slim ? 34 : 38, NAME_PX = PAPER_F3;      // 원단 이름 글줄 (품목 윗선에서 첫 줄까지 · 줄 간격 · 글자 크기 — 앞장들과 위계 통일, 39번)
     const SIZE_R = RX - 190, SIZE_W = 170;          // "크기" 칸: 오른쪽 끝 위치와 폭 (그 오른쪽 190은 "금액" 칸)
     const setFont = (weight, size, family) => { ctx.font = `${weight} ${size}px ${family}`; };
@@ -3878,7 +3878,7 @@ function houseSpacesOf(data) {
 function houseShows(data, opts) {
     if (opts && opts.noCard) return false;
     const sp = houseSpacesOf(data);
-    return sp.length >= 2 && sp.some(s => s.fabs.some(f => f.lab));
+    return sp.length >= 1 && sp.some(s => s.fabs.some(f => f.lab));      // 80번: 공간 1곳이어도 (작은 집도 같은 구성, 10-25 사장님)
 }
 // 공간의 대표 원단: 겉지 → 속지 → 블라인드 (색 값이 있는 것 중)
 function houseRep(s) {
@@ -4107,10 +4107,6 @@ function planHouse(data) {
     const MAP_Y = TICKET_HEAD_Y + 26, MAP_H = Math.round(CW * 470 / 900);
     const make = compact => {
         const Q_SIZE = PAPER_F3, Q_LH = compact ? 38 : 42;          // 총평 (400 명조, 이유 카드 손님 말과 같은 크기·굵기, 39번)
-        const N_SIZE = PAPER_F2;                                      // 공간 이름 (400 명조, 이유 카드와 같은 크기, 39번)
-        const C_SIZE = PAPER_F4;                                      // 이름 옆 향
-        const F_SIZE = PAPER_F4, F_LH = compact ? 30 : 32;            // 진단 문장 (400 고딕, 65번)
-        const STRIP_H = compact ? 50 : 56;                                     // 창가 색 띠 (한 줄 가득, 65번)
         const ctx = document.createElement('canvas').getContext('2d');
         const wrap = (str, maxW) => {
             const lines = []; let cur = '';
@@ -4129,21 +4125,8 @@ function planHouse(data) {
         const briefLineY = y; y += bLines.length ? 24 : 0;
         const bY = y + Q_SIZE; if (bLines.length) y = bY + (bLines.length - 1) * Q_LH + 20;
         const rowsTop = y + 10;
-        // 공간 줄 (65번): 위에서 아래로 [공간 이름 · 향] / [색 띠 한 줄 가득] / [진단 문장]
-        const rowLayouts = sp.map(s => {
-            const dirTxt = s.raw && s.raw.windowDir && typeof windowDirText === 'function' ? windowDirText(s.raw.windowDir) : '';
-            ctx.font = `400 ${F_SIZE}px ${SANS}`;
-            const dLines = wrap(houseDiagnosis(s, s.raw).join(' '), CW);
-            const h = 20 + N_SIZE + 14 + STRIP_H + (dLines.length ? 14 + F_SIZE + (dLines.length - 1) * F_LH : 0) + 22;
-            return { s, dirTxt, strip: houseStripOf(s, s.raw), dLines, h };
-        });
-        // 공간 줄을 쪽에 나눔: 첫 쪽은 지도·총평 아래, 다음 쪽부터는 머리글 아래
+        // 80번: 공간별 색 띠·진단은 화면 도록처럼 쇼룸 시트 장으로 옮김 — 이 장은 지도·범례·총평만
         const pages = [{ rows: [], y: rowsTop }];
-        rowLayouts.forEach(R => {
-            let pg = pages[pages.length - 1];
-            if (pg.rows.length && pg.y + R.h > H - BOTTOM) { pg = { rows: [], y: TICKET_HEAD_Y + 20 }; pages.push(pg); }
-            pg.rows.push({ R, y: pg.y }); pg.y += R.h;
-        });
         const fits = pages.length === 1 && pages[0].y <= H - BOTTOM;
         const draw = (c, pi, label) => {
             const t = drawWhy(c, data, W, compact, '공간의 색과 빛');      // 65번
@@ -4170,34 +4153,6 @@ function planHouse(data) {
                     bLines.forEach((ln, i) => c.fillText(ln, CX, bY + i * Q_LH));
                 }
             }
-            const rows = pages[pi].rows;
-            if (rows.length) hline(CX, RX, rows[0].y, LINE, 0.6);
-            rows.forEach(({ R, y: ry }) => {
-                c.font = `400 ${N_SIZE}px ${SERIF}`; c.fillStyle = DARK; c.textAlign = 'left';
-                const nameY = ry + 20 + N_SIZE;
-                c.fillText(R.s.name, CX, nameY);
-                if (R.dirTxt) {
-                    const nw = c.measureText(R.s.name).width;
-                    c.font = `400 ${C_SIZE}px ${SANS}`; c.fillStyle = SOFT; c.fillText(R.dirTxt + '향', CX + nw + 14, nameY);
-                }
-                // 색 띠: 가운데 창 줄(벽·원단) → 커튼 아래 벽(부분 치수일 때만) → 바닥
-                const sy = nameY + 14, FLOOR_H = Math.round(STRIP_H * 0.24), MID_H = STRIP_H - FLOOR_H;
-                const baseH = R.strip.baseR ? Math.round(MID_H * R.strip.baseR) : 0, winH = MID_H - baseH;
-                const tot = R.strip.mid.reduce((t, m) => t + m.f, 0) || 1;
-                let sx = CX;
-                R.strip.mid.forEach((m, i) => {
-                    const w = i === R.strip.mid.length - 1 ? RX - sx : CW * m.f / tot;
-                    c.fillStyle = m.hex; c.fillRect(sx, sy, w + 0.5, winH); sx += w;
-                });
-                if (baseH) { c.fillStyle = R.strip.wHex; c.fillRect(CX, sy + winH, CW, baseH); }
-                c.fillStyle = R.strip.fHex; c.fillRect(CX, sy + MID_H, CW, FLOOR_H);
-                hline(CX, RX, sy + MID_H, 'rgba(43,34,26,0.08)', 0.6);
-                c.strokeStyle = 'rgba(43,34,26,0.12)'; c.lineWidth = 0.6; c.strokeRect(CX + 0.5, sy + 0.5, CW - 1, STRIP_H - 1);
-                // 진단 문장
-                c.font = `400 ${F_SIZE}px ${SANS}`; c.fillStyle = MUTED; c.textAlign = 'left';
-                R.dLines.forEach((ln, i) => c.fillText(ln, CX, sy + STRIP_H + 14 + F_SIZE + i * F_LH));
-                hline(CX, RX, ry + R.h, LINE, 0.6);
-            });
             label();
         };
         return { fits, pages, draw };
@@ -4211,7 +4166,7 @@ function buildHouseCanvases(data, opts) {
     const plan = planHouse(data);
     return {
         count: plan.pages.length,
-        draw(o, total) {
+        draw(o, total, before) {      // before: 앞에 있는 쪽 수 (표지, 80번)
             const pr = (o && o.pixelRatio) || 1;
             return plan.pages.map((pg, pi) => {
                 const H = Math.ceil(pg.y + 90);
@@ -4224,7 +4179,7 @@ function buildHouseCanvases(data, opts) {
                 plan.draw(ctx, pi, () => {
                     if (total < 2) return;
                     ctx.font = `400 ${PAPER_F4}px Pretendard,"Noto Sans KR","Malgun Gothic",sans-serif`; ctx.fillStyle = '#6f5f4f'; ctx.textAlign = 'center';
-                    ctx.fillText(`${pi + 1} / ${total}`, PAPER_W / 2, H - 30);
+                    ctx.fillText(`${pi + 1 + (before || 0)} / ${total}`, PAPER_W / 2, H - 30);
                 });
                 return canvas;
             });
@@ -4232,23 +4187,237 @@ function buildHouseCanvases(data, opts) {
     };
 }
 
+// ==============================================================
+// 80번: 저장 이미지를 화면 최종 제안(76~79번 도록)과 같은 순서·모양으로
+//  조각보 표지 → 공간의 색과 빛 → 공간별 쇼룸 시트 → 견적서(+ 마무리 시)
+//  조각보 나눔·쇼룸 시트 내용은 화면과 같은 함수(concierge.jogakboTree · showroomRows)를 씀
+// ==============================================================
+const PAPER_HL = 1 / PAPER_K;      // 화면 0.5px 초세선 = 저장 이미지(폭 1080 → 탭 폭 540)에서 1칸
+const PAPER_SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
+const PAPER_SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+function paperCanvas(H, pr) {
+    const canvas = document.createElement('canvas');
+    canvas.width = TICKET_W * pr; canvas.height = Math.round(H * PAPER_K * pr);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(PAPER_K * pr, PAPER_K * pr);
+    ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, PAPER_W, H);
+    ctx.textBaseline = 'alphabetic';
+    return { canvas, ctx };
+}
+// 원단 칸: 사진이 있으면 가운데를 잘라 채우고, 없으면 원단 색. 테두리는 초세선
+function paperSwatch(ctx, it, photos, x, y, w, h) {
+    ctx.fillStyle = (it && it.fill) || '#d9cdbb'; ctx.fillRect(x, y, w, h);
+    const ph = it && photos && photos[it.photoKey];
+    if (ph) {
+        const sw = ph.naturalWidth, sh = ph.naturalHeight, k = Math.max(w / sw, h / sh), cw = w / k, ch = h / k;
+        ctx.drawImage(ph, (sw - cw) / 2, (sh - ch) / 2, cw, ch, x, y, w, h);
+    }
+    ctx.strokeStyle = 'rgba(35,28,22,0.14)'; ctx.lineWidth = PAPER_HL; ctx.strokeRect(x + PAPER_HL / 2, y + PAPER_HL / 2, w - PAPER_HL, h - PAPER_HL);
+}
+// [표지] Re.dam 로고 + 16:10 조각보 (화면 .jg-canvas와 같은 나눔, 조각 사이 틈)
+function buildCoverCanvas(data, pr) {
+    const C = window.concierge;
+    if (!C || typeof C.jogakboTree !== 'function') return null;
+    const tree = C.jogakboTree(data);
+    const CX = TICKET_PAD, CW = PAPER_W - TICKET_PAD * 2, TOP = 150, CH = Math.round(CW * 10 / 16), GAP = 4;
+    const H = TOP + CH + TICKET_PAD;
+    const { canvas, ctx } = paperCanvas(H, pr);
+    // 로고: 명조 보통 굵기, 점만 흙빛, 자간 3.5% (78번)
+    ctx.font = `400 ${PAPER_F1}px ${PAPER_SERIF}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = (PAPER_F1 * 0.035).toFixed(1) + 'px';
+    const wRe = ctx.measureText('Re').width, wDot = ctx.measureText('Re.').width;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#231c16'; ctx.fillText('Re', CX, 112);
+    ctx.fillStyle = '#8a4a22'; ctx.fillText('.', CX + wRe, 112);
+    ctx.fillStyle = '#231c16'; ctx.fillText('dam', CX + wDot, 112);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    const draw = (n, x, y, w, h) => {
+        if (!n.dir) {
+            ctx.fillStyle = n.hex; ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = 'rgba(35,28,22,0.14)'; ctx.lineWidth = PAPER_HL; ctx.strokeRect(x + PAPER_HL / 2, y + PAPER_HL / 2, w - PAPER_HL, h - PAPER_HL);
+            return;
+        }
+        const fa = n.a.area / ((n.a.area + n.b.area) || 1);
+        if (n.dir === 'row') { const wa = (w - GAP) * fa; draw(n.a, x, y, wa, h); draw(n.b, x + wa + GAP, y, w - GAP - wa, h); }
+        else { const ha = (h - GAP) * fa; draw(n.a, x, y, w, ha); draw(n.b, x, y + ha + GAP, w, h - GAP - ha); }
+    };
+    draw(tree, CX, TOP, CW, CH);
+    return canvas;
+}
+// [쇼룸 시트] 공간마다: 공간 이름 + 빛의 방향·창의 크기·구성 방식 → 창가 색 띠 → 진단 문장 → 겹침 스와치(겉지 뒤·속지 앞) + 원단별 이유 → 밤 안내
+//  종이 폭이 좁아 화면의 좁은 화면 배치(이름·정보 위, 내용 아래)로 그림. 글자는 화면 사다리(PAPER_F2·F3·F4)
+function buildShowroomCanvas(data, pr, pageNo, total) {
+    const C = window.concierge;
+    if (!C || typeof C.showroomRows !== 'function') return null;
+    const rows = C.showroomRows(data);
+    if (!rows.length) return null;
+    const W = PAPER_W, CX = TICKET_PAD, RX = W - TICKET_PAD, CW = RX - CX;
+    const DARK = '#231c16', MUTED = '#6f6256', SOFT = '#9c8f82';
+    const F4 = PAPER_F4, F3 = PAPER_F3, F2 = PAPER_F2, LH4 = 30, LH3 = 32;
+    const STRIP_H = 44, FLOOR_H = 10;
+    const BW = 92, BH = 116, OFF = 46;      // 스와치 한 장 · 겹칠 때 앞장이 비켜 앉는 거리 (화면 104×132 / 156×148 비율)
+    const meas = document.createElement('canvas').getContext('2d');
+    const wrap = (str, maxW, font) => {
+        meas.font = font;
+        const lines = []; let cur = '';
+        for (const word of String(str).split(' ')) {
+            const test = cur ? cur + ' ' + word : word;
+            if (meas.measureText(test).width <= maxW || !cur) { cur = test; continue; }
+            lines.push(cur); cur = word;
+        }
+        if (cur) lines.push(cur);
+        return lines;
+    };
+    const fSans = `400 ${F4}px ${PAPER_SANS}`, fTitle = `400 ${F3}px ${PAPER_SERIF}`, fName = `400 ${F2}px ${PAPER_SERIF}`;
+    // 미리 자리 재기
+    const plans = rows.map(r => {
+        const meta = [];
+        if (r.dirTxt) meta.push(['빛의 방향', r.dirTxt + '향']);
+        if (r.sz) meta.push(['창의 크기', `${r.sz.w} × ${r.sz.h}cm`]);
+        if (r.compLabel) meta.push(['구성 방식', r.compLabel]);
+        let y = 44 + F2;                        // 공간 이름 글줄
+        const nameY = y;
+        const metaY = meta.length ? (y += 36) : 0;
+        const stripY = (y += r.st ? 26 : 0);
+        if (r.st) y += STRIP_H;
+        const cLines = r.commentTxt ? wrap(r.commentTxt, CW, fSans) : [];
+        const cY = y + 16 + F4;
+        if (cLines.length) y = cY + (cLines.length - 1) * LH4;
+        const layered = !!r.back;
+        const swW = layered ? BW + OFF : BW, swH = layered ? BH + 16 : BH;
+        const DX = CX + swW + 28, DW = RX - DX;
+        const pairY = y + 40;
+        let dy = 0;
+        const blocks = r.sets.map(s => {
+            const hideKind = s.it.kind === '블라인드' && String(s.it.name).includes('블라인드');
+            const b = { s, kind: hideKind ? '' : s.it.kind, y0: dy };
+            dy += F4;                                                     // 종류 · 색 코드 줄
+            b.tLines = wrap(s.it.name, DW, fTitle); b.tY = dy + 10 + F3; dy = b.tY + (b.tLines.length - 1) * LH3;
+            b.dLines = (s.lines && s.lines.length) ? wrap(s.lines.join(' '), DW, fSans) : [];
+            if (b.dLines.length) { b.dY = dy + 12 + F4; dy = b.dY + (b.dLines.length - 1) * LH4; }
+            b.nLines = s.note ? wrap(s.note, DW, fSans) : [];
+            if (b.nLines.length) { b.nY = dy + 10 + F4; dy = b.nY + (b.nLines.length - 1) * LH4; }
+            dy += 26;
+            return b;
+        });
+        const descH = Math.max(0, dy - 26);
+        const descOff = (!layered && descH < swH) ? (swH - descH) / 2 : 0;      // 한 장이면 설명을 스와치 가운데 높이에 (화면 is-single)
+        if (r.sets.length) y = pairY + Math.max(swH, descH);
+        const nightLines = r.night ? wrap(SHEER_NIGHT_NOTE, CW, fSans) : [];
+        const nightY = y + 22 + F4;
+        if (nightLines.length) y = nightY + (nightLines.length - 1) * LH4;
+        return { r, meta, nameY, metaY, stripY, cLines, cY, layered, swW, swH, DX, pairY, blocks, descOff, nightLines, nightY, h: y + 52 };
+    });
+    const START = TICKET_HEAD_Y;
+    const H = Math.ceil(START + plans.reduce((a, p) => a + p.h, 0) + 70);
+    const { canvas, ctx } = paperCanvas(H, pr);
+    const t = drawWhy(ctx, data, W, false, '공간 제안');
+    t.hdr();
+    const text = (s, x, y, color, font, align) => { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.fillText(s, x, y); };
+    const hline = (y, color) => { ctx.strokeStyle = color; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, y); ctx.lineTo(RX, y); ctx.stroke(); };
+    let top = START;
+    plans.forEach((P, i) => {
+        const { r } = P;
+        if (i > 0) hline(top, '#d5cbbd');
+        text(r.name, CX, top + P.nameY, DARK, fName);
+        // 공간 정보: 이름표(흐린 글) + 값, 한 줄에 이어 씀
+        if (P.meta.length) {
+            let mx = CX;
+            P.meta.forEach(([k, v]) => {
+                text(k, mx, top + P.metaY, SOFT, fSans); ctx.font = fSans; mx += ctx.measureText(k).width + 10;
+                text(v, mx, top + P.metaY, MUTED, fSans); mx += ctx.measureText(v).width + 28;
+            });
+        }
+        // 창가 색 띠: 가운데 창 줄(벽·원단) → 커튼 아래 벽(부분 치수일 때만) → 바닥. 글자 없음 (76번)
+        if (r.st) {
+            const sy = top + P.stripY, MID = STRIP_H - FLOOR_H;
+            const baseH = r.st.baseR ? Math.round(MID * r.st.baseR) : 0, winH = MID - baseH;
+            const tot = r.st.mid.reduce((a, m) => a + m.f, 0) || 1;
+            let sx = CX;
+            r.st.mid.forEach((m, k) => {
+                const w = k === r.st.mid.length - 1 ? RX - sx : CW * m.f / tot;
+                ctx.fillStyle = m.hex; ctx.fillRect(sx, sy, w + 0.5, winH);
+                if (k > 0) { ctx.strokeStyle = 'rgba(35,28,22,0.06)'; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + winH); ctx.stroke(); }
+                sx += w;
+            });
+            if (baseH) { ctx.fillStyle = r.st.wHex; ctx.fillRect(CX, sy + winH, CW, baseH); }
+            ctx.fillStyle = r.st.fHex; ctx.fillRect(CX, sy + MID, CW, FLOOR_H);
+            ctx.strokeStyle = 'rgba(35,28,22,0.1)'; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, sy + MID); ctx.lineTo(RX, sy + MID); ctx.stroke();
+            ctx.strokeStyle = 'rgba(35,28,22,0.14)'; ctx.strokeRect(CX + PAPER_HL / 2, sy + PAPER_HL / 2, CW - PAPER_HL, STRIP_H - PAPER_HL);
+        }
+        P.cLines.forEach((ln, k) => text(ln, CX, top + P.cY + k * LH4, MUTED, fSans));
+        // 스와치: 겹치면 겉지(뒤, 왼쪽 위) → 속지(앞, 오른쪽 아래, 옅은 그림자) (78번)
+        if (r.sets.length) {
+            const py = top + P.pairY;
+            if (P.layered) {
+                paperSwatch(ctx, r.back.it, data.photos, CX, py, BW, BH);
+                ctx.save();
+                ctx.shadowColor = 'rgba(35,28,22,0.10)'; ctx.shadowBlur = 14; ctx.shadowOffsetX = -4; ctx.shadowOffsetY = -4;
+                ctx.fillStyle = '#fffdf9'; ctx.fillRect(CX + OFF, py + 16, BW, BH);
+                ctx.restore();
+                paperSwatch(ctx, r.front.it, data.photos, CX + OFF, py + 16, BW, BH);
+            } else {
+                paperSwatch(ctx, r.sets[0].it, data.photos, CX, py, BW, BH);
+            }
+            const by = py + P.descOff;
+            P.blocks.forEach(b => {
+                const y0 = by + b.y0;
+                let kx = P.DX;
+                if (b.kind) { text(b.kind, kx, y0 + F4, MUTED, fSans); ctx.font = fSans; kx += ctx.measureText(b.kind).width + 10; }
+                if (b.s.hex) text(String(b.s.hex), kx, y0 + F4, SOFT, fSans);
+                b.tLines.forEach((ln, k) => text(ln, P.DX, by + b.tY + k * LH3, DARK, fTitle));      // tY·dY·nY는 설명 묶음 맨 위 기준
+                b.dLines.forEach((ln, k) => text(ln, P.DX, by + b.dY + k * LH4, MUTED, fSans));
+                b.nLines.forEach((ln, k) => text(ln, P.DX, by + b.nY + k * LH4, SOFT, fSans));
+            });
+        }
+        P.nightLines.forEach((ln, k) => text(ln, CX, top + P.nightY + k * LH4, SOFT, fSans));
+        top += P.h;
+    });
+    t.pageLabel(pageNo, total, H);
+    return canvas;
+}
+// 견적서 마지막 장 아래 마무리 시 (화면 .fin-ed-closing)
+const TICKET_CLOSING_H = 170;
+function drawTicketClosing(ctx, y) {
+    const CX = TICKET_PAD, RX = PAPER_W - TICKET_PAD;
+    ctx.strokeStyle = '#e6dfd5'; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, y); ctx.lineTo(RX, y); ctx.stroke();
+    ctx.font = `400 ${PAPER_F3}px ${PAPER_SERIF}`; ctx.fillStyle = '#6f6256'; ctx.textAlign = 'left';
+    ctx.fillText('빛을,', CX, y + 70); ctx.fillText('다시 담습니다', CX, y + 70 + 38);
+    ctx.font = `400 ${PAPER_F2}px ${PAPER_SERIF}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = (PAPER_F2 * 0.035).toFixed(1) + 'px';
+    const wDam = ctx.measureText('dam').width, wDot = ctx.measureText('.').width;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#231c16'; ctx.fillText('dam', RX, y + 108);
+    ctx.fillStyle = '#8a4a22'; ctx.fillText('.', RX - wDam, y + 108);
+    ctx.fillStyle = '#231c16'; ctx.fillText('Re', RX - wDam - wDot, y + 108);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+
 function buildTicketCanvases(opts, preparedData) {
     opts = opts || {};
     const data = preparedData || ticketData();
-    const slim = !opts.noCard && whySetsOf(data).rooms.length > 0;      // 앞장 카드가 있으면 견적서는 품목당 한 줄
+    const pr = opts.pixelRatio || 1;      // 화면에 띄울 때는 더 선명하게(저장·인쇄는 1 = 1080px)
+    // 80번: 화면 도록과 같은 순서 — 조각보 표지 → 공간의 색과 빛(37번 조건) → 공간별 쇼룸 시트 → 견적서. 쪽 표시는 전체로 셈(표지에는 안 적음)
+    const hasShowroom = !opts.noCard && !!(window.concierge && typeof window.concierge.showroomRows === 'function') && data.rooms.some(r => r.items && r.items.length);
+    const slim = hasShowroom || (!opts.noCard && whySetsOf(data).rooms.length > 0);      // 앞장에 원단 이유가 있으면 견적서는 품목당 한 줄
     // 1·2·3쪽의 머리글·글자 크기가 흔들리지 않도록 모든 쪽을 같은 배율(1 = 1080px)로 그림 (39번)
     const plan = planTicket(data, PAPER_K, slim);
-    const { s, W, PAGE_H, BOTTOM, F, pages } = plan;
-    const pr = opts.pixelRatio || 1;      // 화면에 띄울 때는 더 선명하게(저장·인쇄는 1 = 1080px)
-    // 맨 앞에 "우리 집 색"(37번, 원단을 담은 공간이 2곳 이상일 때) → "원단을 고른 이유" 카드(손님이 답한 공간이 있을 때만). 쪽 표시는 전체로 셈
+    const { s, W, BOTTOM, F, pages } = plan;
+    const cover = opts.noCard ? null : buildCoverCanvas(data, pr);
+    const cn = cover ? 1 : 0;
     const house = buildHouseCanvases(data, opts), hn = house.count;
-    const whyPages = opts.noCard ? [] : buildWhyCanvases(data, opts, n => hn + n + pages.length, hn);
-    const housePages = house.draw(opts, hn + whyPages.length + pages.length);
-    const off = hn + whyPages.length;
+    // 쇼룸 시트를 그릴 수 없을 때(고객 화면 파일이 없을 때)만 예전 "원단을 고른 이유" 카드
+    const sn = hasShowroom ? 1 : 0;
+    const total = n => cn + hn + n + pages.length;
+    const whyPages = opts.noCard ? [] : (hasShowroom
+        ? [buildShowroomCanvas(data, pr, cn + hn, total(sn))].filter(Boolean)
+        : buildWhyCanvases(data, opts, total, cn + hn));
+    const housePages = house.draw(opts, total(whyPages.length), cn);
+    const off = cn + hn + whyPages.length;
 
     const ticketPages = pages.map((p, pi) => {
         const isLast = pi === pages.length - 1;
-        const H = Math.ceil(p.y + (isLast ? F.h : BOTTOM));   // 아주 긴 방 하나일 때만 늘어남 (화면 좌표)
+        const H = Math.ceil(p.y + (isLast ? F.h + TICKET_CLOSING_H : BOTTOM));   // 아주 긴 방 하나일 때만 늘어남 (화면 좌표)
         const canvas = document.createElement('canvas');
         canvas.width = TICKET_W * pr; canvas.height = Math.round(H * s * pr);
         const ctx = canvas.getContext('2d');
@@ -4258,13 +4427,17 @@ function buildTicketCanvases(opts, preparedData) {
         const t = drawTicket(ctx, data, W, slim);
         t.hdr();
         p.items.forEach(it => t.drawRoom(it.L, it.y));
-        if (isLast) t.drawFooter(F, Math.max(p.y, H - F.h));
+        if (isLast) {
+            const fy = Math.max(p.y, H - F.h - TICKET_CLOSING_H);
+            t.drawFooter(F, fy);
+            drawTicketClosing(ctx, fy + F.h);      // 마무리 시 "빛을, 다시 담습니다" + Re.dam (80번)
+        }
         t.pageLabel(pi + off, pages.length + off, H);
         return canvas;
     });
-    const all = housePages.concat(whyPages, ticketPages);
-    all.cardCount = off;          // 견적서 앞 쪽 수 (우리 집 색 + 이유 카드)
-    all.houseCount = hn;
+    const all = (cover ? [cover] : []).concat(housePages, whyPages, ticketPages);
+    all.cardCount = off;          // 견적서 앞 쪽 수 (표지 + 공간의 색과 빛 + 쇼룸 시트)
+    all.houseCount = cn + hn;
     return all;
 }
 

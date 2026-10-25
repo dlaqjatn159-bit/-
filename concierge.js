@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261102';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261103';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1508,9 +1508,17 @@
     //  2) 공간의 색과 빛: 0.5px 초세선 색 분포 지도 + 집 전체 총평 (중복 가로 막대 6개 제거)
     //  3) 공간별 완결형 쇼룸 시트: 좌측(26% 공간명·빛 방향·창 크기·구성 방식) + 우측(74% 창가 입면 색띠 + 공간 진단 + 겹침 스와치 + 원단 이유)
     //  4) 견적서: 0.5px 초세선 호텔 인보이스 표 + 시공비 + 합계 + 안내 + 마무리 시
+    // 80번: 조각보 모양(나눔 나무)을 한 곳에서 만들어 화면(HTML)과 저장 이미지(app.js 그림)가 똑같은 그림을 씀
+    //  잎: { hex, area } · 묶음: { dir: 'row' | 'col', area, a, b } (area = flex 비율)
     function buildJogakboHtml(data) {
+        const html = n => n.dir
+            ? `<div class="jg-group is-${n.dir}" style="flex:${n.area}">${html(n.a)}${html(n.b)}</div>`
+            : `<div class="jg-tile" style="flex:${n.area};background:${n.hex}"></div>`;
+        return html(buildJogakboTree(data));
+    }
+    function buildJogakboTree(data) {
         const rooms = (data.rooms || []).filter(r => r.items && r.items.length);
-        if (!rooms.length) return '<div class="jg-tile" style="flex:1;background:#efe9df"></div>';
+        if (!rooms.length) return { hex: '#efe9df', area: 1 };
         // 79번: 상담마다 정해진 조각보 번호로 만든 '정해진 순서의 무작위 수'(mulberry32) — 같은 번호·같은 공간·색이면 언제나 같은 그림
         let seedState = (typeof window.getJogakboSeed === 'function' ? window.getJogakboSeed() : 1) >>> 0;
         const rand = () => {
@@ -1581,8 +1589,7 @@
         const planes = Array.from(buckets.values()).map((b, idx) => {
             // 같은 면적이 우연히 겹쳐도 기계적인 이등분이 되지 않도록 미세한 황금비 변주만 더함
             const area = Math.max(180, Math.round(b.area * (1 + ((idx * 37) % 5 - 2) * 0.03)));
-            const html = `<div class="jg-tile" style="flex:${area};background:${b.hex}"></div>`;
-            return { area, html, hex: b.hex };
+            return { area, hex: b.hex };
         });
 
         // 조각 순서를 무작위로 섞되(Fisher-Yates), 각 조각의 면적(flex 비율)은 그대로 유지하여
@@ -1596,7 +1603,7 @@
         // 현재 사각형의 가로·세로 비례(rectW, rectH)를 함께 계산해 지나치게 길쭉한 띠가 생기지 않도록 막으면서,
         // 분할 비율(0.35~0.45 또는 0.55~0.65)과 방향을 역동적으로 교차
         function slice(list, rectW, rectH) {
-            if (list.length === 1) return list[0].html;
+            if (list.length === 1) return list[0];
             const total = list.reduce((s, x) => s + x.area, 0) || 1;
             const targetRatio = rand() < 0.5 ? (0.36 + rand() * 0.08) : (0.56 + rand() * 0.08);
             let acc = 0, splitIdx = 1, bestDiff = Infinity;
@@ -1614,11 +1621,40 @@
             const nextHA = dir === 'col' ? rectH * fracA : rectH;
             const nextWB = dir === 'row' ? rectW * fracB : rectW;
             const nextHB = dir === 'col' ? rectH * fracB : rectH;
-            const htmlA = a.length === 1 ? a[0].html : slice(a, nextWA, nextHA);
-            const htmlB = b.length === 1 ? b[0].html : slice(b, nextWB, nextHB);
-            return `<div class="jg-group is-${dir}" style="flex:${sumA + sumB}">${htmlA}${htmlB}</div>`;
+            const nodeA = a.length === 1 ? a[0] : slice(a, nextWA, nextHA);
+            const nodeB = b.length === 1 ? b[0] : slice(b, nextWB, nextHB);
+            return { dir, area: sumA + sumB, a: nodeA, b: nodeB };
         }
         return slice(arranged, 16, 10);
+    }
+
+    // 공간별 쇼룸 시트에 들어갈 내용 (80번: 화면과 저장 이미지가 같이 씀)
+    //  { rm, name, sz, compLabel, dirTxt, st(창가 색 띠), commentTxt(진단 + 공간 문장), sets(원단별 이유), back·front(겹침 스와치: 겉지 뒤·속지 앞, 한 장이면 null), night }
+    function showroomRowsOf(data) {
+        const whyInfo = (typeof whySetsOf === 'function') ? whySetsOf(data) : { rooms: [] };
+        const allSp = (typeof houseSpacesOf === 'function') ? houseSpacesOf(data) : [];
+        return (data.rooms || []).filter(r => r.items && r.items.length).map(rm => {
+            const R = (whyInfo.rooms || []).find(x => x.name === rm.name) || null;
+            const s = allSp.find(x => x.name === rm.name) || null;
+            const cartRoom = state.roomsCart.find(r => r.name === rm.name);
+            const raw = cartRoom || rm.raw || rm || {};
+            const sz = roomSize(raw), comp = roomComp(raw);
+            const dirTxt = (R && R.dirText) || (raw.windowDir ? windowDirText(windowDirOf(raw.windowDir)) : '');
+            const st = (s && typeof houseStripOf === 'function') ? houseStripOf(s, raw) : null;
+            const diagLines = (s && typeof houseDiagnosis === 'function') ? houseDiagnosis(s, raw) : [];
+            const spaceLines = (R && R.space && R.space.length) ? R.space : [];
+            const sets = (R && R.sets && R.sets.length) ? R.sets : (rm.items || []).map(it => ({
+                it, hex: it.fill || '', lines: it.reason ? [it.reason] : [], note: ''
+            }));
+            let back = null, front = null;
+            if (sets.length >= 2) {
+                // 78번: 방 안에서 사람이 체감하는 느낌(겉지가 바깥 틀, 속지가 안쪽 주인공)에 맞춰 겉지를 뒤, 속지를 앞에 배치
+                back = sets.find(x => x.it.kindKey === 'drape' || x.it.kind === '겉지') || sets[0];
+                front = sets.find(x => x !== back && (x.it.kindKey === 'sheer' || x.it.kind === '속지')) || sets.find(x => x !== back) || sets[1];
+            }
+            return { rm, name: rm.name, sz, compLabel: COMP_NAMES[comp] || '', dirTxt, st, commentTxt: diagLines.concat(spaceLines).join(' '),
+                sets, back, front, night: !!(R && R.night && typeof SHEER_NIGHT_NOTE === 'string') };
+        });
     }
 
     function renderFinalEditorial() {
@@ -1630,7 +1666,6 @@
         const showHouse = (typeof houseShows === 'function') && houseShows(data);
         const allSp = (typeof houseSpacesOf === 'function') ? houseSpacesOf(data) : [];
         const sp = showHouse ? allSp : [];
-        const whyInfo = (typeof whySetsOf === 'function') ? whySetsOf(data) : { rooms: [] };
         const configuredRooms = (data.rooms || []).filter(r => r.items && r.items.length);
 
         let h = '<div class="fin-ed-bar">';
@@ -1669,14 +1704,8 @@
         // [본문] 공간별 완결형 쇼룸 시트 (좌측 26% 공간 스펙 + 우측 74% 창가 입면 색띠·진단·겹침 스와치·원단 설명, 76번)
         if (configuredRooms.length) {
             h += '<section class="jg-showrooms" id="finSecWhy">';
-            configuredRooms.forEach(rm => {
-                const R = (whyInfo.rooms || []).find(x => x.name === rm.name) || null;
-                const s = allSp.find(x => x.name === rm.name) || null;
-                const cartRoom = state.roomsCart.find(r => r.name === rm.name);
-                const raw = cartRoom || rm.raw || rm || {};
-                const sz = roomSize(raw), comp = roomComp(raw);
-                const compLabel = COMP_NAMES[comp] || '';
-                const dirTxt = (R && R.dirText) || (raw.windowDir ? windowDirText(windowDirOf(raw.windowDir)) : '');
+            showroomRowsOf(data).forEach(row => {
+                const { rm, sz, compLabel, dirTxt, st, commentTxt, sets, back, front, night } = row;
 
                 h += '<div class="jg-showroom">';
                 h += '<div class="jg-sr-left">';
@@ -1688,8 +1717,8 @@
                 h += '</div></div>';
 
                 h += '<div class="jg-sr-right">';
-                if (s && typeof houseStripOf === 'function') {
-                    const st = houseStripOf(s, raw), MID = 38;
+                if (st) {
+                    const MID = 38;
                     const baseH = st.baseR ? Math.round(MID * st.baseR) : 0;
                     const midSegs = st.mid.map(m => `<div style="flex:${m.f};background:${m.hex}"></div>`).join('');
                     h += `<div class="jg-sr-elev arch-layer-box is-mini">`
@@ -1698,24 +1727,15 @@
                         + `<div class="arch-bot-floor" style="background:${st.fHex}"></div>`
                         + `</div>`;
                 }
-                const diagLines = (s && typeof houseDiagnosis === 'function') ? houseDiagnosis(s, raw) : [];
-                const spaceLines = (R && R.space && R.space.length) ? R.space : [];
-                const commentTxt = diagLines.concat(spaceLines).join(' ');
                 if (commentTxt) h += `<p class="jg-sr-comment">${esc(commentTxt)}</p>`;
 
-                const sets = (R && R.sets && R.sets.length) ? R.sets : (rm.items || []).map(it => ({
-                    it, hex: it.fill || '', lines: it.reason ? [it.reason] : [], note: ''
-                }));
                 if (sets.length) {
-                    const isLayered = sets.length >= 2;
+                    const isLayered = !!back;
                     let swHtml = '';
                     if (isLayered) {
-                        // 78번: 방 안에서 사람이 체감하는 느낌(겉지가 바깥 틀, 속지가 안쪽 주인공)에 맞춰 겉지를 뒤(.jg-sw-back), 속지를 앞(.jg-sw-front)에 배치
-                        const backSet = sets.find(x => x.it.kindKey === 'drape' || x.it.kind === '겉지') || sets[0];
-                        const frontSet = sets.find(x => x !== backSet && (x.it.kindKey === 'sheer' || x.it.kind === '속지')) || sets.find(x => x !== backSet) || sets[1];
                         swHtml = `<div class="jg-layered-sw">`
-                            + `<div class="jg-sw-back" style="${fabricFillStyle(backSet.it.fabricId, backSet.it.colorName)}"></div>`
-                            + `<div class="jg-sw-front" style="${fabricFillStyle(frontSet.it.fabricId, frontSet.it.colorName)}"></div>`
+                            + `<div class="jg-sw-back" style="${fabricFillStyle(back.it.fabricId, back.it.colorName)}"></div>`
+                            + `<div class="jg-sw-front" style="${fabricFillStyle(front.it.fabricId, front.it.colorName)}"></div>`
                             + `</div>`;
                     } else {
                         swHtml = `<div class="jg-sw-single" style="${fabricFillStyle(sets[0].it.fabricId, sets[0].it.colorName)}"></div>`;
@@ -1732,7 +1752,7 @@
                     }).join('');
                     h += `<div class="jg-sr-pair${isLayered ? '' : ' is-single'}">${swHtml}<div class="jg-sr-descs">${descsHtml}</div></div>`;
                 }
-                if (R && R.night && typeof SHEER_NIGHT_NOTE === 'string') {
+                if (night) {
                     h += `<p class="jg-fab-note jg-night-note">${esc(SHEER_NIGHT_NOTE)}</p>`;
                 }
                 h += '</div></div>';
@@ -2357,6 +2377,9 @@
     }
 
     window.concierge = {
+        // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
+        jogakboTree: data => buildJogakboTree(data),
+        showroomRows: data => showroomRowsOf(data),
         start: function() {
             goToStep(state.roomsCart.length ? "1-Space" : "0-Start", false);
         },
