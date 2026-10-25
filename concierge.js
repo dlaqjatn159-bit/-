@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261104';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261105';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -2348,7 +2348,7 @@
 
                 // 글자: 점에서 양쪽으로 번짐
                 const pl = out(prog(tt, T.letters)), fth = 280;
-                const le = lerp(1252 + fth + 10, 0, pl), re = lerp(1742 - fth - 10, G.x1 + 30, pl);
+                const le = lerp(1252 + fth + 10, 0, pl), re = lerp(1677 - fth - 10, G.x1 + 30, pl);   // 82번: d가 65 왼쪽으로 옮겨짐
                 set(gL, { x1: le - fth, x2: le });
                 set(gR, { x1: re, x2: re + fth });
                 halves.forEach(h => set(h, { opacity: clamp(pl * 1.6), transform: `translate(0 ${(1 - pl) * 36})` }));
