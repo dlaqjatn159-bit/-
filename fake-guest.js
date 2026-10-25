@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261116';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261117';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님" 56명(벽 8 × 바닥 7)으로 앱 추천을 돌려 봄.
@@ -238,6 +238,8 @@
             document.querySelectorAll('#fakeGuestBar [data-fgview]').forEach(b => b.addEventListener('click', () => setView(b.dataset.fgview)));
             $('fgAns').addEventListener('change', e => { ansMode = e.target.value; run(); });
             $('fgLink').addEventListener('change', e => { linkDir = e.target.value; run(); });
+            // 이어주는 색 보조 점수 켜기/끄기 (91번 비교용, 시험 칸 안에서만 바뀜 · 다시 열면 켜짐)
+            $('fgSoft').addEventListener('change', e => { window.ROOM_SOFT_ON = e.target.value === 'on'; run(); });
             $('fgExport').addEventListener('click', download);
         }
         run();

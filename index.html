@@ -507,6 +507,7 @@
                         <button type="button" data-fgview="colors">벽·바닥 색값</button>
                         <select id="fgAns"><option value="fixed">답 같게</option><option value="mix">답 섞기</option></select>
                         <select id="fgLink"><option value="">색 잇기 없음</option><option value="wall">벽 색에</option><option value="bridge">벽과 바닥 사이에</option><option value="floor">바닥 색에</option></select>
+                        <select id="fgSoft"><option value="on">이어주는 색 +1.5 켬</option><option value="off">이어주는 색 끔</option></select>
                         <button type="button" id="fgExport">판정 내려받기</button>
                     </div>
                     <div id="fakeGuestOut"></div>
@@ -737,13 +738,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261116"></script>
-    <script src="costing.js?v=20261116"></script>
-    <script src="data.js?v=20261116"></script>
-    <script src="calculator.js?v=20261116"></script>
-    <script src="concierge.js?v=20261116"></script>
-    <script src="app.js?v=20261116"></script>
-    <script src="room-color.js?v=20261116"></script>
+    <script src="pricing.js?v=20261117"></script>
+    <script src="costing.js?v=20261117"></script>
+    <script src="data.js?v=20261117"></script>
+    <script src="calculator.js?v=20261117"></script>
+    <script src="concierge.js?v=20261117"></script>
+    <script src="app.js?v=20261117"></script>
+    <script src="room-color.js?v=20261117"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
