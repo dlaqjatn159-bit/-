@@ -2283,3 +2283,9 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 #v2Viewport .bookmark-stage.is-hidden { opacity: 0; }
 #v2Viewport .bookmark-stage.is-focusing { transition: filter var(--pi-focus, 0.8s) cubic-bezier(0.2, 0.9, 0.3, 1), opacity var(--pi-veil, 0.45s) ease; }
 @media (prefers-reduced-motion: reduce) { .photo-intro-q, .photo-intro.is-first .photo-intro-q { animation: piFade 0.6s ease both; } }
+
+/* "이렇게 들었어요" 화면: 표 선 없이 글로만, 줄 간격으로 나누고 누르면 흙빛 밑줄 (81번) */
+.heard-list { border: none !important; margin-top: 28px; }
+.heard-row { border: none !important; padding: 18px 4px; }
+.heard-row > span { text-decoration: underline transparent; text-decoration-thickness: 1px; text-underline-offset: 6px; transition: text-decoration-color 0.15s; }
+.heard-row:not(.is-static):hover > span, .heard-row:not(.is-static):active > span { text-decoration-color: var(--earth); }
