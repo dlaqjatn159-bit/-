@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261124';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261125';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -630,6 +630,11 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
             : room.lightBlock !== 'dark' && kind === 'combi' ? '빛을 들일 만큼만 맞추는 콤비' : '';
         if (msg) { if (!parts.includes(msg)) parts.unshift(msg); said.unshift(msg); }
     }
+    // 색 하나 더 (98번): 손님이 고른 포인트 방향에 맞는 겉지면 맨 앞에
+    if (category === '겉지' && room.colorStrength === 'point' && room.colorAccent && typeof colorPlanFits === 'function' && colorPlanFits(fabric, room, category)) {
+        const msg = { value: '벽보다 짙게 무게를 잡는 포인트', color: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트' }[room.colorAccent];
+        if (msg) { parts.unshift(msg); said.unshift(msg); }
+    }
     // 소재 한마디 (94번): 린넨룩을 "린넨"이라 부르지 않음
     const matMsg = MATERIAL_REASON[materialOf(fabric)];
     if (matMsg && category !== '블라인드' && !parts.includes(matMsg)) parts.push(matMsg);
@@ -1080,7 +1085,8 @@ function fabricHasLabColor(f) { return !!f && getFabricColors(f.id).some(colorHa
 // 한 원단에서 공간(바닥·벽·분위기·채광)에 가장 잘 어울리는 색을 고름. 잰 색값이 있는 색이 있으면 그 색들 중에서만 (92번)
 function rankColorsFor(fabric, room, category) {
     const all = getFabricColors(fabric.id), withLab = all.filter(colorHasLab);
-    const colors = withLab.length ? withLab : all;
+    const planned = colorPlanMode(room, category) ? withLab.filter(c => colorPlanAllows(fabric, c, room, category)) : [];      // 98번: 고른 갈래에 맞는 색이 있으면 그 색들 중에서만
+    const colors = planned.length ? planned : (withLab.length ? withLab : all);
     const ranked = colors.map(c => {
         const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, chroma: (typeof c.a === 'number' && typeof c.b === 'number') ? Math.hypot(c.a, c.b) : null, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
         const link = (room && room.linkDir ? roomLinkBonus(c, room) : roomSoftBonus(c, room));      // 고객이 고른 색 잇기 방향 (20번) / 안 골랐으면 잰 색값으로 작게 (91번). 블라인드도 같음 (92번)
@@ -1190,6 +1196,50 @@ function colorTechGaps(mc) {
     if (!r) return null;
     const zero = side => r.rows.filter(x => x[side].length === 0).map(x => x.name);
     return { drape: zero('drape'), sheer: zero('sheer'), gray: r.gray };
+}
+
+// ==============================================================
+// 색 계획 (98번): 손님이 고른 강도·갈래에 맞는 원단 색만 추천에 씀
+//  - 어울리게(colorStrength 'harmony'): 색 잇기 답(linkDir: wall·bridge·floor·fur0~2)에 가까운 색만 (거리 HARMONY_RANGE 미만). 모든 종류
+//  - 색 하나 더('point' + colorAccent): 그 기법(96번 colorTechCounts)의 겉지 색만. 속지·블라인드는 바탕(거르지 않음)
+//  - 맞는 색이 없는 원단은 버리지 않고 뒤로 (3장이 안 차면 기존 추천으로 채움)
+// ==============================================================
+const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog', 'sat'], warm: ['warm'], cool: ['cool'] };
+const HARMONY_RANGE = 20;       // 색 잇기 점수가 0이 되는 거리(LINK_RANGE)와 같음
+function colorPlanMode(room, category) {
+    if (!room || !room.measuredColor) return null;
+    if (room.colorStrength === 'point') return (room.colorAccent && category === '겉지') ? 'point' : null;
+    return room.linkDir ? 'harmony' : null;
+}
+let colorPointMemo = { key: '', t: 0, set: null };
+function colorPointSet(mc, accent) {
+    const key = JSON.stringify([mc.wall, mc.floor, mc.bridge, mc.bridgeK, mc.furniture, accent]);
+    if (colorPointMemo.key === key && Date.now() - colorPointMemo.t < 5000) return colorPointMemo.set;      // 한 화면 그리는 동안만 기억
+    const set = new Set(), keys = COLOR_ACCENT_TECHS[accent] || [];
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    if (r) r.rows.filter(x => keys.includes(x.key)).forEach(x => x.drape.forEach(c => set.add(c.id + '__' + c.color)));
+    colorPointMemo = { key, t: Date.now(), set };
+    return set;
+}
+function colorPlanAllows(fabric, c, room, category) {
+    const mode = colorPlanMode(room, category);
+    if (!mode) return true;
+    if (!colorHasLab(c)) return false;
+    if (mode === 'point') return colorPointSet(room.measuredColor, room.colorAccent).has(fabric.id + '__' + c.name);
+    const d = roomLinkDistance({ L: c.light, a: c.a, b: c.b }, room.measuredColor, room.linkDir);
+    return d != null && d < HARMONY_RANGE;
+}
+function colorPlanFits(fabric, room, category) {
+    if (!colorPlanMode(room, category)) return true;
+    return getFabricColors(fabric.id).some(c => colorPlanAllows(fabric, c, room, category));
+}
+// 이 계획(plan: { colorStrength, colorAccent, linkDir })이면 종류마다 맞는 원단 수 — 선택지를 후보 있는 것만 보이게
+function colorPlanCount(room, plan, category) {
+    const r = Object.assign({}, room, plan);
+    let pool = [];
+    try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool(category) : []; } catch (e) {}
+    return pool.filter(f => colorPlanMode(r, category) && colorPlanFits(f, r, category)).length;
 }
 
 // ==============================================================
@@ -1325,7 +1375,13 @@ function colorDistance(p, q) { return Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b
 const BRIDGE_TUBE = 11.5;      // 임시값 (현장 시험 뒤 확정)
 const FLOOR_LIFT = 14;         // 바닥과 맞추기: 바닥보다 이만큼 밝은 색 근처를 먼저 (밝기 88까지)
 function roomLinkOk(mc, mode) {
+    if (/^fur\d$/.test(String(mode))) return !!roomLinkFur(mc, mode);
     return !!mc && (mode === 'bridge' ? !!(mc.wall && mc.floor && mc.bridge) : !!mc[mode]);
+}
+// 'fur0'~'fur2' → 그대로 두는 가구 중 그 번째 (98번)
+function roomLinkFur(mc, mode) {
+    const list = ((mc && mc.furniture) || []).filter(f => f && f.stay !== false && typeof f.L === 'number' && typeof f.a === 'number' && typeof f.b === 'number');
+    return list[+String(mode).slice(3)] || null;
 }
 // 점에서 벽~바닥 선분까지 거리(line)와 이어주는 색까지 거리(target)
 function bridgeDistances(e, mc) {
@@ -1344,6 +1400,7 @@ function roomLinkDistance(e, mc, mode) {
         return (d.line <= BRIDGE_TUBE && e.L >= lowL) ? d.target * 0.65 + d.line * 0.35 : null;
     }
     if (mode === 'wall') return colorDistance(e, mc.wall);
+    if (/^fur\d$/.test(mode)) return colorDistance(e, roomLinkFur(mc, mode));      // 아끼는 가구 색에 맞춤 (98번)
     if (e.L < mc.floor.L) return null;
     return colorDistance(e, { L: Math.min(88, mc.floor.L + FLOOR_LIFT), a: mc.floor.a, b: mc.floor.b });
 }

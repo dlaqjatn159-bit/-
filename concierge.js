@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261124';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261125';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -180,7 +180,7 @@
             floorTone: r.floorTone || "warm",
             wallTone: r.wallTone || "cool",
             mood: r.mood || "soft_warm",
-            wantMood: r.wantMood || null,
+            wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
             roomType: r.roomType || null,
             lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null,
             diagnosed: !!r.diagnosed,
@@ -336,8 +336,13 @@
         const steps = ed.askCards ? ["2-Base-Floor", "2-Base-Wall"] : [];
         steps.push("2-Base-Light", "2-Base-Block", "2-Base-Privacy", "3-Config-Style");
         steps.push("2-Base-Home");          // "이렇게 들었습니다. 맞으신가요?" — 모든 공간 (23번)
-        if (canLink(ed)) steps.push("2-Base-Link");
-        steps.push("2-Base-Mood");
+        // 98번: 강도(어울리게 / 색 하나 더) → 어울리게면 색 잇기 → 분위기, 색 하나 더면 어떻게 더할지
+        if (state.step === "2-Base-Strength" || ed.colorStrength) steps.push("2-Base-Strength");
+        if (ed.colorStrength === 'point') steps.push("2-Base-Accent");
+        else {
+            if (canLink(ed)) steps.push("2-Base-Link");
+            steps.push("2-Base-Mood");
+        }
         if (state.step === "2-Base-SheerFeel" || items.some(i => i.presetType === 'sheer')) steps.push("2-Base-SheerFeel");
         if (state.step === "2-Base-BlindKind" || items.some(i => i.presetType === 'blind')) steps.push("2-Base-BlindKind");
         return steps;
@@ -356,6 +361,57 @@
     function canLink(ed) {
         const mc = ed && ed.measuredColor;
         return !!(mc && mc.wall && mc.floor && mc.bridge);
+    }
+    // ---- 강도·갈래 (98번, 노트상세/추천_좁혀가기_상의.md 4번): 질문 문장은 같고, 선택지는 후보 원단이 있는 것만 ----
+    const PLAN_CATS = { sheer: '속지', drape: '겉지', blind: '블라인드' };
+    function planCats(ed) { return Array.from(new Set((ed.items || []).map(i => PLAN_CATS[i.presetType]).filter(Boolean))); }
+    function planCount(ed, plan, cats) {
+        if (typeof colorPlanCount !== 'function') return 0;
+        return (cats || planCats(ed)).reduce((n, c) => n + colorPlanCount(ed, plan, c), 0);
+    }
+    // 어울리게: 벽 / 사이 / 바닥 / 그대로 두는 가구(최대 3)
+    function linkOptions(ed) {
+        const mc = ed.measuredColor || {};
+        const opts = [{ dir: 'wall', label: '벽 색에', pos: 6 }, { dir: 'bridge', label: '벽과 바닥 사이에', pos: 35 }, { dir: 'floor', label: '바닥 색에', pos: 78 }];
+        const furs = (mc.furniture || []).filter(f => f && f.stay !== false && typeof f.L === 'number' && typeof f.a === 'number' && typeof f.b === 'number').slice(0, 3);
+        const names = furs.map(f => f.n || '가구');
+        furs.forEach((f, i) => {
+            const many = names.filter(n => n === names[i]).length > 1;
+            const no = names.slice(0, i + 1).filter(n => n === names[i]).length;
+            opts.push({ dir: 'fur' + i, label: `${names[i]}${many ? ' ' + no : ''} 색에`, hex: f.hex });
+        });
+        return opts.filter(o => planCount(ed, { colorStrength: 'harmony', colorAccent: null, linkDir: o.dir }) > 0);
+    }
+    // 색 하나 더: 짙게(명도 대비) / 색으로(보색·분열보색·유사색·채도 대비). 무채색 집은 따뜻한 쪽·차가운 쪽. 겉지 후보로만 셈
+    function accentOptions(ed) {
+        if (!(ed.items || []).some(i => i.presetType === 'drape') || !roomHasLab(ed)) return [];
+        let gray = false;
+        try { const r = colorTechCounts(ed.measuredColor); gray = !!(r && r.gray); } catch (e) { return []; }
+        const opts = [{ key: 'value', label: '더 짙게' }].concat(gray
+            ? [{ key: 'warm', label: '따뜻한 색으로' }, { key: 'cool', label: '차가운 색으로' }]
+            : [{ key: 'color', label: '다른 색으로' }]);
+        return opts.filter(o => planCount(ed, { colorStrength: 'point', colorAccent: o.key }, ['겉지']) > 0);
+    }
+    // 분위기 질문까지 갈지: 종류마다 맞는 원단이 5개 이하면 바로 보여 줌 (멈춤 규칙)
+    function fewLeft(ed) {
+        if (!ed.linkDir || typeof colorPlanCount !== 'function') return false;
+        return planCats(ed).every(c => colorPlanCount(ed, {}, c) <= 5);
+    }
+    // 어울리게: 색 잇기 선택지가 하나뿐이면 묻지 않고 그것으로, 없으면 색 잇기 없이 분위기로
+    function goHarmony() {
+        const ed = state.editingRoom;
+        if (!canLink(ed)) { ed.linkDir = null; goToStep("2-Base-Mood"); return; }
+        const opts = linkOptions(ed);
+        if (opts.length === 1) { window.concierge.selectLink(opts[0].dir); return; }
+        if (!opts.length) { ed.linkDir = null; goToStep("2-Base-Mood"); return; }
+        goToStep("2-Base-Link");
+    }
+    // 분위기 다음: 속지가 들어가는 구성이면 속지 느낌을, 블라인드 구성이면 블라인드 종류를 물음 (공간마다. "수정"으로 다시 들어와도 다시 물음 — 38-2)
+    function afterMood() {
+        const items = state.editingRoom.items || [];
+        const hasSheer = items.some(i => i.presetType === 'sheer');
+        const hasBlind = items.some(i => i.presetType === 'blind');
+        goToStep(hasSheer ? "2-Base-SheerFeel" : (hasBlind ? "2-Base-BlindKind" : "3.5-Bridge"));
     }
     // "이렇게 들었어요" 화면에서 줄을 눌러 그 질문으로 가서 고치면, 답한 뒤 이 화면으로 돌아옴 (뒤로 가기 목록에 같은 화면이 쌓이지 않게 정리)
     function returnHomeIfFixing() {
@@ -380,7 +436,7 @@
         if (t.includes('drape')) return 'drape_only';
         return null;
     }
-    const LINK_WORD = { wall: '벽과 톤을 맞춰 넓어 보이는 색', bridge: '벽과 바닥의 중간 톤', floor: '바닥 톤을 따르는 색' }; // 41번
+    const LINK_WORD = { wall: '벽과 톤을 맞춰 넓어 보이는 색', bridge: '벽과 바닥의 중간 톤', floor: '바닥 톤을 따르는 색', fur0: '아끼시는 가구와 톤을 맞춘 색', fur1: '아끼시는 가구와 톤을 맞춘 색', fur2: '아끼시는 가구와 톤을 맞춘 색' }; // 41번 · 98번(가구)
     const LINK_WHY = { wall: '커튼이 벽에 자연스럽게 어우러져 공간이 넓어 보입니다.', bridge: '벽과 바닥을 조화롭게 감싸 주어 공간이 차분하게 하나로 보입니다.', floor: '바닥과 같은 계열의 색이라 따뜻하고 안정감 있습니다.' }; // 41번 · 83번
     // 색 잇기 방향과 어울리는 분위기 카드 (추천 표시만, 점수는 그대로 — 사장님이 써 보며 정함)
     const LINK_MOODS = { wall: ['urban_clean', 'airy_bright'], bridge: ['balanced_neutral'], floor: ['soft_warm', 'textured_linen'] };
@@ -1261,15 +1317,30 @@
             }
 
             // [색 잇기] 커튼을 벽·바닥과 어떻게 이을지. 답은 원단 찾기의 세 방식과 같은 계산으로 겉지·속지 추천에 더해짐 (data.js roomLinkBonus)
+            // [강도 (98번): 이 공간에 색을 어떻게 — 어울리게(바탕안) / 색 하나 더(포인트안). 포인트 후보가 없으면 이 화면은 건너뜀]
+            case "2-Base-Strength":
+                html += askStage('이 공간에 색을 어떻게 쓰고 싶으세요?', '', [
+                    { label: '어울리게', on: "window.concierge.selectStrength('harmony')", was: was('colorStrength', 'harmony') },
+                    { label: '색 하나 더', on: "window.concierge.selectStrength('point')", was: was('colorStrength', 'point') }
+                ]);
+                break;
+
+            // [색 하나 더 (98번): 어떻게 더할지. 이중 커튼이면 겉지만 (속지는 바탕). 후보 있는 것만]
+            case "2-Base-Accent": {
+                const dbl = (state.editingRoom.items || []).some(i => i.presetType === 'sheer');
+                html += askStage(dbl ? '겉지 색은 어떻게 더할까요?' : '커튼 색은 어떻게 더할까요?', '',
+                    accentOptions(state.editingRoom).map(o => ({ label: o.label, on: `window.concierge.selectAccent('${o.key}')`, was: was('colorAccent', o.key) })));
+                break;
+            }
+
             case "2-Base-Link": {
                 const mc = state.editingRoom.measuredColor;
                 const bar = pos => `<span class="link-prev" aria-hidden="true"><span class="link-bar" style="background:linear-gradient(90deg, ${mc.wall.hex}, ${mc.bridge.hex} 35%, ${mc.floor.hex})"></span><span class="link-mk" style="left:${pos}%"></span><span class="link-ends"><em>벽</em><em>바닥</em></span></span>`;
                 const onlyBlind = (state.editingRoom.items || []).length > 0 && state.editingRoom.items.every(i => i.presetType === 'blind');      // 블라인드만 단 공간은 말만 바꿈 (92번)
-                html += askStage(onlyBlind ? '블라인드 색은 어디에 맞출까요?' : '커튼 색은 어디에 맞출까요?', '', [ // 41번 · 73번(판정 말·설명 뺌) · 83번
-                    { label: '벽 색에', on: "window.concierge.selectLink('wall')", was: was('linkDir', 'wall'), extra: bar(6) }, // 41번 · 72번(판정 대신 기준 말)
-                    { label: '벽과 바닥 사이에', rec: true, on: "window.concierge.selectLink('bridge')", was: was('linkDir', 'bridge'), extra: bar(35) }, // 41번
-                    { label: '바닥 색에', on: "window.concierge.selectLink('floor')", was: was('linkDir', 'floor'), extra: bar(78) }
-                ]);
+                // 98번: 후보 원단이 있는 선택지만 (가구는 그대로 두는 가구마다)
+                const chip = hex => `<span class="link-prev" aria-hidden="true"><span class="link-bar" style="background:${hex}"></span></span>`;
+                const lopts = linkOptions(state.editingRoom).map(o => ({ label: o.label, rec: o.dir === 'bridge', on: `window.concierge.selectLink('${o.dir}')`, was: was('linkDir', o.dir), extra: o.hex ? chip(o.hex) : bar(o.pos) }));
+                html += askStage(onlyBlind ? '블라인드 색은 어디에 맞출까요?' : '커튼 색은 어디에 맞출까요?', '', lopts); // 41번 · 73번(판정 말·설명 뺌) · 83번 · 72번(기준 말)
                 break;
             }
 
@@ -1322,7 +1393,7 @@
                 html += '<div class="bookmark-stage">';
                 // 색 잇기를 골랐으면 위 작은 글로 보여 주고, 그 방향과 어울리는 분위기 카드에 추천 표시 (점수는 그대로)
                 const ld = state.editingRoom && state.editingRoom.linkDir;
-                state.__recMoods = ld ? LINK_MOODS[ld] : [];
+                state.__recMoods = (ld && LINK_MOODS[ld]) || [];
                 html += stepHead('원하시는 분위기를 골라 주세요', ''); // 42번: 사족 설명 제거
                 const recList = state.__recMoods || [];
                 html += '<div class="bookmark-canvas" style="--items-count: 6;">';
@@ -2064,8 +2135,9 @@
         const queueItem = state.pendingItemQueue[state.currentItemIndex] || { label: "창문", presetType: "sheer" };
         const targetCategory = queueItem.presetType === 'blind' ? '블라인드' : (queueItem.presetType === 'sheer' ? '속지' : '겉지');
         // 원단마다 "공간에 가장 어울리는 색"까지 계산해 순위를 매김. 점수가 같으면 사장님이 직접 분류한 원단을 먼저
-        const ranked = getLiveCategoryPool(targetCategory).map(f => ({ f: f, best: bestColorFor(f, state.editingRoom, targetCategory) }));
-        ranked.sort((a, b) => (b.best.score - a.best.score)
+        const fits = f => (typeof colorPlanFits === 'function') ? colorPlanFits(f, state.editingRoom, targetCategory) : true;      // 98번: 고른 갈래 원단 먼저, 모자라면 기존 추천으로 채움
+        const ranked = getLiveCategoryPool(targetCategory).map(f => ({ f: f, fit: fits(f), best: bestColorFor(f, state.editingRoom, targetCategory) }));
+        ranked.sort((a, b) => ((b.fit ? 1 : 0) - (a.fit ? 1 : 0)) || (b.best.score - a.best.score)
             || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
         const showcaseList = (typeof pickShowcase === 'function') ? pickShowcase(ranked, 3) : ranked.slice(0, 3);
         return { queueItem, targetCategory, showcaseList };
@@ -2524,7 +2596,7 @@
                 wallTone: target.wallTone || 'cool',
                 lightLevel: target.lightLevel || 'mid',
                 mood: target.mood || 'soft_warm',
-                wantMood: target.wantMood || null,
+                wantMood: target.wantMood || null, colorStrength: target.colorStrength || null, colorAccent: target.colorAccent || null,
                 roomType: target.roomType || roomTypeOf(target),
                 lightBlock: target.lightBlock || null, privacy: target.privacy || null, sheerFeel: target.sheerFeel || null, blindWant: target.blindWant || null,
                 measuredColor: target.measuredColor ? JSON.parse(JSON.stringify(target.measuredColor)) : null,     // 카드로 고치면 그 부분을 지우므로 복사본
@@ -2558,7 +2630,7 @@
                 state.editingRoom.prev = {
                     floorTone: target.floorTone, wallTone: target.wallTone, lightLevel: target.lightLevel,
                     lightBlock: target.lightBlock || null, privacy: target.privacy || null,
-                    wantMood: target.wantMood || null, sheerFeel: target.sheerFeel || null, blindWant: target.blindWant || null, comp, linkDir: target.linkDir || null
+                    wantMood: target.wantMood || null, colorStrength: target.colorStrength || null, colorAccent: target.colorAccent || null, sheerFeel: target.sheerFeel || null, blindWant: target.blindWant || null, comp, linkDir: target.linkDir || null
                 };
             }
             // 새 흐름(20번): 벽·바닥을 이미 아는 공간(잰 색·집 기본 색·카드)은 빛 질문부터(위에 확인 칩). 모르는 공간은 바닥·벽 카드부터
@@ -2575,9 +2647,25 @@
         },
         // 우리 집 색 → 색 잇기
         goLinkStep: function() {
-            if (canLink(state.editingRoom)) { goToStep("2-Base-Link"); return; }
-            state.editingRoom.linkDir = null;
-            goToStep("2-Base-Mood");
+            const ed = state.editingRoom;
+            if (canLink(ed) && accentOptions(ed).length) { goToStep("2-Base-Strength"); return; }      // 98번: 포인트 후보가 있을 때만 강도를 물음
+            ed.colorStrength = null; ed.colorAccent = null;
+            goHarmony();
+        },
+        // 강도 (98번)
+        selectStrength: function(v) {
+            const ed = state.editingRoom;
+            ed.colorStrength = v;
+            if (v !== 'point') { ed.colorAccent = null; goHarmony(); return; }
+            const opts = accentOptions(ed);
+            if (opts.length === 1) { window.concierge.selectAccent(opts[0].key); return; }      // 하나뿐이면 묻지 않음
+            goToStep("2-Base-Accent");
+        },
+        // 색 하나 더: 겉지는 그 기법 색만, 속지·블라인드는 바탕(색 잇기·분위기 없이 집 색으로) (98번)
+        selectAccent: function(a) {
+            const ed = state.editingRoom;
+            ed.colorStrength = 'point'; ed.colorAccent = a; ed.linkDir = null; ed.wantMood = null;
+            afterMood();
         },
         // 창 방향 버튼 (35번): 그 자리의 버튼만 다시 그림 (색 재기 화면이 위에 떠 있어도 같은 값)
         toggleDir: function(d) {
@@ -2616,6 +2704,7 @@
         },
         selectLink: function(dir) {
             state.editingRoom.linkDir = dir;
+            if (fewLeft(state.editingRoom)) { state.editingRoom.wantMood = null; afterMood(); return; }      // 98번: 후보가 적으면 분위기는 묻지 않음
             goToStep("2-Base-Mood");
         },
         copyBaseFromPrev: function(same) {
@@ -2986,10 +3075,7 @@
         },
         selectMood: function(mood) {
             state.editingRoom.wantMood = mood;
-            // 속지가 들어가는 구성이면 속지 느낌을, 블라인드 구성이면 블라인드 종류를 물음 (공간마다. "수정"으로 다시 들어와도 다시 물음 — 38-2)
-            const hasSheer = (state.editingRoom.items || []).some(i => i.presetType === 'sheer');
-            const hasBlind = (state.editingRoom.items || []).some(i => i.presetType === 'blind');
-            goToStep(hasSheer ? "2-Base-SheerFeel" : (hasBlind ? "2-Base-BlindKind" : "3.5-Bridge"));
+            afterMood();
         },
         chooseWindowComposition: function(type) {
             const rName = state.editingRoom.name;
@@ -3182,6 +3268,8 @@
                 roomTarget.lightLevel = state.editingRoom.lightLevel;
                 roomTarget.mood = state.editingRoom.mood;
                 roomTarget.wantMood = state.editingRoom.wantMood || null;
+                roomTarget.colorStrength = state.editingRoom.colorStrength || null;      // 강도·갈래 (98번)
+                roomTarget.colorAccent = state.editingRoom.colorAccent || null;
                 roomTarget.lightBlock = state.editingRoom.lightBlock || null;
                 roomTarget.privacy = state.editingRoom.privacy || null;
                 roomTarget.sheerFeel = state.editingRoom.sheerFeel || null;
@@ -3251,7 +3339,7 @@
             const btn = document.querySelector('#finPager .fin-zoom');
             if (btn) btn.textContent = finalZoom ? '기본 크기' : '크게 보기';
         },
-        linkWord: function(dir) { return { wall: '벽 색 기준', bridge: '벽·바닥 사이', floor: '바닥 색 기준' }[dir] || ''; },      // 72번: 색 잇기 질문·더 보기 잇는 방향·지도 원 이름표
+        linkWord: function(dir) { return { wall: '벽 색 기준', bridge: '벽·바닥 사이', floor: '바닥 색 기준' }[dir] || (/^fur\d$/.test(String(dir)) ? '가구 색 기준' : ''); },      // 98번: 가구      // 72번: 색 잇기 질문·더 보기 잇는 방향·지도 원 이름표
         cardNameParts: function(fabricId, colorTag) {
             const f = getLiveDb().find(x => x.id === fabricId);
             return f ? splitNameColor(f, colorTag || '') : null;
@@ -3288,7 +3376,7 @@
                 return {
                     id: newRoomId(), name: r.name,
                     floorTone: r.floorTone || 'warm', wallTone: r.wallTone || 'cool',
-                    lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null,
+                    lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
                     roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
                     measuredColor: r.measuredColor || null,
                     width: Number(r.width) || null, height: Number(r.height) || null,
@@ -3337,7 +3425,7 @@
         },
         getRoomsForSave: function() {
             return state.roomsCart.map(r => ({          // 아직 상담 전인 공간도 (크기·벽·바닥 색을 먼저 담아 둠)
-                name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null,
+                name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
                 roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
                 measuredColor: r.measuredColor || null,
                 width: r.width || null, height: r.height || null,
