@@ -97,6 +97,7 @@
                     <button type="button" data-view="docs" onclick="showStaffView('docs')"><i class="fa-regular fa-file-lines"></i>서류</button>
                     <button type="button" data-view="history" onclick="showStaffView('history')"><i class="fa-solid fa-clock-rotate-left"></i>상담 기록<span class="badge" id="historyNavCount"></span></button>
                     <button type="button" data-view="fabric" onclick="showStaffView('fabric')"><i class="fa-solid fa-swatchbook"></i>원단</button>
+                    <button type="button" data-view="colorguide" onclick="showStaffView('colorguide')"><i class="fa-solid fa-palette"></i>색 기법</button>
                     <button type="button" data-view="settings" onclick="showStaffView('settings')"><i class="fa-solid fa-gear"></i>설정</button>
                     <button type="button" data-view="test" onclick="showStaffView('test')"><i class="fa-solid fa-flask"></i>시험</button>
                 </nav>
@@ -502,6 +503,13 @@
                     </div>
                 </section>
 
+                <!-- ===== 색 기법 (95번): 색 쓰는 법 교과서. 열 때만 color-guide.js를 불러옴. 보조 설명 글 없음 ===== -->
+                <section class="staff-view" id="view-colorguide">
+                    <h1 class="staff-h1 font-serif-kr">색 기법</h1>
+                    <div class="cg-tabs" id="cgTabs"></div>
+                    <div class="cg-grid" id="cgGrid"></div>
+                </section>
+
                 <!-- ===== 시험 (89번): 가짜 손님으로 추천 확인. 열 때만 fake-guest.js를 불러옴. 손님 화면에는 없음 ===== -->
                 <section class="staff-view" id="view-test">
                     <h1 class="staff-h1 font-serif-kr">시험</h1>
@@ -751,13 +759,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261121"></script>
-    <script src="costing.js?v=20261121"></script>
-    <script src="data.js?v=20261121"></script>
-    <script src="calculator.js?v=20261121"></script>
-    <script src="concierge.js?v=20261121"></script>
-    <script src="app.js?v=20261121"></script>
-    <script src="room-color.js?v=20261121"></script>
+    <script src="pricing.js?v=20261122"></script>
+    <script src="costing.js?v=20261122"></script>
+    <script src="data.js?v=20261122"></script>
+    <script src="calculator.js?v=20261122"></script>
+    <script src="concierge.js?v=20261122"></script>
+    <script src="app.js?v=20261122"></script>
+    <script src="room-color.js?v=20261122"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

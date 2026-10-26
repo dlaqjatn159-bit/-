@@ -4,7 +4,7 @@
    - 외부 도구(Tailwind·아이콘·글꼴 등): 처음 한 번 받아 저장해 두고 이후엔 저장본 사용
    ========================================================================== */
 // 앱 버전: 바꾸면 탭이 새 서비스 워커를 받아 앱 파일을 다시 받아 둠 (CACHE 이름은 그대로 — 바꾸면 미리 받아 둔 사진까지 지워짐)
-const BUILD = '20261121';
+const BUILD = '20261122';
 const CACHE = 'redam-app-v1';
 const SCOPE = self.registration.scope;
 
@@ -57,6 +57,7 @@ async function precache() {
 
     // 직원 화면 "시험" 칸 파일(열 때 불러옴, 89번)도 미리 받아 둠
     urls.add(new URL('fake-guest.js?v=' + BUILD, SCOPE).href);
+    urls.add(new URL('color-guide.js?v=' + BUILD, SCOPE).href);   // 색 기법 (95번)
 
     await Promise.allSettled([...urls].map(async href => {
         const local = href.startsWith(self.location.origin);

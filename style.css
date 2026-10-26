@@ -2398,3 +2398,21 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fg-texchk { font-size: 0.8rem; background: #f4efe8; border-radius: 6px; padding: 0.35rem 0.6rem; margin-bottom: 0.5rem; }
 @media (max-width: 1200px) { .fg-stats3 { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .fg-guest, .fg-stats { grid-template-columns: 1fr; } }
+
+/* 색 기법 교과서 (95번): 묶음 단추 넷 + 카드(그림 → 이름·앱 반영 → 효과 → 쓰는 법·조심 → 손님에게 하는 말) */
+.cg-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 1rem 0; }
+.cg-tabs button { border: 1px solid var(--brand-border); background: #fff; border-radius: 999px; padding: 0.45rem 1.1rem; font-size: 0.9rem; font-weight: 600; color: var(--brand-muted); }
+.cg-tabs button[aria-selected="true"] { background: var(--brand-dark); color: #fff; border-color: var(--brand-dark); }
+.cg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.cg-card { background: #fff; border: 1px solid var(--brand-border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.cg-pic { display: grid; grid-template-columns: 1fr 170px; align-items: center; background: #fbf9f6; border-bottom: 1px solid var(--brand-border); }
+.cg-pic svg { display: block; width: 100%; height: auto; }
+.cg-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; color: var(--brand-dark); }
+.cg-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cg-head h3 { margin: 0; font-size: 1.125rem; }
+.cg-app { font-size: 0.78rem; white-space: nowrap; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; }
+.cg-app.on { color: #4f6b4a; } .cg-app.part { color: #a07a2a; } .cg-app.no { color: #b3aaa0; }
+.cg-eff { font-size: 1rem; margin: 0; }
+.cg-body dl { margin: 0; display: grid; grid-template-columns: 4.2em 1fr; gap: 4px 10px; font-size: 0.875rem; }
+.cg-body dt { color: var(--brand-muted); } .cg-body dd { margin: 0; }
+.cg-say { margin-top: auto; border-left: 3px solid var(--brand-accent); padding: 6px 10px; background: #faf6f1; font-size: 0.875rem; }
