@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261123';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261124';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -475,7 +475,7 @@
         const out = [];
         let live = [];
         try { live = (typeof collectConsultation === 'function') ? collectConsultation().rooms : []; } catch (e) {}
-        live.forEach(r => { const mc = r.measuredColor; if (mc && mc.wall && mc.floor) out.push({ name: r.name || '공간', mc, live: true }); });
+        live.forEach(r => { const mc = r.measuredColor; if (mc && mc.wall && mc.floor) out.push({ name: r.name || '공간', mc, live: true, width: Number(r.spaceWidth || r.width) || 0 }); });
         TECH_SAMPLES.forEach(([n, wi, fi]) => {
             const w = WALLS0[wi], f = FLOORS0[fi];
             out.push({ name: n, mc: { wall: w, floor: f, bridge: RC().bridgeOf(w, f) }, sub: w.n + ' · ' + f.n });
@@ -543,6 +543,122 @@
         const T = colorTechCfg(); T[k] = n; setColorTechCfg(T); drawTech();
     }
 
+    // ==============================================================
+    // ---- 6. 방 그림 비교 (97번): 그 집에서 잰 벽·바닥·가구 색을 칠한 작은 방 그림에 후보 겉지 색 2~3개를 나란히 ----
+    //  기법을 고르면 그 기법의 후보(colorTechCounts)로 바뀜. 후보 하나를 누르면 같은 방 그림의 변형 셋:
+    //  커튼 전체 / 겉지만(속지 = 이어주는 색에 가장 가까운 속지) / 끝단 배색(같은 원단의 다른 색, 실제 폭 수만큼).
+    //  방향 고르기용 그림이고 최종은 실물 샘플. 손님 화면은 사장님 확인 뒤에.
+    // ==============================================================
+    let roomTech = {}, roomPick = {};       // 공간 번호 → 고른 기법 / 고른 후보 번호
+    const dE3 = (x, y) => Math.hypot(x.L - y.L, x.a - y.a, x.b - y.b);
+    function fabricOf(id) {
+        for (const cat of ['겉지', '속지']) {
+            let pool = [];
+            try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool(cat) : []; } catch (e) {}
+            const f = pool.find(x => x.id === id);
+            if (f) return f;
+        }
+        return null;
+    }
+    // 폭 수: 넓이 × 2배 주름 ÷ 원단 폭(대폭 무이음은 1마 = 90cm 단위). 넓이 없으면 340cm, 폭 없으면 150cm
+    function widthCount(spaceW, fab) {
+        const spec = (fab && fab.specCm) || 150, unit = spec >= 200 ? 90 : spec;
+        return { n: Math.max(2, Math.ceil(((spaceW || 340) * 2) / unit)), unit: spec >= 200 ? '마' : '폭', cm: unit };
+    }
+    // 끝단 색: 같은 원단의 다른 색 중 본 색과 가장 다른 색(포인트)
+    function trimOf(c) {
+        const others = getFabricColors(c.id).filter(colorHasLab).filter(x => String(x.name) !== String(c.color))
+            .map(x => ({ id: c.id, fabric: c.fabric, color: x.name, L: x.light, a: x.a, b: x.b }));
+        return others.sort((p, q) => dE3(q, c) - dE3(p, c))[0] || null;
+    }
+    function sheerNear(bridge) {
+        let pool = [];
+        try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool('속지') : []; } catch (e) {}
+        let best = null, bd = 1e9;
+        pool.forEach(f => getFabricColors(f.id).filter(colorHasLab).forEach(x => {
+            const c = { L: x.light, a: x.a, b: x.b }, d = dE3(c, bridge);
+            if (d < bd) { bd = d; best = Object.assign(c, { fabric: f.name, color: x.name }); }
+        }));
+        return best;
+    }
+    // 후보 고르기: 원단마다 한 색만, 밝기 순으로 줄 세워 밝은·중간·진한 쪽 하나씩 (서로 달라 보이게)
+    function pickThree(list) {
+        const seen = new Set(), uniq = [];
+        list.forEach(x => { if (!seen.has(x.id)) { seen.add(x.id); uniq.push(x); } });
+        uniq.sort((p, q) => q.L - p.L);
+        if (uniq.length <= 3) return uniq;
+        return [uniq[0], uniq[Math.floor(uniq.length / 2)], uniq[uniq.length - 1]];
+    }
+    // opt: { drape, sheer?, trim?, count? }
+    function roomPic(mc, opt) {
+        const hx = c => RC().labToHex(c.L, c.a, c.b);
+        const w = hx(mc.wall), f = hx(mc.floor), d = hx(opt.drape);
+        let s = `<svg class="fg-rpic" viewBox="0 0 240 150"><rect width="240" height="112" fill="${w}"/><rect y="112" width="240" height="38" fill="${f}"/>
+            <rect x="70" y="24" width="100" height="74" fill="#cfe0ea"/><rect x="44" y="16" width="152" height="3" fill="#9a9087"/>`;
+        if (opt.sheer) s += `<rect x="66" y="19" width="108" height="93" fill="${hx(opt.sheer)}" opacity=".82"/>`;
+        // 양쪽 커튼: 한쪽 = 폭 수의 절반, 끝단 배색은 가운데 쪽 1폭(1마)
+        const half = Math.max(1, Math.ceil((opt.count || 2) / 2)), PW = 40, sw = PW / half;
+        [[46, 'L'], [154, 'R']].forEach(([x, side]) => {
+            s += `<rect x="${x}" y="19" width="${PW}" height="93" fill="${d}"/>`;
+            for (let i = 1; i < half; i++) s += `<line x1="${x + i * sw}" y1="19" x2="${x + i * sw}" y2="112" stroke="#00000018" stroke-width=".6"/>`;
+            if (opt.trim) s += `<rect x="${side === 'L' ? x + PW - sw : x}" y="19" width="${sw}" height="93" fill="${hx(opt.trim)}"/>`;
+        });
+        // 남는 가구(최대 3): 바닥 위 상자
+        (mc.furniture || []).filter(x => x && x.stay !== false && typeof x.L === 'number').slice(0, 3).forEach((fu, i) => {
+            const x = [8, 196, 104][i], wd = i === 2 ? 32 : 36;
+            s += `<rect x="${x}" y="${i === 2 ? 120 : 96}" width="${wd}" height="${i === 2 ? 14 : 22}" rx="3" fill="${hx(fu)}" stroke="#00000020" stroke-width=".6"/>`;
+        });
+        return s + '</svg>';
+    }
+    function photoTag(c) {
+        const u = fabricPhotoUrls(c.id, c.color)[0];
+        return u ? `<img class="fg-rph" src="${esc(u)}" data-id="${esc(c.id)}" data-color="${esc(c.color)}" data-i="0" onerror="photoFallback(this)" alt="">` : '';
+    }
+    function roomBlock(sp, si, T) {
+        const r = colorTechCounts(sp.mc, T);
+        if (!r) return '';
+        const mc = Object.assign({}, sp.mc, { bridge: sp.mc.bridge || RC().bridgeOf(sp.mc.wall, sp.mc.floor) });
+        const usable = r.rows.filter(x => x.drape.length);
+        if (!usable.length) return `<section class="fg-tech"><h2>${esc(sp.name)}</h2><p class="fg-tnote">겉지 후보가 있는 기법이 없습니다.</p></section>`;
+        let key = roomTech[si];
+        if (!usable.some(x => x.key === key)) key = (usable.find(x => x.key === 'tone') || usable[0]).key;
+        const row = usable.find(x => x.key === key), cands = pickThree(row.drape);
+        const pi = Math.min(roomPick[si] || 0, cands.length - 1), pick = cands[pi];
+        const opts = usable.map(x => `<option value="${x.key}"${x.key === key ? ' selected' : ''}>${esc(x.name)} (${x.drapeFabrics}종)</option>`).join('');
+        const cards = cands.map((c, i) => `<button type="button" class="fg-rcard${i === pi ? ' on' : ''}" data-rs="${si}" data-ri="${i}">
+            ${roomPic(mc, { drape: c })}<div class="fg-rcap">${photoTag(c)}<span>${esc(c.fabric)} ${esc(colorNoLabel(c.color))}<br><small>밝기 ${Math.round(c.L)}</small></span></div></button>`).join('');
+        const fab = fabricOf(pick.id), wc = widthCount(sp.width, fab), trim = trimOf(pick), sheer = sheerNear(mc.bridge);
+        const vari = (title, pic, note) => `<div class="fg-rvar">${pic}<div class="fg-rcap"><span><b>${title}</b><br><small>${note}</small></span></div></div>`;
+        const vars = vari('커튼 전체', roomPic(mc, { drape: pick, count: wc.n }), '겉지 한 겹') +
+            (sheer ? vari('겉지만', roomPic(mc, { drape: pick, sheer, count: wc.n }), '속지 ' + esc(sheer.fabric) + ' ' + esc(colorNoLabel(sheer.color))) : '') +
+            (trim ? vari('끝단 배색', roomPic(mc, { drape: pick, trim, count: wc.n }), `같은 원단 ${esc(colorNoLabel(trim.color))} · 양쪽 가운데 1${wc.unit}씩`)
+                  : vari('끝단 배색', roomPic(mc, { drape: pick, count: wc.n }), '이 원단은 다른 색이 없음'));
+        return `<section class="fg-tech fg-rsec"><h2>${esc(sp.name)}${sp.live ? ' <small>(지금 상담)</small>' : ''}</h2>
+            <div class="fg-tsw"><label>기법 <select data-rt="${si}">${opts}</select></label>
+            <small>넓이 ${sp.width ? sp.width + 'cm' : '없음(340cm로)'} · ${esc(pick.fabric)} 원단 폭 ${(fab && fab.specCm) || 150}cm → ${wc.n}${wc.unit}</small></div>
+            <div class="fg-rrow">${cards}</div>
+            <p class="fg-tnote">고른 후보의 변형</p><div class="fg-rrow">${vars}</div></section>`;
+    }
+    function drawRoomCmp() {
+        const box = $('fakeRoomOut');
+        if (!box) return;
+        const T = colorTechCfg();
+        const hasColors = typeof colorsStore === 'function' && Object.keys(colorsStore()).length > 0;
+        const spaces = techSpaces();
+        box.innerHTML = (hasColors ? '' : '<div class="fg-warn">이 창에는 원단 색 값이 없어서 그림이 비어 보일 수 있습니다. 사장님 미리보기(8765)나 탭에서 열어 주세요.</div>') +
+            '<p class="fg-tnote">그 집의 벽·바닥·남는 가구 색에 후보 겉지를 칠한 그림입니다(방향 고르기용, 최종은 실물 샘플). 후보는 고른 기법 안에서 밝은·중간·진한 쪽 하나씩. 그림을 누르면 아래 변형이 그 원단으로 바뀝니다.</p>' +
+            spaces.map((sp, i) => roomBlock(sp, i, T)).join('');
+    }
+    function onRoomClick(ev) {
+        const b = ev.target.closest('[data-rs]');
+        if (b) { roomPick[b.dataset.rs] = +b.dataset.ri; drawRoomCmp(); }
+    }
+    function onRoomChange(ev) {
+        const si = ev.target.dataset && ev.target.dataset.rt;
+        if (si == null) return;
+        roomTech[si] = ev.target.value; roomPick[si] = 0; drawRoomCmp();
+    }
+
     let mode = 'check';
     function setMode(m) {
         mode = m;
@@ -551,7 +667,8 @@
         if (cw) cw.hidden = m !== 'check';
         if (fo) fo.hidden = m !== 'field';
         if (to) to.hidden = m !== 'tech';
-        if (m === 'field') runField(); else if (m === 'tech') drawTech(); else run();
+        const ro = $('fakeRoomOut'); if (ro) ro.hidden = m !== 'room';      // 97번
+        if (m === 'field') runField(); else if (m === 'tech') drawTech(); else if (m === 'room') drawRoomCmp(); else run();
     }
 
     let bound = false;
@@ -572,6 +689,7 @@
             document.querySelectorAll('#fgMode [data-fgmode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.fgmode)));
             const fo = $('fakeFieldOut'); if (fo) fo.addEventListener('click', onFieldClick);
             const to = $('fakeTechOut'); if (to) { to.addEventListener('click', onTechClick); to.addEventListener('change', onTechChange); }      // 96번
+            const ro = $('fakeRoomOut'); if (ro) { ro.addEventListener('click', onRoomClick); ro.addEventListener('change', onRoomChange); }      // 97번
         }
         setMode(mode);
     }

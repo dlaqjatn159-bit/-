@@ -519,6 +519,7 @@
                         <button type="button" class="on" data-fgmode="check">추천 점검</button>
                         <button type="button" data-fgmode="field">현장 비교</button>
                         <button type="button" data-fgmode="tech">색 기법 수</button><!-- 96번 -->
+                        <button type="button" data-fgmode="room">방 그림 비교</button><!-- 97번 -->
                     </div>
                     <div id="fgCheckWrap">
                     <div class="fg-bar-top" id="fakeGuestBar">
@@ -534,6 +535,7 @@
                     </div>
                     <div id="fakeFieldOut" hidden></div>
                     <div id="fakeTechOut" hidden></div><!-- 96번: 집마다 가능한 색 기법 수 -->
+                    <div id="fakeRoomOut" hidden></div><!-- 97번: 방 그림 비교 -->
 
                 </section>
 
@@ -762,13 +764,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261123"></script>
-    <script src="costing.js?v=20261123"></script>
-    <script src="data.js?v=20261123"></script>
-    <script src="calculator.js?v=20261123"></script>
-    <script src="concierge.js?v=20261123"></script>
-    <script src="app.js?v=20261123"></script>
-    <script src="room-color.js?v=20261123"></script>
+    <script src="pricing.js?v=20261124"></script>
+    <script src="costing.js?v=20261124"></script>
+    <script src="data.js?v=20261124"></script>
+    <script src="calculator.js?v=20261124"></script>
+    <script src="concierge.js?v=20261124"></script>
+    <script src="app.js?v=20261124"></script>
+    <script src="room-color.js?v=20261124"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

@@ -2436,3 +2436,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fg-t0, .fg-t0 .fg-tbtn { color: #a5503f; font-weight: 700; }
 .fg-tlow, .fg-tlow .fg-tbtn { color: #b07a2a; }
 .fg-tlist { font-size: 0.75rem; margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; }
+/* 방 그림 비교 (97번) */
+.fg-rsec { margin-top: 0.8rem; }
+.fg-rrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+.fg-rcard, .fg-rvar { background: #fff; border: 1px solid #e5ddd3; border-radius: 8px; padding: 0.4rem; text-align: left; font: inherit; color: inherit; }
+.fg-rcard.on { border-color: #281c15; box-shadow: 0 0 0 1px #281c15; }
+.fg-rpic { width: 100%; display: block; border-radius: 4px; }
+.fg-rcap { display: flex; gap: 0.4rem; align-items: center; font-size: 0.75rem; margin-top: 0.3rem; line-height: 1.3; }
+.fg-rph { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; flex: none; }
