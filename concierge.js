@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261138';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261139';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1700,6 +1700,28 @@
             return { area, hex: b.hex };
         });
 
+        // 111번: 빛의 면 — 집 색만 있으면 밝기가 고르게 붙어 답답해서, 창으로 들어오는 빛을 맑은 색 면으로 약 20% 넣음.
+        // 빛 색은 창 방향으로 정함(남 따뜻한 상아 · 동 맑은 아침빛 · 서 노을빛 · 북 서늘한 흰빛), 방 크기만큼 많이 들어온 방향이 큰 면
+        const LIGHT_HEX = { S: '#fbf4e4', E: '#fcfaf3', W: '#fbefdf', N: '#f3f5f5' };
+        const lightW = {};
+        rooms.forEach(rm => {
+            const cartRoom = state.roomsCart.find(r => r.name === rm.name);
+            const raw = cartRoom || rm.raw || rm || {};
+            const dirs = (typeof windowDirOf === 'function') ? (windowDirOf(raw.windowDir) || []) : [];
+            const sz = roomSize(raw) || { w: 240, h: 235 };
+            const w = typeWeightOf(rm.name) * Math.max(1200, (Number(sz.w) || 240) * (Number(sz.h) || 235));
+            (dirs.length ? dirs : ['S']).forEach(d => { if (LIGHT_HEX[d]) lightW[d] = (lightW[d] || 0) + w / (dirs.length || 1); });
+        });
+        const lightDirs = Object.keys(lightW).sort((a, b) => lightW[b] - lightW[a]);
+        const baseSum = planes.reduce((s, p) => s + p.area, 0);
+        const lightTotal = baseSum * 0.25;      // 전체의 20%
+        if (lightDirs.length >= 2 && lightW[lightDirs[1]] > lightW[lightDirs[0]] * 0.3 && LIGHT_HEX[lightDirs[1]] !== LIGHT_HEX[lightDirs[0]]) {
+            planes.push({ area: Math.round(lightTotal * 0.72), hex: LIGHT_HEX[lightDirs[0]], light: true });
+            planes.push({ area: Math.round(lightTotal * 0.28), hex: LIGHT_HEX[lightDirs[1]], light: true });
+        } else {
+            planes.push({ area: Math.round(lightTotal), hex: LIGHT_HEX[lightDirs[0] || 'S'], light: true });
+        }
+
         // 조각 순서를 무작위로 섞되(Fisher-Yates), 각 조각의 면적(flex 비율)은 그대로 유지하여
         // 벽·바닥·원단의 실제 면적 비례는 100% 지키면서 구도는 매번 역동적인 몬드리안 추상화로 배치 (78번)
         const arranged = planes.slice();
@@ -1713,7 +1735,7 @@
         function slice(list, rectW, rectH) {
             if (list.length === 1) return list[0];
             const total = list.reduce((s, x) => s + x.area, 0) || 1;
-            const targetRatio = rand() < 0.5 ? (0.36 + rand() * 0.08) : (0.56 + rand() * 0.08);
+            const targetRatio = rand() < 0.5 ? (0.30 + rand() * 0.12) : (0.58 + rand() * 0.12);      // 111번: 큰 면·작은 면 차이를 조금 더 벌림
             let acc = 0, splitIdx = 1, bestDiff = Infinity;
             for (let i = 1; i < list.length; i++) {
                 acc += list[i - 1].area;
