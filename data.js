@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261128';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261129';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1112,7 +1112,7 @@ function bestColorFor(fabric, room, category) {
 const COLOR_TECH_KEY = 'redam_color_tech_cfg_v1';
 const COLOR_TECH_DEF = {
     grayC: 4,       // 이 채도 미만이면 무채색 (집도 원단도)
-    sameDE: 6,      // 동일색: 벽·바닥·이어주는 색·가구 중 하나와 색 차이(ΔE) 이 값 미만
+    sameDE: 6,      // 동일색: 벽·바닥·이어주는 색·가구 중 하나와 색 차이(CIEDE2000, 102번) 이 값 미만
     toneHue: 30,    // 같은 계열로 보는 색상각 차이 (톤온톤·채도 대비)
     toneDL: 8,      // 톤온톤: 집 기준색과 밝기 차이 이 값 이상
     analogHue: 60,  // 유사색: 같은 계열 바깥 ~ 이 각도까지
@@ -1144,6 +1144,28 @@ function colorTechCfg() {
     return out;
 }
 function setColorTechCfg(cfg) { try { if (cfg) localStorage.setItem(COLOR_TECH_KEY, JSON.stringify(cfg)); else localStorage.removeItem(COLOR_TECH_KEY); } catch (e) {} }
+// 색 차이 CIEDE2000 (102번, 동일색에만 씀)
+function techDE2000(x, y) {
+    const rad = Math.PI / 180, p7 = v => Math.pow(v, 7), P25 = p7(25);
+    const C1 = Math.hypot(x.a, x.b), C2 = Math.hypot(y.a, y.b), Cm = (C1 + C2) / 2;
+    const G = 0.5 * (1 - Math.sqrt(p7(Cm) / (p7(Cm) + P25)));
+    const a1 = x.a * (1 + G), a2 = y.a * (1 + G);
+    const c1 = Math.hypot(a1, x.b), c2 = Math.hypot(a2, y.b);
+    const hOf = (b, a) => (b === 0 && a === 0) ? 0 : (Math.atan2(b, a) / rad + 360) % 360;
+    const h1 = hOf(x.b, a1), h2 = hOf(y.b, a2);
+    const dL = y.L - x.L, dC = c2 - c1;
+    let dh = 0;
+    if (c1 * c2 !== 0) { dh = h2 - h1; if (dh > 180) dh -= 360; else if (dh < -180) dh += 360; }
+    const dH = 2 * Math.sqrt(c1 * c2) * Math.sin(dh / 2 * rad);
+    const Lm = (x.L + y.L) / 2, cm = (c1 + c2) / 2;
+    let hm = h1 + h2;
+    if (c1 * c2 !== 0) hm = Math.abs(h1 - h2) > 180 ? (h1 + h2 + (h1 + h2 < 360 ? 360 : -360)) / 2 : (h1 + h2) / 2;
+    const Tt = 1 - 0.17 * Math.cos((hm - 30) * rad) + 0.24 * Math.cos(2 * hm * rad) + 0.32 * Math.cos((3 * hm + 6) * rad) - 0.20 * Math.cos((4 * hm - 63) * rad);
+    const Sl = 1 + 0.015 * (Lm - 50) * (Lm - 50) / Math.sqrt(20 + (Lm - 50) * (Lm - 50));
+    const Sc = 1 + 0.045 * cm, Sh = 1 + 0.015 * cm * Tt;
+    const Rt = -2 * Math.sqrt(p7(cm) / (p7(cm) + P25)) * Math.sin(60 * Math.exp(-Math.pow((hm - 275) / 25, 2)) * rad);
+    return Math.sqrt(Math.pow(dL / Sl, 2) + Math.pow(dC / Sc, 2) + Math.pow(dH / Sh, 2) + Rt * (dC / Sc) * (dH / Sh));
+}
 // mc: { wall, floor, bridge?, furniture? } (L a b). 벽·바닥이 없으면 null
 function colorTechCounts(mc, cfg) {
     if (!mc || !mc.wall || !mc.floor) return null;
@@ -1151,7 +1173,8 @@ function colorTechCounts(mc, cfg) {
     const lab = c => (c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number') ? { L: c.L, a: c.a, b: c.b } : null;
     const chroma = c => Math.hypot(c.a, c.b), hue = c => (Math.atan2(c.b, c.a) * 180 / Math.PI + 360) % 360;
     const dHue = (x, y) => { const d = Math.abs(x - y) % 360; return d > 180 ? 360 - d : d; };
-    const dE = (x, y) => Math.hypot(x.L - y.L, x.a - y.a, x.b - y.b);
+    // 동일색 거리 (102번): 눈에 가까운 CIEDE2000. 다른 기법·색 잇기 거리는 그대로
+    const dE = techDE2000;
     const wall = lab(mc.wall), floor = lab(mc.floor);
     const bridge = lab(mc.bridge) || (window.RoomColor && RoomColor.bridgeOf ? lab(RoomColor.bridgeOf(wall, floor, mc.bridgeK)) : null) || { L: (wall.L + floor.L) / 2, a: (wall.a + floor.a) / 2, b: (wall.b + floor.b) / 2 };
     const fur = (mc.furniture || []).filter(f => f && f.stay !== false).map(lab).filter(Boolean);
@@ -1189,7 +1212,7 @@ function colorTechCounts(mc, cfg) {
             hit.tone = !hit.same && Math.abs(c.L - ref.L) >= T.toneDL && (fam ? Math.abs(C - refC) < T.satDC : achro);
             hit.analog = !achro && dh > T.toneHue && dh <= T.analogHue;
             hit.sat = fam && C - refC >= T.satDC;
-            hit.tint = !achro && dh > T.toneHue && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
+            hit.tint = k.cls === 'color' && dh > T.toneHue && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
             hit.triad = !achro && dh >= 105 && dh < 135;
             hit.split = !achro && dh >= 135 && dh < 165;
             hit.comp = !achro && dh >= 165;
@@ -1198,15 +1221,15 @@ function colorTechCounts(mc, cfg) {
     }
     const cats = { drape: '겉지', sheer: '속지' }, res = {};
     keys.forEach(k => { res[k] = { drape: [], sheer: [] }; });
-    // 속지 따로 (101번): 씨스루('많이 비침')는 색으로 추천하지 않아 기법 표에서 뺌 · 화이트 속지는 어느 집에나 맞는 바탕이라 따로 셈
-    const sheerWhite = [], sheerSee = [];
+    // 속지 따로 (101번 → 102번): 화이트 속지만 어느 집에나 맞는 바탕이라 따로 셈 · 색 있는 씨스루('많이 비침')는 기법 표에 넣음
+    const sheerWhite = [], sheerSee = [];      // sheerSee: 기법 표에 넣은 색 있는 씨스루 (잰 값 눈 확인용)
     Object.keys(cats).forEach(side => {
         let pool = [];
         try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool(cats[side]) : []; } catch (e) {}
         pool.forEach(f => getFabricColors(f.id).filter(colorHasLab).forEach(c => {
             const cc = { L: c.light, a: c.a, b: c.b }, item = { id: f.id, fabric: f.name, color: c.name, L: c.light, a: c.a, b: c.b };
-            if (side === 'sheer' && f.density === 'light') { sheerSee.push(item); return; }
             if (side === 'sheer' && techColorClass(cc, T).fam === 'white') { sheerWhite.push(item); return; }
+            if (side === 'sheer' && f.density === 'light') sheerSee.push(item);
             const hit = test(cc);
             keys.forEach(k => { if (hit[k]) res[k][side].push({ id: f.id, fabric: f.name, color: c.name, L: c.light, a: c.a, b: c.b }); });
         }));

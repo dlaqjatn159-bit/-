@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261128';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261129';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -503,7 +503,7 @@
         return `<section class="fg-tech"><h2>${esc(sp.name)}${sp.live ? ' <small>(지금 상담)</small>' : ''}</h2>
             <div class="fg-tsw">${sw(w, '벽')}${sw(f, '바닥')}${sw(b, '이어주는 색')}${(sp.mc.furniture || []).length ? ' <small>가구 ' + sp.mc.furniture.length + '</small>' : ''}${r.gray ? ' <b class="fg-tgray">무채색 집 → 웜 쪽·쿨 쪽</b>' : (r.house === 'neutral' ? ` <b class="fg-tgray">뉴트럴 집(${r.neutralDir === 'cool' ? '쿨' : '웜'}) → 반대 온도</b>` : '')}</div>
             <table class="fg-ttable"><thead><tr><th>기법</th><th>겉지</th><th>속지</th></tr></thead><tbody>${rows}</tbody></table>
-            <p class="fg-tnote">속지 따로 (101번): 화이트 ${r.sheerWhite.length}색 <small>(어느 집에나 바탕)</small> · 씨스루 ${r.sheerSee.length}색 <small>(많이 비침 — 색으로 추천 안 함)</small></p>${openList}</section>`;
+            <p class="fg-tnote">속지 따로 (102번): 화이트 ${r.sheerWhite.length}색 <small>(어느 집에나 바탕)</small> · 색 있는 씨스루 ${r.sheerSee.length}색 <small>(많이 비침 — 기법 표에 넣음, 잰 값 눈 확인)</small></p>${openList}</section>`;
     }
     // 상담 기록에 남은 빈 칸 모음: 몇 공간에서 그 기법 후보가 0이었나
     function techGapSummary() {
