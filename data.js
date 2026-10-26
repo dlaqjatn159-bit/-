@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261120';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261121';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -282,6 +282,32 @@ function normalizeTextureInput(v) {
     if (/^(포근|부클|기모|도톰)/.test(s)) return 'cozy';
     return null;
 }
+// 소재 (94번): 질감(느낌)과 따로. 린넨 / 린넨룩 / 기타 결(슬러브·네프 등). 비우면 모름
+const MATERIAL_LABELS = { linen: '린넨', linenlook: '린넨룩', otherweave: '기타 결' };
+function normalizeMaterialInput(v) {
+    const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (!s) return null;
+    if (MATERIAL_LABELS[s]) return s;
+    if (/^린넨룩/.test(s)) return 'linenlook';
+    if (/^(린넨|마)$/.test(s)) return 'linen';
+    if (/^(기타|슬러브|네프)/.test(s)) return 'otherweave';
+    return null;
+}
+// 이름으로 본 소재 후보 (94번): "린넨룩" → 린넨룩, 슬러브·네프 → 기타 결, "린넨"만 → 'check'(확인 필요: 실제로 폴리가 많아 자동으로 정하지 않음)
+function guessMaterial(f) {
+    const n = String((f && (f.name + ' ' + (f.engName || ''))) || '');
+    if (/린넨\s*룩|linen\s*look/i.test(n)) return 'linenlook';
+    if (/린넨|linen/i.test(n)) return 'check';
+    if (/슬러브|네프|slub|nep/i.test(n)) return 'otherweave';
+    return null;
+}
+// 점수·문장에 쓰는 소재: 사장님이 정한 값 → 이름 후보(확인 필요는 빼고)
+function materialOf(f) {
+    if (!f) return null;
+    if (f.material && MATERIAL_LABELS[f.material]) return f.material;
+    const g = guessMaterial(f);
+    return g && MATERIAL_LABELS[g] ? g : null;
+}
 // 암막 4단계 (사장님 기준): 완전암막 = 빛에 예민한 분용 진짜 암막(95% 이상), 생활암막 = 70~94%(블랑·라온), 보통 = 그 아래(넥스 약 60%)
 const BLACKOUT_LABELS = { none: '비암막', mid: '보통', life: '생활암막', full: '완전암막' };
 const BLACKOUT_ORDER = ['none', 'mid', 'life', 'full'];
@@ -508,6 +534,8 @@ function calculateFabricMatchScore(fabric, room, category) {
         const tx = fabric.texture;
         if (room.sheerFeel === 'smooth' && tx) score += tx === 'smooth' ? 8 : -4;
         if (room.sheerFeel === 'textured' && tx) score += tx === 'natural' ? 8 : -4;
+        // 결 있는 원단 안에서 린넨·린넨룩 +2 (94번, 린넨 느낌으로 유도. 둘 사이 차이는 없음)
+        if (room.sheerFeel === 'textured' && tx === 'natural' && ['linen', 'linenlook'].includes(materialOf(fabric))) score += 2;
         if (room.sheerFeel === 'cozy' && tx) score += tx === 'cozy' ? 8 : -4;
     }
 
@@ -548,6 +576,7 @@ function calculateFabricMatchScore(fabric, room, category) {
 }
 
 // 추천 이유 한 줄 (짧은 말) (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
+const MATERIAL_REASON = { linen: '린넨 특유의 자연스러운 결', linenlook: '린넨 느낌에 구김이 적은 린넨룩' };      // 견적서·원단 이유 (94번)
 function recommendReason(fabric, room, category, maxParts, onlySaid) {
     // onlySaid(원단을 고른 이유 카드, 24번): 손님이 답한 조건(바깥 시선·빛 가림·강한 햇빛)과 원단이 맞는 점만, 있으면 하나만 돌려줌
     if (!isManualTagged(fabric)) return '';
@@ -566,7 +595,7 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     else if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') { parts.push('강한 햇빛을 거르는 비침'); said.push('강한 햇빛을 거르는 비침'); }
     if (category === '속지' && room.sheerFeel && fabric.texture) {
         const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
-            : room.sheerFeel === 'textured' && fabric.texture === 'natural' ? '자연스럽게 살아 있는 결'
+            : room.sheerFeel === 'textured' && fabric.texture === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '자연스럽게 살아 있는 결')
             : room.sheerFeel === 'cozy' && fabric.texture === 'cozy' ? '도톰하고 보송한 느낌' : '';
         if (msg) parts.unshift(msg);   // 고객이 고른 취향 → 앞쪽 (사생활 문장 다음)
     }
@@ -601,6 +630,9 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
             : room.lightBlock !== 'dark' && kind === 'combi' ? '빛을 들일 만큼만 맞추는 콤비' : '';
         if (msg) { if (!parts.includes(msg)) parts.unshift(msg); said.unshift(msg); }
     }
+    // 소재 한마디 (94번): 린넨룩을 "린넨"이라 부르지 않음
+    const matMsg = MATERIAL_REASON[materialOf(fabric)];
+    if (matMsg && category !== '블라인드' && !parts.includes(matMsg)) parts.push(matMsg);
     if (onlySaid) return said[0] || '';
     // 짧은 말로 끝냄(예: 깔끔하고 매끈한 결). 원단 고르는 칸은 1개만, 제안서는 2개까지
     return parts.slice(0, maxParts || 2).join(' · ');
@@ -1262,6 +1294,7 @@ function applyTagOverrides(list) {
         if (t && t.density && DENSITY_LABELS[t.density]) { f.density = t.density; f.manual.density = true; }
         if (t && t.blackout && BLACKOUT_LABELS[t.blackout]) { f.blackout = t.blackout; f.manual.blackout = true; }
         if (t && t.texture && TEXTURE_LABELS[t.texture]) { f.texture = t.texture; f.manual.texture = true; }
+        if (t && t.material && MATERIAL_LABELS[t.material]) f.material = t.material;      // 소재 (94번)
         f.hideOverride = (t && (t.hide === 'yes' || t.hide === 'no')) ? t.hide : null;
     });
 }
@@ -1277,11 +1310,13 @@ function setFabricTag(id, key, val) {
     const o = loadTagOverrides();
     o[id] = o[id] || {};
     if (!val) delete o[id][key]; else o[id][key] = val;
-    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide && !o[id].blackout && !o[id].texture) delete o[id];
+    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide && !o[id].blackout && !o[id].texture && !o[id].material) delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
     if (f && key === 'hide') {
         f.hideOverride = val || null;
+    } else if (f && key === 'material') {
+        f.material = val || null;      // 소재 (94번)
     } else if (f && key === 'texture') {
         f.texture = val || null; f.manual = f.manual || {}; f.manual.texture = !!val;
     } else if (f && key === 'blackout') {
@@ -1299,7 +1334,7 @@ function clearFabricTags(id) {
     if (keepHide) o[id] = { hide: keepHide }; else delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
-    if (f) { f.tone = null; f.mood = null; f.density = null; f.blackout = null; f.texture = null; f.tags = null; f.manual = { tone: false, mood: false, density: false, blackout: false, texture: false }; autoTagFabricAttributes(f); }
+    if (f) { f.tone = null; f.mood = null; f.density = null; f.blackout = null; f.texture = null; f.material = null; f.tags = null; f.manual = { tone: false, mood: false, density: false, blackout: false, texture: false }; autoTagFabricAttributes(f); }
     saveFabricDb(false);
     if (typeof renderTagEditor === 'function') renderTagEditor();
 }
@@ -1836,6 +1871,7 @@ function buildFabricRecords(dataRows, rules) {
             mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),
             density: normalizeDensityInput(getCol(['비침', '두께', '도톰함', '밀도'])),
             texture: normalizeTextureInput(getCol(['질감', '텍스처'])),
+            material: normalizeMaterialInput(getCol(['소재'])),      // 선택: 소재 열 (94번)
             light: normalizeLightInput(getCol(['밝기'])),      // 색이 하나뿐인 원단용 (색이 여러 개면 색상 입력표의 밝기)
             imageUrl: imgUrlRaw || null,
             note: noteRaw || null,                  // 비고/규격 메모 (예: 280 (85/60mm))

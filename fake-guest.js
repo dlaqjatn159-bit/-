@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261120';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261121';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -101,12 +101,19 @@
         return pickShowcase(ranked, 3).map(e => {
             const c = e.best.color != null ? getFabricColors(e.f.id).find(x => x.name === e.best.color) : null;
             const hex = (c && c.hex) || (c && typeof c.light === 'number' && c.a != null ? RC().labToHex(c.light, c.a, c.b) : null) || '#ddd5c8';
-            return { id: e.f.id, name: e.f.name, book: e.f.book, color: e.best.color, hex, score: Math.round(e.best.score * 10) / 10, noTex: !hasTex(e.f) };
+            return { id: e.f.id, name: e.f.name, book: e.f.book, color: e.best.color, hex, score: Math.round(e.best.score * 10) / 10, noTex: !hasTex(e.f), mat: matWord(e.f) };
         });
     }
 
     // 질감이 비어 있는 원단 (93번: 속지 질감 점수 +8/−4는 질감이 들어 있을 때만 작동 → 입력 누락 찾기)
     function hasTex(f) { return !!(f && f.texture && typeof TEXTURE_LABELS !== 'undefined' && TEXTURE_LABELS[f.texture]); }
+    // 소재 표시 (94번): 정한 값은 그대로, 이름 후보는 "?" , 이름에 린넨만 있으면 "린넨? 확인"
+    function matWord(f) {
+        if (!f || typeof MATERIAL_LABELS === 'undefined') return '';
+        if (f.material && MATERIAL_LABELS[f.material]) return MATERIAL_LABELS[f.material];
+        const g = guessMaterial(f);
+        return g === 'check' ? '린넨? 확인' : (MATERIAL_LABELS[g] ? MATERIAL_LABELS[g] + '?' : '');
+    }
     function noTexHtml(cat) {
         let pool = [];
         try { pool = window.concierge.categoryPool(cat); } catch (e) {}
@@ -143,7 +150,7 @@
             const btn = (v, cls, t) => `<button type="button" class="${cls}${j.v === v ? ' on' : ''}" data-k="${encodeURIComponent(k)}" data-v="${v}">${t}</button>`;
             return `<div class="fg-pick${sel}" data-g="${gu.no}" data-c="${cat}" data-i="${i}">
                 <div class="fg-chip" style="background:${r.hex}"></div>
-                <div><div class="fg-nm">${esc(r.name)}${r.color != null ? ' ' + esc(colorNoLabel(r.color)) + '번' : ''}</div><div class="fg-sc">${esc(r.book || '')} · ${r.score}${r.noTex ? ' · <span class="fg-notex">질감 없음</span>' : ''}</div></div>
+                <div><div class="fg-nm">${esc(r.name)}${r.color != null ? ' ' + esc(colorNoLabel(r.color)) + '번' : ''}</div><div class="fg-sc">${esc(r.book || '')} · ${r.score}${r.noTex ? ' · <span class="fg-notex">질감 없음</span>' : ''}${r.mat ? ' · ' + esc(r.mat) : ''}</div></div>
                 <div class="fg-judge">${btn('ok', 'j-ok', '어울림')}${btn('mid', 'j-mid', '애매')}${btn('no', 'j-no', '아님')}</div>
             </div>`;
         }).join('') + '</div>';
@@ -385,7 +392,7 @@
             // 예상과 실제가 크게 어긋나면 붉게: 예상 많음인데 손님 10% 미만 / 예상 적음인데 30% 이상
             const share = v / total;
             const off = (e === 'many' && share < 0.1) || (e === 'few' && share >= 0.3) ? ' fg-off' : '';
-            return `<div class="fg-frow${off}"><span>${esc(f.name)}${hasTex(f) ? '' : ' <span class="fg-notex">질감 없음</span>'}</span>
+            return `<div class="fg-frow${off}"><span>${esc(f.name)}${hasTex(f) ? '' : ' <span class="fg-notex">질감 없음</span>'}${matWord(f) ? ' <small>· ' + esc(matWord(f)) + '</small>' : ''}</span>
                 <i style="width:${v / max * 100}%"></i><span>${fmt(v)}${v ? ' <small>(1순위 ' + fmt(first[f.id] || 0) + ')</small>' : ''}</span>${expBtn(f)}</div>`;
         }).join('');
         const never = pool.filter(f => !cnt[f.id]).length;
@@ -396,7 +403,9 @@
             if (tg.length) {
                 const tw = tg.reduce((s, r) => s + r.g.cnt, 0);
                 const hit = tg.reduce((s, r) => { const x = r['속지'][0]; const fb = x && pool.find(f => f.id === x.id); return s + (fb && fb.texture === 'natural' ? r.g.cnt : 0); }, 0);
-                tex = `<div class="fg-texchk">"결 있는" 손님 ${fmt(tw)}명 중 속지 1순위가 결 있는 원단: <b>${fmt(hit)}명 (${Math.round(hit / tw * 100)}%)</b></div>`;
+                // 94번: 그중 1순위가 린넨·린넨룩인 사람 수
+                const lin = tg.reduce((s, r) => { const x = r['속지'][0]; const fb = x && pool.find(f => f.id === x.id); return s + (fb && fb.texture === 'natural' && ['linen', 'linenlook'].includes(materialOf(fb)) ? r.g.cnt : 0); }, 0);
+                tex = `<div class="fg-texchk">"결 있는" 손님 ${fmt(tw)}명 중 속지 1순위가 결 있는 원단: <b>${fmt(hit)}명 (${Math.round(hit / tw * 100)}%)</b> · 그중 린넨·린넨룩: <b>${fmt(lin)}명 (${Math.round(lin / tw * 100)}%)</b></div>`;
             } else tex = `<div class="fg-texchk">"결 있는"을 고른 손님 무리가 없습니다.</div>`;
         }
         return `<section><h2>${cat} <small>원단 ${pool.length}개 · 한 번도 안 나옴 ${never}개</small></h2>${tex}

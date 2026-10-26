@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261120';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261121';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261120';
+const REDAM_BUILD = '20261121';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -822,6 +822,13 @@ function renderTagEditor() {
             const cls = on ? 'bg-amber-800 text-white border-amber-900' : 'bg-white text-slate-600 border-slate-300';
             return `<button title="${TEXTURE_HINTS[tv]}" onclick="setFabricTag('${f.id}','texture','${on ? '' : tv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TEXTURE_LABELS[tv]}</button>`;
         }).join('');
+        // 소재 (94번): 정하지 않았으면 이름 후보를 점선으로. 이름에 "린넨"만 있으면 "확인 필요"(혼용률 보고 정함)
+        const matGuess = f.material ? null : guessMaterial(f);
+        const matBtns = Object.keys(MATERIAL_LABELS).map(mv => {
+            const on = f.material === mv, guess = matGuess === mv;
+            const cls = on ? 'bg-amber-800 text-white border-amber-900' : (guess ? 'bg-white text-slate-500 border-dashed border-slate-400' : 'bg-white text-slate-600 border-slate-300');
+            return `<button onclick="setFabricTag('${f.id}','material','${on ? '' : mv}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${MATERIAL_LABELS[mv]}</button>`;
+        }).join('') + (matGuess === 'check' ? '<span class="text-[10px] font-bold text-amber-700 ml-1" title="이름에 린넨이 있지만 실제로 폴리가 많아요. 책자 혼용률을 보고 정해 주세요">확인 필요</span>' : '');
         const densBlock = f.categoryType === '속지' ? `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5" title="낮에 한 겹을 창에 대고 안에서 밖을 보기: 풍경 또렷=많이 비침, 형태만 흐릿=은은한 비침, 밝기만=낮 가림, 빛만 은은=거의 안 비침">비침</span>${dens}` : '';
         // 겉지 암막 정도: 직접 지정하지 않으면 품명의 암막률로 추정(점선 표시). 방에서 "빛을 얼마나 가릴지" 추천에 사용
         const blGuess = blackoutLevel(Object.assign({}, f, { blackout: null }));
@@ -849,10 +856,11 @@ function renderTagEditor() {
             <div class="flex flex-wrap items-center gap-1.5 mt-2">
                 ${nColors ? '' : '<span class="text-[10px] font-bold text-slate-500 mr-0.5">톤</span>'}${toneBtns}
                 <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5">질감</span>${texBtns}
+                ${f.categoryType === '블라인드' ? '' : `<span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5" title="질감(느낌)과 따로 정합니다">소재</span>${matBtns}`}
                 <span class="text-[10px] font-bold text-slate-500 ml-2 mr-0.5" title="질감·톤·비침으로 자동으로 정해져요. 자동 결과가 원단 느낌과 다를 때만 직접 고르세요">분위기(선택)</span>
                 <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
                 ${densBlock}${blackBlock}
-                ${(m.tone || m.mood || m.density || m.blackout || f.texture) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
+                ${(m.tone || m.mood || m.density || m.blackout || f.texture || f.material) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -3109,7 +3117,9 @@ function ticketPlainName(c, calc) {
         parts.push(PLAIN_BLIND_WORDS[k] || '블라인드');
         if (bl === 'full') parts.push('암막'); else if (bl === 'see') parts.push('투시');
     } else {
-        if (PLAIN_TEXTURE_WORDS[f.texture]) parts.push(PLAIN_TEXTURE_WORDS[f.texture]);
+        const mat = materialOf(f);
+        if (mat === 'linen' || mat === 'linenlook') parts.push(MATERIAL_LABELS[mat]);      // 94번: 소재 이름 그대로
+        else if (PLAIN_TEXTURE_WORDS[f.texture]) parts.push(PLAIN_TEXTURE_WORDS[f.texture]);
         if (c.presetType === 'sheer' || f.categoryType === '속지') {
             if (DENSITY_LABELS[f.density]) parts.push(DENSITY_LABELS[f.density]);
         } else {
@@ -3656,7 +3666,7 @@ function whyItemFacts(it, R) {
     const kind = it.kindKey === 'sheer' ? 'sheer' : (it.kindKey === 'blind' ? 'blind' : 'drape');
     const col = whyFabricColor(it.fabricId, it.colorName);
     return { it, f, kind, hex: col && col.hex, lab: col && typeof col.L === 'number' ? col : null, link: it.pickDir || R.room.linkDir || null,
-             tex: (f.texture && TEXTURE_LABELS[f.texture]) ? f.texture : null };
+             tex: (f.texture && TEXTURE_LABELS[f.texture]) ? f.texture : null, mat: typeof materialOf === 'function' ? materialOf(f) : null };
 }
 // ③ 고른 것 (83번, 문장표 4장): 원단마다 F 조각(손님 답과 맞는 기능) + S 조각(색 잇기)을 "{속지}는 ~ 원단 가운데 ~ 색으로"로 묶음
 const WHY_F_FRAG = { F1: '낮에도 안이 비치지 않는', F2: '형태만 흐릿하게 비치는', F3: '풍경이 그대로 보이는 얇은', F8: '촘촘한', F9: '강한 햇빛에도 안이 잘 보이지 않는',
@@ -3780,6 +3790,9 @@ function whyItemNote(F, R, cands) {
     }
     if (R.room && R.room.night) return '';      // 속지만 밤 안내가 있는 공간은 안내가 이미 있음 (한 원단에 1개)
     const ids = (cands || []).map(x => x.id);
+    // 소재 안내 (94번, 문장표 M1·M2): 린넨룩은 "린넨"이라 부르지 않음
+    if (F.mat === 'linen') return '린넨이라 자연스럽게 구김이 가고, 세탁하면 조금 줄 수 있습니다.';
+    if (F.mat === 'linenlook') return '린넨 느낌을 낸 원단이라, 구김이 적고 관리가 쉽습니다.';
     if (ids.includes('F4')) return '커튼 옆과 위로 새는 빛은 조금 남습니다.';
     if (ids.includes('C5') && !(F.it.toneStep < 0)) return '차분한 쪽이 좋으시면 한 톤 밝은 색도 같이 보실 수 있습니다.';
     if (F.kind === 'drape' && ['none', 'mid', 'life'].includes(blackoutLevel(F.f))) return '햇빛이 강하게 비치면 원단 색이 조금 옅고 밝게 보입니다.';
