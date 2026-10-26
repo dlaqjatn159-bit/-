@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261129';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261130';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -632,7 +632,8 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     }
     // 색 하나 더 (98번): 손님이 고른 포인트 방향에 맞는 겉지면 맨 앞에
     if (category === '겉지' && room.colorStrength === 'point' && room.colorAccent && typeof colorPlanFits === 'function' && colorPlanFits(fabric, room, category)) {
-        const msg = { value: '벽보다 짙게 무게를 잡는 포인트', color: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트', opp: '공간의 온도를 살짝 바꾸는 포인트' }[room.colorAccent];
+        const msg = { value: '벽보다 짙게 차분한 무게를 잡는 색',      // 103번: 무게감 답은 '포인트'라 부르지 않음
+        color: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트', opp: '공간의 온도를 살짝 바꾸는 포인트' }[room.colorAccent];
         if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
     // 소재 한마디 (94번): 린넨룩을 "린넨"이라 부르지 않음

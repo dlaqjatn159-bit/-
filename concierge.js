@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261129';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261130';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -338,7 +338,7 @@
         steps.push("2-Base-Home");          // "이렇게 들었습니다. 맞으신가요?" — 모든 공간 (23번)
         // 98번: 강도(어울리게 / 색 하나 더) → 어울리게면 색 잇기 → 분위기, 색 하나 더면 어떻게 더할지
         if (state.step === "2-Base-Strength" || ed.colorStrength) steps.push("2-Base-Strength");
-        if (ed.colorStrength === 'point') steps.push("2-Base-Accent");
+        if (ed.colorStrength === 'point' && ed.colorAccent !== 'value') steps.push("2-Base-Accent");      // 103번: 무게감은 바로 원단으로
         else {
             if (canLink(ed)) steps.push("2-Base-Link");
             steps.push("2-Base-Mood");
@@ -1321,18 +1321,21 @@
 
             // [색 잇기] 커튼을 벽·바닥과 어떻게 이을지. 답은 원단 찾기의 세 방식과 같은 계산으로 겉지·속지 추천에 더해짐 (data.js roomLinkBonus)
             // [강도 (98번): 이 공간에 색을 어떻게 — 어울리게(바탕안) / 색 하나 더(포인트안). 포인트 후보가 없으면 이 화면은 건너뜀]
-            case "2-Base-Strength":
-                html += askStage('이 공간에 색을 어떻게 쓰고 싶으세요?', '', [
-                    { label: '어울리게', on: "window.concierge.selectStrength('harmony')", was: was('colorStrength', 'harmony') },
-                    { label: '색 하나 더', on: "window.concierge.selectStrength('point')", was: was('colorStrength', 'point') }
-                ]);
+            // [느낌 (103번): 조용히 스며들게(어울리게) / 차분히 무게감 있게(명도 대비) / 포인트가 되게(색 기법). 후보 없는 답은 숨김]
+            case "2-Base-Strength": {
+                const aopts = accentOptions(state.editingRoom), pa = prevAns || {};
+                const fopts = [{ label: '조용히 스며들게요', on: "window.concierge.selectStrength('harmony')", was: was('colorStrength', 'harmony') }];
+                if (aopts.some(o => o.key === 'value')) fopts.push({ label: '차분히 무게감 있게요', on: "window.concierge.selectAccent('value')", was: was('colorAccent', 'value') });
+                if (aopts.some(o => o.key !== 'value')) fopts.push({ label: '포인트가 되게요', on: "window.concierge.selectStrength('point')", was: pa.colorStrength === 'point' && pa.colorAccent !== 'value' });
+                html += askStage('커튼이 어떤 느낌이면 좋으세요?', '', fopts);
                 break;
+            }
 
-            // [색 하나 더 (98번): 어떻게 더할지. 이중 커튼이면 겉지만 (속지는 바탕). 후보 있는 것만]
+            // [포인트 색 (98번 → 103번): 무채색 집만 따뜻한·차가운 쪽을 물음. 이중 커튼이면 겉지만 (속지는 바탕). 후보 있는 것만]
             case "2-Base-Accent": {
                 const dbl = (state.editingRoom.items || []).some(i => i.presetType === 'sheer');
-                html += askStage(dbl ? '겉지 색은 어떻게 더할까요?' : '커튼 색은 어떻게 더할까요?', '',
-                    accentOptions(state.editingRoom).map(o => ({ label: o.label, on: `window.concierge.selectAccent('${o.key}')`, was: was('colorAccent', o.key) })));
+                html += askStage(dbl ? '겉지는 어떤 색으로 포인트를 줄까요?' : '어떤 색으로 포인트를 줄까요?', '',
+                    accentOptions(state.editingRoom).filter(o => o.key !== 'value').map(o => ({ label: o.label, on: `window.concierge.selectAccent('${o.key}')`, was: was('colorAccent', o.key) })));
                 break;
             }
 
@@ -2655,12 +2658,12 @@
             ed.colorStrength = null; ed.colorAccent = null;
             goHarmony();
         },
-        // 강도 (98번)
+        // 느낌 (98번 강도 → 103번)
         selectStrength: function(v) {
             const ed = state.editingRoom;
             ed.colorStrength = v;
             if (v !== 'point') { ed.colorAccent = null; goHarmony(); return; }
-            const opts = accentOptions(ed);
+            const opts = accentOptions(ed).filter(o => o.key !== 'value');      // 103번: 포인트 = 색 기법만 (무게감은 따로 답)
             if (opts.length === 1) { window.concierge.selectAccent(opts[0].key); return; }      // 하나뿐이면 묻지 않음
             goToStep("2-Base-Accent");
         },
