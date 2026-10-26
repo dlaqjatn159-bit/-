@@ -2449,3 +2449,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .room-mini-box { position: absolute; top: 0.9rem; left: 0.9rem; z-index: 5; width: 168px; line-height: 0; pointer-events: none; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
 .room-mini-box .room-mini { width: 100%; height: auto; display: block; }
 .room-mini-box.is-more { position: static; width: 100%; max-width: 220px; margin: 0 0 1rem; box-shadow: none; outline: 1px solid #e5dcd0; }
+
+/* ===== 106번: 치수·사진 화면의 종이색 면을 빼고, 사진 불러오기 칸만 테두리 선. 1~4 단계 줄은 선·면 없이 ===== */
+.msr-stage .measure-box.msr-box, .msr-stage .measure-box.msr-box + .msr-box { background: none; border: 0; }
+.cm-steps, .cm-steps li, .cm-steps li.on { background: none; border: 0 !important; }
+.cm-empty { background: none; border: 1px solid var(--line) !important; }
