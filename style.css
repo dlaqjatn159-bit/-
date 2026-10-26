@@ -2034,7 +2034,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 #v2TopActs { left: 40px; right: auto; top: 34px; }
 #v2FloatingPrevBtn { padding: 4px 0; border: 0; background: none; font-family: var(--sans); font-size: var(--t-small); font-weight: 400; color: var(--muted); }
 #v2FloatingPrevBtn:hover { border: 0; background: none; color: var(--ink); }
-#v2FloatingPrevBtn.is-tab { position: fixed; left: 0; top: 24px; width: 56px; height: 52px; padding: 0; background: rgba(251, 249, 245, 0.92); font-family: var(--serif); font-size: var(--t-body); color: var(--ink); }
+#v2FloatingPrevBtn.is-tab { padding: 4px 10px; margin-left: -10px; background: rgba(251, 249, 245, 0.85); }      /* 사진 화면: 같은 "← 공간 이름", 사진 위에서 읽히게 옅은 종이 바탕만 (107번) */
 #v2FloatingPrevBtn.is-quiet { visibility: hidden; pointer-events: none; }      /* 사진 앞 안내 장면 동안 (74번) */
 #trackCurationSection:has(.fin-ed) #v2TopActs { display: none; }
 /* 부품 ② 진행 표시: 화면 맨 위 가는 선(2px), 흙빛이 차오름 */

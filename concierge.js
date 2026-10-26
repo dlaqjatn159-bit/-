@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261133';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261134';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -478,7 +478,7 @@
         const btn = document.getElementById("v2FloatingPrevBtn");
         if (!btn) return;
         const nm = !NO_ROOM_STEPS.includes(state.step) && state.editingRoom && state.editingRoom.name;
-        btn.textContent = photo ? '←' : `← ${nm ? nm + (state.step === "1-Space-Edit" ? ' · 수정하기' : '') : '이전'}`;
+        btn.textContent = `← ${nm ? nm + (state.step === "1-Space-Edit" ? ' · 수정하기' : '') : '이전'}`;      // 사진 화면도 같은 "← 공간 이름" (107번)
         btn.classList.toggle('is-tab', !!photo);
         btn.setAttribute('aria-label', '뒤로');
     }
