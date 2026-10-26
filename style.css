@@ -2416,3 +2416,23 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .cg-body dl { margin: 0; display: grid; grid-template-columns: 4.2em 1fr; gap: 4px 10px; font-size: 0.875rem; }
 .cg-body dt { color: var(--brand-muted); } .cg-body dd { margin: 0; }
 .cg-say { margin-top: auto; border-left: 3px solid var(--brand-accent); padding: 6px 10px; background: #faf6f1; font-size: 0.875rem; }
+/* 96번: 시험 › 색 기법 수 */
+.fg-tcfg { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; align-items: center; margin-bottom: 0.6rem; font-size: 0.8rem; }
+.fg-tcfg label { display: flex; align-items: center; gap: 0.3rem; }
+.fg-tcfg input { width: 3.6rem; padding: 0.2rem 0.3rem; border: 1px solid #d8cfc4; border-radius: 6px; text-align: right; }
+.fg-tcfg button { border: 1px solid #c9bdb0; background: #fff; border-radius: 8px; padding: 0.25rem 0.7rem; }
+.fg-tnote, .fg-tgap { font-size: 0.8rem; color: #6b5d52; margin: 0.3rem 0; }
+.fg-tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.9rem; margin-top: 0.6rem; }
+.fg-tech { border: 1px solid #e5ddd3; border-radius: 10px; padding: 0.7rem 0.8rem; background: #fff; }
+.fg-tech h2 { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.3rem; }
+.fg-tsw { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.75rem; margin-bottom: 0.4rem; align-items: center; }
+.fg-tsw span, .fg-tlist span { display: inline-flex; align-items: center; gap: 0.2rem; }
+.fg-tgray { color: #7a5a2e; }
+.fg-ttable { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.fg-ttable th, .fg-ttable td { padding: 0.2rem 0.3rem; border-bottom: 1px solid #f0ebe4; text-align: left; }
+.fg-ttable td { text-align: right; }
+.fg-tbtn { background: none; border: 0; padding: 0.1rem 0.3rem; border-radius: 6px; font: inherit; color: inherit; }
+.fg-tbtn.on { background: #281c15; color: #fff; }
+.fg-t0, .fg-t0 .fg-tbtn { color: #a5503f; font-weight: 700; }
+.fg-tlow, .fg-tlow .fg-tbtn { color: #b07a2a; }
+.fg-tlist { font-size: 0.75rem; margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; }

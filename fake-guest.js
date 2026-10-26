@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261122';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261123';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -458,14 +458,100 @@
             field = []; save(FKEY, { rows: field }); fieldMsg = '목록을 비웠습니다.'; runField();
         }
     }
+    // ==============================================================
+    // ---- 5. 색 기법 수 (96번): 공간마다 기법별로 맞는 원단 색 수(겉지·속지 따로). 계산은 data.js colorTechCounts ----
+    //  공간 = 지금 상담에서 벽·바닥을 잰 공간 + 예시 집 넷. 기준값은 위 칸에서 고침(이 기기에만 저장, 상담 빈 칸 기록도 같은 값).
+    // ==============================================================
+    const TECH_SAMPLES = [
+        ['예시 · 흰 벽 + 오크', 1, 1], ['예시 · 크림 + 월넛', 2, 3], ['예시 · 그레이 무채색', 5, 4], ['예시 · 쿨 그레이시', 3, 5]
+    ];
+    const TECH_CFG_WORD = [
+        ['grayC', '무채색 채도 미만'], ['sameDE', '동일색 색 차이 미만'], ['toneHue', '같은 계열 각도'], ['toneDL', '톤온톤 밝기 차 이상'],
+        ['analogHue', '유사색 각도까지'], ['satDC', '채도 대비 채도 차'], ['valueDL', '명도 대비 밝기 차'], ['tintCMax', '톤인톤 채도 최대'],
+        ['tintDL', '톤인톤 밝기 차 이하'], ['minShow', '선택지 최소 개수']
+    ];
+    let techOpen = '';      // 펼친 칸 (공간 번호|기법|겉지·속지)
+    function techSpaces() {
+        const out = [];
+        let live = [];
+        try { live = (typeof collectConsultation === 'function') ? collectConsultation().rooms : []; } catch (e) {}
+        live.forEach(r => { const mc = r.measuredColor; if (mc && mc.wall && mc.floor) out.push({ name: r.name || '공간', mc, live: true }); });
+        TECH_SAMPLES.forEach(([n, wi, fi]) => {
+            const w = WALLS0[wi], f = FLOORS0[fi];
+            out.push({ name: n, mc: { wall: w, floor: f, bridge: RC().bridgeOf(w, f) }, sub: w.n + ' · ' + f.n });
+        });
+        return out;
+    }
+    function techCell(si, row, side, T) {
+        const list = row[side], n = list.length, nf = row[side + 'Fabrics'], k = si + '|' + row.key + '|' + side;
+        const cls = n === 0 ? 'fg-t0' : (n < T.minShow ? 'fg-tlow' : '');
+        return `<td class="${cls}"><button type="button" class="fg-tbtn${techOpen === k ? ' on' : ''}" data-tk="${esc(k)}"${n ? '' : ' disabled'}>${n === 0 ? '없음' : n + '색 <small>(' + nf + '종)</small>'}</button></td>`;
+    }
+    function techTable(sp, si, T) {
+        const r = colorTechCounts(sp.mc, T);
+        if (!r) return '';
+        const w = sp.mc.wall, f = sp.mc.floor, b = sp.mc.bridge || RC().bridgeOf(w, f);
+        let openList = '';
+        const rows = r.rows.map(row => {
+            ['drape', 'sheer'].forEach(side => {
+                if (techOpen === si + '|' + row.key + '|' + side) openList = `<div class="fg-tlist"><b>${esc(row.name)} · ${side === 'drape' ? '겉지' : '속지'}</b> ` +
+                    row[side].map(x => `<span><i class="fg-sw" style="background:${RC().labToHex(x.L, x.a, x.b)}"></i>${esc(x.fabric)} ${esc(colorNoLabel(x.color))}</span>`).join('') + '</div>';
+            });
+            return `<tr><th>${esc(row.name)}</th>${techCell(si, row, 'drape', T)}${techCell(si, row, 'sheer', T)}</tr>`;
+        }).join('');
+        const sw = (c, t) => `<span><i class="fg-sw" style="background:${labHex(c)}"></i>${t}</span>`;
+        return `<section class="fg-tech"><h2>${esc(sp.name)}${sp.live ? ' <small>(지금 상담)</small>' : ''}</h2>
+            <div class="fg-tsw">${sw(w, '벽')}${sw(f, '바닥')}${sw(b, '이어주는 색')}${(sp.mc.furniture || []).length ? ' <small>가구 ' + sp.mc.furniture.length + '</small>' : ''}${r.gray ? ' <b class="fg-tgray">무채색 집 → 웜 쪽·쿨 쪽</b>' : ''}</div>
+            <table class="fg-ttable"><thead><tr><th>기법</th><th>겉지</th><th>속지</th></tr></thead><tbody>${rows}</tbody></table>${openList}</section>`;
+    }
+    // 상담 기록에 남은 빈 칸 모음: 몇 공간에서 그 기법 후보가 0이었나
+    function techGapSummary() {
+        let hist = [];
+        try { hist = typeof loadHistory === 'function' ? loadHistory() : []; } catch (e) {}
+        const cnt = {}; let n = 0;
+        hist.forEach(h => (h.rooms || []).forEach(r => {
+            if (!r.techGaps) return;
+            n++;
+            ['drape', 'sheer'].forEach(s => (r.techGaps[s] || []).forEach(t => { const k = t + ' · ' + (s === 'drape' ? '겉지' : '속지'); cnt[k] = (cnt[k] || 0) + 1; }));
+        }));
+        if (!n) return '<p class="fg-tgap">상담 기록의 빈 칸: 아직 없음 (이번 버전부터 상담을 남길 때 공간마다 조용히 기록합니다)</p>';
+        const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} <b>${v}</b>`).join(' · ');
+        return `<p class="fg-tgap">상담 기록 ${n}공간에서 후보가 없던 기법: ${top || '없음'}</p>`;
+    }
+    function drawTech() {
+        const box = $('fakeTechOut');
+        if (!box) return;
+        const T = colorTechCfg();
+        const hasColors = typeof colorsStore === 'function' && Object.keys(colorsStore()).length > 0;
+        const cfgHtml = TECH_CFG_WORD.map(([k, t]) => `<label>${t}<input type="number" step="1" value="${T[k]}" data-tc="${k}"></label>`).join('');
+        box.innerHTML = (hasColors ? '' : '<div class="fg-warn">이 창에는 원단 색 값이 없어서 결과가 비어 보일 수 있습니다. 사장님 미리보기(8765)나 탭에서 열어 주세요.</div>') +
+            `<div class="fg-tcfg">${cfgHtml}<button type="button" id="fgTechReset">처음 값으로</button></div>
+            <p class="fg-tnote">숫자 = 그 기법에 맞는 원단 색 수 (원단 종류 수). <span class="fg-t0">없음</span> · <span class="fg-tlow">최소 개수보다 적음</span>. 칸을 누르면 원단이 보입니다. 색 방향은 벽·바닥·이어주는 색 중 채도가 가장 높은 색 기준.</p>
+            ${techGapSummary()}
+            <div class="fg-tgrid">${techSpaces().map((sp, i) => techTable(sp, i, T)).join('')}</div>`;
+    }
+    function onTechClick(ev) {
+        const b = ev.target.closest('[data-tk]');
+        if (b) { techOpen = techOpen === b.dataset.tk ? '' : b.dataset.tk; drawTech(); return; }
+        if (ev.target.id === 'fgTechReset') { setColorTechCfg(null); drawTech(); }
+    }
+    function onTechChange(ev) {
+        const k = ev.target.dataset && ev.target.dataset.tc;
+        if (!k) return;
+        const n = parseFloat(ev.target.value);
+        if (!Number.isFinite(n)) return;
+        const T = colorTechCfg(); T[k] = n; setColorTechCfg(T); drawTech();
+    }
+
     let mode = 'check';
     function setMode(m) {
         mode = m;
         document.querySelectorAll('#fgMode [data-fgmode]').forEach(b => b.classList.toggle('on', b.dataset.fgmode === m));
-        const cw = $('fgCheckWrap'), fo = $('fakeFieldOut');
+        const cw = $('fgCheckWrap'), fo = $('fakeFieldOut'), to = $('fakeTechOut');
         if (cw) cw.hidden = m !== 'check';
         if (fo) fo.hidden = m !== 'field';
-        if (m === 'field') runField(); else run();
+        if (to) to.hidden = m !== 'tech';
+        if (m === 'field') runField(); else if (m === 'tech') drawTech(); else run();
     }
 
     let bound = false;
@@ -485,6 +571,7 @@
             // 93번: 위쪽 두 단추(추천 점검 / 현장 비교)와 현장 비교 칸. 색 잇기·이어주는 색 선택은 현장 비교도 같은 값을 씀
             document.querySelectorAll('#fgMode [data-fgmode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.fgmode)));
             const fo = $('fakeFieldOut'); if (fo) fo.addEventListener('click', onFieldClick);
+            const to = $('fakeTechOut'); if (to) { to.addEventListener('click', onTechClick); to.addEventListener('change', onTechChange); }      // 96번
         }
         setMode(mode);
     }

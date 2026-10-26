@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261122';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261123';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1096,6 +1096,100 @@ function bestColorFor(fabric, room, category) {
     const classified = colors.some(c => !!c.tone);
     // 원단끼리 비교할 때는 색상 순서용 가산점(+0.5)을 빼서, 색상을 등록하지 않은 단색 원단과 공평하게 비교
     return { color: classified ? ranked[0].name : null, score: ranked[0].score - (ranked[0].tone ? 0.5 : 0), ranked, classified };
+}
+
+// ==============================================================
+// 집마다 가능한 색 기법 세기 (96번): 공간의 잰 색(벽·바닥·이어주는 색·남는 가구)을 기준으로
+//  기법마다 맞는 원단 색 수를 겉지·속지 따로 셈. 손님 화면은 아직 안 씀(직원 시험 칸 + 상담 기록의 빈 칸).
+//  기준값은 임시 — 사장님이 시험 칸에서 상담 몇 건으로 맞춤(이 기기에만 저장).
+// ==============================================================
+const COLOR_TECH_KEY = 'redam_color_tech_cfg_v1';
+const COLOR_TECH_DEF = {
+    grayC: 4,       // 이 채도 미만이면 무채색 (집도 원단도)
+    sameDE: 6,      // 동일색: 벽·바닥·이어주는 색·가구 중 하나와 색 차이(ΔE) 이 값 미만
+    toneHue: 30,    // 같은 계열로 보는 색상각 차이 (톤온톤·채도 대비)
+    toneDL: 8,      // 톤온톤: 집 기준색과 밝기 차이 이 값 이상
+    analogHue: 60,  // 유사색: 같은 계열 바깥 ~ 이 각도까지
+    satDC: 8,       // 채도 대비: 집 기준색보다 채도가 이만큼 높음
+    valueDL: 30,    // 명도 대비: 벽과 밝기 차이 이 값 이상
+    tintCMax: 12,   // 톤인톤: 흐린 색(채도 무채색 기준 ~ 이 값) · 계열은 다름
+    tintDL: 12,     // 톤인톤: 이어주는 색과 밝기 차이 이 값 이하
+    minShow: 3      // 선택지로 보일 최소 개수 (이보다 적으면 "적음")
+};
+const COLOR_TECH_ROWS = [
+    ['same', '동일색'], ['tone', '톤온톤'], ['analog', '유사색'], ['sat', '채도 대비'], ['value', '명도 대비'],
+    ['tint', '톤인톤'], ['split', '분열보색'], ['comp', '보색'], ['triad', '3색'], ['warm', '웜 쪽'], ['cool', '쿨 쪽']
+];
+function colorTechCfg() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(COLOR_TECH_KEY)); } catch (e) {}
+    const out = Object.assign({}, COLOR_TECH_DEF);
+    if (s && typeof s === 'object') Object.keys(out).forEach(k => { if (typeof s[k] === 'number' && isFinite(s[k])) out[k] = s[k]; });
+    return out;
+}
+function setColorTechCfg(cfg) { try { if (cfg) localStorage.setItem(COLOR_TECH_KEY, JSON.stringify(cfg)); else localStorage.removeItem(COLOR_TECH_KEY); } catch (e) {} }
+// mc: { wall, floor, bridge?, furniture? } (L a b). 벽·바닥이 없으면 null
+function colorTechCounts(mc, cfg) {
+    if (!mc || !mc.wall || !mc.floor) return null;
+    const T = cfg || colorTechCfg();
+    const lab = c => (c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number') ? { L: c.L, a: c.a, b: c.b } : null;
+    const chroma = c => Math.hypot(c.a, c.b), hue = c => (Math.atan2(c.b, c.a) * 180 / Math.PI + 360) % 360;
+    const dHue = (x, y) => { const d = Math.abs(x - y) % 360; return d > 180 ? 360 - d : d; };
+    const dE = (x, y) => Math.hypot(x.L - y.L, x.a - y.a, x.b - y.b);
+    const wall = lab(mc.wall), floor = lab(mc.floor);
+    const bridge = lab(mc.bridge) || (window.RoomColor && RoomColor.bridgeOf ? lab(RoomColor.bridgeOf(wall, floor, mc.bridgeK)) : null) || { L: (wall.L + floor.L) / 2, a: (wall.a + floor.a) / 2, b: (wall.b + floor.b) / 2 };
+    const fur = (mc.furniture || []).filter(f => f && f.stay !== false).map(lab).filter(Boolean);
+    const anchors = [wall, floor, bridge].concat(fur);
+    // 집 기준색: 벽·바닥·이어주는 색 중 채도가 가장 높은 것. 그마저 무채색이면 "무채색 집" → 색 방향 대신 웜 쪽·쿨 쪽
+    const ref = [wall, floor, bridge].reduce((m, c) => chroma(c) > chroma(m) ? c : m);
+    const gray = chroma(ref) < T.grayC, refH = hue(ref), refC = chroma(ref);
+    const keys = gray ? ['same', 'tone', 'sat', 'value', 'tint', 'warm', 'cool'] : ['same', 'tone', 'analog', 'sat', 'value', 'tint', 'split', 'comp', 'triad'];
+    function test(c) {
+        const C = chroma(c), h = hue(c), achro = C < T.grayC, dh = dHue(h, refH), hit = {};
+        hit.same = anchors.some(a => dE(a, c) < T.sameDE);
+        hit.value = Math.abs(c.L - wall.L) >= T.valueDL;
+        if (gray) {
+            hit.tone = !hit.same && achro && Math.abs(c.L - ref.L) >= T.toneDL;
+            hit.sat = C >= T.satDC;
+            hit.tint = !achro && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
+            hit.warm = !achro && h >= 20 && h < 110;
+            hit.cool = !achro && h >= 160 && h < 300;
+        } else {
+            const fam = !achro && dh <= T.toneHue;
+            hit.tone = !hit.same && Math.abs(c.L - ref.L) >= T.toneDL && (fam ? Math.abs(C - refC) < T.satDC : achro);
+            hit.analog = !achro && dh > T.toneHue && dh <= T.analogHue;
+            hit.sat = fam && C - refC >= T.satDC;
+            hit.tint = !achro && dh > T.toneHue && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
+            hit.triad = !achro && dh >= 105 && dh < 135;
+            hit.split = !achro && dh >= 135 && dh < 165;
+            hit.comp = !achro && dh >= 165;
+        }
+        return hit;
+    }
+    const cats = { drape: '겉지', sheer: '속지' }, res = {};
+    keys.forEach(k => { res[k] = { drape: [], sheer: [] }; });
+    Object.keys(cats).forEach(side => {
+        let pool = [];
+        try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool(cats[side]) : []; } catch (e) {}
+        pool.forEach(f => getFabricColors(f.id).filter(colorHasLab).forEach(c => {
+            const hit = test({ L: c.light, a: c.a, b: c.b });
+            keys.forEach(k => { if (hit[k]) res[k][side].push({ id: f.id, fabric: f.name, color: c.name, L: c.light, a: c.a, b: c.b }); });
+        }));
+    });
+    const fabricsOf = list => new Set(list.map(x => x.id)).size;
+    const rows = COLOR_TECH_ROWS.filter(([k]) => keys.includes(k)).map(([k, n]) => ({
+        key: k, name: n, drape: res[k].drape, sheer: res[k].sheer,
+        drapeFabrics: fabricsOf(res[k].drape), sheerFabrics: fabricsOf(res[k].sheer)
+    }));
+    return { gray, ref, rows, cfg: T };
+}
+// 빈 칸 기록 (96번): 후보 0인 기법 이름만 겉지·속지 따로. 상담 저장 때 공간마다 조용히 남김(원단 들일 근거)
+function colorTechGaps(mc) {
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    if (!r) return null;
+    const zero = side => r.rows.filter(x => x[side].length === 0).map(x => x.name);
+    return { drape: zero('drape'), sheer: zero('sheer'), gray: r.gray };
 }
 
 // ==============================================================
