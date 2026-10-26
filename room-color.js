@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261130';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261131';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -714,7 +714,38 @@
         st = null;      // 사진은 버림
     }
 
+    // 방 그림 미니맵 (104번): 잰 벽·바닥·남는 가구 색에 커튼 자리를 칠한 작은 그림. 원단 고르는 장면 위에 둠(대비 세기만 보는 용도)
+    //  mc = { wall, floor, furniture? } (L a b) · o = { drape, sheer, blind: hex, count: 폭 수 }. 창 구성대로 그림 (겉지 없으면 속지가 창 전체)
+    function roomMiniSvg(mc, o) {
+        if (!mc || !mc.wall || !mc.floor) return '';
+        const hx = c => c.hex || labToHex(c.L, c.a, c.b);
+        o = o || {};
+        let s = `<svg class="room-mini" viewBox="0 0 240 150" aria-hidden="true"><rect width="240" height="112" fill="${hx(mc.wall)}"/><rect y="112" width="240" height="38" fill="${hx(mc.floor)}"/>
+            <rect x="70" y="24" width="100" height="74" fill="#cfe0ea"/>`;
+        if (o.blind) s += `<rect x="70" y="24" width="100" height="56" fill="${o.blind}"/><line x1="70" y1="80" x2="170" y2="80" stroke="#00000030" stroke-width=".8"/>`;
+        if (o.sheer || o.drape) s += '<rect x="44" y="16" width="152" height="3" fill="#9a9087"/>';
+        if (o.sheer) s += `<rect x="${o.drape ? 66 : 50}" y="19" width="${o.drape ? 108 : 140}" height="93" fill="${o.sheer}" opacity=".82"/>`;
+        if (o.drape) {
+            const half = Math.max(1, Math.ceil((o.count || 2) / 2)), PW = 40, sw = PW / half;
+            [46, 154].forEach(x => {
+                s += `<rect x="${x}" y="19" width="${PW}" height="93" fill="${o.drape}"/>`;
+                for (let i = 1; i < half; i++) s += `<line x1="${x + i * sw}" y1="19" x2="${x + i * sw}" y2="112" stroke="#00000018" stroke-width=".6"/>`;
+            });
+        }
+        (mc.furniture || []).filter(x => x && x.stay !== false && typeof x.L === 'number').slice(0, 3).forEach((fu, i) => {
+            const x = [8, 196, 104][i], wd = i === 2 ? 32 : 36;
+            s += `<rect x="${x}" y="${i === 2 ? 120 : 96}" width="${wd}" height="${i === 2 ? 14 : 22}" rx="3" fill="${hx(fu)}" stroke="#00000020" stroke-width=".6"/>`;
+        });
+        return s + '</svg>';
+    }
+    // 폭 수 (97번과 같은 셈): 넓이 × 2배 주름 ÷ 원단 폭(대폭 무이음은 90cm 단위). 넓이 없으면 340cm, 폭 없으면 150cm
+    function miniWidthCount(widthCm, fab) {
+        const spec = (fab && fab.specCm) || 150, unit = spec >= 200 ? 90 : spec;
+        return Math.max(2, Math.ceil(((widthCm || 340) * 2) / unit));
+    }
+
     window.RoomColor = {
+        roomMiniSvg, miniWidthCount,
         open(roomId) {
             st = { roomId, photos: [null, null], view: 0, active: 0, pins: {}, seq: 0 };
             let ov = document.getElementById('roomColorOverlay');

@@ -2444,3 +2444,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fg-rpic { width: 100%; display: block; border-radius: 4px; }
 .fg-rcap { display: flex; gap: 0.4rem; align-items: center; font-size: 0.75rem; margin-top: 0.3rem; line-height: 1.3; }
 .fg-rph { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; flex: none; }
+
+/* 방 그림 미니맵 (104번): 원단 고르는 장면 위 작은 그림 — 대비 세기만 봄, 정확한 색은 실물 샘플 */
+.room-mini-box { position: absolute; top: 0.9rem; left: 0.9rem; z-index: 5; width: 168px; line-height: 0; pointer-events: none; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
+.room-mini-box .room-mini { width: 100%; height: auto; display: block; }
+.room-mini-box.is-more { position: static; width: 100%; max-width: 220px; margin: 0 0 1rem; box-shadow: none; outline: 1px solid #e5dcd0; }

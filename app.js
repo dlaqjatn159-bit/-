@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261130';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261131';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261130';
+const REDAM_BUILD = '20261131';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1950,6 +1950,20 @@ function renderSpaceMore() {
     h += '<div class="more-top"><button type="button" class="more-back" data-mclose aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button>';
     h += `<div class="more-seg"><button type="button" class="${spaceMore.view === 'cards' ? 'on' : ''}" data-mview="cards">카드</button><button type="button" class="${spaceMore.view === 'map' ? 'on' : ''}" data-mview="map">색 지도</button></div></div>`;
     // 잇는 방향 (벽·바닥을 둘 다 잰 공간만, 카드·지도 둘 다): 세 줄이 늘 보이고 고른 줄만 왼쪽 선. 카드 "추천 순"과 지도 점선 원이 따라 바뀜
+    // 방 그림 미니맵 (104번): 마지막으로 담은 후보(없으면 지금 원단) 색을 이 칸 자리에, 같은 공간의 다른 칸은 들어 있는 원단 색으로
+    if (measured && window.RoomColor && RoomColor.roomMiniSvg) {
+        const lastKey = spaceMore.stars[spaceMore.stars.length - 1], show = (lastKey && d.all.find(x => x.key === lastKey)) || d.cur;
+        const o = {};
+        (room.curtains || []).forEach((c, i) => {
+            const k = c.presetType === 'blind' ? 'blind' : (c.presetType === 'sheer' ? 'sheer' : 'drape');
+            if (i === spaceMore.idx) { if (show && show.hex) o[k] = show.hex; }
+            else if (c.fabricId) { const e = finderFind(finderEntries(), c.fabricId, c.colorName || ''); if (e && e.hex) o[k] = e.hex; }
+        });
+        const dc = (room.curtains || []).find(c => c.presetType !== 'sheer' && c.presetType !== 'blind');
+        const dfId = dc && (room.curtains.indexOf(dc) === spaceMore.idx && show ? show.fabricId : dc.fabricId);
+        o.count = RoomColor.miniWidthCount(room.width, typeof FABRIC_DB !== 'undefined' ? FABRIC_DB.find(f => f.id === dfId) : null);
+        h += `<div class="room-mini-box is-more">${RoomColor.roomMiniSvg(mc, o)}</div>`;
+    }
     if (measured) h += '<div class="more-dirs">' + MORE_DIRS.map(k => `<button type="button" class="${spaceMore.dir === k ? 'on' : ''}" data-mdir="${k}" aria-pressed="${spaceMore.dir === k}">${window.concierge.linkWord(k)}</button>`).join('') + '</div>';
     h += '<div class="more-fbar">';
     if (sameFabCount > 1) h += `<div class="more-fg"><button type="button" class="more-chip more-chip-fab${spaceMore.sameFab ? ' on' : ''}" data-msamefab="1" aria-pressed="${spaceMore.sameFab}">${moreEsc(curFabName)} ${sameFabCount}색만</button></div>`;

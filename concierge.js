@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261130';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261131';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1474,6 +1474,8 @@
                 const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
                 html += '<div class="bookmark-stage">';
                 html += stepHead('마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
+                state.miniPick = { fabId: showcaseList[0].f.id, color: state.colorPick[showcaseList[0].f.id] || colorDeckOrder(showcaseList[0].best)[0] || '' };
+                html += `<div class="room-mini-box" id="roomMiniBox">${fabricMiniSvg()}</div>`;      // 104번 미니맵
                 html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
                 state.fabPanelCount = showcaseList.length;      // 마지막 칸에 Re.dam 표시를 넣기 위해
                 showcaseList.forEach((entry, idx) => {
@@ -2001,6 +2003,27 @@
         const numSort = (x, y) => (/^\d+$/.test(x.name) && /^\d+$/.test(y.name)) ? parseInt(x.name, 10) - parseInt(y.name, 10) : x.name.localeCompare(y.name, 'ko');
         const list = best.classified ? best.ranked.slice() : best.ranked.slice().sort(numSort);
         return list.map(r => r.name);
+    }
+    // 방 그림 미니맵 (104번): 지금 고르는 칸은 마지막으로 본 원단 색, 같은 공간의 다른 칸은 이미 고른 원단 색으로
+    function fabricMiniSvg() {
+        const ed = state.editingRoom, item = state.pendingItemQueue && state.pendingItemQueue[state.currentItemIndex];
+        if (!ed || !item || !window.RoomColor || !RoomColor.roomMiniSvg || !roomHasLab(ed)) return '';
+        const o = {}, mp = state.miniPick || {};
+        let curFab = null;
+        (ed.items || []).forEach(it => {
+            const k = it.presetType;
+            if (it === item) { if (mp.fabId) { o[k] = colorFillOf(mp.fabId, mp.color); curFab = getLiveDb().find(f => f.id === mp.fabId); } }
+            else if (it.fabricId) o[k] = colorFillOf(it.fabricId, it.colorName);
+        });
+        const drapeItem = (ed.items || []).find(it => it.presetType === 'drape');
+        const dFab = drapeItem === item ? curFab : (drapeItem && drapeItem.fabricId ? getLiveDb().find(f => f.id === drapeItem.fabricId) : null);
+        o.count = RoomColor.miniWidthCount(ed.width, dFab);
+        return RoomColor.roomMiniSvg(ed.measuredColor, o);
+    }
+    function refreshMini(fabId, color) {
+        state.miniPick = { fabId, color };
+        const box = document.getElementById('roomMiniBox');
+        if (box) box.innerHTML = fabricMiniSvg();
     }
     // 색 하나의 바탕색: 색상 입력표에서 잰 색(색상코드)이 있으면 그 색, 없으면 톤으로 짐작한 색. 사진이 없을 때 칸 바탕과 견본 칩에 씀
     function colorFillOf(fabricId, colorName) {
@@ -3154,6 +3177,7 @@
             const cur = Math.max(0, order.indexOf(state.colorPick[fabId] || order[0]));
             const next = order[(cur + dir + order.length) % order.length];
             state.colorPick[fabId] = next;
+            refreshMini(fabId, next);      // 104번
             const panel = Array.from(document.querySelectorAll('.fab-panel')).find(p => p.getAttribute('data-fab') === fabId);
             if (!panel) { render(); return; }
             const idx = parseInt(panel.getAttribute('data-idx') || '0', 10);
@@ -3169,6 +3193,7 @@
             if (!order.includes(colorName)) return;
             state.colorPick = state.colorPick || {};
             state.colorPick[fabId] = colorName;
+            refreshMini(fabId, colorName);      // 104번
             const panel = Array.from(document.querySelectorAll('.fab-panel')).find(p => p.getAttribute('data-fab') === fabId);
             if (!panel) { render(); return; }
             const idx = parseInt(panel.getAttribute('data-idx') || '0', 10);
