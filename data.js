@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261127';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261128';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -632,7 +632,7 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     }
     // 색 하나 더 (98번): 손님이 고른 포인트 방향에 맞는 겉지면 맨 앞에
     if (category === '겉지' && room.colorStrength === 'point' && room.colorAccent && typeof colorPlanFits === 'function' && colorPlanFits(fabric, room, category)) {
-        const msg = { value: '벽보다 짙게 무게를 잡는 포인트', color: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트' }[room.colorAccent];
+        const msg = { value: '벽보다 짙게 무게를 잡는 포인트', color: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트', opp: '공간의 온도를 살짝 바꾸는 포인트' }[room.colorAccent];
         if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
     // 소재 한마디 (94번): 린넨룩을 "린넨"이라 부르지 않음
@@ -1123,9 +1123,19 @@ const COLOR_TECH_DEF = {
     minShow: 3      // 선택지로 보일 최소 개수 (이보다 적으면 "적음")
 };
 const COLOR_TECH_ROWS = [
-    ['same', '동일색'], ['tone', '톤온톤'], ['analog', '유사색'], ['sat', '채도 대비'], ['value', '명도 대비'],
+    ['same', '동일색'], ['tone', '톤온톤'], ['analog', '유사색'], ['sat', '채도 대비'], ['value', '명도 대비'], ['opp', '반대 온도'],
     ['tint', '톤인톤'], ['split', '분열보색'], ['comp', '보색'], ['triad', '3색'], ['warm', '웜 쪽'], ['cool', '쿨 쪽']
 ];
+// 색 나누기 (101번): 색 사전(app.js proColorName)의 계열로 → achro(화이트·그레이) / coolN(쿨 그레이) / warmN(그레이지·로즈 뉴트럴) / color(그 밖)
+//  색 사전이 없을 때만 채도 기준값(grayC)으로 무채색·색 둘로 나눔
+const TECH_FAM_CLASS = { white: 'achro', gray: 'achro', cool: 'coolN', greige: 'warmN', rose: 'warmN' };
+function techColorClass(c, T) {
+    if (typeof proColorName === 'function') {
+        const p = proColorName(c.L, c.a, c.b);
+        if (p) return { cls: TECH_FAM_CLASS[p.fam] || 'color', fam: p.fam };
+    }
+    return { cls: Math.hypot(c.a, c.b) < (T ? T.grayC : COLOR_TECH_DEF.grayC) ? 'achro' : 'color', fam: null };
+}
 function colorTechCfg() {
     let s = null;
     try { s = JSON.parse(localStorage.getItem(COLOR_TECH_KEY)); } catch (e) {}
@@ -1146,23 +1156,36 @@ function colorTechCounts(mc, cfg) {
     const bridge = lab(mc.bridge) || (window.RoomColor && RoomColor.bridgeOf ? lab(RoomColor.bridgeOf(wall, floor, mc.bridgeK)) : null) || { L: (wall.L + floor.L) / 2, a: (wall.a + floor.a) / 2, b: (wall.b + floor.b) / 2 };
     const fur = (mc.furniture || []).filter(f => f && f.stay !== false).map(lab).filter(Boolean);
     const anchors = [wall, floor, bridge].concat(fur);
-    // 집 기준색: 벽·바닥·이어주는 색 중 채도가 가장 높은 것. 그마저 무채색이면 "무채색 집" → 색 방향 대신 웜 쪽·쿨 쪽
-    const ref = [wall, floor, bridge].reduce((m, c) => chroma(c) > chroma(m) ? c : m);
-    const gray = chroma(ref) < T.grayC, refH = hue(ref), refC = chroma(ref);
-    // 무채색 집은 색 계열이 없어 채도 대비·톤인톤이 흐린 원단을 거의 다 통과시킴 → 뺌. 3색은 커튼에서 드물어 표에서 뺌 (96번 보완, 99번)
-    const keys = gray ? ['same', 'tone', 'value', 'warm', 'cool'] : ['same', 'tone', 'analog', 'sat', 'value', 'tint', 'split', 'comp'];
+    // 집 셋 (101번): 벽·바닥·이어주는 색(가구 제외)의 색 사전 계열로
+    //  무채색 집 = 셋 다 화이트·그레이 / 뉴트럴 집 = 색 계열 없이 쿨·웜 뉴트럴이 있음(방향은 벽, 벽이 무채색이면 바닥, 그다음 이어주는 색) / 색 있는 집 = 하나라도 색 계열
+    const base = [wall, floor, bridge], baseCls = base.map(c => techColorClass(c, T).cls);
+    const house = baseCls.includes('color') ? 'color' : (baseCls.some(x => x === 'coolN' || x === 'warmN') ? 'neutral' : 'gray');
+    const nCls = house === 'neutral' ? baseCls.find(x => x === 'coolN' || x === 'warmN') : null;
+    const neutralDir = nCls === 'coolN' ? 'cool' : (nCls === 'warmN' ? 'warm' : null);
+    const gray = house === 'gray';
+    // 집 기준색: 벽·바닥·이어주는 색 중 채도가 가장 높은 것 (색 있는 집의 색 방향)
+    const ref = base.reduce((m, c) => chroma(c) > chroma(m) ? c : m);
+    const refH = hue(ref), refC = chroma(ref);
+    // 무채색 집 5줄(99번) / 뉴트럴 집 5줄(반대 온도 = 보색의 순한 판, 101번) / 색 있는 집 8줄(3색은 표에서 뺌)
+    const keys = gray ? ['same', 'tone', 'value', 'warm', 'cool']
+        : (house === 'neutral' ? ['same', 'tone', 'value', 'opp', 'tint'] : ['same', 'tone', 'analog', 'sat', 'value', 'tint', 'split', 'comp']);
     function test(c) {
-        const C = chroma(c), h = hue(c), achro = C < T.grayC, dh = dHue(h, refH), hit = {};
+        const C = chroma(c), h = hue(c), k = techColorClass(c, T), achro = k.cls === 'achro', dh = dHue(h, refH), hit = {};
         hit.same = anchors.some(a => dE(a, c) < T.sameDE);
-        hit.value = Math.abs(c.L - wall.L) >= T.valueDL;
-        if (gray) {
-            hit.tone = !hit.same && achro && Math.abs(c.L - ref.L) >= T.toneDL;
+        hit.value = Math.abs(c.L - wall.L) >= T.valueDL;      // 밝은 쪽·짙은 쪽 모두 (차이의 크기)
+        if (house === 'neutral') {
+            // 톤온톤: 같은 온도 뉴트럴만 · 반대 온도: 반대 방향 뉴트럴(쿨 집이면 베이지도) · 톤인톤: 흐린 색 하나, 밝기는 이어주는 색과 비슷하게
+            hit.tone = !hit.same && k.cls === nCls && Math.abs(c.L - ref.L) >= T.toneDL;
+            hit.opp = neutralDir === 'cool' ? (k.cls === 'warmN' || k.fam === 'beige') : k.cls === 'coolN';
+            hit.tint = k.cls === 'color' && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
+        } else if (gray) {
+            hit.tone = !hit.same && achro && Math.abs(c.L - ref.L) >= T.toneDL;      // 화이트·그레이 계열만 (101번)
             hit.sat = C >= T.satDC;
             hit.tint = !achro && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
             hit.warm = !achro && h >= 20 && h < 110;
             hit.cool = !achro && h >= 160 && h < 300;
         } else {
-            const fam = !achro && dh <= T.toneHue;
+            const fam = k.cls === 'color' && dh <= T.toneHue;
             hit.tone = !hit.same && Math.abs(c.L - ref.L) >= T.toneDL && (fam ? Math.abs(C - refC) < T.satDC : achro);
             hit.analog = !achro && dh > T.toneHue && dh <= T.analogHue;
             hit.sat = fam && C - refC >= T.satDC;
@@ -1175,11 +1198,16 @@ function colorTechCounts(mc, cfg) {
     }
     const cats = { drape: '겉지', sheer: '속지' }, res = {};
     keys.forEach(k => { res[k] = { drape: [], sheer: [] }; });
+    // 속지 따로 (101번): 씨스루('많이 비침')는 색으로 추천하지 않아 기법 표에서 뺌 · 화이트 속지는 어느 집에나 맞는 바탕이라 따로 셈
+    const sheerWhite = [], sheerSee = [];
     Object.keys(cats).forEach(side => {
         let pool = [];
         try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool(cats[side]) : []; } catch (e) {}
         pool.forEach(f => getFabricColors(f.id).filter(colorHasLab).forEach(c => {
-            const hit = test({ L: c.light, a: c.a, b: c.b });
+            const cc = { L: c.light, a: c.a, b: c.b }, item = { id: f.id, fabric: f.name, color: c.name, L: c.light, a: c.a, b: c.b };
+            if (side === 'sheer' && f.density === 'light') { sheerSee.push(item); return; }
+            if (side === 'sheer' && techColorClass(cc, T).fam === 'white') { sheerWhite.push(item); return; }
+            const hit = test(cc);
             keys.forEach(k => { if (hit[k]) res[k][side].push({ id: f.id, fabric: f.name, color: c.name, L: c.light, a: c.a, b: c.b }); });
         }));
     });
@@ -1188,7 +1216,7 @@ function colorTechCounts(mc, cfg) {
         key: k, name: n, drape: res[k].drape, sheer: res[k].sheer,
         drapeFabrics: fabricsOf(res[k].drape), sheerFabrics: fabricsOf(res[k].sheer)
     }));
-    return { gray, ref, rows, cfg: T };
+    return { gray, house, neutralDir, ref, rows, sheerWhite, sheerSee, cfg: T };
 }
 // 빈 칸 기록 (96번): 후보 0인 기법 이름만 겉지·속지 따로. 상담 저장 때 공간마다 조용히 남김(원단 들일 근거)
 function colorTechGaps(mc) {
@@ -1205,7 +1233,7 @@ function colorTechGaps(mc) {
 //  - 색 하나 더('point' + colorAccent): 그 기법(96번 colorTechCounts)의 겉지 색만. 속지·블라인드는 바탕(거르지 않음)
 //  - 맞는 색이 없는 원단은 버리지 않고 뒤로 (3장이 안 차면 기존 추천으로 채움)
 // ==============================================================
-const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog', 'sat'], warm: ['warm'], cool: ['cool'] };
+const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog', 'sat'], warm: ['warm'], cool: ['cool'], opp: ['opp'] };      // opp = 뉴트럴 집 반대 온도 (101번, '색 하나 더'에만)
 const HARMONY_RANGE = 20;       // 색 잇기 점수가 0이 되는 거리(LINK_RANGE)와 같음
 function colorPlanMode(room, category) {
     if (!room || !room.measuredColor) return null;

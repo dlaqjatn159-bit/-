@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261127';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261128';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -463,7 +463,7 @@
     //  공간 = 지금 상담에서 벽·바닥을 잰 공간 + 예시 집 넷. 기준값은 위 칸에서 고침(이 기기에만 저장, 상담 빈 칸 기록도 같은 값).
     // ==============================================================
     const TECH_SAMPLES = [
-        ['예시 · 흰 벽 + 오크', 1, 1], ['예시 · 크림 + 월넛', 2, 3], ['예시 · 그레이 무채색', 5, 4], ['예시 · 쿨 그레이시', 3, 5]
+        ['예시 · 흰 벽 + 오크', 1, 1], ['예시 · 크림 + 월넛', 2, 3], ['예시 · 그레이 무채색', 5, 4], ['예시 · 쿨 그레이시', 3, 5], ['예시 · 웜 뉴트럴', 4, 4]      // 웜 뉴트럴 = 그레이지 벽 + 그레이 타일 (101번)
     ];
     const TECH_CFG_WORD = [   // 칸 이름 쉬운 말로 (100번)
         ['grayC', '이보다 흐리면 회색'], ['sameDE', '동일색 · 이보다 가까우면 같은 색'], ['toneHue', '같은 계열로 볼 색 폭'], ['toneDL', '톤온톤 · 최소 밝기 차'],
@@ -501,8 +501,9 @@
         }).join('');
         const sw = (c, t) => `<span><i class="fg-sw" style="background:${labHex(c)}"></i>${t}</span>`;
         return `<section class="fg-tech"><h2>${esc(sp.name)}${sp.live ? ' <small>(지금 상담)</small>' : ''}</h2>
-            <div class="fg-tsw">${sw(w, '벽')}${sw(f, '바닥')}${sw(b, '이어주는 색')}${(sp.mc.furniture || []).length ? ' <small>가구 ' + sp.mc.furniture.length + '</small>' : ''}${r.gray ? ' <b class="fg-tgray">무채색 집 → 웜 쪽·쿨 쪽</b>' : ''}</div>
-            <table class="fg-ttable"><thead><tr><th>기법</th><th>겉지</th><th>속지</th></tr></thead><tbody>${rows}</tbody></table>${openList}</section>`;
+            <div class="fg-tsw">${sw(w, '벽')}${sw(f, '바닥')}${sw(b, '이어주는 색')}${(sp.mc.furniture || []).length ? ' <small>가구 ' + sp.mc.furniture.length + '</small>' : ''}${r.gray ? ' <b class="fg-tgray">무채색 집 → 웜 쪽·쿨 쪽</b>' : (r.house === 'neutral' ? ` <b class="fg-tgray">뉴트럴 집(${r.neutralDir === 'cool' ? '쿨' : '웜'}) → 반대 온도</b>` : '')}</div>
+            <table class="fg-ttable"><thead><tr><th>기법</th><th>겉지</th><th>속지</th></tr></thead><tbody>${rows}</tbody></table>
+            <p class="fg-tnote">속지 따로 (101번): 화이트 ${r.sheerWhite.length}색 <small>(어느 집에나 바탕)</small> · 씨스루 ${r.sheerSee.length}색 <small>(많이 비침 — 색으로 추천 안 함)</small></p>${openList}</section>`;
     }
     // 상담 기록에 남은 빈 칸 모음: 몇 공간에서 그 기법 후보가 0이었나
     function techGapSummary() {
@@ -526,7 +527,7 @@
         const cfgHtml = TECH_CFG_WORD.map(([k, t]) => `<label>${t}<input type="number" step="1" value="${T[k]}" data-tc="${k}"></label>`).join('');
         box.innerHTML = (hasColors ? '' : '<div class="fg-warn">이 창에는 원단 색 값이 없어서 결과가 비어 보일 수 있습니다. 사장님 미리보기(8765)나 탭에서 열어 주세요.</div>') +
             `<div class="fg-tcfg">${cfgHtml}<button type="button" id="fgTechReset">처음 값으로</button></div>
-            <p class="fg-tnote">숫자 = 그 기법에 맞는 원단 색 수 (원단 종류 수). <span class="fg-t0">없음</span> · <span class="fg-tlow">최소 개수보다 적음</span>. 칸을 누르면 원단이 보입니다. 색 방향은 벽·바닥·이어주는 색 중 채도가 가장 높은 색 기준.</p>
+            <p class="fg-tnote">숫자 = 그 기법에 맞는 원단 색 수 (원단 종류 수). <span class="fg-t0">없음</span> · <span class="fg-tlow">최소 개수보다 적음</span>. 칸을 누르면 원단이 보입니다. 집 셋(무채색·뉴트럴·색 있는)은 벽·바닥·이어주는 색의 색 사전 계열로 나눔. 색 방향은 그중 채도가 가장 높은 색 기준. '이보다 흐리면 회색'은 색 사전 값이 없을 때만 씀.</p>
             ${techGapSummary()}
             <div class="fg-tgrid">${techSpaces().map((sp, i) => techTable(sp, i, T)).join('')}</div>`;
     }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261127';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261128';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -385,11 +385,14 @@
     // 색 하나 더: 짙게(명도 대비) / 색으로(보색·분열보색·유사색·채도 대비). 무채색 집은 따뜻한 쪽·차가운 쪽. 겉지 후보로만 셈
     function accentOptions(ed) {
         if (!(ed.items || []).some(i => i.presetType === 'drape') || !roomHasLab(ed)) return [];
-        let gray = false;
-        try { const r = colorTechCounts(ed.measuredColor); gray = !!(r && r.gray); } catch (e) { return []; }
-        const opts = [{ key: 'value', label: '더 짙게' }].concat(gray
+        let r = null;
+        try { r = colorTechCounts(ed.measuredColor); } catch (e) { return []; }
+        // 뉴트럴 집(101번)은 반대 온도: 쿨 집이면 따뜻한 쪽, 웜 집이면 차가운 쪽
+        const opts = [{ key: 'value', label: '더 짙게' }].concat(r && r.gray
             ? [{ key: 'warm', label: '따뜻한 색으로' }, { key: 'cool', label: '차가운 색으로' }]
-            : [{ key: 'color', label: '다른 색으로' }]);
+            : (r && r.house === 'neutral'
+                ? [{ key: 'opp', label: r.neutralDir === 'cool' ? '따뜻한 색으로' : '차가운 색으로' }]
+                : [{ key: 'color', label: '다른 색으로' }]));
         return opts.filter(o => planCount(ed, { colorStrength: 'point', colorAccent: o.key }, ['겉지']) > 0);
     }
     // 분위기 질문까지 갈지: 종류마다 맞는 원단이 5개 이하면 바로 보여 줌 (멈춤 규칙)
