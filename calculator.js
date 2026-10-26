@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261135';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261137';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -14,7 +14,7 @@ function calculateAll() {
     let sumHwCost = 0;
     // 배수용 묶음 (86번): 커튼·블라인드 따로 제품 판매가·매입가(부가세 포함)를 모음. 시공비는 넣지 않음
     const mx = (typeof loadMultiples === 'function') ? loadMultiples() : null;
-    const grp = { curtain: { sell: 0, buy: 0, miss: false }, blind: { sell: 0, buy: 0, miss: false } };
+    const grp = { curtain: { sell: 0, buy: 0, miss: false, want: 0, noCurve: false }, blind: { sell: 0, buy: 0, miss: false, want: 0, noCurve: false } };      // want: 곡선대로라면 나올 판매가 합 (109번)
 
     const summaryListContainer = document.getElementById('summaryRoomList');
     if (summaryListContainer) summaryListContainer.innerHTML = '';
@@ -57,7 +57,10 @@ function calculateAll() {
                 if (cost) {
                     // 리드밴드는 원가=판매가라 부가세를 얹지 않음
                     g.sell += p.curtainSubtotal;
-                    g.buy += (cost.curtainCostTotal - cost.leadBandCost) * (mx && mx.vat ? 1.1 : 1) + cost.leadBandCost;
+                    const ib = (cost.curtainCostTotal - cost.leadBandCost) * (mx && mx.vat ? 1.1 : 1) + cost.leadBandCost;
+                    g.buy += ib;
+                    const cm = (typeof curveMultOf === 'function') ? curveMultOf(fab, Costing.costOf(fab.id)) : 0;      // 원단별 곡선 배수 (109번)
+                    if (cm > 0) g.want += ib * cm; else g.noCurve = true;
                 } else g.miss = true;
             }
 

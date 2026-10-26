@@ -548,7 +548,7 @@
 
                     <div class="staff-set">
                         <h2 class="font-serif-kr">배수 기준</h2>
-                        <p>견적 요약의 원가·순이익 "보기" 안에만 나옵니다. 배수 = 제품 판매가 ÷ 매입가(시공비 제외). 목표 이상은 평소 글자, 목표와 바닥 사이는 흙빛, 바닥 아래는 붉은 글자입니다.</p>
+                        <p>견적 요약의 원가·순이익 "보기" 안에만 나옵니다. 배수 = 제품 판매가 ÷ 매입가(시공비 제외). 목표 이상은 평소 글자, 목표와 바닥 사이는 흙빛, 바닥 아래는 붉은 글자입니다.<br>판매가 곡선이 있으면 목표·바닥 대신 원단마다 곡선 배수와 비교하고, 0.2 넘게 낮을 때만 붉은 글자입니다(109번).</p>
                         <label class="staff-field"><span>커튼 목표 배수 (기본 2.5)</span>
                             <input type="number" id="mxCurtainTarget" step="0.1" min="0" inputmode="decimal" placeholder="2.5" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveMultiples()">
                         </label>
@@ -561,6 +561,13 @@
                         <label class="staff-field"><span>원가는 부가세 별도 (매입가에 ×1.1)</span>
                             <input type="checkbox" id="mxVat" onchange="saveMultiples()">
                         </label>
+                    </div>
+
+                    <div class="staff-set">
+                        <h2 class="font-serif-kr">판매가 곡선</h2><!-- 109번 -->
+                        <p>엑셀 "판매 단가" 칸이 빈 원단의 판매가를 정합니다. 기준 창(가로 300 × 세로 235, 2배 주름)의 폭 하나 기준 매입가(×1.1 포함)에 맞는 배수를 점 사이를 이어 정해요. 이 기기에 저장되고 백업 파일(비공개 팩)로 옮겨집니다.<br><b>점이 비어 있으면 예전 공식으로 셉니다. 이미 만든 견적 금액은 그대로예요.</b></p>
+                        <div id="priceCurveBox" class="opt-price"></div>
+                        <button type="button" class="staff-btn" onclick="recalcCurvePrices()">판매가 다시 계산</button>
                     </div>
 
                     <div class="staff-set">
@@ -766,13 +773,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261135"></script>
-    <script src="costing.js?v=20261135"></script>
-    <script src="data.js?v=20261135"></script>
-    <script src="calculator.js?v=20261135"></script>
-    <script src="concierge.js?v=20261135"></script>
-    <script src="app.js?v=20261135"></script>
-    <script src="room-color.js?v=20261135"></script>
+    <script src="pricing.js?v=20261137"></script>
+    <script src="costing.js?v=20261137"></script>
+    <script src="data.js?v=20261137"></script>
+    <script src="calculator.js?v=20261137"></script>
+    <script src="concierge.js?v=20261137"></script>
+    <script src="app.js?v=20261137"></script>
+    <script src="room-color.js?v=20261137"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

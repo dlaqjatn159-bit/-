@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261135';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261137';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -109,6 +109,89 @@ function saveOptionPriceField(path, v) {
     const n = Number(v), last = keys[keys.length - 1];
     if (v === '' || v === null || !Number.isFinite(n) || n < 0) delete t[last]; else t[last] = Math.round(n);
     saveOptionPricesStore(o);
+}
+// ---- 판매가 곡선 (109번) ----
+// 숫자는 이 기기·비공개 팩(prices.curve)에만: { pts: [[폭당 매입, 배수] × 4], blind: 블라인드 배수 }. 코드에는 숫자를 두지 않음
+// 곡선이 없으면 예전 공식(Costing.derivePrice). 엑셀 "판매 단가" 칸에 값이 있으면 그 값(priceSet)
+function priceCurve() {
+    const c = storedOptionPrices().curve || {};
+    const pts = (Array.isArray(c.pts) ? c.pts : []).filter(q => Array.isArray(q) && q[0] > 0 && q[1] > 0);
+    const blind = (typeof c.blind === 'number' && c.blind > 0) ? c.blind : 0;
+    return { pts, blind, ok: pts.length >= 2 };
+}
+function savePriceCurve(curve) {
+    const o = storedOptionPrices();
+    o.curve = curve;
+    saveOptionPricesStore(o);
+}
+// 기준 창(가로 300 × 세로 235, 2배 주름, 기본 레일, 속지면 리드밴드, 형상기억 끔)으로 원단 하나의 곡선 판매 단가를 셈
+// 매입 = (원가 합계 − 리드밴드) × 1.1, 폭당 매입 = 매입 ÷ 4. 단가 = (매입 × 배수 − 리드밴드 − 레일) ÷ 원단 단위 수, 천 원 올림
+// 셀 수 없으면(곡선·원가 규칙·원가 없음) null
+function curvePrice(fab, pv) {
+    const cv = priceCurve();
+    if (!fab || !pv || !(pv.cost > 0)) return null;
+    if (fab.calcType === 'hebe') {
+        if (!cv.blind) return null;
+        return Math.ceil(pv.cost * 1.1 * cv.blind / 1000) * 1000;
+    }
+    const st = curveStd(fab, pv, cv);
+    if (!st) return null;
+    const unit = (st.buy * st.mult - st.pr.leadBandCost - st.rail) / st.units;
+    return unit > 0 ? Math.ceil(unit / 1000) * 1000 : null;
+}
+// 그 원단이 곡선대로라면 나올 배수 (86번 배수 표시와 비교용, 109번). 셀 수 없으면 0
+function curveMultOf(fab, pv) {
+    const cv = priceCurve();
+    if (!fab || !pv || !(pv.cost > 0)) return 0;
+    if (fab.calcType === 'hebe') return cv.blind || 0;
+    const st = curveStd(fab, pv, cv);
+    return st ? st.mult : 0;
+}
+// 기준 창 계산 (curvePrice·curveMultOf가 같이 씀)
+function curveStd(fab, pv, cv) {
+    if (!cv.ok || typeof Costing === 'undefined' || !Costing.state.rules) return null;
+    const rates = optionRatesNow('rail');
+    const isSheer = fab.categoryType === '속지' || /쉬폰/.test(fab.name || '');
+    const c = { width: 300, height: 235, pleat: 2, pleatType: '', installType: 'rail', floorGap: 0, hotelFit: false, leadBand: isSheer, shapeFee: 0, hwPrice: hwPriceOf('rail'), rates };
+    const unitFab = Object.assign({}, fab, { price: 1, extra: null });
+    const pr = Pricing.priceItem(c, unitFab);
+    const k = Costing.costItem(c, unitFab, pr, pv);
+    if (!k) return null;
+    const buy = (k.curtainCostTotal - k.leadBandCost) * 1.1;
+    const units = fab.calcType === 'width' ? pr.numWidths : pr.totalYards;
+    if (!(buy > 0) || !(units > 0)) return null;
+    return { buy, units, pr, mult: Costing.curveMult(cv.pts, buy / 4), rail: pr.numJa * c.hwPrice };
+}
+// [판매가 다시 계산] (109번): 지금 원가로 엑셀 칸이 빈 원단 판매가를 곡선으로. 미리 목록을 보여 주고 되돌리기 단계에 넣음
+function recalcCurvePrices() {
+    const cv = priceCurve();
+    if (!cv.ok && !cv.blind) { showToast('먼저 판매가 곡선의 점을 넣어 주세요.', 'error'); return; }
+    if (!Costing.state.rules) { showToast("먼저 '비공개 팩'을 불러와 주세요. (원가 규칙이 필요합니다)", 'error'); return; }
+    const changes = [], manual = [], skipped = [];
+    (FABRIC_DB || []).forEach(f => {
+        if (f.priceSet) { manual.push(f); return; }
+        const np = curvePrice(f, Costing.costOf(f.id));
+        if (np === null) { skipped.push(f); return; }
+        if (np !== f.price) changes.push({ f, old: f.price || 0, np });
+    });
+    const won = n => Number(n || 0).toLocaleString('ko-KR');
+    if (!changes.length) {
+        showToast(`바뀔 판매가가 없습니다. (엑셀 값 그대로 ${manual.length}개 · 원가 없어 못 셈 ${skipped.length}개)`, 'info');
+        return;
+    }
+    const lines = changes.slice(0, 40).map(d => `• ${d.f.name}: ${won(d.old)} → ${won(d.np)}원`).join('\n');
+    const more = changes.length > 40 ? `\n… 외 ${changes.length - 40}개` : '';
+    const manMsg = manual.length ? `\n\n엑셀 판매 단가 칸에 직접 값이 있어 그대로 두는 원단 ${manual.length}개:\n${manual.slice(0, 15).map(f => '• ' + f.name).join('\n')}${manual.length > 15 ? `\n… 외 ${manual.length - 15}개` : ''}` : '';
+    const skipMsg = skipped.length ? `\n\n원가가 없어 셀 수 없는 원단 ${skipped.length}개는 그대로 둡니다.` : '';
+    const ok = confirm(
+        `[판매가 다시 계산]\n\n지금 원가와 판매가 곡선으로 ${changes.length}개 원단의 판매 단가가 바뀝니다.\n\n${lines}${more}${manMsg}${skipMsg}\n\n` +
+        `이미 만든 견적 금액은 그대로입니다. 바꾸기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n[확인]: 바꿉니다.\n[취소]: 그대로 둡니다.`
+    );
+    if (!ok) return;
+    saveUndoSnapshot('판매가 다시 계산');
+    changes.forEach(d => { d.f.price = d.np; });
+    saveFabricDb();
+    showToast(`판매 단가 ${changes.length}개를 곡선으로 다시 매겼습니다.\n탭에도 반영하려면 [백업 내려받기] → 탭에서 [비공개 팩 불러오기]를 해 주세요.`, 'success');
 }
 function hwPriceOf(installType) { return optionPrices().rail[installType] ?? optionPrices().rail.rail; }
 // 품목에 적어 둘 지금 단가 (cost.hw는 그 품목의 설치 기구 원가)
@@ -2074,14 +2157,17 @@ function buildFabricRecords(dataRows, rules) {
         const labor = laborRaw !== "" ? cleanNumber(laborRaw) : 0;
 
         let price = cleanNumber(priceRaw);
+        const priceSet = price > 0;      // 엑셀에 직접 적힌 판매 단가 = 사장님이 정한 예외 (109번)
         if (price <= 0) {
-            price = Costing.derivePrice(cost, labor, detected.calcType, rules);
+            // 109번: 판매가 곡선이 있으면 기준 창으로 곡선 판매가, 없으면 예전 공식
+            const cp = curvePrice({ id: uid, name, calcType: detected.calcType, specCm: (detected.calcType === 'hebe') ? 0 : parseSpecToCm(specRaw, name), categoryType: catRaw || null }, { supplier, cost, labor });
+            price = cp !== null ? cp : Costing.derivePrice(cost, labor, detected.calcType, rules);
             priceDerived++;
         }
 
         const fabObj = {
             book, id: uid, name, engName: engName || null, calcType: detected.calcType, specCm: parsedSpecCm,
-            unit: detected.unit, price,
+            unit: detected.unit, price, priceSet,
             categoryType: catRaw || null,
             tone: normalizeToneInput(getCol(['언더톤', '톤', '색조'])),
             mood: normalizeMoodInput(getCol(['대표무드', '무드', '스타일'])),

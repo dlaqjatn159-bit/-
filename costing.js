@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261135';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261137';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 원가 계산 엔진  (costing.js)  ※ 직원 모드 전용
    - 이 파일에는 금액(숫자 상수)이 없습니다. 모든 원가 규칙은 "비공개 팩"에서 읽어옵니다.
@@ -23,9 +23,9 @@
     }
 
     /** 품목 1개의 원가. priced = Pricing.priceItem 결과, fab = 원단(공개 정보) */
-    function costItem(c, fab, priced) {
+    function costItem(c, fab, priced, pvGiven) {      // pvGiven: 아직 목록에 없는 원단의 원가 (109번 가져오기 중 곡선 판매가)
         const rules = state.rules;
-        const pv = costOf(fab && fab.id);
+        const pv = pvGiven || costOf(fab && fab.id);
         if (!rules || !pv) return null;
 
         const q = priced.q;
@@ -121,7 +121,18 @@
         return Math.ceil((base * mult) / 1000) * 1000;
     }
 
-    const api = { state, setPrivate, hasData, costOf, costItem, deriveExtra, derivePrice, supplierRule };
+    /** 판매가 곡선의 배수 (109번): 점 [폭당 매입, 배수] 사이는 직선으로 잇고, 양 끝 밖은 끝 값. 점이 없으면 0 */
+    function curveMult(points, x) {
+        const p = (points || []).filter(q => Array.isArray(q) && q[0] > 0 && q[1] > 0).slice().sort((u, v) => u[0] - v[0]);
+        if (!p.length) return 0;
+        if (x <= p[0][0]) return p[0][1];
+        for (let i = 1; i < p.length; i++) {
+            if (x <= p[i][0]) { const [x0, y0] = p[i - 1], [x1, y1] = p[i]; return y0 + (y1 - y0) * (x - x0) / (x1 - x0); }
+        }
+        return p[p.length - 1][1];
+    }
+
+    const api = { state, setPrivate, hasData, costOf, costItem, deriveExtra, derivePrice, supplierRule, curveMult };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.Costing = api;
 })(typeof window !== 'undefined' ? window : globalThis);

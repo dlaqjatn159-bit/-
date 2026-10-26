@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261135';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261137';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261135';
+const REDAM_BUILD = '20261137';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3243,7 +3243,15 @@ function renderMultiples(grp, m) {
         if (g.sell <= 0 && !g.miss) return '';
         const note = g.miss ? '<span class="staff-mx-note"> 원가 없는 품목 있음</span>' : '';
         if (g.buy <= 0) return `<div class="staff-sum-line"><span>${name} ―${note}</span><span></span></div>`;
-        const x = g.sell / g.buy, slack = g.sell - g.buy * floor;
+        const x = g.sell / g.buy;
+        // 109번: 원단마다 곡선 배수가 있으면 "곡선대로라면 나올 배수"와 비교, 0.2 넘게 낮을 때만 경고
+        if (!g.noCurve && g.want > 0) {
+            const e = g.want / g.buy, gap = g.sell - g.want;
+            const low = x < e - 0.2;
+            const tail = gap >= 0 ? `곡선 ×${e.toFixed(1)}보다 ${fmtManWon(gap)} 위` : `곡선 ×${e.toFixed(1)}보다 ${fmtManWon(gap)} 낮음`;
+            return `<div class="staff-sum-line ${low ? 'mx-low' : ''}"><span>${name} ×${x.toFixed(1)}${note}</span><span>${tail}</span></div>`;
+        }
+        const slack = g.sell - g.buy * floor;
         const cls = x >= target ? '' : (x >= floor ? 'mx-mid' : 'mx-low');
         const tail = slack >= 0 ? `바닥까지 ${fmtManWon(slack)}` : `바닥보다 ${fmtManWon(slack)} 낮음`;
         return `<div class="staff-sum-line ${cls}"><span>${name} ×${x.toFixed(1)}${note}</span><span>${tail}</span></div>`;
@@ -3268,6 +3276,35 @@ function initTicketNoteInput() {
     const vd = document.getElementById('quoteValidDaysInput'); if (vd) vd.value = loadQuoteValidDays();
     initMultiplesInputs();
     renderOptionPriceSettings();
+    renderPriceCurveSettings();
+}
+// 설정 › 판매가 곡선 (109번): 점 4개(폭당 매입 · 배수) + 블라인드 배수. 칸을 고치면 바로 저장
+function renderPriceCurveSettings() {
+    const box = document.getElementById('priceCurveBox');
+    if (!box) return;
+    const cv = priceCurve(), pts = cv.pts.slice().sort((u, v) => u[0] - v[0]);
+    const inp = (cls, v, step) => `<input type="number" min="0" step="${step}" inputmode="decimal" data-curve="${cls}" value="${v || ''}" placeholder="비어 있음">`;
+    let h = '<div class="opt-group"><h3>커튼 <small>폭 하나 기준 매입가 → 배수, 점 사이는 이어서</small></h3>';
+    for (let i = 0; i < 4; i++) {
+        const q = pts[i] || [];
+        h += `<div class="opt-row" data-curve-row><span class="opt-name">점 ${i + 1}</span><label><em>폭당 매입</em>${inp('x', q[0], 1000)}<i>원</i></label><label><em>배수</em>${inp('m', q[1], 0.05)}<i>배</i></label><span></span></div>`;
+    }
+    h += '</div><div class="opt-group"><h3>블라인드 <small>헤베당 원가 × 1.1 × 배수</small></h3>';
+    h += `<div class="opt-row"><span class="opt-name">배수</span><label><em>배수</em>${inp('b', cv.blind, 0.05)}<i>배</i></label><span></span><span></span></div></div>`;
+    box.innerHTML = h;
+    if (!box.dataset.wired) {
+        box.dataset.wired = '1';
+        box.addEventListener('input', () => {
+            const num = el => { const n = Number(el.value); return (el.value !== '' && Number.isFinite(n) && n > 0) ? n : 0; };
+            const out = [];
+            box.querySelectorAll('[data-curve-row]').forEach(r => {
+                const x = num(r.querySelector('[data-curve="x"]')), m = num(r.querySelector('[data-curve="m"]'));
+                if (x && m) out.push([Math.round(x), m]);
+            });
+            const b = num(box.querySelector('[data-curve="b"]'));
+            savePriceCurve({ pts: out, blind: b });
+        });
+    }
 }
 // 설정 › 가공·부자재 단가 (29번): 줄마다 판매가 · 원가 · 남는 돈. 칸을 고치면 바로 저장되고 그 줄의 남는 돈만 다시 씀
 //  원가 칸이 비면 레일·패널은 비공개 팩 원가 규칙으로 셈한 값이 들어 있음. 리드밴드 원가는 판매가와 같음
