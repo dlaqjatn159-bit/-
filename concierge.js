@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261137';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261138';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1474,6 +1474,7 @@
                 const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
                 html += '<div class="bookmark-stage">';
                 html += stepHead('마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
+                state.miniArmed = null;      // 110번
                 state.miniPick = { fabId: showcaseList[0].f.id, color: state.colorPick[showcaseList[0].f.id] || colorDeckOrder(showcaseList[0].best)[0] || '' };
                 html += `<div class="room-mini-box" id="roomMiniBox">${fabricMiniSvg()}</div>`;      // 104번 미니맵
                 html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
@@ -2024,6 +2025,10 @@
         state.miniPick = { fabId, color };
         const box = document.getElementById('roomMiniBox');
         if (box) box.innerHTML = fabricMiniSvg();
+        // 110번: 미니맵에 비춰 보는 원단 칸에 "한 번 더 누르면 선택" (미니맵이 그려질 때만)
+        const on = !!(box && box.innerHTML.trim());
+        state.miniArmed = on ? fabId : null;      // 색을 바꿔 칸을 새로 그려도 표시가 남게
+        document.querySelectorAll('.fab-panel .bookmark-card').forEach(c => c.classList.toggle('is-armed', on && c.getAttribute('data-fab') === fabId));
     }
     // 색 하나의 바탕색: 색상 입력표에서 잰 색(색상코드)이 있으면 그 색, 없으면 톤으로 짐작한 색. 사진이 없을 때 칸 바탕과 견본 칩에 씀
     function colorFillOf(fabricId, colorName) {
@@ -2062,7 +2067,7 @@
         // 글자 수 세기: 영어·숫자는 눕혀 쓰므로 0.6자(대문자 0.78자)로 셈
         const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&-]/.test(ch) ? 0.6 : 1)), 0) || 1;   // 영어 대문자는 조금 더 넓게
         const isLast = idx === (state.fabPanelCount || 1) - 1;
-        let h = `<div class="bookmark-card color-top" data-fab="${f.id}" style="right: 0;" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
+        let h = `<div class="bookmark-card color-top${state.miniArmed === f.id ? ' is-armed' : ''}" data-fab="${f.id}" style="right: 0;" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
         h += `<div class="bookmark-bg" style="background: ${colorFillOf(f.id, pick)};"></div>`;
         // 사진은 앞·뒤 두 장: 색을 바꿀 때 뒤 장에 새 사진을 받아 겹쳐 바꿈. 주소는 미리 찾아 둔 것만 씀(아직 모르면 찾은 뒤 넣음)
         const known = knownPhoto(f.id, pick);
@@ -3209,6 +3214,12 @@
             state.colorPick = state.colorPick || {};
             const order = colorDeckOrder(best);
             const chosen = state.colorPick[fabId] || order[0] || '';
+            // 110번: 미니맵이 다른 원단을 보여 주고 있으면 첫 터치는 미니맵에 비춰 보기만, 두 번째 터치에 선택
+            const mini = document.getElementById('roomMiniBox');
+            if (mini && mini.innerHTML.trim() && (!state.miniPick || state.miniPick.fabId !== fabId)) {
+                refreshMini(fabId, chosen);
+                return;
+            }
             item.fabricId = fabId;
             item.colorName = chosen;
             state.colorPick = {};
