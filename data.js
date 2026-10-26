@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261131';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261132';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1091,7 +1091,7 @@ function rankColorsFor(fabric, room, category) {
     const ranked = colors.map(c => {
         const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, chroma: (typeof c.a === 'number' && typeof c.b === 'number') ? Math.hypot(c.a, c.b) : null, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
         const link = (room && room.linkDir ? roomLinkBonus(c, room) : roomSoftBonus(c, room));      // 고객이 고른 색 잇기 방향 (20번) / 안 골랐으면 잰 색값으로 작게 (91번). 블라인드도 같음 (92번)
-        return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + link + (c.tone ? 0.5 : 0) };
+        return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + link + lightFixBonus(c, room) + (c.tone ? 0.5 : 0) };      // 빛 보정 (105번)
     });
     ranked.sort((a, b) => (b.score - a.score) || colorSort(a, b));
     return ranked;
@@ -1478,6 +1478,18 @@ function roomSoftBonus(c, room) {
     // 밝기(L)는 빼고 색감(a·b)만 비교 (91번 보완, 10-26 결정: 밝기는 90번 분위기·집 분위기가 정함. 색 있는 속지도 집 색감에 맞으면 올라오게). 속지·겉지 같음
     const d = Math.hypot(c.a - target.a, c.b - target.b);
     return SOFT_WEIGHT * Math.max(0, 1 - d / SOFT_RANGE);
+}
+// 빛 보정 (105번, 10-26 결정): 창 방향은 취향이 아니라 사실 → 모든 갈래에 조용히 적용. 북향(북·북동·북서)만 따뜻한 색을 조금 앞으로
+//  - 남·동 그대로, 서향은 오후 빛이 이미 따뜻해 그대로. 이유 문장에는 안 드러냄(창 방향은 "골랐습니다"의 근거가 아님), 방 그림에도 반영 안 함
+//  - 약하게: 이어주는 색(+1.5)보다 작게. 시험 칸에서 켜고 끄며 비교(window.LIGHT_FIX_ON)
+const LIGHT_FIX_WEIGHT = 1;
+if (typeof window !== 'undefined' && window.LIGHT_FIX_ON === undefined) window.LIGHT_FIX_ON = true;
+function lightFixBonus(c, room) {
+    if (typeof window !== 'undefined' && window.LIGHT_FIX_ON === false) return 0;
+    if (!c || !room || !windowDirOf(room.windowDir).includes('N')) return 0;
+    // 따뜻한 색: 사장님이 정한 톤이 웜이면, 톤이 없으면 잰 색값이 노랑·빨강 쪽(b ≥ 6)이면
+    const warm = c.tone ? c.tone === 'warm' : (typeof c.b === 'number' && c.b >= 6 && (c.a || 0) > -3);
+    return warm ? LIGHT_FIX_WEIGHT : 0;
 }
 function colorDistanceWord(d) { return d < 3 ? '거의 같음' : (d < 6 ? '아주 비슷' : (d < 10 ? '비슷' : '조금 다름')); }
 

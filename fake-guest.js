@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261131';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261132';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -49,7 +49,7 @@
 
     let judge = load(JKEY, {});
     let colors = load(CKEY, null) || { walls: WALLS0.map(x => Object.assign({}, x)), floors: FLOORS0.map(x => Object.assign({}, x)) };
-    let view = 'guests', ansMode = 'fixed', linkDir = '', guests = [], results = [], chosen = {};
+    let view = 'guests', ansMode = 'fixed', linkDir = '', winDir = '', guests = [], results = [], chosen = {};
 
     const $ = id => document.getElementById(id);
     const RC = () => window.RoomColor;
@@ -87,6 +87,7 @@
                 sheerFeel: fixed ? null : pick('sheerFeel', 11),
                 wantMood: fixed ? null : pick('wantMood', 13),
                 linkDir: linkDir || null,
+                windowDir: winDir ? [winDir] : [],      // 빛 보정 비교 (105번)
                 comp: 'double'
             });
             i++;
@@ -358,7 +359,7 @@
         const wc = Object.assign({ tone: RC().classifyLab(w).tone }, w), fc = Object.assign({ tone: RC().classifyLab(f).tone }, f);
         const gu = { no: i + 1, id: 'F|' + r.wn + '|' + r.fn, name: '현장', wallName: r.wn, floorName: r.fn,
             measuredColor: { wall: wc, floor: fc, bridge: RC().bridgeOf(w, f) }, wallTone: wc.tone, floorTone: fc.tone,
-            linkDir: linkDir || null, comp: 'double', cnt: r.cnt };
+            linkDir: linkDir || null, windowDir: winDir ? [winDir] : [], comp: 'double', cnt: r.cnt };
         Object.keys(FDEF).forEach(k => { gu[k] = r[k] || FDEF[k]; });
         return gu;
     }
@@ -685,6 +686,9 @@
             $('fgLink').addEventListener('change', e => { linkDir = e.target.value; run(); });
             // 이어주는 색 보조 점수 켜기/끄기 (91번 비교용, 시험 칸 안에서만 바뀜 · 다시 열면 켜짐)
             $('fgSoft').addEventListener('change', e => { window.ROOM_SOFT_ON = e.target.value === 'on'; run(); });
+            // 빛 보정 (105번): 시험 손님 모두의 창 방향 · 북향 웜 +1 켜기/끄기 (다시 열면 켜짐)
+            $('fgDir').addEventListener('change', e => { winDir = e.target.value; setMode(mode); });
+            $('fgLight').addEventListener('change', e => { window.LIGHT_FIX_ON = e.target.value === 'on'; setMode(mode); });
             $('fgExport').addEventListener('click', download);
             // 93번: 위쪽 두 단추(추천 점검 / 현장 비교)와 현장 비교 칸. 색 잇기·이어주는 색 선택은 현장 비교도 같은 값을 씀
             document.querySelectorAll('#fgMode [data-fgmode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.fgmode)));
