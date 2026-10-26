@@ -2370,4 +2370,31 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fg-crow { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 4px 0; font-size: 0.8rem; }
 .fg-crow input { border: 1px solid #e5dcd0; border-radius: 6px; padding: 0.15rem 0.4rem; width: 4.5rem; }
 .fg-crow input.fg-cname { width: 9rem; }
+/* 93번: 시험 칸 위쪽 두 단추 + 현장 비교 */
+.fg-mode { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; }
+.fg-mode button { border: 1px solid #281c15; background: #fff; border-radius: 10px; padding: 0.5rem 1.2rem; font-size: 0.95rem; font-weight: 700; }
+.fg-mode button.on { background: #281c15; color: #fff; }
+.fg-notex { color: #a5503f; font-weight: 600; }
+.fg-field > p { font-size: 0.85rem; color: #6d5e4f; margin-bottom: 0.5rem; line-height: 1.6; }
+.fg-field code { background: #f4efe8; padding: 0 4px; border-radius: 4px; }
+.fg-field textarea { width: 100%; border: 1px solid #d8cdbf; border-radius: 8px; padding: 0.5rem; font-size: 0.85rem; font-family: ui-monospace, monospace; margin-bottom: 0.5rem; background: #fff; }
+.fg-field button:disabled { opacity: .4; }
+.fg-total { font-size: 0.85rem; color: #6d5e4f; }
+.fg-msg { white-space: pre-wrap; background: #fff8ec; border: 1px solid #f0d9b0; border-radius: 8px; padding: 0.5rem 0.8rem; font-size: 0.8rem; margin-bottom: 0.8rem; font-family: inherit; }
+.fg-ftable { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.8rem; margin-bottom: 1rem; }
+.fg-ftable th, .fg-ftable td { border-bottom: 1px solid #eee5da; padding: 0.3rem 0.5rem; text-align: left; }
+.fg-ftable small { color: #8c7b69; }
+.fg-del { border: 1px solid #d8cdbf; background: #fff; border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.75rem; }
+.fg-stats3 { grid-template-columns: 1fr 1fr 1fr; }
+.fg-frow { display: grid; grid-template-columns: minmax(120px, 1.4fr) 1fr 90px auto; gap: 0.4rem; align-items: center; font-size: 0.78rem; margin: 3px 0; padding: 1px 3px; border-radius: 4px; }
+.fg-frow i { display: block; height: 10px; background: #946f4e; border-radius: 5px; }
+.fg-frow.fg-off { background: #fbe9e5; }
+.fg-fhead { color: #8c7b69; font-weight: 600; }
+.fg-exp { display: inline-flex; gap: 2px; }
+.fg-exp button { border: 1px solid #d8cdbf; background: #fff; border-radius: 6px; padding: 0 0.35rem; font-size: 0.72rem; }
+.fg-exp button.on.e-many { background: #4f7a52; border-color: #4f7a52; color: #fff; }
+.fg-exp button.on.e-mid { background: #b08a3c; border-color: #b08a3c; color: #fff; }
+.fg-exp button.on.e-few { background: #8c7b69; border-color: #8c7b69; color: #fff; }
+.fg-texchk { font-size: 0.8rem; background: #f4efe8; border-radius: 6px; padding: 0.35rem 0.6rem; margin-bottom: 0.5rem; }
+@media (max-width: 1200px) { .fg-stats3 { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .fg-guest, .fg-stats { grid-template-columns: 1fr; } }
