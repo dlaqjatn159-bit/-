@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261125';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261126';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1149,7 +1149,8 @@ function colorTechCounts(mc, cfg) {
     // 집 기준색: 벽·바닥·이어주는 색 중 채도가 가장 높은 것. 그마저 무채색이면 "무채색 집" → 색 방향 대신 웜 쪽·쿨 쪽
     const ref = [wall, floor, bridge].reduce((m, c) => chroma(c) > chroma(m) ? c : m);
     const gray = chroma(ref) < T.grayC, refH = hue(ref), refC = chroma(ref);
-    const keys = gray ? ['same', 'tone', 'sat', 'value', 'tint', 'warm', 'cool'] : ['same', 'tone', 'analog', 'sat', 'value', 'tint', 'split', 'comp', 'triad'];
+    // 무채색 집은 색 계열이 없어 채도 대비·톤인톤이 흐린 원단을 거의 다 통과시킴 → 뺌. 3색은 커튼에서 드물어 표에서 뺌 (96번 보완, 99번)
+    const keys = gray ? ['same', 'tone', 'value', 'warm', 'cool'] : ['same', 'tone', 'analog', 'sat', 'value', 'tint', 'split', 'comp'];
     function test(c) {
         const C = chroma(c), h = hue(c), achro = C < T.grayC, dh = dHue(h, refH), hit = {};
         hit.same = anchors.some(a => dE(a, c) < T.sameDE);
