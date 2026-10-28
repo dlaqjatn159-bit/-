@@ -2982,3 +2982,10 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-taste-btn { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 0.35rem 0 14px; font-size: var(--t-small); line-height: 1.5; color: var(--ink); word-break: keep-all; }
 .dos-taste-btn span { white-space: nowrap; }      /* 답 하나는 줄을 나누지 않음 */
 .dos-taste-btn em { font-style: normal; margin-left: 0.5em; color: var(--earth); border-bottom: 1px solid var(--earth); white-space: nowrap; }
+
+/* 119번: 집 전체 구성 — 공간 이름 · 권하는 구성 · 바꾸기 (선 없이, 들었습니다 줄 모양 그대로) */
+.house-comp { width: min(560px, 92%); }
+.house-comp .heard-row > span { display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap; }
+.house-comp .heard-row b { font-family: var(--serif); font-size: var(--t-body); color: var(--ink); }
+.house-comp .heard-row em { font-style: normal; font-family: var(--sans); font-size: var(--t-small); color: var(--muted); }
+.house-comp .hc-nm { min-width: 5.5em; }
