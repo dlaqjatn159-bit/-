@@ -2306,16 +2306,17 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .bookmark-stage .step-skip:active { background: var(--paper); color: var(--earth); }
 .bookmark-stage .step-skip.was-picked { color: #a9a39b; }
 /* 사진 화면 앞 안내 장면 (concierge.js playPhotoIntro). 시간은 concierge.js PHOTO_INTRO 한 곳에서 --pi-* 로 넣음 */
-.photo-intro { position: absolute; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; padding: 3rem; background: var(--paper); text-align: center; cursor: pointer; }
+.photo-intro { position: absolute; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; padding: 3rem; background: var(--paper); text-align: center; cursor: pointer; transition: opacity var(--pi-focus, 0.65s) ease; }
+.photo-intro.out { opacity: 0; pointer-events: none; }
 .photo-intro-q { display: inline-block; animation: piFade var(--pi-next, 0.35s) ease both; }
 .photo-intro.is-first .photo-intro-q { animation: piLight var(--pi-first, 1.2s) ease both; }
 @keyframes piLight { 0% { opacity: 0; color: #fff; filter: blur(10px); text-shadow: 0 0 40px #fff; } 45% { opacity: 1; color: #e6b597; filter: blur(3px); text-shadow: 0 0 18px #fff; } 100% { opacity: 1; color: #2b221a; filter: none; text-shadow: none; } }
 @keyframes piFade { from { opacity: 0; } to { opacity: 1; } }
 .photo-veil { position: absolute; inset: 0; z-index: 56; background: var(--paper-sheet); opacity: 0; pointer-events: none; transition: opacity var(--pi-veil, 0.45s) ease; }
 .photo-veil.on { opacity: 1; }
-#v2Viewport .bookmark-stage.is-soft { filter: blur(12px) brightness(1.25); }
+#v2Viewport .bookmark-stage.is-soft { opacity: 0; transform: scale(1.025); }
 #v2Viewport .bookmark-stage.is-hidden { opacity: 0; }
-#v2Viewport .bookmark-stage.is-focusing { transition: filter var(--pi-focus, 0.8s) cubic-bezier(0.2, 0.9, 0.3, 1), opacity var(--pi-veil, 0.45s) ease; }
+#v2Viewport .bookmark-stage.is-focusing { transition: transform var(--pi-focus, 0.65s) cubic-bezier(0.2, 0.9, 0.3, 1), opacity var(--pi-focus, 0.65s) ease; will-change: opacity, transform; }
 @media (prefers-reduced-motion: reduce) { .photo-intro-q, .photo-intro.is-first .photo-intro-q { animation: piFade 0.6s ease both; } }
 
 /* "이렇게 들었어요" 화면: 표 선 없이 글로만, 줄 간격으로 나누고 누르면 흙빛 밑줄 (81번) */

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261151';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261152';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -690,7 +690,7 @@
     // 사진 화면 앞 안내 장면: 종이 화면에 질문 한 줄 → 흰빛이 차오름 → 사진이 흐릿하고 밝은 상태에서 또렷해짐 (로고 모션의 뜻만, 점은 안 씀)
     //  그 공간의 첫 사진 화면은 글자가 흰빛 속에서 살구빛을 거쳐 먹색으로 맺히고(약 3.4초), 그다음은 글자가 그냥 나타남(약 2.2초)
     //  누르지 않아도 넘어가고, 안내 중 아무 데나 누르면 바로 사진으로. 시간(밀리초)은 여기 한 곳에서 조절
-    const PHOTO_INTRO = { firstText: 1200, firstHold: 900, nextText: 350, nextHold: 550, veil: 450, focus: 800 };
+    const PHOTO_INTRO = { firstText: 1200, firstHold: 900, nextText: 350, nextHold: 550, veil: 450, focus: 650 };
     const PHOTO_INTRO_STEPS = ["0.6-House-Tex", "2-Base-Floor", "2-Base-Wall", "3-Config-Style", "2-Base-SheerFeel", "2-Base-BlindKind"];      // 원단 화면은 "골랐습니다" 화면·찾는 중 화면이 이미 앞에 있음
     let introWant = false, introRoomKey = null, introTimers = [], photoQuestion = '';
     // 안내 장면(1~2초) 동안은 뒤로를 숨김 — 지나가는 장면이라 누를 일이 없음 (74번)
@@ -732,7 +732,8 @@
             done = true;
             introTimers.forEach(clearTimeout);
             introTimers = [];
-            box.remove();
+            if (now) box.remove();
+            else { box.classList.add('out'); setTimeout(() => box.remove(), T.focus); }      // 글자는 서서히 사라지고 그 아래로 사진이 겹쳐 나타남
             quietBack(false);
             syncBack(true);
             if (now) { stage.classList.remove('is-soft', 'is-hidden'); const v = document.getElementById('photoVeil'); if (v) v.remove(); return; }
@@ -740,15 +741,7 @@
         };
         box.onclick = () => reveal(true);
         if (reduced) { introTimers.push(setTimeout(() => reveal(false), hold)); return; }
-        introTimers.push(setTimeout(() => {      // 흰빛이 차오름
-            const veil = document.createElement('div');
-            veil.id = 'photoVeil';
-            veil.className = 'photo-veil';
-            vp.appendChild(veil);
-            void veil.offsetWidth;
-            veil.classList.add('on');
-            introTimers.push(setTimeout(() => reveal(false), T.veil));
-        }, hold));
+        introTimers.push(setTimeout(() => reveal(false), hold));      // 흐림(blur) 대신 투명도·크기만 바꿔 끊기지 않게
     }
     // 고른 원단으로 칸을 채우는 스타일: 톤 색 위에 사진(있으면)을 덮음. 첫 화면 공간 칸·제안서 원단 칸이 함께 씀
     function fabricFillStyle(fabricId, colorName) {

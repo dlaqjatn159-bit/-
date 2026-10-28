@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261151';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261152';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261151';
+const REDAM_BUILD = '20261152';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3229,7 +3229,7 @@ function renderSurvey() {
                     ${texImgs.smooth ? `<img src="${texImgs.smooth}" alt="">` : ''}<span>매끈한</span>
                 </button>
                 <button type="button" class="survey-opt tex ${houseTaste.tex === 'texture' ? 'on' : ''}" onclick="setHouseTaste('tex', 'texture')">
-                    ${texImgs.texture ? `<img src="${texImgs.texture}" alt="">` : ''}<span>결이 살아 있는</span>
+                    ${texImgs.texture ? `<img src="${texImgs.texture}" alt="">` : ''}<span>결 있는</span>
                 </button>
                 <button type="button" class="survey-opt tex ${houseTaste.tex === 'fluffy' ? 'on' : ''}" onclick="setHouseTaste('tex', 'fluffy')">
                     ${texImgs.fluffy ? `<img src="${texImgs.fluffy}" alt="">` : ''}<span>보송한</span>
@@ -3396,7 +3396,7 @@ function renderSurvey() {
                     <div class="survey-row"><div class="k">겉지 결</div>
                         <div class="survey-opts">
                             <button type="button" class="survey-opt ${ownTex === 'smooth' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'smooth')">매끈한</button>
-                            <button type="button" class="survey-opt ${ownTex === 'texture' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'texture')">결이 살아 있는</button>
+                            <button type="button" class="survey-opt ${ownTex === 'texture' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'texture')">결 있는</button>
                             <button type="button" class="survey-opt ${ownTex === 'fluffy' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'fluffy')">보송한</button>
                         </div>
                     </div>
