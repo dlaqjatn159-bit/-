@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261154';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261156';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261154';
+const REDAM_BUILD = '20261156';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2850,7 +2850,7 @@ function roomWithSurveyTaste(room, dirOverride) {
     if (tex) {
         out.drapeFeel = { smooth: 'smooth', texture: 'natural', fluffy: 'cozy' }[tex] || tex;
     }
-    if (sheer) {
+    if (sheer && !room.sheerFeel) {      // 123번: 공간마다 고른 속지 결이 먼저
         out.sheerFeel = { smooth: 'smooth', texture: 'textured', thick: 'cozy', unknown: 'any' }[sheer] || sheer;
     }
     return out;
@@ -5009,7 +5009,7 @@ function houseMoodWord(pres, tex, hasDrape) {
     if (!row) return '';
     return row[hasDrape && row[tex] ? tex : ''];
 }
-// 분위기 문장 (118번): 집 취향으로 한 문장 + "이 공간만 다르게"로 말이 달라진 공간은 같은 말끼리 묶어 한 문장씩
+// 분위기 문장 (118번 · 123번): 집 취향으로 한 문장 + "이 공간만 다르게"로 말이 달라진 공간은 같은 말끼리 묶어 한 문장씩
 function houseMoodLines(sp) {
     const ht = (typeof houseTaste === 'object' && houseTaste) || {};
     const drapeOf = s => s.fabs.some(f => f.k === '겉지');
@@ -5025,9 +5025,14 @@ function houseMoodLines(sp) {
         const g = groups.find(x => x.w === w);
         if (g) g.names.push(s.name); else groups.push({ w, names: [s.name] });
     });
+    // 123번: 취향을 공간마다 물으면 집 취향 말이 없음 → 모든 공간이 같은 말이면 집 한 문장, 다르면 공간끼리 묶어 한 문장씩
+    if (!houseWord && groups.length === 1 && groups[0].names.length === sp.length) {
+        out.push(`${groups[0].w} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
+        return out;
+    }
     groups.forEach(g => {
         const names = g.names.join('·');
-        out.push(`${names}${houseJosa(names, '은', '는')} ${g.w} 느낌으로 따로 맞췄습니다.`);
+        out.push(`${names}${houseJosa(names, '은', '는')} ${g.w} 느낌으로 ${houseWord ? '따로 ' : ''}맞췄습니다.`);
     });
     return out;
 }
