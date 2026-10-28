@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261152';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261153';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -3462,7 +3462,7 @@
             const chosen = state.colorPick[fabId] || order[0] || '';
             // 110번: 미니맵이 다른 원단을 보여 주고 있으면 첫 터치는 미니맵에 비춰 보기만, 두 번째 터치에 선택
             const mini = document.getElementById('roomMiniBox');
-            if (mini && mini.innerHTML.trim() && (!state.miniPick || state.miniPick.fabId !== fabId)) {
+            if (mini && mini.innerHTML.trim() && state.miniArmed !== fabId) {      // 처음 비춰 둔 맨 왼쪽 원단도 한 번 눌러 둔 뒤에만 선택
                 refreshMini(fabId, chosen);
                 return;
             }
