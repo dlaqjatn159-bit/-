@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261149';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261150';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -466,7 +466,7 @@
         if (state.step !== step || state.editingRoom !== ed) stepHistory.push({ step: state.step, idx: state.currentItemIndex, room: state.editingRoom, roomId: state.editingRoomId });
         state.editingRoom = ed || null;
         state.editingRoomId = ed ? roomId : null;
-        state.tasteFor = null; state.tasteEdit = false;
+        state.tasteFor = null;
         if (prep) prep();
         goToStep(step, false, true);
     }
@@ -661,7 +661,7 @@
         "0.5-House-Taste": 2, "0.6-House-Tex": 2, "2-Base-SheerFeel": 2, "2-Base-BlindKind": 2, "3.5-Bridge": 3, "4-Fabric-Queue": 3, "6-Finish": 3 };
     function flowProg() {
         const ed = state.editingRoom, ph = FLOW_PHASE[state.step];
-        if (ph == null || state.tasteEdit || (ed && !ed.flow)) return null;
+        if (ph == null || (ed && !ed.flow)) return null;
         const phase = state.tasteFor === 'room' ? 1 : ph, list = state.roomsCart, n = Math.max(1, list.length);
         let frac = 0.5;
         if (phase === 0) { const i = Math.max(0, todoRooms().findIndex(r => r.id === state.editingRoomId)); frac = (i + (state.step === "2-Base-Privacy" ? 0.7 : 0.3)) / Math.max(1, todoRooms().length); }
@@ -1004,13 +1004,7 @@
             return `<button type="button" class="dos-strip-seg${isSel ? ' is-active' : ''}" style="flex:${r.isConfigured && r.curtains.length ? r.curtains.length : 1}" onclick="window.concierge.selectSpaceRoom(${r.id})" aria-label="${esc(r.name)} 보기">${inner}</button>`;
         }).join('') : `<i style="background:${HATCH}"></i>`;
         h += `<div class="dos-house"><div class="dos-house-lbl"><span>공간 전체 색 흐름</span></div><div class="dos-house-strip">${strip}</div>`;
-        const ht = (typeof getHouseTaste === 'function') ? getHouseTaste() : (window.houseTaste || {});
-        const PRES_NAME = { calm: '조용히 스며들게', weight: '차분히 무게감 있게', point: '포인트가 되게' };
-        const TEX_NAME = { smooth: '매끈한 결', texture: '살아 있는 결', fluffy: '보송한 결' };
-        const htSummary = [PRES_NAME[ht.pres], TEX_NAME[ht.tex]].filter(Boolean).join(' · ');
-        if (htSummary) {
-            h += `<div class="dos-taste"><span class="dos-taste-lbl">우리 집 취향</span><button type="button" class="dos-taste-btn font-serif-kr" onclick="window.concierge.editHouseTaste()">${[PRES_NAME[ht.pres], TEX_NAME[ht.tex]].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join(' · ')}<em>수정</em></button></div>`;      // 117번: 공간 전체 색 흐름 이름표와 같은 모양
-        }
+        // 121번: 로고 아래 "우리 집 취향" 줄은 뺌 (포인트가 공간마다라 집 전체 이름표가 맞지 않음)
         if (list.length) {
             h += '<div class="dos-nav-list">';
             list.forEach(r => {
@@ -1030,6 +1024,10 @@
         h += '<div class="dos-right">';
         if (list.length > 1) {
             h += `<div class="dos-view-bar"><button type="button" class="dos-view-toggle" onclick="window.concierge.toggleSpaceViewMode()">${isAllMode ? '한 공간씩 크게 보기' : '전체 한눈에 보기'}</button></div>`;
+        }
+        // 121번: 아직 공간이 없으면 오른쪽에 "+ 공간 추가" 버튼 하나만
+        if (!list.length) {
+            h += '<section class="dos-room dos-add dos-first"><button type="button" class="txt-cta font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가 →</button></section>';
         }
         const visibleRooms = isAllMode ? list : list.filter(r => r.id === state.activeSpaceId);
         visibleRooms.forEach(r => {
@@ -1346,11 +1344,12 @@
         if (!main) return;
         stopPhotoIntro();
         photoQuestion = '';
-        // 공간이 하나도 없으면(모두 삭제 등) 첫 화면으로, 구성을 마친 공간이 없으면 최종 제안 대신 공간 화면으로
+        // 구성을 마친 공간이 없으면 최종 제안 대신 공간 화면으로
         if (state.step === "7-Final-Dossier" && !state.roomsCart.some(r => r.isConfigured)) state.step = "1-Space";
+        // 121번: 공간이 없어도 빈 공간 화면을 그대로 보여 줌("+ 공간 추가"부터). 뒤로 가기는 첫 화면으로만
         if (state.step === "1-Space" && state.roomsCart.length === 0) {
-            state.step = "0-Welcome";
             stepHistory.length = 0;
+            stepHistory.push({ step: "0-Welcome", idx: 0 });
             updatePrevButtonVisibility();
         }
 
@@ -1900,8 +1899,9 @@
             const wHex = (wallP && wallP.hex) || '#f2eee8';
             const fHex = (floorP && floorP.hex) || '#e5ddcf';
             // 벽·바닥: 모든 방이 같은 색이면 합쳐져 집 전체의 큰 바탕 면이 되고, 방마다 다르면 거실 > 안방 > 작은방 비례로 나뉨
-            addBucket('wall__' + normHex(wHex), wHex, W * 0.56, 0.36);
-            addBucket('floor__' + normHex(fHex), fHex, W * 0.40, 0.34);
+            // 121번: 사람 눈높이로 봐도 벽·바닥이 커튼보다 넓음 → 벽·바닥 몫을 키우고 여러 공간이 같은 색이면 더 많이 쌓임
+            addBucket('wall__' + normHex(wHex), wHex, W * 0.62, 0.50);
+            addBucket('floor__' + normHex(fHex), fHex, W * 0.46, 0.48);
 
             // 원단: 여러 방에서 같은 원단 색을 쓰면 하나의 면적으로 합산하고, 다르면 공간 크기에 비례해 각자의 면적을 가짐
             const items = rm.items || [];
@@ -1912,12 +1912,13 @@
                 const sheer = items.find(i => i.kindKey === 'sheer' || i.kind === '속지') || items[1];
                 const dHex = colorFillOf(drape.fabricId, drape.colorName) || drape.fill || '#b8a894';
                 const sHex = colorFillOf(sheer.fabricId, sheer.colorName) || sheer.fill || '#efede7';
-                addBucket('fab__' + normHex(sHex), sHex, W * 0.60, 0.52);
-                addBucket('fab__' + normHex(dHex), dHex, W * 0.42, 0.52);
+                // 121번: 원단은 벽·바닥의 약 절반 이하. 속지는 자주 쳐 두어 보이는 면이 크고, 겉지는 걷어 두는 때가 많아 작게
+                addBucket('fab__' + normHex(sHex), sHex, W * 0.32, 0.45);
+                addBucket('fab__' + normHex(dHex), dHex, W * 0.18, 0.45);
             } else {
                 const it0 = items[0] || {};
                 const cHex = colorFillOf(it0.fabricId, it0.colorName) || it0.fill || '#d9cdbb';
-                addBucket('fab__' + normHex(cHex), cHex, W * 0.82, 0.52);
+                addBucket('fab__' + normHex(cHex), cHex, W * 0.40, 0.45);      // 121번: 커튼 하나·블라인드도 벽·바닥보다 작게
             }
         });
 
@@ -2774,13 +2775,8 @@
         // 첫 화면 "상담 시작": 공간이 없으면 첫 공간 추가, 있으면 공간 화면으로 (119번)
         beginConsult: function() {
             // 119번: 취향은 구성을 정한 뒤 집에 한 번 묻고, 여기서는 공간 만들기부터
-            goToStep(state.roomsCart.length ? "1-Space" : "1.5-Room-Type");
-        },
-        // 중심 화면 왼쪽 "우리 집 취향 · 수정" (117번)
-        editHouseTaste: function() {
-            state.tasteFor = null;
-            state.tasteEdit = true;      // 119번: 고친 뒤 중심 화면으로 (길잡이로 넘어가지 않음)
-            goToStep("0.5-House-Taste");
+            // 121번: 공간이 없어도 먼저 빈 공간 화면으로 들어가 거기서 "+ 공간 추가"
+            goToStep("1-Space");
         },
         // 구성 제안 화면의 "이 공간만 취향을 다르게": 같은 취향 화면을 그 공간 값으로 (117번)
         openRoomTaste: function() {
@@ -2803,13 +2799,7 @@
                 if (key === 'pres') goToStep("0.6-House-Tex"); else backToConfig();
                 return;
             }
-            // 119번: 중심 화면 "수정"이면 (겉지가 있는 집만 결까지) 중심 화면으로, 아니면 길잡이가 다음(겉지 결은 겉지가 들어갈 때만)
-            if (state.tasteEdit) {
-                if (key === 'pres' && (houseHas('drape') || houseTasteNow().tex)) { goToStep("0.6-House-Tex"); return; }
-                state.tasteEdit = false;
-                backToSpace();
-                return;
-            }
+            // 119번: 길잡이가 다음(겉지 결은 겉지가 들어갈 때만). 121번: 중심 화면 "집 취향 수정"은 뺌
             flowNext();
         },
         // "집 취향 그대로 할게요": 이 공간만 다르게를 끔

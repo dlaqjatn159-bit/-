@@ -2976,12 +2976,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 }
 
 /* ===== 117번: 고객 화면 새 흐름 =====
-   취향·구성 제안·속지 결은 기존 글 질문 화면(.ask-stage)과 사진 화면(.bookmark-stage) 틀을 그대로 씀 — 여기엔 중심 화면의 취향 줄만 */
-.dos-taste { margin-top: 1rem; }
-.dos-taste-lbl { display: block; font-family: var(--sans); font-size: 11.5px; letter-spacing: 0.02em; color: var(--muted); }      /* "공간 전체 색 흐름"과 같은 이름표 */
-.dos-taste-btn { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 0.35rem 0 14px; font-size: var(--t-small); line-height: 1.5; color: var(--ink); word-break: keep-all; }
-.dos-taste-btn span { white-space: nowrap; }      /* 답 하나는 줄을 나누지 않음 */
-.dos-taste-btn em { font-style: normal; margin-left: 0.5em; color: var(--earth); border-bottom: 1px solid var(--earth); white-space: nowrap; }
+   취향·구성 제안·속지 결은 기존 글 질문 화면(.ask-stage)과 사진 화면(.bookmark-stage) 틀을 그대로 씀 (중심 화면 취향 줄은 121번에서 뺌) */
 
 /* 119번: 집 전체 구성 — 공간 이름 · 권하는 구성 · 바꾸기 (선 없이, 들었습니다 줄 모양 그대로) */
 .house-comp { width: min(560px, 92%); }
