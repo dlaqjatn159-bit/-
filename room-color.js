@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261140';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261141';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -34,6 +34,12 @@
         { key: 'wall',  label: '④ 벽',        sub: '벽지·도장',   color: '#2b221a' }
     ];
     const PIN_WORD = { gray: '회색', white: '흰', floor: '바닥', wall: '벽', fur: '가구' };      // 사진 위 점에 쓰는 말
+    // 재료·광택 (113번): 사장님이 버튼으로 고름. 잰 색 알갱이(mc.wall·mc.floor)에 mat = { k: 재료, g: 광택 1/0, s: 무늬 세기 }로 함께 저장
+    const MAT_KINDS = {
+        floor: [['wood', '원목·마루'], ['tile', '타일·석재'], ['vinyl', '장판'], ['carpet', '카펫']],
+        wall: [['paint', '도장'], ['paper', '벽지'], ['hanji', '한지·천연'], ['wood', '무늬목·목재'], ['tile', '타일·석재']]
+    };
+    const MAT_PART = { wall: '벽', floor: '바닥' };
     const HIT_PX = 22;                        // 이미 찍은 점에서 이만큼 안을 누르면 그 점을 지움
     // 찍는 방법 (37번): 방 문 앞에서 창 쪽을 넓게. 창 아래는 역광이라 카드가 어둡게 찍혀서 카드는 바닥 가운데쯤
     const SHOOT_GUIDE = '방 문 앞에 서서 <b>창 쪽을 넓게</b> 찍어 주세요<br>(광각 0.6배)';
@@ -84,6 +90,10 @@
     //  { name: '라이트 베이지', note: '밝고 노란 기운이 은은해요' }. 원단 색 이름 규칙처럼 쉬운 계열 이름 + 라이트/딥
     function colorName(kind, c) {
         if (!c || c.L == null) return null;
+        // 재료 (113번): 바닥도 타일·석재·카펫이면 나무 이름을 쓰지 않고, 벽도 무늬목·목재면 나무 이름을 씀
+        const mk = c.mat && c.mat.k;
+        if (kind === 'floor' && (mk === 'tile' || mk === 'carpet')) kind = 'wall';
+        else if (kind === 'wall' && mk === 'wood') kind = 'floor';
         const L = c.L, a = c.a || 0, b = c.b || 0, C = Math.hypot(a, b);
         let h = Math.atan2(b, a) * 180 / Math.PI; if (h < 0) h += 360;
         // 색 기운: 0 붉은 · 90 노란 · 180 초록 · 270 푸른
@@ -168,7 +178,9 @@
         px.sort((p, q) => p[3] - q[3]);
         const cut = Math.floor(px.length * AREA_TRIM), kept = px.slice(cut, px.length - cut);
         const lin = [0, 1, 2].map(k => kept.reduce((s, p) => s + p[k], 0) / kept.length);
-        return { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0 };
+        const Ls = kept.map(p => 116 * Math.cbrt(p[3]) - 16), mean = Ls.reduce((t, v) => t + v, 0) / Ls.length;
+        const sd = Math.sqrt(Ls.reduce((t, v) => t + (v - mean) * (v - mean), 0) / Ls.length);      // 무늬 세기 (113번): 동그라미 안 밝기 흩어짐
+        return { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0, sd };
     }
     // 누른 점: st.pins[자리] = [{ v: 사진 번호, x, y }, …]. 카드는 1곳, 바닥·벽은 MAX_POINTS곳까지 (평균)
     function pinsOf(key) { return (st && st.pins[key]) || []; }
@@ -207,7 +219,7 @@
             // (66번 고침: map에 sampleArea를 바로 넘기면 순번이 반지름 칸으로 들어가 2·3번째 점이 사진 전체를 읽었음)
             const parts = ps.map(p => sampleArea(p)).filter(Boolean);
             const lin = [0, 1, 2].map(k => parts.reduce((t, p) => t + p.lin[k], 0) / parts.length);
-            s[key] = { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0, n: parts.length };
+            s[key] = { lin, lab: linToLab(lin[0], lin[1], lin[2]), diff: 0, n: parts.length, sd: parts.reduce((t, p) => t + p.sd, 0) / parts.length };
         });
         const res = { raw: s, wall: null, floor: null, fur: null, cardsSwapped: false, shadow: 0 };
         if (!s.gray || !s.white) return res;
@@ -227,8 +239,8 @@
             c.cls = classifyLab(c);
             return c;
         };
-        if (s.wall) res.wall = fix(s.wall);
-        if (s.floor) res.floor = fix(s.floor);
+        if (s.wall) { res.wall = fix(s.wall); res.wall.grain = s.wall.sd; }
+        if (s.floor) { res.floor = fix(s.floor); res.floor.grain = s.floor.sd; }
         if (s.fur) res.fur = fix(s.fur);
         return res;
     }
@@ -364,10 +376,28 @@
         if (typeof renderFinder === 'function' && document.getElementById('finderOut')) { try { renderFinder(); } catch (e) {} }
     }
     // 공간에 저장하는 모양 (숫자는 소수 한 자리)
-    function packColor(c) {
+    function packColor(c, part) {
         const r = v => Math.round(v * 10) / 10;
-        return { L: r(c.L), a: r(c.a), b: r(c.b), hex: c.hex, light: c.cls.light, tone: c.cls.tone };
+        const o = { L: r(c.L), a: r(c.a), b: r(c.b), hex: c.hex, light: c.cls.light, tone: c.cls.tone };
+        const m = part && st && st.mat && st.mat[part];
+        if (m && m.k) o.mat = { k: m.k, g: m.g ? 1 : 0, s: r(c.grain || 0) };      // 113번
+        return o;
     }
+    // 재료·광택 도우미 (113번)
+    function matOf(part) { if (!st.mat) st.mat = {}; return st.mat[part] || (st.mat[part] = { k: null, g: null }); }
+    function matDone(part) { const m = st && st.mat && st.mat[part]; return !!(m && m.k && m.g != null); }
+    function matReady(res) { return ['wall', 'floor'].every(p => !res[p] || matDone(p)); }      // 잰 부분은 재료·광택을 골라야 다음으로
+    function matHtml(part) {
+        const m = matOf(part);
+        const chip = (on, call, txt) => `<button type="button" class="${on ? 'on' : ''}" onclick="${call}">${txt}</button>`;
+        return `<div class="fur-box rc-mat"><span class="fur-lbl">${MAT_PART[part]} 재료</span><div class="fur-chips">`
+            + MAT_KINDS[part].map(([k, n]) => chip(m.k === k, `RoomColor.matPick('${part}','${k}')`, n)).join('') + '</div>'
+            + '<div class="fur-chips">' + chip(m.g === 1, `RoomColor.glossPick('${part}',1)`, '광택 있음') + chip(m.g === 0, `RoomColor.glossPick('${part}',0)`, '광택 없음') + '</div></div>';
+    }
+    function matPick(part, k) { if (!st || !MAT_KINDS[part] || !MAT_KINDS[part].some(x => x[0] === k)) return; matOf(part).k = k; if (st.cust) renderCust(); else render(); }
+    function glossPick(part, g) { if (!st || !MAT_KINDS[part]) return; matOf(part).g = g ? 1 : 0; if (st.cust) renderCust(); else render(); }
+    // 광택 있음이면 사진 위에 작은 표시만 (반사 자리는 누르지 않도록, 글 없이)
+    function glossMark() { return st && st.mat && ((st.mat.wall && st.mat.wall.g === 1) || (st.mat.floor && st.mat.floor.g === 1)) ? '<span class="rc-gloss-mark" aria-hidden="true">✦</span>' : ''; }
     // 가구 색 저장 모양 (37번 → 66번): { n: '소파', L, a, b, hex, stay } — 이름(다크 그레이 등)은 저장하지 않고 그때그때 colorName으로
     //  stay: 그대로 두는 가구(true) / 자주 바뀌는 것(false, 이불·러그). 66번은 표시만, 나중에 추천 점수에서 무게를 다르게
     function packFurOne(c, n) {
@@ -378,11 +408,11 @@
 
     function apply(goFinder) {
         const res = compute(), room = findRoom(st.roomId);
-        if (!room || !(res.wall || res.floor)) return;
+        if (!room || !(res.wall || res.floor) || !matReady(res)) return;
         const old = room.measuredColor || {};
         const mc = {
-            wall: res.wall ? packColor(res.wall) : (old.wall || null),
-            floor: res.floor ? packColor(res.floor) : (old.floor || null),
+            wall: res.wall ? packColor(res.wall, 'wall') : (old.wall || null),
+            floor: res.floor ? packColor(res.floor, 'floor') : (old.floor || null),
             shadow: Math.round(res.shadow * 10) / 10,
             at: Date.now()
         };
@@ -447,7 +477,7 @@
                     h += `<span class="rc-pin${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%;background:${s2.color}">${PIN_WORD[s2.key]}</span>`;
                 });
             });
-            h += '</div>';
+            h += glossMark() + '</div>';
             const anyPin = Object.values(st.pins).some(ps => ps.length);
             h += `<div class="rc-guide"><span>${stp && MULTI[stp.key] ? `${stp.label.slice(2)}은 동그라미 안을 평균해요. 판자·타일·무늬가 다른 <b>${AREA_POINTS}곳</b>을 눌러 주세요.` : (stp ? '카드는 가운데를 한 번 눌러 주세요.' : '')} 잘못 찍은 점은 <b>점을 누르면 지워져요.</b></span>`
                 + (anyPin ? `<button type="button" onclick="RoomColor.undo()">방금 것 지우기</button>` : '') + '</div>';
@@ -487,7 +517,9 @@
                 h += '<p class="rc-note">먼저 ① 회색 카드와 ② 흰 카드를 눌러 주세요. 두 카드로 사진의 밝기와 색기를 바로잡아요.</p>';
             }
             h += resultCard('wall', res.wall);
+            if (res.wall) h += matHtml('wall');
             h += resultCard('floor', res.floor);
+            if (res.floor) h += matHtml('floor');
             if (res.wall && res.floor) {
                 const k = (saved && typeof saved.bridgeK === 'number') ? saved.bridgeK : BRIDGE_WALL_WEIGHT;
                 const br = bridgeOf(res.wall, res.floor, k);
@@ -503,7 +535,7 @@
         h += '</div></div>';
 
         // 아래: 반영
-        const canApply = !!(res.wall || res.floor);
+        const canApply = !!(res.wall || res.floor) && matReady(res);
         h += '<div class="rc-foot"><span>고객 화면에는 숫자 없이 "밝은 웜" 같은 말과 바닥·벽 카드만 쓰여요. 사진은 저장되지 않아요.</span>';
         h += `<div class="rc-foot-btns"><button type="button" class="staff-btn" onclick="RoomColor.apply()"${canApply ? '' : ' disabled'}>이 공간에 반영</button>`;
         h += `<button type="button" class="staff-btn rc-apply" onclick="RoomColor.apply(true)"${canApply ? '' : ' disabled'}>${res.wall && res.floor ? '반영 후 조화로운 원단 찾기 →' : '반영 후 원단 찾기 →'}</button></div></div>`; // 41번
@@ -575,7 +607,7 @@
                        floor: `<b>바닥</b>을 ${AREA_POINTS}곳 눌러 주세요`, wall: `<b>벽</b>을 ${AREA_POINTS}곳 눌러 주세요`,
                        fur: `<b>가구</b>의 넓은 면을 ${AREA_POINTS}곳 눌러 주세요` };
     function packResult(res, k) {
-        const mc = { wall: res.wall ? packColor(res.wall) : null, floor: res.floor ? packColor(res.floor) : null, shadow: Math.round(res.shadow * 10) / 10, at: Date.now() };
+        const mc = { wall: res.wall ? packColor(res.wall, 'wall') : null, floor: res.floor ? packColor(res.floor, 'floor') : null, shadow: Math.round(res.shadow * 10) / 10, at: Date.now() };
         if (typeof k === 'number') mc.bridgeK = k;
         mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor, mc.bridgeK) : null;
         return mc;
@@ -617,7 +649,7 @@
                 if (MULTI[k]) h += `<span class="cm-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv) / cv.width * 100).toFixed(2)}%"></span>`;
                 h += `<span class="cm-dot cm-dot-${k}${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%">${PIN_WORD[k]}</span>`;
             }));
-            h += '</div>';
+            h += glossMark() + '</div>';
         } else {
             h += `<div class="cm-empty"><p class="font-serif-kr">${furOnly ? SHOOT_FUR : SHOOT_GUIDE}</p><p class="cm-note">${furOnly ? SHOOT_FUR_SUB : SHOOT_CARD}</p>`;
             h += '<label class="cm-go font-serif-kr">사진 찍기 · 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
@@ -659,6 +691,7 @@
                 h += `<div><i style="background:${c.hex}"></i><span><b class="font-serif-kr">${esc(nm.name)}<em class="hex-code">${esc(String(c.hex).toUpperCase())}</em></b><small>${k === 'wall' ? '벽' : '바닥'} · ${esc(nm.note)}</small></span></div>`;
             });
             h += '</div>';
+            ['floor', 'wall'].forEach(k => { if (res[k]) h += matHtml(k); });
             if (res.wall && res.floor) h += custBridgeHtml(res);
             // 공간 추가 때: 결과 아래 창 방향 버튼 (35번, concierge.js가 그리고 값을 가짐)
             if (o.dirPick && window.concierge && window.concierge.dirPickerHtml) h += window.concierge.dirPickerHtml();
@@ -667,7 +700,7 @@
         h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">지금은 못 재요 · 상담 때 카드로</button>' : '<span></span>';
         if (cv && Object.values(st.pins).some(ps => ps.length)) h += '<button type="button" class="cm-skip" onclick="RoomColor.undo()">방금 것 지우기</button>';
         if (cv) h += '<label class="cm-skip">사진 바꾸기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
-        if (done && !res.cardsSwapped && !(furOnly && !st.furKind)) h += `<button type="button" class="cm-go font-serif-kr" onclick="RoomColor.finishCustomer()">${esc(o.doneLabel || '담기')}</button>`;
+        if (done && !res.cardsSwapped && !(furOnly && !st.furKind) && (furOnly || matReady(res))) h += `<button type="button" class="cm-go font-serif-kr" onclick="RoomColor.finishCustomer()">${esc(o.doneLabel || '담기')}</button>`;
         h += '</div></div></div>';
         ov.innerHTML = h;
         const wrap = document.getElementById('cmWrap');
@@ -836,12 +869,13 @@
                 o.onDone(f);
                 return;
             }
-            if (!(res.wall || res.floor) || res.cardsSwapped) return;
+            if (!(res.wall || res.floor) || res.cardsSwapped || !matReady(res)) return;
             const mc = packResult(res, (res.wall && res.floor) ? custK() : undefined);
             closeCustomer();
             o.onDone(mc);
         },
         file: onFile,
+        matPick, glossPick,      // 재료·광택 버튼 (113번)
         removeWall: removeWallPhoto,
         _loadImage: (src, which) => loadImage(src, which || 0),      // 미리보기 시험용
         _state: () => st && compute(),

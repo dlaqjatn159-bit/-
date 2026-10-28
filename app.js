@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261140';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261141';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261140';
+const REDAM_BUILD = '20261141';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3717,7 +3717,7 @@ function whyRoomCtx(room) {
     return {
         room, ans: room.ans, dir, dirText: windowDirText(dir),
         E: dir.includes('E'), W: dir.includes('W'), S: dir.includes('S'), N: dir.includes('N'),
-        wall, floor, bridge, floorName: floor ? nameOf('floor', mc.floor) : '', wallName: proNameOf(wall),      // 벽은 색 사전 이름 (88번)
+        wall, floor, bridge, floorName: floor ? matNameOf('floor', mc.floor) : '', wallName: wall ? matNameOf('wall', mc.wall) : '', floorWood: matWoodLike('floor', mc.floor),      // 벽은 색 사전 이름 (88번), 재료에 따라 나무 이름 (113번)
         bedroom: /^(방|안방|아이방)/.test(String(raw.roomType || raw.name || '')),
         light: room.ans.light, privacy: room.ans.privacy, block: room.ans.block, feel: raw.sheerFeel || null,
         opp: room.opp || ''
@@ -3737,6 +3737,12 @@ const WHY_F_FRAG = { F1: '낮에도 안이 비치지 않는', F2: '형태만 흐
 function proNameOf(c) {
     const p = (c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number') ? proColorName(c.L, c.a, c.b) : null;
     return p ? p.ko : '';
+}
+// 잰 벽·바닥의 이름 (113번): 나무 이름은 나무 재료일 때만(바닥: 원목·마루·장판 / 벽: 무늬목·목재). 타일·석재·카펫 바닥, 그 밖의 벽은 색 사전 이름
+function matWoodLike(part, c) { const k = c && c.mat && c.mat.k; return part === 'floor' ? !(k === 'tile' || k === 'carpet') : k === 'wood'; }
+function matNameOf(part, c) {
+    const wood = (window.RoomColor && RoomColor.colorName && (RoomColor.colorName(part, c) || {}).name) || '';
+    return matWoodLike(part, c) ? wood : (proNameOf(c) || wood);
 }
 // 두 색의 사전 이름 관계: 'same'(같은 이름) · 'up'(other가 한 톤 밝음) · 'down'(한 톤 진함) · ''(말할 수 없음). 같은 계열·같은 기운 줄에서 밝기 한 칸 차이만 "한 톤"
 function proToneRel(base, other) {
@@ -3807,8 +3813,8 @@ function whyItemCands(F, R, facts) {
             else if (dL <= -6) add('C', 'C4', '창 쪽이 차분해 보입니다.', '공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
-            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울립니다.`, '바닥 나무색과 같은 쪽 색이라 잘 어울립니다.');
-            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', '색 기운이 거의 없어, 바닥 나무색과 부딪히지 않습니다.', '한쪽으로 치우친 색이 아니라, 바닥 색과 함께 두어도 차분합니다.');
+            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울립니다.`, `${R.floorWood === false ? '바닥' : '바닥 나무'}색과 같은 쪽 색이라 잘 어울립니다.`);
+            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', `색 기운이 거의 없어, ${R.floorWood === false ? '바닥' : '바닥 나무'}색과 부딪히지 않습니다.`, '한쪽으로 치우친 색이 아니라, 바닥 색과 함께 두어도 차분합니다.');
         }
     }
     // D. 창 방향이 만드는 결과 (방위 이름은 ② 칸에만). 하나만. D7~D9는 북쪽만 든 창에서만 (83번: 북서·북동은 동·서 문장)
@@ -4188,7 +4194,7 @@ function houseSpacesOf(data) {
         const items = room.items.filter(it => it.fabricId);
         if (!items.length) return null;
         const mc = (room.raw && room.raw.measuredColor) || {};
-        const part = k => (okLab(mc[k]) && okHex(mc[k].hex)) ? { L: mc[k].L, a: mc[k].a, b: mc[k].b, hex: mc[k].hex.toUpperCase(), name: (k === 'wall' ? proNameOf(mc[k]) : '') || nameOf(k, mc[k]) } : null;
+        const part = k => (okLab(mc[k]) && okHex(mc[k].hex)) ? { L: mc[k].L, a: mc[k].a, b: mc[k].b, hex: mc[k].hex.toUpperCase(), name: matNameOf(k, mc[k]) } : null;
         // 가구 (66번): 종류 이름은 새 이름으로(예전 수납장·식탁도), 그대로 두는 가구를 앞에 (이불·러그는 뒤로, 같은 쪽끼리는 찍은 순서)
         const RC = window.RoomColor || {};
         const fur = (Array.isArray(mc.furniture) ? mc.furniture : []).filter(f => okLab(f) && okHex(f.hex))

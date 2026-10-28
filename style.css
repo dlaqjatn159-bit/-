@@ -2461,3 +2461,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 
 /* ===== 108번: "이렇게 들었습니다" 화면의 줄마다 깔린 종이색 면·테두리 선을 모두 뺌 (글자만) ===== */
 .heard-list, .heard-row, .heard-row.is-static { background: none !important; border: 0 !important; box-shadow: none; outline: 0; }
+
+/* ===== 113번: 벽·바닥 재료·광택 버튼 / 광택 있음이면 사진 모서리에 작은 표시만 ===== */
+.rc-mat, .cm-res ~ .rc-mat { margin-top: 0.7rem; padding-top: 0.7rem; gap: 0.4rem; }
+.rc-mat .fur-chips { gap: 4px 18px; }
+.rc-gloss-mark { position: absolute; right: 8px; top: 6px; font-size: 14px; color: #fff; text-shadow: 0 0 3px #0008; pointer-events: none; }

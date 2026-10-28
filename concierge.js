@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261140';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261141';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1624,6 +1624,36 @@
             : `<div class="jg-tile" style="flex:${n.area};background:${n.hex}"></div>`;
         return html(buildJogakboTree(data));
     }
+    // 113번: 눈으로 같은 색이면 한 조각으로 묶고, 그래도 조각이 많으면 가장 가까운 둘부터 합쳐 상한 이하로
+    //  벽·바닥은 종류를 넘어 묶고, 원단은 원단끼리만 묶음(원단이 주인공). 묶인 색은 면적 가중 평균, 면적은 합산
+    const JOGAK_DE = 3, JOGAK_MAX = 10;
+    function mergeCloseJogak(list) {
+        const RC = window.RoomColor;
+        if (!RC || !RC.rgbToLab || !RC.labToHex || typeof techDE2000 !== 'function') return list;
+        const labOf = hex => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''); return m ? RC.rgbToLab(parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)) : null; };
+        const nodes = list.map(b => ({ hex: b.hex, area: b.area, count: b.count, g: /^fab__/.test(b.key) ? 'fab' : 'surf', lab: labOf(b.hex) })).filter(n => n.lab);
+        if (nodes.length !== list.length) return list;
+        // 가장 가까운 쌍 (같은 무리끼리, limit 이하만 — sameOnly가 아니면 무리를 넘어서도)
+        const closest = (sameOnly, limit) => {
+            let best = null;
+            for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+                if (sameOnly && nodes[i].g !== nodes[j].g) continue;
+                const d = techDE2000(nodes[i].lab, nodes[j].lab);
+                if (d <= limit && (!best || d < best.d)) best = { i, j, d };
+            }
+            return best;
+        };
+        const join = p => {
+            const x = nodes[p.i], y = nodes[p.j], t = (x.area + y.area) || 1;
+            const lab = { L: (x.lab.L * x.area + y.lab.L * y.area) / t, a: (x.lab.a * x.area + y.lab.a * y.area) / t, b: (x.lab.b * x.area + y.lab.b * y.area) / t };
+            x.lab = lab; x.hex = RC.labToHex(lab.L, lab.a, lab.b); x.area += y.area; x.count += y.count;
+            nodes.splice(p.j, 1);
+        };
+        let p;
+        while ((p = closest(true, JOGAK_DE))) join(p);
+        while (nodes.length > JOGAK_MAX && (p = closest(true, Infinity) || closest(false, Infinity))) join(p);
+        return nodes.map(n => ({ hex: n.hex, area: n.area, count: n.count }));
+    }
     function buildJogakboTree(data) {
         const rooms = (data.rooms || []).filter(r => r.items && r.items.length);
         if (!rooms.length) return { hex: '#efe9df', area: 1 };
@@ -1694,7 +1724,7 @@
             }
         });
 
-        const planes = Array.from(buckets.values()).map((b, idx) => {
+        const planes = mergeCloseJogak(Array.from(buckets.values())).map((b, idx) => {
             // 같은 면적이 우연히 겹쳐도 기계적인 이등분이 되지 않도록 미세한 황금비 변주만 더함
             const area = Math.max(180, Math.round(b.area * (1 + ((idx * 37) % 5 - 2) * 0.03)));
             return { area, hex: b.hex };
