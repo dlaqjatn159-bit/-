@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261148';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261149';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261148';
+const REDAM_BUILD = '20261149';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -585,7 +585,7 @@ function collectConsultation() {
         rooms: src.map(r => ({
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
             roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
-            curtainConfig: roomCurtainConfig(r), ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null,      // 구성(커튼 줄에서 읽음)·이 공간만 다르게 (115번)
+            curtainConfig: roomCurtainConfig(r), ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 구성(커튼 줄에서 읽음)·이 공간만 다르게 (115번)
             measuredColor: r.measuredColor || null,          // 방 색 재기로 잰 벽·바닥 색 (사진은 저장 안 함)
             techGaps: (typeof colorTechGaps === 'function' && r.measuredColor) ? colorTechGaps(r.measuredColor) : null,      // 후보 0인 색 기법 (96번, 원단 들일 근거 · 화면엔 안 씀)
             width: r.width || null, height: r.height || null, spaceWidth: r.spaceWidth || null, spaceHeight: r.spaceHeight || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 중심 화면: 공간 추가 때 정한 크기·색 출처
@@ -2842,7 +2842,7 @@ function roomWithSurveyTaste(room, dirOverride) {
         out.linkDir = baseDir;
     } else if (pres === 'point') {
         out.colorStrength = 'point';
-        out.colorAccent = 'point';
+        out.colorAccent = room.pointTech || 'point';      // 120번: 고른 기법, 없으면 맡김(여러 기법 섞음)
         out.linkDir = baseDir;
     } else if (!out.linkDir && mc) {
         out.linkDir = baseDir;
@@ -3123,6 +3123,19 @@ function toggleRoomOwnTaste(roomId) {
     saveDraftTick();
 }
 
+// 공간마다 포인트 (120번): "이 공간만 다르게" 칸(ownPres = 'point')을 그대로 씀 — 저장·고객 화면 왕복이 이미 됨
+function roomPointOn(room) { return !!(room && room.ownTaste && room.ownPres === 'point'); }
+function toggleRoomPoint(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    if (roomPointOn(room)) { room.ownPres = null; room.ownTaste = !!room.ownTex; }
+    else { room.ownTaste = true; room.ownPres = 'point'; }
+    autoFillSurveyPicks(roomId);
+    renderRooms();
+    calculateAll();
+    saveDraftTick();
+}
+
 function addRoomFromSurvey() {
     addRoom();
     renderSurvey();
@@ -3194,6 +3207,10 @@ function renderSurvey() {
     const texUrl = k => (typeof DevicePhotos !== 'undefined' && DevicePhotos.sceneUrl) ? (DevicePhotos.sceneUrl('tex', 'tex_' + k) || '') : '';
     const texImgs = { smooth: texUrl('smooth'), texture: texUrl('texture'), fluffy: texUrl('fluffy') };
 
+    // 120번: 포인트는 공간마다(공간 카드의 "포인트" 줄). 집 줄의 "포인트가 되게"는 공간이 하나뿐일 때만(이미 골라 둔 집은 그대로 보임)
+    const housePointBtn = rooms.length <= 1 || houseTaste.pres === 'point'
+        ? `<button type="button" class="survey-opt ${houseTaste.pres === 'point' ? 'on' : ''}" onclick="setHouseTaste('pres', 'point')">포인트가 되게</button>` : '';
+
     // 1. 우리 집 취향 렌더링
     houseBox.innerHTML = `
         <h2>우리 집</h2>
@@ -3202,7 +3219,7 @@ function renderSurvey() {
             <div class="survey-opts">
                 <button type="button" class="survey-opt ${houseTaste.pres === 'calm' ? 'on' : ''}" onclick="setHouseTaste('pres', 'calm')">조용히 스며들게</button>
                 <button type="button" class="survey-opt ${houseTaste.pres === 'weight' ? 'on' : ''}" onclick="setHouseTaste('pres', 'weight')">차분히 무게감 있게</button>
-                <button type="button" class="survey-opt ${houseTaste.pres === 'point' ? 'on' : ''}" onclick="setHouseTaste('pres', 'point')">포인트가 되게</button>
+                ${housePointBtn}
             </div>
         </div>
         <div class="survey-row">
@@ -3354,6 +3371,18 @@ function renderSurvey() {
                         <button type="button" class="survey-opt ${curtainConfig === 'blind' ? 'on' : ''}" onclick="setRoomCurtainConfig(${room.id}, 'blind')">블라인드</button>
                     </div>
                 </div>
+
+                ${roomCurtainConfig(room) !== 'sheer' ? `<div class="survey-row"><div class="k">포인트</div>
+                    <div class="survey-opts">
+                        <button type="button" class="survey-opt ${roomPointOn(room) ? 'on' : ''}" onclick="toggleRoomPoint(${room.id})">이 공간에 주기</button>
+                    </div>
+                </div>` : ''}
+                ${roomCurtainConfig(room) !== 'sheer' && (roomPointOn(room) || (!room.ownTaste && houseTaste.pres === 'point')) ? `<div class="survey-row"><div class="k">기법</div>
+                    <div class="survey-opts">
+                        ${(typeof pointTechOptions === 'function' ? pointTechOptions(room.measuredColor, roomCurtainConfig(room) === 'blind' ? '블라인드' : '겉지') : []).map(o => `<button type="button" class="survey-opt ${room.pointTech === o.key ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'pointTech', '${o.key}')">${o.term}</button>`).join('')}
+                        <button type="button" class="survey-opt dim ${!room.pointTech ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'pointTech', null)">맡김</button>
+                    </div>
+                </div>` : ''}
 
                 <button type="button" class="survey-quiet" onclick="toggleRoomOwnTaste(${room.id})">${ownTaste ? '집 취향 따르기' : '이 공간만 다르게'}</button>
                 <div class="survey-own ${ownTaste ? 'on' : ''}">
@@ -5786,7 +5815,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 mood: r.mood || "soft_warm",
                 wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,      // 강도·갈래 (98번)
                 roomType: r.roomType || null,
-                lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
+                lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 measuredColor: r.measuredColor || null,
                 width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261148';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261149';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -574,7 +574,7 @@ function calculateFabricMatchScore(fabric, room, category) {
     //  → 색 잇기(Lab)·90번 분위기·91번 보정이 맡음. 딥 +4가 색 잇기 '벽에'를 골라도 차콜을 밀어 올렸음
 
     // 분위기: 고객이 직접 고른 경우 더 크게 반영 (포인트 겉지는 분위기 점수 생략 — 98·116번)
-    if (!(category === '겉지' && room.colorStrength === 'point')) {
+    if (!((category === '겉지' || category === '블라인드') && pointSideOf(room, category))) {      // 120번: 포인트 블라인드도
         if (fMood === targetMood) {
             score += wantMood ? 6 : 4;
         } else {
@@ -734,8 +734,8 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
         if (msg) { if (!parts.includes(msg)) parts.unshift(msg); said.unshift(msg); }
     }
     // 색 하나 더 (98·116번): 손님이 고른 포인트 방향에 맞는 겉지면 맨 앞에
-    if (category === '겉지' && room.colorStrength === 'point' && room.colorAccent && typeof colorPlanFits === 'function' && colorPlanFits(fabric, room, category)) {
-        const msg = { value: '벽보다 짙게 차분한 무게를 잡는 색',      // 103번: 무게감 답은 '포인트'라 부르지 않음
+    if (pointSideOf(room, category) && typeof colorPlanFits === 'function' && colorPlanFits(fabric, room, category)) {      // 120번: 블라인드 포인트도
+        const msg = POINT_TECH_SAY[room.colorAccent] || { value: '벽보다 짙게 차분한 무게를 잡는 색',      // 120번: 고른 기법이면 용어 + 풀이      // 103번: 무게감 답은 '포인트'라 부르지 않음
         color: '공간에 색 하나를 더하는 포인트', point: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트', opp: '공간의 온도를 살짝 바꾸는 포인트' }[room.colorAccent];
         if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
@@ -780,9 +780,19 @@ function recommendComposition(room) {
 
 // 추천 3개 고르기: 점수 순서는 그대로 지키고, "점수가 같을 때만" 아직 안 나온 책자를 먼저 보여줌
 // (예전에는 동점이면 엑셀 순서대로 나와 포아 POA1·2·3처럼 같은 책자만 반복됨)
-function pickShowcase(ranked, n) {
+// spread (120번): 포인트 자리면 서로 다른 색 계열이 먼저 — 손님이 3장에서 포인트 색을 눈으로 고름
+function showcaseHue(e) {
+    const c = e && e.best && e.best.color ? getFabricColors(e.f.id).find(x => x.name === e.best.color) : null;
+    return c && typeof c.a === 'number' && typeof c.b === 'number' ? hueGroupOf(c.a, c.b) : null;
+}
+function pickShowcase(ranked, n, spread) {
     const out = [], rest = ranked.slice();
     while (out.length < n && rest.length) {
+        if (spread && out.length) {
+            const used = new Set(out.map(showcaseHue).filter(Boolean));
+            const j = rest.findIndex(e => e.fit !== false && showcaseHue(e) && !used.has(showcaseHue(e)));
+            if (j >= 0) { out.push(rest.splice(j, 1)[0]); continue; }
+        }
         const top = rest[0].best.score;
         const used = new Set(out.map(e => e.f.book));
         let i = rest.findIndex(e => e.best.score === top && !used.has(e.f.book));
@@ -1324,8 +1334,8 @@ function colorTechCounts(mc, cfg) {
         }
         return hit;
     }
-    const cats = { drape: '겉지', sheer: '속지' }, res = {};
-    keys.forEach(k => { res[k] = { drape: [], sheer: [] }; });
+    const cats = { drape: '겉지', sheer: '속지', blind: '블라인드' }, res = {};      // 120번: 블라인드 포인트 색도 같은 표로
+    keys.forEach(k => { res[k] = { drape: [], sheer: [], blind: [] }; });
     // 속지 따로 (101번 → 102번): 화이트 속지만 어느 집에나 맞는 바탕이라 따로 셈 · 색 있는 씨스루('많이 비침')는 기법 표에 넣음
     const sheerWhite = [], sheerSee = [];      // sheerSee: 기법 표에 넣은 색 있는 씨스루 (잰 값 눈 확인용)
     Object.keys(cats).forEach(side => {
@@ -1341,7 +1351,7 @@ function colorTechCounts(mc, cfg) {
     });
     const fabricsOf = list => new Set(list.map(x => x.id)).size;
     const rows = COLOR_TECH_ROWS.filter(([k]) => keys.includes(k)).map(([k, n]) => ({
-        key: k, name: n, drape: res[k].drape, sheer: res[k].sheer,
+        key: k, name: n, drape: res[k].drape, sheer: res[k].sheer, blind: res[k].blind,
         drapeFabrics: fabricsOf(res[k].drape), sheerFabrics: fabricsOf(res[k].sheer)
     }));
     return { gray, house, neutralDir, ref, rows, sheerWhite, sheerSee, cfg: T };
@@ -1361,16 +1371,46 @@ function colorTechGaps(mc) {
 //  - 색 하나 더('point' + colorAccent): 그 기법(96번 colorTechCounts)의 겉지 색만. 속지·블라인드는 바탕(거르지 않음)
 //  - 맞는 색이 없는 원단은 버리지 않고 뒤로 (3장이 안 차면 기존 추천으로 채움)
 // ==============================================================
-const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog', 'sat'], warm: ['warm'], cool: ['cool'], opp: ['opp'] };      // opp = 뉴트럴 집 반대 온도 (101번, '색 하나 더'에만)
+const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog', 'sat'], warm: ['warm'], cool: ['cool'], opp: ['opp'],      // opp = 뉴트럴 집 반대 온도 (101번, '색 하나 더'에만)
+    tint: ['tint'], analog: ['analog'], sat: ['sat'], split: ['split'], comp: ['comp'] };      // 120번: 손님이 고른 기법 하나
+// 포인트 기법 (120번): 손님 화면 답은 용어 그대로, 순한 것부터. 이유 문장은 용어 + 풀이
+const POINT_TECH_TERM = { tint: '톤인톤', analog: '유사색', sat: '채도 대비', split: '분열보색', comp: '보색', opp: '반대 온도', warm: '웜 포인트', cool: '쿨 포인트' };
+const POINT_TECH_SAY = {
+    tint: '톤인톤 · 집과 같은 차분함은 지키고 색만 살짝 바꾼 색',
+    analog: '유사색 · 집 색 바로 옆이라 어울리면서도 새로워 보이는 색',
+    sat: '채도 대비 · 같은 계열을 더 또렷하게 써서 중심을 잡는 색',
+    split: '분열보색 · 집 색 맞은편의 바로 옆이라 생기는 살리고 부딪힘은 줄인 색',
+    comp: '보색 · 집 색의 맞은편이라 가장 또렷하게 눈길을 모으는 색',
+    opp: '반대 온도 · 집과 반대 온도로 공간의 온도를 살짝 바꾸는 색',
+    warm: '웜 포인트 · 흰색·회색 집에 온기를 더하는 따뜻한 색',
+    cool: '쿨 포인트 · 흰색·회색 집에 맑은 기운을 더하는 차가운 색'
+};
+// 이 공간에서 고를 수 있는 기법 (후보 원단이 있는 것만). category: '겉지' | '블라인드'
+function pointTechOptions(mc, category) {
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    if (!r) return [];
+    const side = category === '블라인드' ? 'blind' : 'drape';
+    const order = r.gray ? ['tint', 'warm', 'cool', 'sat'] : (r.house === 'neutral' ? ['tint', 'opp'] : ['tint', 'analog', 'sat', 'split', 'comp']);
+    return order.filter(k => { const row = r.rows.find(x => x.key === k); return row && (row[side] || []).length; }).map(k => ({ key: k, term: POINT_TECH_TERM[k] }));
+}
 const HARMONY_RANGE = 20;       // 색 잇기 점수가 0이 되는 거리(LINK_RANGE)와 같음
+// 포인트 자리 (120번): 공간마다 정함. 그 공간의 겉지 또는 블라인드(공간 하나에는 둘 중 하나만 들어감). 'value'(무게감)는 겉지만
+function pointSideOf(room, category) {
+    if (!room || room.colorStrength !== 'point' || !room.colorAccent) return false;
+    if (category === '겉지') return true;
+    if (category === '블라인드') return room.colorAccent !== 'value';
+    return false;
+}
 function colorPlanMode(room, category) {
     if (!room || !room.measuredColor) return null;
-    if (room.colorStrength === 'point') return (room.colorAccent && category === '겉지') ? 'point' : null;
+    if (room.colorStrength === 'point') return pointSideOf(room, category) ? 'point' : null;
     return room.linkDir ? 'harmony' : null;
 }
 let colorPointMemo = { key: '', t: 0, set: null };
-function colorPointSet(mc, accent) {
-    const key = JSON.stringify([mc.wall, mc.floor, mc.bridge, mc.bridgeK, mc.furniture, accent]);
+function colorPointSet(mc, accent, side) {
+    side = side || 'drape';
+    const key = JSON.stringify([mc.wall, mc.floor, mc.bridge, mc.bridgeK, mc.furniture, accent, side]);
     if (colorPointMemo.key === key && Date.now() - colorPointMemo.t < 5000) return colorPointMemo.set;      // 한 화면 그리는 동안만 기억
     const set = new Set();
     let keys = COLOR_ACCENT_TECHS[accent] || [];
@@ -1379,7 +1419,7 @@ function colorPointSet(mc, accent) {
     if (r && accent === 'point') {
         keys = r.gray ? ['warm', 'cool'] : (r.house === 'neutral' ? ['opp', 'tint'] : ['comp', 'split', 'analog', 'sat', 'tint']);
     }
-    if (r) r.rows.filter(x => keys.includes(x.key)).forEach(x => x.drape.forEach(c => set.add(c.id + '__' + c.color)));
+    if (r) r.rows.filter(x => keys.includes(x.key)).forEach(x => (x[side] || []).forEach(c => set.add(c.id + '__' + c.color)));
     colorPointMemo = { key, t: Date.now(), set };
     return set;
 }
@@ -1387,7 +1427,7 @@ function colorPlanAllows(fabric, c, room, category) {
     const mode = colorPlanMode(room, category);
     if (!mode) return true;
     if (!colorHasLab(c)) return false;
-    if (mode === 'point') return colorPointSet(room.measuredColor, room.colorAccent).has(fabric.id + '__' + c.name);
+    if (mode === 'point') return colorPointSet(room.measuredColor, room.colorAccent, category === '블라인드' ? 'blind' : 'drape').has(fabric.id + '__' + c.name);
     const d = roomLinkDistance({ L: c.light, a: c.a, b: c.b }, room.measuredColor, room.linkDir);
     return d != null && d < HARMONY_RANGE;
 }

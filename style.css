@@ -2989,3 +2989,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .house-comp .heard-row b { font-family: var(--serif); font-size: var(--t-body); color: var(--ink); }
 .house-comp .heard-row em { font-style: normal; font-family: var(--sans); font-size: var(--t-small); color: var(--muted); }
 .house-comp .hc-nm { min-width: 5.5em; }
+/* 공간마다 포인트 (120번): 구성 줄 오른쪽 작은 글자 버튼. 켜면 흙빛 + 밑줄 */
+.house-comp .hc-line { display: flex; align-items: stretch; gap: 8px; }
+.house-comp .hc-line .heard-row { flex: 1; min-width: 0; }
+.house-comp .hc-point { flex: none; margin-bottom: 8px; padding: 0 16px; border: 0; background: #f4efe7; font-family: var(--sans); font-size: var(--t-small); color: var(--muted); cursor: pointer; }
+.house-comp .hc-point.is-on { color: var(--earth); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
