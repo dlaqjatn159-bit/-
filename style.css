@@ -2310,7 +2310,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .photo-intro.out { opacity: 0; pointer-events: none; }
 .photo-intro-q { display: inline-block; animation: piFade var(--pi-next, 0.35s) ease both; }
 .photo-intro.is-first .photo-intro-q { animation: piLight var(--pi-first, 1.2s) ease both; }
-@keyframes piLight { 0% { opacity: 0; color: #fff; filter: blur(10px); text-shadow: 0 0 40px #fff; } 45% { opacity: 1; color: #e6b597; filter: blur(3px); text-shadow: 0 0 18px #fff; } 100% { opacity: 1; color: #2b221a; filter: none; text-shadow: none; } }
+@keyframes piLight { from { opacity: 0; } to { opacity: 1; } }      /* 색·움직임 없이 서서히만 (끊겨 보이던 것) */
 @keyframes piFade { from { opacity: 0; } to { opacity: 1; } }
 .photo-veil { position: absolute; inset: 0; z-index: 56; background: var(--paper-sheet); opacity: 0; pointer-events: none; transition: opacity var(--pi-veil, 0.45s) ease; }
 .photo-veil.on { opacity: 1; }
