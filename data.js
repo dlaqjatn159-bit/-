@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261141';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261144';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -802,7 +802,8 @@ const SCENE_PHOTOS = {
     mood: ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'],
     feel: ['feel_smooth', 'feel_textured', 'feel_cozy'],
     comp: ['comp_double', 'comp_sheer', 'comp_drape', 'comp_blind'],
-    blind: ['blind_combi', 'blind_roll', 'blind_wood', 'blind_alu']
+    blind: ['blind_combi', 'blind_roll', 'blind_wood', 'blind_alu'],
+    tex: ['tex_smooth', 'tex_texture', 'tex_fluffy']      // 겉지 결 접사 (115번): 원단 사진이라 저장소에 두지 않고 기기에만(53번). 없으면 상담란은 글자만
 };
 // 장면 사진 주소: 기기 사진 → 저장소 기본값
 function scenePhotoUrl(folder, name) {
@@ -863,7 +864,7 @@ const DevicePhotos = (() => {
         // 분위기·속지 느낌·창 구성·블라인드 종류 장면 사진(34·38번): 이름이 정해진 사진들. 키는 "mood/mood_01_cozy"처럼 폴더/이름
         const folder = Object.keys(SCENE_PHOTOS).find(k => SCENE_PHOTOS[k].includes(stem.toLowerCase()));
         if (folder) return { scene: folder + '/' + stem.toLowerCase() };
-        if (/^(mood|feel|comp|blind)_/i.test(stem)) return { why: '장면 사진 이름이 아님(mood_01_cozy~mood_06_bright, feel_*, comp_*, blind_*)' };
+        if (/^(mood|feel|comp|blind|tex)_/i.test(stem)) return { why: '장면 사진 이름이 아님(mood_01_cozy~mood_06_bright, feel_*, comp_*, blind_*, tex_smooth·tex_texture·tex_fluffy)' };
         const at = stem.lastIndexOf('__');
         const id = (at > 0 ? stem.slice(0, at) : stem).trim();
         const color = at > 0 ? normalizeColorName(stem.slice(at + 2)) : '';

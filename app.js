@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261141';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261144';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261141';
+const REDAM_BUILD = '20261144';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -135,7 +135,7 @@ function handleBack() {
         const pane = (document.querySelector('.staff-pane.on') || {}).id || '';
         if (pane && pane !== 'fabricTab-find') { showFabricTab('find'); return false; }
     }
-    if (view && view !== 'view-consult') { showStaffView('consult'); return false; }
+    if (view && view !== 'view-survey' && view !== 'view-consult') { showStaffView('survey'); return false; }
     // 5. 상담 화면
     return true;
 }
@@ -160,6 +160,7 @@ function switchMainTrack(track) {
         if (expressFee) expressFee.value = globalInstallFee;
         renderSideCust();
         renderRooms();
+        renderSurvey();
         renderDbTable();
         updateBookFilterOptions();      // 책자 고르기에 공급처(회사) 이름 (10-17)
         updatePrivateStatus();
@@ -185,7 +186,7 @@ function enterStaffMode() {
     if (window.concierge) window.concierge.syncToMaster();   // 고객이 구성한 내용을 직원 화면으로 가져옴
     Costing.state.enabled = Costing.hasData();
     setFinderOnly(false);
-    showStaffView('consult');
+    showStaffView('survey');
     switchMainTrack('express');
     startIdleWatch();
 }
@@ -222,6 +223,7 @@ function showStaffView(view) {
     document.querySelectorAll('.staff-nav button').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     document.querySelectorAll('.staff-view').forEach(s => s.classList.toggle('on', s.id === 'view-' + view));
     if (view !== 'fabric') hideDbPrices();
+    if (view === 'survey') renderSurvey();      // 상담란 (설문) 렌더링 (115번)
     if (view === 'fabric') renderFinder();      // 분류·색상을 고친 뒤 돌아와도 새 값으로 보이게, 열 때마다 다시 그림
     if (view === 'test') openFakeGuest();
     if (view === 'colorguide') openColorGuide();
@@ -367,10 +369,14 @@ function startNewConsultationConfirmed() {
     const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
     const vat = document.getElementById('expressVatOption'); if (vat) vat.value = globalVatOption;
     if (window.concierge) window.concierge.resetAll();
+    houseTaste = emptyHouseTaste();
     const expressCust = document.getElementById('expressCustName'); if (expressCust) expressCust.value = '';
     const expressPhone = document.getElementById('expressCustPhone'); if (expressPhone) expressPhone.value = '';
+    const surveyCust = document.getElementById('surveyCustName'); if (surveyCust) surveyCust.value = '';
+    const surveyPhone = document.getElementById('surveyCustPhone'); if (surveyPhone) surveyPhone.value = '';
     renderSideCust();
     renderRooms();
+    renderSurvey();
     calculateAll();
     renderHistory();
     showToast('새 상담을 시작합니다.');
@@ -575,9 +581,11 @@ function collectConsultation() {
     return {
         name: ((document.getElementById('custName') || {}).value || '').trim(),
         phone: ((document.getElementById('custPhone') || {}).value || '').trim(),
+        houseTaste: Object.assign({}, houseTaste),      // 우리 집 취향 (115번)
         rooms: src.map(r => ({
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
             roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
+            curtainConfig: roomCurtainConfig(r), ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null,      // 구성(커튼 줄에서 읽음)·이 공간만 다르게 (115번)
             measuredColor: r.measuredColor || null,          // 방 색 재기로 잰 벽·바닥 색 (사진은 저장 안 함)
             techGaps: (typeof colorTechGaps === 'function' && r.measuredColor) ? colorTechGaps(r.measuredColor) : null,      // 후보 0인 색 기법 (96번, 원단 들일 근거 · 화면엔 안 씀)
             width: r.width || null, height: r.height || null, spaceWidth: r.spaceWidth || null, spaceHeight: r.spaceHeight || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 중심 화면: 공간 추가 때 정한 크기·색 출처
@@ -666,6 +674,8 @@ function applySnapshot(snap) {
         curtains: r.curtains.map(c => Object.assign({}, c, { id: curtainIdCounter++ }))
     }) : Object.assign({}, r, { curtains: [] }));
     rooms = ordered.filter(r => r.curtains.length);
+    houseTaste = Object.assign(emptyHouseTaste(), snap.houseTaste || {});      // 우리 집 취향 (115번)
+    rooms.forEach(migrateSurveyRoom);
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
     jogakboSeed = (Number.isInteger(snap.jogakboSeed) && snap.jogakboSeed > 0) ? snap.jogakboSeed : newJogakboSeed();      // 옛 상담은 새 번호 (79번)
@@ -675,8 +685,8 @@ function applySnapshot(snap) {
     consultOutcome = (snap.outcome && OUTCOME_LABEL[snap.outcome.result]) ? snap.outcome : null;      // 84번
     finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-    set('custName', snap.name || ''); set('expressCustName', snap.name || '');
-    set('custPhone', snap.phone || ''); set('expressCustPhone', snap.phone || '');
+    set('custName', snap.name || ''); set('expressCustName', snap.name || ''); set('surveyCustName', snap.name || '');
+    set('custPhone', snap.phone || ''); set('expressCustPhone', snap.phone || ''); set('surveyCustPhone', snap.phone || '');
     set('expressInstallFee', globalInstallFee); set('expressVatOption', globalVatOption);
     renderSideCust();
     calculateAll();
@@ -1135,7 +1145,7 @@ function renderDevicePhotos() {
     if (clearBtn) clearBtn.hidden = !keys.length;
     if (!listEl) return;
     const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    const groups = {}, scenes = { mood: [], feel: [], comp: [], blind: [] };
+    const groups = {}, scenes = { mood: [], feel: [], comp: [], blind: [], tex: [] };
     keys.forEach(k => {
         const sl = k.indexOf('/');
         if (sl > 0 && scenes[k.slice(0, sl)]) { scenes[k.slice(0, sl)].push(k); return; }      // 분위기·속지 느낌·창 구성·블라인드 종류 사진 (34·38번)
@@ -1143,7 +1153,7 @@ function renderDevicePhotos() {
     });
     const num = s => /^\d+$/.test(s) ? Number(s) : Infinity;
     const chip = (key, label) => `<button type="button" class="dev-photo-chip" title="이 사진 지우기" onclick="removeDevicePhoto('${esc(key)}')">${esc(label)}<i aria-hidden="true">×</i></button>`;
-    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진', comp: '창 구성 사진', blind: '블라인드 종류 사진' };
+    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진', comp: '창 구성 사진', blind: '블라인드 종류 사진', tex: '겉지 결 사진' };
     const sceneRows = Object.keys(scenes).filter(k => scenes[k].length).map(k => {
         const order = SCENE_PHOTOS[k];
         const chips = scenes[k].sort((a, b) => order.indexOf(a.split('/')[1]) - order.indexOf(b.split('/')[1])).map(key => chip(key, key.split('/')[1])).join('');
@@ -2442,10 +2452,13 @@ function getNextCurtainLabel(room, presetType) {
 function nextRoomName() {
     const used = new Set(rooms.map(r => r.name));
     if (!used.has('거실')) return '거실';
-    // 번호는 항상 "가장 큰 번호 + 1" (지운 번호를 다시 쓰지 않아 목록 순서가 뒤섞이지 않음)
+    // 번호는 항상 "가장 큰 번호 + 1" (지운 번호를 다시 쓰지 않아 목록 순서가 뒤섞이지 않음, '방 1, 2, 3')
     let max = 0;
-    rooms.forEach(r => { const m = /^작은방 (\d+)$/.exec(r.name); if (m) max = Math.max(max, parseInt(m[1], 10)); });
-    return `작은방 ${max + 1}`;
+    rooms.forEach(r => {
+        const m = /^(?:방|작은방)\s*(\d+)$/.exec(r.name);
+        if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return `방 ${max + 1}`;
 }
 
 function addRoom() {
@@ -2464,6 +2477,7 @@ function addRoom() {
     };
     rooms.push(newRoom);
     renderRooms();
+    renderSurvey();
     calculateAll();
     showToast(`[${newRoom.name}] 공간이 추가되었습니다.`);
 }
@@ -2474,6 +2488,7 @@ function removeRoom(roomId) {
     rooms = rooms.filter(r => r.id !== roomId);
     collapsedRooms.delete(roomId);
     renderRooms();
+    renderSurvey();
     calculateAll();
     showToast("공간이 삭제되었습니다.");
 }
@@ -2576,6 +2591,8 @@ function updateRoomName(roomId, name) {
     if (room) {
         room.name = name;
         calculateAll();
+        renderSurvey();
+        renderSideCust();
     }
 }
 // 직원 화면 공간 카드의 창 방향 (35번): 고객 화면과 같은 규칙(최대 2개, 반대쪽은 못 고름, 다시 누르면 꺼짐)
@@ -2702,6 +2719,359 @@ function curtainOptionSummary(c) {
     return '· ' + [INSTALL_TYPE_LABELS[c.installType] || c.hwName || '', c.shapeFee > 0 ? '형상기억' : '', c.leadBand ? '리드밴드' : '', c.hotelFit ? '호텔핏' : ''].filter(Boolean).join(', ');
 }
 
+
+// ==============================================================
+// 직원 화면: 상담란 (설문 형식, 115번)
+// ==============================================================
+
+// 우리 집 취향 (집에 한 번). 답하기 전에는 비어 있음(null) — 쌓이는 자료에서 "안 물음"과 "고름"을 가르기 위해 (115번 고침)
+function emptyHouseTaste() { return { pres: null, tex: null, sheer: null }; }
+var houseTaste = emptyHouseTaste();
+//  pres: 'calm' (조용히 스며들게) | 'weight' (차분히 무게감 있게) | 'point' (포인트가 되게)
+//  tex: 'smooth' (매끈한) | 'texture' (결이 살아 있는) | 'fluffy' (보송한)
+//  sheer: 'smooth' (매끈하게) | 'texture' (결 있게) | 'thick' (도톰하게) | 'unknown' (잘 모르겠어요)
+// 115번 첫 커밋(푸시 전)에서 쓰던 칸 이름·값을 고객 화면과 같은 칸으로 옮김 (임시 저장본이 남아 있을 때만)
+function migrateSurveyRoom(r) {
+    if (!r) return r;
+    if (r.blockLight && !r.lightBlock) r.lightBlock = { allow: 'light', mid: 'soft', dark: 'dark' }[r.blockLight] || null;
+    if (r.privacy === 'ok') r.privacy = 'open'; else if (r.privacy === 'mid') r.privacy = 'some';
+    const lv = { strong: 'high', mid: 'mid', low: 'low' }[r.sunlight];
+    if (lv) { r.lightLevel = lv; r.sunlight = 'south'; }
+    delete r.blockLight; delete r.curtainConfig;
+    ['wallMaterial', 'wallSheen', 'wallPatternStrength', 'floorMaterial', 'floorSheen', 'floorPatternStrength'].forEach(k => delete r[k]);
+    return r;
+}
+
+function syncCustNameFromSurvey(val) {
+    const v = (val || '').trim();
+    const cust = document.getElementById('custName'); if (cust) cust.value = v;
+    const exp = document.getElementById('expressCustName'); if (exp) exp.value = v;
+    renderSideCust();
+    saveDraftTick();
+}
+function syncCustPhoneFromSurvey(val) {
+    const v = formatPhone(val || '');
+    const phone = document.getElementById('surveyCustPhone'); if (phone) phone.value = v;
+    const cust = document.getElementById('custPhone'); if (cust) cust.value = v;
+    const exp = document.getElementById('expressCustPhone'); if (exp) exp.value = v;
+    saveDraftTick();
+}
+
+function setHouseTaste(key, val) {
+    houseTaste[key] = val;
+    renderSurvey();
+    saveDraftTick();
+}
+
+function toggleSurveyWindowDir(roomId, dirCode) {
+    toggleRoomWindowDir(roomId, dirCode);
+    renderSurvey();
+}
+
+function setRoomSurveyField(roomId, field, val) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    room[field] = val;
+    renderSurvey();
+    saveDraftTick();
+}
+
+// 구성: 커튼 줄에서 바로 읽음 (115번 고침 — 따로 저장한 값과 실제 줄이 어긋나지 않게)
+function curtainGroupOf(c) { return c.presetType === 'sheer' ? 'sheer' : (c.presetType === 'blind' ? 'blind' : 'drape'); }
+function roomCurtainConfig(room) {
+    const g = new Set((room.curtains || []).map(curtainGroupOf));
+    if (g.has('blind') && g.size === 1) return 'blind';
+    if (g.has('drape') && g.has('sheer')) return 'both';
+    if (g.size === 1 && g.has('sheer')) return 'sheer';
+    if (g.size === 1 && g.has('drape')) return 'drape';
+    return g.size ? 'mixed' : null;
+}
+const CURTAIN_CONFIG_GROUPS = { both: ['drape', 'sheer'], drape: ['drape'], sheer: ['sheer'], blind: ['blind'] };
+
+// 구성 버튼: 빠진 종류는 견적란 "품목 추가"와 같은 방법으로 더하고, 남는 줄은 사장님께 묻고 나서만 지움 (115번 고침)
+function setRoomCurtainConfig(roomId, cfg) {
+    const room = rooms.find(r => r.id === roomId);
+    const want = CURTAIN_CONFIG_GROUPS[cfg];
+    if (!room || !want) return;
+    const extra = room.curtains.filter(c => !want.includes(curtainGroupOf(c)));
+    if (extra.length && !confirm(`${extra.map(c => c.label).join(', ')} 줄을 지웁니다. 고른 원단도 함께 지워집니다. 계속할까요?`)) return;
+    room.curtains = room.curtains.filter(c => want.includes(curtainGroupOf(c)));
+    want.forEach(k => {
+        if (room.curtains.some(c => curtainGroupOf(c) === k)) return;
+        addCurtainToRoom(roomId, k);
+        const added = room.curtains[room.curtains.length - 1];
+        if (added && room.width && room.height) { added.width = room.width; added.height = room.height; }
+    });
+    room.curtainConfig = cfg;
+    renderRooms();      // renderRooms가 상담란도 다시 그림
+    calculateAll();
+    saveDraftTick();
+}
+
+function toggleRoomOwnTaste(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    room.ownTaste = !room.ownTaste;
+    if (room.ownTaste) {
+        if (!room.ownPres) room.ownPres = houseTaste.pres;
+        if (!room.ownTex) room.ownTex = houseTaste.tex;
+    }
+    renderSurvey();
+    saveDraftTick();
+}
+
+function addRoomFromSurvey() {
+    addRoom();
+    renderSurvey();
+}
+
+// 상담란 치수 팝업
+var surveySizeEditingRoomId = null;
+function openSurveySizeModal(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    surveySizeEditingRoomId = roomId;
+    const w = room.width || (room.curtains[0] && room.curtains[0].width) || 300;
+    const h = room.height || (room.curtains[0] && room.curtains[0].height) || 230;
+    const title = document.getElementById('surveySizeModalTitle');
+    if (title) title.textContent = `${room.name} 치수 입력`;
+    const inW = document.getElementById('surveySizeWidth');
+    const inH = document.getElementById('surveySizeHeight');
+    if (inW) inW.value = w;
+    if (inH) inH.value = h;
+    const modal = document.getElementById('surveySizeModal');
+    if (modal) modal.classList.remove('hidden');
+    if (inW) { inW.focus(); inW.select(); }
+}
+function closeSurveySizeModal() {
+    surveySizeEditingRoomId = null;
+    const modal = document.getElementById('surveySizeModal');
+    if (modal) modal.classList.add('hidden');
+}
+function saveSurveySizeModal() {
+    if (surveySizeEditingRoomId == null) return;
+    const room = rooms.find(r => r.id === surveySizeEditingRoomId);
+    if (!room) { closeSurveySizeModal(); return; }
+    const inW = document.getElementById('surveySizeWidth');
+    const inH = document.getElementById('surveySizeHeight');
+    const w = Math.max(10, parseInt((inW || {}).value, 10) || 300);
+    const h = Math.max(10, parseInt((inH || {}).value, 10) || 230);
+    // 공간 크기를 따라가던 줄(예전 크기와 같은 줄)만 새 크기로. 창이 여럿이라 크기가 다른 줄은 그대로 (115번 고침)
+    const oldW = room.width || (room.curtains[0] && room.curtains[0].width);
+    const oldH = room.height || (room.curtains[0] && room.curtains[0].height);
+    let kept = 0;
+    room.curtains.forEach(c => {
+        if (c.width === oldW && c.height === oldH) { c.width = w; c.height = h; }
+        else kept++;
+    });
+    room.width = w;
+    room.height = h;
+    closeSurveySizeModal();
+    renderRooms();      // 상담란도 함께 다시 그림
+    calculateAll();
+    saveDraftTick();
+    showToast(`[${room.name}] 크기를 ${w} × ${h} cm로 저장했습니다.` + (kept ? ` 크기가 다른 줄 ${kept}개는 그대로 두었습니다.` : ''));
+}
+
+function renderSurvey() {
+    const houseBox = document.getElementById('surveyHouseBlock');
+    const roomsGrid = document.getElementById('surveyRoomsGrid');
+    if (!houseBox || !roomsGrid) return;
+
+    // 고객명/연락처 입력창 동기화
+    const sName = document.getElementById('surveyCustName');
+    const cName = document.getElementById('custName');
+    if (sName && cName && sName.value !== cName.value) sName.value = cName.value;
+    const sPhone = document.getElementById('surveyCustPhone');
+    const cPhone = document.getElementById('custPhone');
+    if (sPhone && cPhone && sPhone.value !== cPhone.value) sPhone.value = cPhone.value;
+
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    // 겉지 결 접사 사진: 기기에 넣은 사진만 씀 (원단 사진은 공개 저장소에 두지 않음 — 53번. 사진이 없으면 글자만)
+    const texUrl = k => (typeof DevicePhotos !== 'undefined' && DevicePhotos.sceneUrl) ? (DevicePhotos.sceneUrl('tex', 'tex_' + k) || '') : '';
+    const texImgs = { smooth: texUrl('smooth'), texture: texUrl('texture'), fluffy: texUrl('fluffy') };
+
+    // 1. 우리 집 취향 렌더링
+    houseBox.innerHTML = `
+        <h2>우리 집</h2>
+        <div class="survey-row">
+            <div class="k">커튼은</div>
+            <div class="survey-opts">
+                <button type="button" class="survey-opt ${houseTaste.pres === 'calm' ? 'on' : ''}" onclick="setHouseTaste('pres', 'calm')">조용히 스며들게</button>
+                <button type="button" class="survey-opt ${houseTaste.pres === 'weight' ? 'on' : ''}" onclick="setHouseTaste('pres', 'weight')">차분히 무게감 있게</button>
+                <button type="button" class="survey-opt ${houseTaste.pres === 'point' ? 'on' : ''}" onclick="setHouseTaste('pres', 'point')">포인트가 되게</button>
+            </div>
+        </div>
+        <div class="survey-row">
+            <div class="k">겉지 결</div>
+            <div class="survey-opts">
+                <button type="button" class="survey-opt tex ${houseTaste.tex === 'smooth' ? 'on' : ''}" onclick="setHouseTaste('tex', 'smooth')">
+                    ${texImgs.smooth ? `<img src="${texImgs.smooth}" alt="">` : ''}<span>매끈한</span>
+                </button>
+                <button type="button" class="survey-opt tex ${houseTaste.tex === 'texture' ? 'on' : ''}" onclick="setHouseTaste('tex', 'texture')">
+                    ${texImgs.texture ? `<img src="${texImgs.texture}" alt="">` : ''}<span>결이 살아 있는</span>
+                </button>
+                <button type="button" class="survey-opt tex ${houseTaste.tex === 'fluffy' ? 'on' : ''}" onclick="setHouseTaste('tex', 'fluffy')">
+                    ${texImgs.fluffy ? `<img src="${texImgs.fluffy}" alt="">` : ''}<span>보송한</span>
+                </button>
+            </div>
+        </div>
+        <div class="survey-row">
+            <div class="k">속지 결</div>
+            <div class="survey-opts">
+                <button type="button" class="survey-opt ${houseTaste.sheer === 'smooth' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'smooth')">매끈하게</button>
+                <button type="button" class="survey-opt ${houseTaste.sheer === 'texture' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'texture')">결 있게</button>
+                <button type="button" class="survey-opt ${houseTaste.sheer === 'thick' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'thick')">도톰하게</button>
+                <button type="button" class="survey-opt dim ${houseTaste.sheer === 'unknown' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'unknown')">잘 모르겠어요</button>
+            </div>
+        </div>
+    `;
+
+    // 2. 공간별 카드 렌더링
+    let roomsHtml = '';
+    rooms.forEach((room, idx) => {
+        const mc = room.measuredColor || {};
+        const RC = window.RoomColor || {};
+        const w = room.width || (room.curtains[0] && room.curtains[0].width) || 300;
+        const h = room.height || (room.curtains[0] && room.curtains[0].height) || 230;
+
+        // 벽·바닥·가구 색 묶음 (벽 바닥 하나로 묶기)
+        const hasWall = mc.wall && mc.wall.hex;
+        const hasFloor = mc.floor && mc.floor.hex;
+        let colorBundleHtml = '';
+
+        if (hasWall || hasFloor) {
+            const wName = hasWall ? ((RC.colorName && (RC.colorName('wall', mc.wall) || {}).name) || '벽지') : '';
+            const matText = (part, c) => { const m = c && c.mat; const nm = m && m.k && RC.matLabel ? RC.matLabel(part, m.k) : ''; return nm ? ` · ${nm}${m.g === 1 ? ' · 광택' : ''}` : ''; };      // 재료·광택 (113번, 잰 색 안의 mat)
+            const wMat = hasWall ? matText('wall', mc.wall) : '';
+            const fName = hasFloor ? ((RC.colorName && (RC.colorName('floor', mc.floor) || {}).name) || '바닥') : '';
+            const fMat = hasFloor ? matText('floor', mc.floor) : '';
+
+            let furChips = '';
+            if (Array.isArray(mc.furniture) && mc.furniture.length > 0) {
+                furChips = mc.furniture.filter(f => f && f.hex).map(f => {
+                    const fLabel = RC.furLabel ? RC.furLabel(f.n) : (f.n || '가구');
+                    return `<span class="survey-chip" title="가구 색"><b style="background:${f.hex}"></b>가구: ${esc(fLabel)}</span>`;
+                }).join('');
+            }
+
+            colorBundleHtml = `
+                <div class="survey-colors-bundle" onclick="RoomColor.open(${room.id})" title="방 색 수정하기 (벽·바닥·가구)">
+                    ${hasWall ? `<span class="survey-chip"><b style="background:${mc.wall.hex}"></b>벽: ${esc(wName)}${esc(wMat)}</span>` : ''}
+                    ${hasFloor ? `<span class="survey-chip"><b style="background:${mc.floor.hex}"></b>바닥: ${esc(fName)}${esc(fMat)}</span>` : ''}
+                    ${furChips}
+                </div>
+            `;
+        } else {
+            colorBundleHtml = `
+                <button type="button" class="survey-empty-chip" onclick="RoomColor.open(${room.id})" title="벽과 바닥 색을 함께 잽니다">
+                    <i class="fa-solid fa-camera text-xs"></i><span>방 색 재기 (벽·바닥)</span>
+                </button>
+            `;
+        }
+
+        // 고객 화면과 같은 칸·같은 값 (115번 고침): 햇살 = lightLevel(high·mid·low), 빛 가림 = lightBlock(light·soft·dark), 바깥 시선 = privacy(open·some·high)
+        const sunlight = room.lightLevel || null;
+        const dirs = windowDirOf(room.windowDir);
+        const blockLight = room.lightBlock || null;
+        const privacy = room.privacy || null;
+        const curtainConfig = roomCurtainConfig(room);
+        const ownTaste = !!room.ownTaste;
+        const ownPres = room.ownPres || null;
+        const ownTex = room.ownTex || null;
+
+        roomsHtml += `
+            <div class="survey-room">
+                <h2>
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <input type="text" value="${esc(room.name)}" onchange="updateRoomName(${room.id}, this.value)" placeholder="공간 이름">
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button type="button" class="size-btn" onclick="openSurveySizeModal(${room.id})" title="치수 수정">${w} × ${h} cm</button>
+                        <button type="button" class="survey-del-btn" onclick="removeRoom(${room.id})" title="공간 삭제">삭제</button>
+                    </div>
+                </h2>
+
+                <div class="survey-row"><div class="k">벽·바닥</div>
+                    <div class="survey-sw">${colorBundleHtml}</div>
+                </div>
+
+                <div class="survey-row"><div class="k">햇살</div>
+                    <div class="survey-opts">
+                        <button type="button" class="survey-opt ${sunlight === 'high' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'lightLevel', 'high')">강하게</button>
+                        <button type="button" class="survey-opt ${sunlight === 'mid' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'lightLevel', 'mid')">보통</button>
+                        <button type="button" class="survey-opt ${sunlight === 'low' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'lightLevel', 'low')">덜 들어요</button>
+                    </div>
+                </div>
+
+                <div class="survey-row"><div class="k">창 방향</div>
+                    <div class="survey-opts">
+                        <button type="button" class="survey-opt ${dirs.includes('E') ? 'on' : ''}" onclick="toggleSurveyWindowDir(${room.id}, 'E')">동</button>
+                        <button type="button" class="survey-opt ${dirs.includes('W') ? 'on' : ''}" onclick="toggleSurveyWindowDir(${room.id}, 'W')">서</button>
+                        <button type="button" class="survey-opt ${dirs.includes('S') ? 'on' : ''}" onclick="toggleSurveyWindowDir(${room.id}, 'S')">남</button>
+                        <button type="button" class="survey-opt ${dirs.includes('N') ? 'on' : ''}" onclick="toggleSurveyWindowDir(${room.id}, 'N')">북</button>
+                    </div>
+                </div>
+
+                <div class="survey-gap"></div>
+
+                <div class="survey-row"><div class="k">빛 가림</div>
+                    <div class="survey-opts">
+                        <button type="button" class="survey-opt ${blockLight === 'light' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'lightBlock', 'light')">들어와도 괜찮아요</button>
+                        <button type="button" class="survey-opt ${blockLight === 'soft' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'lightBlock', 'soft')">적당히</button>
+                        <button type="button" class="survey-opt ${blockLight === 'dark' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'lightBlock', 'dark')">완전히 어둡게</button>
+                    </div>
+                </div>
+
+                <div class="survey-row"><div class="k">바깥 시선</div>
+                    <div class="survey-opts">
+                        <button type="button" class="survey-opt ${privacy === 'open' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'privacy', 'open')">괜찮아요</button>
+                        <button type="button" class="survey-opt ${privacy === 'some' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'privacy', 'some')">조금</button>
+                        <button type="button" class="survey-opt ${privacy === 'high' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'privacy', 'high')">많이</button>
+                    </div>
+                </div>
+
+                <div class="survey-row"><div class="k">구성</div>
+                    <div class="survey-opts">
+                        <button type="button" class="survey-opt ${curtainConfig === 'both' ? 'on' : ''}" onclick="setRoomCurtainConfig(${room.id}, 'both')">겉지 + 속지</button>
+                        <button type="button" class="survey-opt ${curtainConfig === 'drape' ? 'on' : ''}" onclick="setRoomCurtainConfig(${room.id}, 'drape')">겉지만</button>
+                        <button type="button" class="survey-opt ${curtainConfig === 'sheer' ? 'on' : ''}" onclick="setRoomCurtainConfig(${room.id}, 'sheer')">속지만</button>
+                        <button type="button" class="survey-opt ${curtainConfig === 'blind' ? 'on' : ''}" onclick="setRoomCurtainConfig(${room.id}, 'blind')">블라인드</button>
+                    </div>
+                </div>
+
+                <button type="button" class="survey-quiet" onclick="toggleRoomOwnTaste(${room.id})">${ownTaste ? '집 취향 따르기' : '이 공간만 다르게'}</button>
+                <div class="survey-own ${ownTaste ? 'on' : ''}">
+                    <div class="survey-row"><div class="k">커튼은</div>
+                        <div class="survey-opts">
+                            <button type="button" class="survey-opt ${ownPres === 'calm' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'calm')">조용히 스며들게</button>
+                            <button type="button" class="survey-opt ${ownPres === 'weight' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'weight')">차분히 무게감 있게</button>
+                            <button type="button" class="survey-opt ${ownPres === 'point' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'point')">포인트가 되게</button>
+                        </div>
+                    </div>
+                    <div class="survey-row"><div class="k">겉지 결</div>
+                        <div class="survey-opts">
+                            <button type="button" class="survey-opt ${ownTex === 'smooth' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'smooth')">매끈한</button>
+                            <button type="button" class="survey-opt ${ownTex === 'texture' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'texture')">결이 살아 있는</button>
+                            <button type="button" class="survey-opt ${ownTex === 'fluffy' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'fluffy')">보송한</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    // 마지막 + 공간 추가 버튼 카드
+    roomsHtml += `
+        <button type="button" class="survey-addroom" onclick="addRoomFromSurvey()">
+            <i class="fa-solid fa-plus text-xl text-amber-800"></i>
+            <span>공간 추가</span>
+        </button>
+    `;
+
+    roomsGrid.innerHTML = roomsHtml;
+}
+
 function renderRooms() {
     const container = document.getElementById('roomsContainer');
     if (!container) return;
@@ -2733,7 +3103,6 @@ function renderRooms() {
             roomCard.className = "staff-room w-full min-w-0";
             roomCard.innerHTML = `
                 <button type="button" onclick="toggleRoomCollapse(${room.id})" aria-expanded="false" class="w-full flex items-center gap-2.5 p-3.5 sm:px-5 sm:py-4 text-left rounded-2xl hover:bg-slate-50 transition">
-                    <span class="staff-num">${roomIndex + 1}</span>
                     <span class="staff-room-name font-serif-kr truncate flex-shrink-0 max-w-[40%]">${escText(room.name)}</span>
                     <span class="text-[11px] sm:text-xs text-slate-500 truncate flex-1 min-w-0">${escText(room.curtains.map(c => c.label).join(' + '))}</span>
                     <span class="staff-amt whitespace-nowrap flex-shrink-0" id="roomSubtotal_${room.id}">0원</span>
@@ -2904,7 +3273,6 @@ function renderRooms() {
         roomCard.innerHTML = `
             <div class="staff-room-head">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <span class="staff-num">${roomIndex + 1}</span>
                     <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="staff-room-name font-serif-kr outline-none border rounded px-1.5 py-0.5 w-full min-w-0">
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
@@ -2930,6 +3298,7 @@ function renderRooms() {
         `;
         container.appendChild(roomCard);
     });
+    if (typeof renderSurvey === 'function') renderSurvey();
 }
 
 // ==============================================================
@@ -5060,7 +5429,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 mood: r.mood || "soft_warm",
                 wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,      // 강도·갈래 (98번)
                 roomType: r.roomType || null,
-                lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null,
+                lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 measuredColor: r.measuredColor || null,
                 width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),

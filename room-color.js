@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261141';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261144';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -876,6 +876,7 @@
         },
         file: onFile,
         matPick, glossPick,      // 재료·광택 버튼 (113번)
+        matLabel(part, k) { const e = (MAT_KINDS[part] || []).find(x => x[0] === k); return e ? e[1] : ''; },      // 재료 이름 (상담란이 씀, 115번)
         removeWall: removeWallPhoto,
         _loadImage: (src, which) => loadImage(src, which || 0),      // 미리보기 시험용
         _state: () => st && compute(),
