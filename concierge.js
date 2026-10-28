@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261156';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261157';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -24,11 +24,6 @@
         return `url('${scenePhotoUrl('feel', name)}') center / cover no-repeat, ${fallback}`;
     }
 
-    // 분위기 카드 배경: photos/mood/ 의 분위기용 사진(원단·시공 사진 아님). 사진이 안 뜨면 예전 색 질감이 보임
-    function moodBg(name, fallback) {
-        return `url('${scenePhotoUrl('mood', name)}') center / cover no-repeat, ${fallback}`;
-    }
-
     // 창 구성·블라인드 종류 카드 배경 (38번): photos/comp/, photos/blind/ 사진. 기기 사진이 있으면 먼저, 안 뜨면 색 질감
     function compBg(name, fallback) {
         return `url('${scenePhotoUrl('comp', name)}') center / cover no-repeat, ${fallback}`;
@@ -46,14 +41,12 @@
     // → 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15, 38번)
     let finalPage = 0, finalCardCount = 0, finalHouseCount = 0, finalZoom = false, lastRenderedStep = null;      // 최종 제안의 쪽 넘기기·크게 보기(39번). cardCount = 견적서 앞 쪽 수(우리 집 색 포함)
     const PICK_PAUSE_MS = 220;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 450일 때 "렉 같다"는 말이 있어 줄임(10-15). 더 여유를 주려면 300~350
-    const MOOD_PHOTOS = SCENE_PHOTOS.mood;
     const FEEL_PHOTOS = SCENE_PHOTOS.feel;   // 속지 느낌 3장도 같이 미리 받음 (10-15)
     const COMP_PHOTOS = SCENE_PHOTOS.comp || [];   // 창 구성 4장 (38-1)
     const BLIND_PHOTOS = SCENE_PHOTOS.blind || []; // 블라인드 종류 4장 (38-2)
     (function preloadMoodPhotos() {
         // 기기 사진을 다 읽은 뒤, 기기에 있는 것은 기기 사진을 (34·38번)
         const run = () => DevicePhotos.ready.then(() => []
-            .concat(MOOD_PHOTOS.map(n => scenePhotoUrl('mood', n)))
             .concat(FEEL_PHOTOS.map(n => scenePhotoUrl('feel', n)))
             .concat(COMP_PHOTOS.map(n => scenePhotoUrl('comp', n)))
             .concat(BLIND_PHOTOS.map(n => scenePhotoUrl('blind', n)))
@@ -362,13 +355,6 @@
     function needSheerTaste(ed) {
         return !!(ed && (ed.items || []).some(i => i.presetType === 'sheer') && !houseTasteNow().sheer);
     }
-    // 이 공간만 다르게(취향 화면)에서 구성 제안으로 돌아감 — 뒤로 가기 목록에 취향 화면이 남지 않게 (117번)
-    function backToConfig() {
-        state.tasteFor = null;
-        while (stepHistory.length && stepHistory[stepHistory.length - 1].step !== "3-Config-Style") stepHistory.pop();
-        if (stepHistory.length) stepHistory.pop();
-        goToStep("3-Config-Style", false);
-    }
     function stepAfterComp(ed) {
         if (needSheerTaste(ed)) { ed.askSheer = true; return "2-Base-SheerFeel"; }
         return (ed.items || []).some(i => i.presetType === 'blind') ? "2-Base-BlindKind" : "3.5-Bridge";
@@ -437,8 +423,6 @@
     function houseHas(kind) {
         return state.roomsCart.some(r => r.isConfigured ? (r.curtains || []).some(c => c.presetType === kind) : planHas(r, kind));
     }
-    // 공간마다 포인트 (120번): "이 공간만 다르게" 칸(ownPres = 'point')을 그대로 씀. 겉지·블라인드가 들어가는 공간만
-    function roomPointOn(r) { return !!(r && r.ownTaste && r.ownPres === 'point'); }
     // 이 칸에서 고를 수 있는 포인트 기법 (120번): 포인트 공간(무게감 제외)의 겉지·블라인드만
     function pointTechsFor(item) {
         const ed = state.editingRoom;
@@ -559,91 +543,8 @@
         const mc = ed && ed.measuredColor, ok = c => !!c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number';
         return !!(mc && ok(mc.wall) && ok(mc.floor));
     }
-    function canLink(ed) {
-        const mc = ed && ed.measuredColor;
-        return !!(mc && mc.wall && mc.floor && mc.bridge);
-    }
-    // ---- 강도·갈래 (98번, 노트상세/추천_좁혀가기_상의.md 4번): 질문 문장은 같고, 선택지는 후보 원단이 있는 것만 ----
-    const PLAN_CATS = { sheer: '속지', drape: '겉지', blind: '블라인드' };
-    function planCats(ed) { return Array.from(new Set((ed.items || []).map(i => PLAN_CATS[i.presetType]).filter(Boolean))); }
-    function planCount(ed, plan, cats) {
-        if (typeof colorPlanCount !== 'function') return 0;
-        return (cats || planCats(ed)).reduce((n, c) => n + colorPlanCount(ed, plan, c), 0);
-    }
-    // 어울리게: 벽 / 사이 / 바닥 / 그대로 두는 가구(최대 3)
-    function linkOptions(ed) {
-        const mc = ed.measuredColor || {};
-        const opts = [{ dir: 'wall', label: '벽 색에', pos: 6 }, { dir: 'bridge', label: '벽과 바닥 사이에', pos: 35 }, { dir: 'floor', label: '바닥 색에', pos: 78 }];
-        const furs = (mc.furniture || []).filter(f => f && f.stay !== false && typeof f.L === 'number' && typeof f.a === 'number' && typeof f.b === 'number').slice(0, 3);
-        const names = furs.map(f => f.n || '가구');
-        furs.forEach((f, i) => {
-            const many = names.filter(n => n === names[i]).length > 1;
-            const no = names.slice(0, i + 1).filter(n => n === names[i]).length;
-            opts.push({ dir: 'fur' + i, label: `${names[i]}${many ? ' ' + no : ''} 색에`, hex: f.hex });
-        });
-        return opts.filter(o => planCount(ed, { colorStrength: 'harmony', colorAccent: null, linkDir: o.dir }) > 0);
-    }
-    // 색 하나 더: 짙게(명도 대비) / 색으로(보색·분열보색·유사색·채도 대비). 무채색 집은 따뜻한 쪽·차가운 쪽. 겉지 후보로만 셈
-    function accentOptions(ed) {
-        if (!(ed.items || []).some(i => i.presetType === 'drape') || !roomHasLab(ed)) return [];
-        let r = null;
-        try { r = colorTechCounts(ed.measuredColor); } catch (e) { return []; }
-        // 뉴트럴 집(101번)은 반대 온도: 쿨 집이면 따뜻한 쪽, 웜 집이면 차가운 쪽
-        const opts = [{ key: 'value', label: '더 짙게' }].concat(r && r.gray
-            ? [{ key: 'warm', label: '따뜻한 색으로' }, { key: 'cool', label: '차가운 색으로' }]
-            : (r && r.house === 'neutral'
-                ? [{ key: 'opp', label: r.neutralDir === 'cool' ? '따뜻한 색으로' : '차가운 색으로' }]
-                : [{ key: 'color', label: '다른 색으로' }]));
-        return opts.filter(o => planCount(ed, { colorStrength: 'point', colorAccent: o.key }, ['겉지']) > 0);
-    }
-    // 분위기 질문까지 갈지: 종류마다 맞는 원단이 5개 이하면 바로 보여 줌 (멈춤 규칙)
-    function fewLeft(ed) {
-        if (!ed.linkDir || typeof colorPlanCount !== 'function') return false;
-        return planCats(ed).every(c => colorPlanCount(ed, {}, c) <= 5);
-    }
-    // 어울리게: 색 잇기 선택지가 하나뿐이면 묻지 않고 그것으로, 없으면 색 잇기 없이 분위기로
-    function goHarmony() {
-        const ed = state.editingRoom;
-        if (!canLink(ed)) { ed.linkDir = null; goToStep("2-Base-Mood"); return; }
-        const opts = linkOptions(ed);
-        if (opts.length === 1) { window.concierge.selectLink(opts[0].dir); return; }
-        if (!opts.length) { ed.linkDir = null; goToStep("2-Base-Mood"); return; }
-        goToStep("2-Base-Link");
-    }
-    // 분위기 다음: 속지가 들어가는 구성이면 속지 느낌을, 블라인드 구성이면 블라인드 종류를 물음 (공간마다. "수정"으로 다시 들어와도 다시 물음 — 38-2)
-    function afterMood() {
-        const items = state.editingRoom.items || [];
-        const hasSheer = items.some(i => i.presetType === 'sheer');
-        const hasBlind = items.some(i => i.presetType === 'blind');
-        goToStep(hasSheer ? "2-Base-SheerFeel" : (hasBlind ? "2-Base-BlindKind" : "3.5-Bridge"));
-    }
-    // "이렇게 들었어요" 화면에서 줄을 눌러 그 질문으로 가서 고치면, 답한 뒤 이 화면으로 돌아옴 (뒤로 가기 목록에 같은 화면이 쌓이지 않게 정리)
-    function returnHomeIfFixing() {
-        const ed = state.editingRoom;
-        if (!ed || !ed.backHome) return false;
-        ed.backHome = false;
-        if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "2-Base-Home") stepHistory.pop();
-        goToStep("2-Base-Home", false);
-        return true;
-    }
-    const HEARD = {
-        lightLevel: { high: '햇빛이 많이 들어요', mid: '햇빛이 은은하게 들어요', low: '햇빛이 적게 들어요' }, // 83번(시안 나)
-        lightBlock: { light: '빛은 들어와도 좋아요', soft: '눈부심만 줄이고 싶어요', dark: '빛을 거의 막고 싶어요' },
-        privacy: { open: '밖의 시선은 신경 쓰이지 않아요', some: '낮엔 적당히 가려지면 좋아요', high: '밖에서 잘 안 보였으면 해요' }
-    };
-    const HEARD_COMP = { double: '이중 커튼 · 호텔처럼', sheer_only: '속지 커튼 · 은은한 채광', drape_only: '겉지 커튼 · 빛 차단', blind_only: '블라인드 · 창틀 안에 깔끔하게' };
-    function compKeyOf(ed) {
-        const t = (ed.items || []).map(i => i.presetType);
-        if (t.includes('blind')) return 'blind_only';
-        if (t.includes('sheer') && t.includes('drape')) return 'double';
-        if (t.includes('sheer')) return 'sheer_only';
-        if (t.includes('drape')) return 'drape_only';
-        return null;
-    }
     const LINK_WORD = { wall: '벽과 톤을 맞춰 넓어 보이는 색', bridge: '벽과 바닥의 중간 톤', floor: '바닥 톤을 따르는 색', fur0: '아끼시는 가구와 톤을 맞춘 색', fur1: '아끼시는 가구와 톤을 맞춘 색', fur2: '아끼시는 가구와 톤을 맞춘 색' }; // 41번 · 98번(가구)
     const LINK_WHY = { wall: '커튼이 벽에 자연스럽게 어우러져 공간이 넓어 보입니다.', bridge: '벽과 바닥을 조화롭게 감싸 주어 공간이 차분하게 하나로 보입니다.', floor: '바닥과 같은 계열의 색이라 따뜻하고 안정감 있습니다.' }; // 41번 · 83번
-    // 색 잇기 방향과 어울리는 분위기 카드 (추천 표시만, 점수는 그대로 — 사장님이 써 보며 정함)
-    const LINK_MOODS = { wall: ['urban_clean', 'airy_bright'], bridge: ['balanced_neutral'], floor: ['soft_warm', 'textured_linen'] };
     // 글 질문 화면 ("제안합니다" 화면과 같은 분위기): 큰 질문 + 글자 선택지. 사진이 필요 없는 질문에 사용
     // 화면 규칙표 (73번): 선택지는 이름만(설명은 사장님이 말로), "잘 모르겠어요"·"지금은 못 재요" 같은 조용한 보조 행동(quiet)은 아래 작게. 공간 이름은 왼쪽 위 뒤로 가기에
     function askStage(question, sub, opts, o) {
@@ -1401,7 +1302,6 @@
                 const frP = forRoom && state.roomsCart.find(r => r.id === state.editingRoomId);
                 const canPoint = frP ? canPointRoom(frP) : (state.roomsCart.length <= 1 && (houseHas('drape') || houseHas('blind')));
                 if (!canPoint && !wasT('point')) opts.pop();
-                if (forRoom && !forRoom.flow) opts.push({ label: '집 취향 그대로 할게요', quiet: true, on: 'window.concierge.followHouseTaste()' });
                 // 119번: 질문 글은 들어가는 것에 맞춤 (블라인드만이면 "블라인드는", 둘 다면 "커튼과 블라인드는")
                 const subj = (c, b) => c && b ? '커튼과 블라인드는' : (b ? '블라인드는' : '커튼은');
                 const fr = forRoom && state.roomsCart.find(r => r.id === state.editingRoomId);
@@ -2779,12 +2679,6 @@
             // 121번: 공간이 없어도 먼저 빈 공간 화면으로 들어가 거기서 "+ 공간 추가"
             goToStep("1-Space");
         },
-        // 구성 제안 화면의 "이 공간만 취향을 다르게": 같은 취향 화면을 그 공간 값으로 (117번)
-        openRoomTaste: function() {
-            if (!state.editingRoom) return;
-            state.tasteFor = 'room';
-            goToStep("0.5-House-Taste");
-        },
         // 취향 화면 답: 느낌 → 결 → (집이면) 공간으로 / (이 공간만이면) 구성 제안으로 돌아감 (117번)
         pickTaste: function(key, val) {
             const ed = state.editingRoom, forRoom = tasteRoom();
@@ -2797,18 +2691,10 @@
             }
             if (forRoom) {
                 saveOwnTaste(ed);
-                if (ed.flow) { state.tasteFor = null; flowNext(); return; }      // 123번: 길잡이가 다음(결 → 원단)
-                if (key === 'pres') goToStep("0.6-House-Tex"); else backToConfig();
-                return;
+                state.tasteFor = null; flowNext(); return;      // 123번: 길잡이가 다음(결 → 원단)
             }
             // 119번: 길잡이가 다음(겉지 결은 겉지가 들어갈 때만). 121번: 중심 화면 "집 취향 수정"은 뺌
             flowNext();
-        },
-        // "집 취향 그대로 할게요": 이 공간만 다르게를 끔
-        followHouseTaste: function() {
-            const ed = state.editingRoom;
-            if (ed) { ed.ownTaste = false; ed.ownPres = null; ed.ownTex = null; saveOwnTaste(ed); }
-            backToConfig();
         },
         // 시작 화면 "시작하기": 로고 모션이 화면을 덮은 뒤 그 아래에 첫 화면을 그려 둠 (뒤로가기로 시작 화면에 돌아오지 않음)
         openWelcome: function() {
@@ -2904,28 +2790,6 @@
             state.editingRoom.fixing = true;
             goToStep("2-Base-Floor");
         },
-        // 우리 집 색 → 색 잇기
-        goLinkStep: function() {
-            const ed = state.editingRoom;
-            if (canLink(ed) && accentOptions(ed).length) { goToStep("2-Base-Strength"); return; }      // 98번: 포인트 후보가 있을 때만 강도를 물음
-            ed.colorStrength = null; ed.colorAccent = null;
-            goHarmony();
-        },
-        // 느낌 (98번 강도 → 103번)
-        selectStrength: function(v) {
-            const ed = state.editingRoom;
-            ed.colorStrength = v;
-            if (v !== 'point') { ed.colorAccent = null; goHarmony(); return; }
-            const opts = accentOptions(ed).filter(o => o.key !== 'value');      // 103번: 포인트 = 색 기법만 (무게감은 따로 답)
-            if (opts.length === 1) { window.concierge.selectAccent(opts[0].key); return; }      // 하나뿐이면 묻지 않음
-            goToStep("2-Base-Accent");
-        },
-        // 색 하나 더: 겉지는 그 기법 색만, 속지·블라인드는 바탕(색 잇기·분위기 없이 집 색으로) (98번)
-        selectAccent: function(a) {
-            const ed = state.editingRoom;
-            ed.colorStrength = 'point'; ed.colorAccent = a; ed.linkDir = null; ed.wantMood = null;
-            afterMood();
-        },
         // 창 방향 버튼 (35번): 그 자리의 버튼만 다시 그림 (색 재기 화면이 위에 떠 있어도 같은 값)
         toggleDir: function(d) {
             const ed = state.editingRoom;
@@ -2943,12 +2807,7 @@
             const ed = state.editingRoom;
             if (!ed) return;
             if (ed.addDraft) { window.concierge.finishAddRoom('none'); return; }
-            if (!returnHomeIfFixing()) prevStep();
-        },
-        // "이렇게 들었어요" 줄을 눌러 그 질문으로: 답하면 다시 이 화면으로 돌아옴
-        fixHeard: function(stepName) {
-            state.editingRoom.backHome = true;
-            goToStep(stepName);
+            prevStep();
         },
         // 글 질문 화면 2번 터치 선택 (76번: 실수 터치 방지 및 밑줄 확인 후 두 번째 터치에 이동)
         tapAskOpt: function(btn, fn) {
@@ -2960,11 +2819,6 @@
             const stage = btn.closest('.ask-stage') || document;
             stage.querySelectorAll('.ask-opt.is-picked, .r-quiet.is-picked').forEach(el => el.classList.remove('is-picked'));
             btn.classList.add('is-picked');
-        },
-        selectLink: function(dir) {
-            state.editingRoom.linkDir = dir;
-            if (fewLeft(state.editingRoom)) { state.editingRoom.wantMood = null; afterMood(); return; }      // 98번: 후보가 적으면 분위기는 묻지 않음
-            goToStep("2-Base-Mood");
         },
         copyBaseFromPrev: function(same) {
             const src = copySourceRoom();
@@ -3311,17 +3165,14 @@
         },
         selectLightLevel: function(level) {
             state.editingRoom.lightLevel = level;
-            if (returnHomeIfFixing()) return;
             goToStep("2-Base-Block");          // 모든 공간: 빛 가림 → 바깥 시선 → 구성
         },
         selectLightBlock: function(level) {
             state.editingRoom.lightBlock = level;
-            if (returnHomeIfFixing()) return;
             goToStep("2-Base-Privacy");
         },
         selectPrivacy: function(level) {
             state.editingRoom.privacy = level;
-            if (returnHomeIfFixing()) return;
             if (state.editingRoom.flow) { saveDraft(state.editingRoom); flowNext(); return; }      // 119번: 다음 공간 질문 → 집 전체 구성
             goToStep("3-Config-Style");        // 빛 가림·바깥 시선을 근거로 구성 추천
         },
@@ -3361,10 +3212,6 @@
             state.editingRoom.blindWant = kind;
             goToStep("3.5-Bridge");
         },
-        selectMood: function(mood) {
-            state.editingRoom.wantMood = mood;
-            afterMood();
-        },
         chooseWindowComposition: function(type) {
             const ed = state.editingRoom;
             // 119번: 집 전체 흐름에서는 구성만 정해 두고(원단은 ⑤에서) 다음으로
@@ -3382,14 +3229,6 @@
             goToStep(stepAfterComp(ed));
         },
         // 119번 집 전체 구성: 줄을 누르면 그 공간 구성 사진 화면 / "다음"이면 모두 이대로
-        // 집 전체 구성 화면의 [포인트] (120번): 이 공간만 포인트를 켜고 끔. 화면은 그대로
-        toggleRoomPoint: function(roomId) {
-            const r = state.roomsCart.find(x => x.id === roomId);
-            if (!r) return;
-            if (roomPointOn(r)) { r.ownPres = null; r.ownTaste = !!r.ownTex; }
-            else { r.ownTaste = true; r.ownPres = 'point'; }
-            render();
-        },
         openHouseComp: function(roomId) {
             const r = state.roomsCart.find(x => x.id === roomId);
             if (r) openCompFor(r, true);

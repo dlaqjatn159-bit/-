@@ -4,7 +4,7 @@
    - 외부 도구(Tailwind·아이콘·글꼴 등): 처음 한 번 받아 저장해 두고 이후엔 저장본 사용
    ========================================================================== */
 // 앱 버전: 바꾸면 탭이 새 서비스 워커를 받아 앱 파일을 다시 받아 둠 (CACHE 이름은 그대로 — 바꾸면 미리 받아 둔 사진까지 지워짐)
-const BUILD = '20261156';
+const BUILD = '20261157';
 const CACHE = 'redam-app-v1';
 const SCOPE = self.registration.scope;
 
@@ -43,10 +43,7 @@ async function precache() {
     });
     urls.delete(indexUrl);
 
-    // index.html에 적혀 있지 않지만 꼭 미리 받아 둘 사진: 분위기 카드 6장 (현장에서 인터넷이 느려도 첫 화면부터 바로 뜨게)
-    ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright']
-        .forEach(n => urls.add(new URL('photos/mood/' + n + '.jpg', SCOPE).href));
-    // 속지 느낌 장면 3장도 같이 (10-15)
+    // index.html에 적혀 있지 않지만 꼭 미리 받아 둘 사진: 속지 느낌 장면 3장 (10-15). 분위기 카드 6장은 화면을 빼며 같이 뺌 (124번)
     ['feel_smooth', 'feel_textured', 'feel_cozy']
         .forEach(n => urls.add(new URL('photos/feel/' + n + '.jpg', SCOPE).href));
     // 창 구성 4장 · 블라인드 종류 4장도 같이 (38번)
