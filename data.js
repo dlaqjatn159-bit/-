@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261150';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261151';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -563,6 +563,55 @@ function fabricMoodOf(f) {
 function hasMoodInput(f) { const m = (f && f.manual) || {}; return !!(m.mood || (f && f.texture && TEXTURE_LABELS[f.texture])); }
 function isManualTagged(f) { return !!(f && f.manual && hasMoodInput(f) && (f.manual.tone || hasColorTones(f.id))); }
 
+// ---- 겉지 질감 두 값 (122번, 10-29 결정): 결 = 30도 빛 샘플 사진 마디결 1~5(자동), 부드러움 = 사장님 손 판정 1~5(무리별) ----
+//  근거 표: Claude outputs/원단_질감_확정표_겉지_1029.csv. 새 책자는 결은 사진으로, 부드러움은 기존 무리 중 비슷한 쪽으로 정해 여기 한 줄 더함
+//  풀달: 먼지가 잘 붙음 → 점수엔 안 쓰고 이유 문장·관리 안내 재료로만(dust 메모)
+const OUTER_FEEL_BY_BOOK = {
+    '보브': { grain: 4, soft: 5 }, '파스텔': { grain: 3, soft: 5 },                        // 보드라운
+    '풀달': { grain: 1, soft: 4, dust: true }, '이글': { grain: 3, soft: 4 }, '라온': { grain: 2, soft: 4 },
+    '리치': { grain: 2, soft: 4 }, '다크': { grain: 2, soft: 4 }, '프리미엄': { grain: 2, soft: 4 },   // 부드러운 매끈
+    '트리플': { grain: 1, soft: 3 }, '블랑': { grain: 2, soft: 3 },                          // 단단한 매끈
+    '디올': { grain: 3, soft: 2 }, '루피': { grain: 5, soft: 2 }, '넥스': { grain: 4, soft: 2 },   // 규칙적인 결
+    '코지': { grain: 5, soft: 1 }                                                           // 까끌한 결
+};
+// 원단의 결·부드러움 (원단 칸 f.grain·f.soft가 있으면 그것, 없으면 책자 이름으로). 모르면 null
+function outerFeelOf(f) {
+    if (!f) return null;
+    if (typeof f.grain === 'number' && typeof f.soft === 'number') return { grain: f.grain, soft: f.soft };
+    const book = String(f.book || '');
+    const key = Object.keys(OUTER_FEEL_BY_BOOK).find(k => book.includes(k));
+    return key ? OUTER_FEEL_BY_BOOK[key] : null;
+}
+// 손님 사진마다 목표 자리(결·부드러움 범위)와 축 무게, 거리 R에서 0점
+//  결이 살아 있는 → 루피 만점·보브 절반·트리플 거의 0 / 매끈한 → 매끈 두 무리 만점 / 보송한 → 보드라운 만점·부드러운 매끈 절반
+const FEEL_TARGETS = {
+    natural: { g: [4, 5], s: [1, 2], wg: 1, ws: 0.5, R: 3.2 },
+    smooth: { g: [1, 3], s: [3, 4], wg: 1, ws: 1, R: 2 },
+    cozy: { g: [3, 5], s: [5, 5], wg: 0.5, ws: 1, R: 2 }
+};
+let FEEL_WEIGHT = 1;      // 질감 비중 숫자 하나 (이어주는 색 1.5보다 작게 → 비슷한 색 사이 순서만 가름)
+function feelWant(v) {
+    return (v === 'textured' || v === 'texture' || v === 'natural') ? 'natural' : ((v === 'fluffy' || v === 'cozy') ? 'cozy' : (v === 'smooth' ? 'smooth' : null));
+}
+// 0~1 (두 값이 없는 원단은 옛 질감 칸으로: 같으면 1, 다르면 0)
+function drapeFeelFit(fabric, drapeFeel) {
+    const want = feelWant(drapeFeel), t = FEEL_TARGETS[want];
+    if (!t) return null;
+    const v = outerFeelOf(fabric);
+    if (!v) return fabric && fabric.texture ? (fabric.texture === want ? 1 : 0) : null;
+    const out = (x, [lo, hi]) => x < lo ? lo - x : (x > hi ? x - hi : 0);
+    const d = Math.hypot(out(v.grain, t.g) * t.wg, out(v.soft, t.s) * t.ws);
+    return Math.max(0, 1 - d / t.R);
+}
+function drapeFeelScore(fabric, drapeFeel) {
+    const fit = drapeFeelFit(fabric, drapeFeel);
+    if (fit == null) return 0;
+    let s = fit;
+    if (feelWant(drapeFeel) === 'natural' && ['linen', 'linenlook'].includes(materialOf(fabric))) s += 0.3;      // 린넨 느낌으로 살짝 유도 (94번 유지, 작게)
+    const w = (typeof window !== 'undefined' && typeof window.FEEL_WEIGHT === 'number') ? window.FEEL_WEIGHT : FEEL_WEIGHT;      // 시험 칸에서 window.FEEL_WEIGHT로 바꿔 보기
+    return w * s;
+}
+
 function calculateFabricMatchScore(fabric, room, category) {
     let score = 0;
     const fTone = fabric.tone || 'neutral';
@@ -634,16 +683,8 @@ function calculateFabricMatchScore(fabric, room, category) {
         }[room.lightBlock];
         if (table) score += table[b || 'unknown'];
     }
-    // 겉지 결 취향 (116번): 고른 결과 같으면 +6, 다르면 -3 (빛 가림 +10보다 약하게), 결 있는 + 린넨·린넨룩 +2
-    if (category === '겉지' && room.drapeFeel && room.drapeFeel !== 'any') {
-        const tx = fabric.texture;
-        const wantTx = (room.drapeFeel === 'textured' || room.drapeFeel === 'texture' || room.drapeFeel === 'natural') ? 'natural'
-            : ((room.drapeFeel === 'fluffy' || room.drapeFeel === 'cozy') ? 'cozy' : (room.drapeFeel === 'smooth' ? 'smooth' : null));
-        if (tx && wantTx) {
-            score += tx === wantTx ? 6 : -3;
-            if (wantTx === 'natural' && tx === 'natural' && ['linen', 'linenlook'].includes(materialOf(fabric))) score += 2;
-        }
-    }
+    // 겉지 결 취향 (122번): 결·부드러움 두 값과 손님이 고른 사진의 목표 자리 거리로 0~1 → × FEEL_WEIGHT (색값 다음 순위로만)
+    if (category === '겉지' && room.drapeFeel && room.drapeFeel !== 'any') score += drapeFeelScore(fabric, room.drapeFeel);
 
     // 블라인드 빛 가림: 완전히 어둡게 → 암막(롤 암막이 가장 확실), 적당히 → 일반·콤비, 들어와도 → 투시·콤비
     if (category === '블라인드' && room.lightBlock) {
@@ -702,12 +743,12 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
         if (msg && !lightSay) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
     if (lightSay) { parts.unshift(lightSay); said.unshift(lightSay); }   // 채광·시선을 함께 말해 주는 문장이라 바깥 시선 문구보다 먼저
-    if (category === '겉지' && room.drapeFeel && fabric.texture) {
-        const wantTx = (room.drapeFeel === 'textured' || room.drapeFeel === 'texture' || room.drapeFeel === 'natural') ? 'natural'
-            : ((room.drapeFeel === 'fluffy' || room.drapeFeel === 'cozy') ? 'cozy' : (room.drapeFeel === 'smooth' ? 'smooth' : null));
-        const msg = wantTx === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
-            : wantTx === 'natural' && fabric.texture === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '자연스럽게 살아 있는 결')
-            : wantTx === 'cozy' && fabric.texture === 'cozy' ? '도톰하고 보송한 느낌' : '';
+    if (category === '겉지' && room.drapeFeel && room.drapeFeel !== 'any') {
+        const wantTx = feelWant(room.drapeFeel), fit = drapeFeelFit(fabric, room.drapeFeel);      // 122번: 고른 사진에 가까운(0.8 이상) 원단만 결을 말함
+        const ok = fit != null && fit >= 0.8;
+        const msg = !ok ? '' : wantTx === 'smooth' ? '깔끔하고 매끈한 결'
+            : wantTx === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '자연스럽게 살아 있는 결')
+            : wantTx === 'cozy' ? '도톰하고 보송한 느낌' : '';
         if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
     if (category === '겉지' && room.lightBlock) {
