@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261144';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261145';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -573,15 +573,17 @@ function calculateFabricMatchScore(fabric, room, category) {
     // 톤 이름 맞추기 점수(웜·쿨·뉴트럴 같으면 +2~5)와 딥 규칙(벽·바닥 딥이면 짙은 원단 +4)은 뺌 (92번, 10-26 결정)
     //  → 색 잇기(Lab)·90번 분위기·91번 보정이 맡음. 딥 +4가 색 잇기 '벽에'를 골라도 차콜을 밀어 올렸음
 
-    // 분위기: 고객이 직접 고른 경우 더 크게 반영
-    if (fMood === targetMood) {
-        score += wantMood ? 6 : 4;
-    } else {
-        if (targetMood === 'soft_warm' && fMood === 'textured_linen') score += 2;
-        // 밝은 웜 톤 겉지(아이보리 등)는 '화사한'으로 분류되지만 색이 주는 포근함도 있음 → 딱 맞는 포근한(+6/+4)보다 조금 낮게
-        if (targetMood === 'soft_warm' && fMood === 'airy_bright' && fabric.categoryType === '겉지' && fTone === 'warm') score += wantMood ? 4 : 3;
-        if (targetMood === 'urban_clean' && fMood === 'airy_bright') score += 2;
-        if (targetMood === 'balanced_neutral' && (fMood === 'soft_warm' || fMood === 'urban_clean')) score += 1;
+    // 분위기: 고객이 직접 고른 경우 더 크게 반영 (포인트 겉지는 분위기 점수 생략 — 98·116번)
+    if (!(category === '겉지' && room.colorStrength === 'point')) {
+        if (fMood === targetMood) {
+            score += wantMood ? 6 : 4;
+        } else {
+            if (targetMood === 'soft_warm' && fMood === 'textured_linen') score += 2;
+            // 밝은 웜 톤 겉지(아이보리 등)는 '화사한'으로 분류되지만 색이 주는 포근함도 있음 → 딱 맞는 포근한(+6/+4)보다 조금 낮게
+            if (targetMood === 'soft_warm' && fMood === 'airy_bright' && fabric.categoryType === '겉지' && fTone === 'warm') score += wantMood ? 4 : 3;
+            if (targetMood === 'urban_clean' && fMood === 'airy_bright') score += 2;
+            if (targetMood === 'balanced_neutral' && (fMood === 'soft_warm' || fMood === 'urban_clean')) score += 1;
+        }
     }
 
     // 채광: 빛이 강하면 덜 비치는 속지로 빛을 부드럽게 걸러줌 (어두운 공간은 정해진 규칙 없음)
@@ -631,6 +633,16 @@ function calculateFabricMatchScore(fabric, room, category) {
             light: { full: -1, life: 1, mid: 3, none: 3, unknown: 1 }       // 들어와도 → 비암막·보통
         }[room.lightBlock];
         if (table) score += table[b || 'unknown'];
+    }
+    // 겉지 결 취향 (116번): 고른 결과 같으면 +6, 다르면 -3 (빛 가림 +10보다 약하게), 결 있는 + 린넨·린넨룩 +2
+    if (category === '겉지' && room.drapeFeel && room.drapeFeel !== 'any') {
+        const tx = fabric.texture;
+        const wantTx = (room.drapeFeel === 'textured' || room.drapeFeel === 'texture' || room.drapeFeel === 'natural') ? 'natural'
+            : ((room.drapeFeel === 'fluffy' || room.drapeFeel === 'cozy') ? 'cozy' : (room.drapeFeel === 'smooth' ? 'smooth' : null));
+        if (tx && wantTx) {
+            score += tx === wantTx ? 6 : -3;
+            if (wantTx === 'natural' && tx === 'natural' && ['linen', 'linenlook'].includes(materialOf(fabric))) score += 2;
+        }
     }
 
     // 블라인드 빛 가림: 완전히 어둡게 → 암막(롤 암막이 가장 확실), 적당히 → 일반·콤비, 들어와도 → 투시·콤비
@@ -690,6 +702,14 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
         if (msg && !lightSay) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
     if (lightSay) { parts.unshift(lightSay); said.unshift(lightSay); }   // 채광·시선을 함께 말해 주는 문장이라 바깥 시선 문구보다 먼저
+    if (category === '겉지' && room.drapeFeel && fabric.texture) {
+        const wantTx = (room.drapeFeel === 'textured' || room.drapeFeel === 'texture' || room.drapeFeel === 'natural') ? 'natural'
+            : ((room.drapeFeel === 'fluffy' || room.drapeFeel === 'cozy') ? 'cozy' : (room.drapeFeel === 'smooth' ? 'smooth' : null));
+        const msg = wantTx === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
+            : wantTx === 'natural' && fabric.texture === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '자연스럽게 살아 있는 결')
+            : wantTx === 'cozy' && fabric.texture === 'cozy' ? '도톰하고 보송한 느낌' : '';
+        if (msg) { parts.unshift(msg); said.unshift(msg); }
+    }
     if (category === '겉지' && room.lightBlock) {
         const b = blackoutLevel(fabric);
         const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막는 완전 암막'
@@ -713,10 +733,10 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
             : room.lightBlock !== 'dark' && kind === 'combi' ? '빛을 들일 만큼만 맞추는 콤비' : '';
         if (msg) { if (!parts.includes(msg)) parts.unshift(msg); said.unshift(msg); }
     }
-    // 색 하나 더 (98번): 손님이 고른 포인트 방향에 맞는 겉지면 맨 앞에
+    // 색 하나 더 (98·116번): 손님이 고른 포인트 방향에 맞는 겉지면 맨 앞에
     if (category === '겉지' && room.colorStrength === 'point' && room.colorAccent && typeof colorPlanFits === 'function' && colorPlanFits(fabric, room, category)) {
         const msg = { value: '벽보다 짙게 차분한 무게를 잡는 색',      // 103번: 무게감 답은 '포인트'라 부르지 않음
-        color: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트', opp: '공간의 온도를 살짝 바꾸는 포인트' }[room.colorAccent];
+        color: '공간에 색 하나를 더하는 포인트', point: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트', opp: '공간의 온도를 살짝 바꾸는 포인트' }[room.colorAccent];
         if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
     // 소재 한마디 (94번): 린넨룩을 "린넨"이라 부르지 않음
@@ -1352,9 +1372,13 @@ let colorPointMemo = { key: '', t: 0, set: null };
 function colorPointSet(mc, accent) {
     const key = JSON.stringify([mc.wall, mc.floor, mc.bridge, mc.bridgeK, mc.furniture, accent]);
     if (colorPointMemo.key === key && Date.now() - colorPointMemo.t < 5000) return colorPointMemo.set;      // 한 화면 그리는 동안만 기억
-    const set = new Set(), keys = COLOR_ACCENT_TECHS[accent] || [];
+    const set = new Set();
+    let keys = COLOR_ACCENT_TECHS[accent] || [];
     let r = null;
     try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    if (r && accent === 'point') {
+        keys = r.gray ? ['warm', 'cool'] : (r.house === 'neutral' ? ['opp', 'tint'] : ['comp', 'split', 'analog', 'sat', 'tint']);
+    }
     if (r) r.rows.filter(x => keys.includes(x.key)).forEach(x => x.drape.forEach(c => set.add(c.id + '__' + c.color)));
     colorPointMemo = { key, t: Date.now(), set };
     return set;

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261144';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261145';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261144';
+const REDAM_BUILD = '20261145';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1229,9 +1229,13 @@ function openFabricFinder(roomId, curtainId) {
     const t = finderTargetCurtain();
     if (t) finderSel.cat = new Set([finderCurtainKind(t.c)]);
     finderRef = null; if (finderSort === 'sim' || finderSort === 'pair') finderSort = 'light';       // 비슷한 색·속지 짝을 찾던 중이었으면 풀고 시작
-    // 방 색을 잰 공간이면 그 공간의 "벽·바닥 이어주기" 순으로 시작
-    const mode = t && ['bridge', 'wall', 'floor'].find(m => finderRoomModeOk(t.room, m));
-    if (mode) finderSort = `room:${mode}:${t.room.id}`;
+    // 설문·잰 색이 있는 공간이면 "○○에 어울리는 순"으로 시작 (116번)
+    if (t && (t.room.diagnosed || t.room.measuredColor || t.room.lightBlock || t.room.privacy || t.room.lightLevel || t.room.ownTaste || houseTaste.pres || houseTaste.tex || houseTaste.sheer)) {
+        finderSort = `fit:${t.room.id}`;
+    } else {
+        const mode = t && ['bridge', 'wall', 'floor'].find(m => finderRoomModeOk(t.room, m));
+        if (mode) finderSort = `room:${mode}:${t.room.id}`;
+    }
     finderView = 'grid';
     showFabricTab('find');
     showStaffView('fabric');
@@ -1255,10 +1259,13 @@ function finderRoomModeOk(room, mode) { return roomLinkOk(room && room.measuredC
 // 잰 공간의 원단 찾기 열기 (방 색 재기 창의 "반영 후 이어주는 원단 찾기", 공간 카드의 "이어주는 원단 보기")
 function openRoomColorFinder(roomId) {
     const room = rooms.find(r => r.id === roomId);
-    const mode = ['bridge', 'wall', 'floor'].find(m => finderRoomModeOk(room, m));
-    if (!mode) return;
+    if (!room) return;
+    if (room.curtains && room.curtains[0]) {
+        finderTarget = { roomId: room.id, curtainId: room.curtains[0].id };
+        finderSel.cat = new Set([finderCurtainKind(room.curtains[0])]);
+    }
     finderRef = null;
-    finderSort = `room:${mode}:${roomId}`;
+    finderSort = `fit:${roomId}`;
     finderView = 'grid';
     showFabricTab('find');
     showStaffView('fabric');
@@ -1412,8 +1419,8 @@ function renderFinder() {
     const sim = !!ref && finderSort === 'sim';
     const pair = !!ref && finderSort === 'pair';
     const pairTones = !pair ? null : (ref.tone === 'deep' ? ['warm', 'neutral'] : (ref.tone ? [ref.tone] : null));
-    // "○○에 어울리는 순": 고객 화면의 질문을 거친 공간만 (직원 화면에서 그냥 추가한 공간은 바닥·벽 답이 없어 점수를 낼 수 없음). 넣을 칸의 공간이 먼저
-    const fitRooms = rooms.filter(r => r.diagnosed).sort((x, y) => (target ? (y.id === target.room.id) - (x.id === target.room.id) : 0));
+    // "○○에 어울리는 순": 고객 화면 질문 또는 직원 상담란(설문·방 색)을 거친 공간 (116번). 넣을 칸의 공간이 먼저
+    const fitRooms = rooms.filter(r => r.diagnosed || r.measuredColor || r.lightBlock || r.privacy || r.lightLevel || r.ownTaste || houseTaste.pres || houseTaste.tex || houseTaste.sheer).sort((x, y) => (target ? (y.id === target.room.id) - (x.id === target.room.id) : 0));
     const fitRoom = finderSort.startsWith('fit:') ? fitRooms.find(r => 'fit:' + r.id === finderSort) : null;
     if (finderSort.startsWith('fit:') && !fitRoom) finderSort = 'light';
     // 방 색을 잰 공간 (넣을 칸의 공간이 먼저)
@@ -1450,8 +1457,16 @@ function renderFinder() {
             list = list.filter(e => e.rscore != null);
             list.sort((x, y) => x.rscore - y.rscore);
         } else if (fitRoom) {
-            // 기존 추천 점수 그대로: 색의 톤·밝기를 입힌 원단으로 calculateFabricMatchScore (점수가 같으면 밝은 색 먼저)
-            list.forEach(e => { e.fit = calculateFabricMatchScore(e.view, fitRoom, e.fabric.categoryType); });
+            // 설문 + 잰 색(이어주기·포인트) + 빛 보정을 모두 합친 추천 점수 순 (116번)
+            const rSurvey = roomWithSurveyTaste(fitRoom);
+            list.forEach(e => {
+                const cat = e.fabric.categoryType;
+                const cObj = { name: e.color, light: e.L, a: e.a, b: e.b };
+                const planOk = (typeof colorPlanAllows === 'function') ? colorPlanAllows(e.fabric, cObj, rSurvey, cat) : true;
+                const link = (rSurvey.linkDir ? roomLinkBonus(cObj, rSurvey) : roomSoftBonus(cObj, rSurvey));
+                const lfix = (typeof lightFixBonus === 'function') ? lightFixBonus(cObj, rSurvey) : 0;
+                e.fit = (planOk ? 100 : 0) + calculateFabricMatchScore(e.view, rSurvey, cat) + link + lfix;
+            });
             list.sort((x, y) => (y.fit - x.fit) || by('L', -1)(x, y));
         } else if (finderSort === 'price') list.sort((x, y) => (x.priceRank - y.priceRank) || (x.price - y.price) || byBook(x, y));      // 단위가 다른 원단은 저마다의 묶음 안 자리로 견줌
         else list.sort(finderSort === 'dark' ? by('L', 1) : (finderSort === 'vivid' ? by('C', -1) : (finderSort === 'muted' ? by('C', 1) : (finderSort === 'book' ? byBook : by('L', -1)))));
@@ -2323,9 +2338,19 @@ function finderPut(key) {
 // 칸에 원단 + 색상 번호를 넣음 (찾기 카드의 "이 공간에 넣기"와 "고객에게 보여주기"의 "이걸로 할게요"가 같이 씀)
 function finderApplyPut(t, e) {
     collapsedRooms.delete(t.room.id);
+    if (!t.c.aiPick) {
+        const def = bestForCurtain(t.room, t.c);
+        if (def) t.c.aiPick = { fabricId: def.fabricId, colorName: def.colorName || '', dir: def.dir };
+    }
     updateCurtainData(t.room.id, t.c.id, 'fabricId', e.fabricId);      // 원단이 바뀌면 색상 번호가 비워지므로, 색은 그다음에 넣음
     t.c.colorName = e.color;
     delete t.c.toneStep; delete t.c.pickDir; delete t.c.baseFabricId; delete t.c.baseColorName;      // 다른 방법으로 바꾸면 이유 카드의 한 톤·잇는 방향·사다리 기준은 지움 (28·49번)
+    t.c.custPicked = false;      // 직원이 바꾸면 손님 표시는 내림 (116번)
+    if (t.c.aiPick && t.c.fabricId === t.c.aiPick.fabricId && (t.c.colorName || '') === (t.c.aiPick.colorName || '')) {
+        t.c.staffPicked = false; t.c.staffPick = null; t.c.changeReason = null;
+    } else {
+        t.c.staffPicked = true; t.c.staffPick = { fabricId: t.c.fabricId, colorName: t.c.colorName || '' };
+    }
     renderRooms();
     calculateAll();
 }
@@ -2476,6 +2501,7 @@ function addRoom() {
         ]
     };
     rooms.push(newRoom);
+    autoFillSurveyPicks(newRoom.id);
     renderRooms();
     renderSurvey();
     calculateAll();
@@ -2569,6 +2595,7 @@ function addCurtainToRoom(roomId, presetType = "") {
         rates: optionRatesNow(installType)      // 지금 설정의 가공·부자재 단가 (29번, 나중에 단가를 바꿔도 이 품목 금액은 그대로)
     });
 
+    autoFillSurveyPicks(room.id);
     renderRooms();
     calculateAll();
     showToast(`[${room.name}]에 '${newLabel}' 품목이 추가되었습니다.`);
@@ -2621,6 +2648,11 @@ function updateCurtainData(roomId, curtainId, key, val) {
     const c = room.curtains.find(item => item.id === curtainId);
     if (!c) return;
 
+    if ((key === 'fabricId' || key === 'colorName' || key === 'bookFilter') && !c.aiPick) {
+        const def = bestForCurtain(room, c);
+        if (def) c.aiPick = { fabricId: def.fabricId, colorName: def.colorName || '', dir: def.dir };
+    }
+
     const prevFabricId = c.fabricId;
     c[key] = val;
 
@@ -2635,7 +2667,6 @@ function updateCurtainData(roomId, curtainId, key, val) {
                 }
             }
         }
-        renderRooms();
     } else if (key === 'fabricId') {
         const selFab = FABRIC_DB.find(f => f.id === val);
         if (selFab) {
@@ -2646,7 +2677,6 @@ function updateCurtainData(roomId, curtainId, key, val) {
                 c.bookFilter = selFab.book;
             }
         }
-        renderRooms();
     } else if (key === 'installType') {
         // 기구를 고르면 설정의 자당 단가가 들어감 (29번). rates가 있는 품목은 그 기구의 원가도 같이 바꿔 적음
         const t = HW_TYPES.includes(val) ? val : 'rail';
@@ -2655,8 +2685,23 @@ function updateCurtainData(roomId, curtainId, key, val) {
         if (c.rates && c.rates.cost) c.rates.cost.hw = optionCosts().rail[t];
         renderRooms();
     }
-    if (c.fabricId !== prevFabricId) c.colorName = '';
-    if (c.fabricId !== prevFabricId || key === 'colorName') { delete c.toneStep; delete c.pickDir; delete c.baseFabricId; delete c.baseColorName; }      // 직원 화면에서 원단·색을 바꾸면 한 톤·잇는 방향·사다리 기준은 지움 (28·49번)
+    if (c.fabricId !== prevFabricId) {
+        const selFab = FABRIC_DB.find(f => f.id === c.fabricId);
+        const ranked = (selFab && typeof rankColorsFor === 'function') ? rankColorsFor(selFab, roomWithSurveyTaste(room), curtainCategoryOf(c)) : [];
+        c.colorName = (ranked[0] && ranked[0].name) || '';
+    }
+    if (c.fabricId !== prevFabricId || key === 'colorName') {
+        delete c.toneStep; delete c.pickDir; delete c.baseFabricId; delete c.baseColorName;      // 직원 화면에서 원단·색을 바꾸면 한 톤·잇는 방향·사다리 기준은 지움 (28·49번)
+        c.custPicked = false;      // 직원이 바꾸면 손님 표시는 내림 (116번)
+        if (c.aiPick && c.fabricId === c.aiPick.fabricId && (c.colorName || '') === (c.aiPick.colorName || '')) {
+            c.staffPicked = false; c.staffPick = null; c.changeReason = null;
+        } else {
+            c.staffPicked = true; c.staffPick = { fabricId: c.fabricId, colorName: c.colorName || '' };
+        }
+        renderRooms();
+    } else if (key === 'bookFilter') {
+        renderRooms();
+    }
     const optEl = document.getElementById(`curtainOpt_${c.id}`);
     if (optEl) optEl.textContent = curtainOptionSummary(c);
     calculateAll();
@@ -2757,9 +2802,259 @@ function syncCustPhoneFromSurvey(val) {
     saveDraftTick();
 }
 
+const CHANGE_REASONS = ['색', '결', '빛', '가격', '손님 요청'];
+
+function defaultSurveyDir(room) {
+    if (room && room.linkDir) return room.linkDir;
+    const mc = room && room.measuredColor;
+    if (mc) {
+        const hasW = !!(mc.wall && typeof mc.wall.L === 'number');
+        const hasF = !!(mc.floor && typeof mc.floor.L === 'number');
+        if (hasW && hasF) return 'bridge';
+        if (hasW) return 'wall';
+        if (hasF) return 'floor';
+    }
+    return 'bridge';
+}
+
+// 상담란 답(집 취향 + 공간별 답)을 점수 엔진용 공간 객체로 합침 (116번 — fake-guest 등에는 영향 없음)
+function roomWithSurveyTaste(room, dirOverride) {
+    if (!room) return room;
+    const out = Object.assign({}, room);
+    const mc = out.measuredColor;
+    if (mc && mc.wall && mc.wall.tone && !out.wallTone) out.wallTone = mc.wall.tone;
+    if (mc && mc.floor && mc.floor.tone && !out.floorTone) out.floorTone = mc.floor.tone;
+    const pres = (room.ownTaste && room.ownPres) ? room.ownPres : houseTaste.pres;
+    const tex = (room.ownTaste && room.ownTex) ? room.ownTex : houseTaste.tex;
+    const sheer = houseTaste.sheer;
+    const baseDir = defaultSurveyDir(room);
+    if (dirOverride) {
+        out.colorStrength = 'harmony';
+        out.colorAccent = null;
+        out.linkDir = dirOverride;
+    } else if (pres === 'calm') {
+        out.colorStrength = 'harmony';
+        out.colorAccent = null;
+        out.linkDir = baseDir;
+    } else if (pres === 'weight') {
+        out.colorStrength = 'point';
+        out.colorAccent = 'value';
+        out.linkDir = baseDir;
+    } else if (pres === 'point') {
+        out.colorStrength = 'point';
+        out.colorAccent = 'point';
+        out.linkDir = baseDir;
+    } else if (!out.linkDir && mc) {
+        out.linkDir = baseDir;
+    }
+    if (tex) {
+        out.drapeFeel = { smooth: 'smooth', texture: 'natural', fluffy: 'cozy' }[tex] || tex;
+    }
+    if (sheer) {
+        out.sheerFeel = { smooth: 'smooth', texture: 'textured', thick: 'cozy', unknown: 'any' }[sheer] || sheer;
+    }
+    return out;
+}
+
+function curtainCategoryOf(c) {
+    if (!c) return '겉지';
+    if (c.presetType === 'blind') return '블라인드';
+    if (c.presetType === 'sheer') return '속지';
+    if (c.presetType === 'drape' || c.presetType === 'panel') return '겉지';
+    const fab = FABRIC_DB.find(f => f.id === c.fabricId);
+    if (fab && (fab.calcType === 'hebe' || fab.categoryType === '블라인드')) return '블라인드';
+    if (fab && fab.categoryType === '속지') return '속지';
+    return '겉지';
+}
+
+// 커튼 한 줄의 1등 원단 + 1등 색 계산 (dirOverride가 있으면 그 방향 기준, 116번)
+function bestForCurtain(room, c, dirOverride) {
+    if (!room || !c || typeof bestColorFor !== 'function') return null;
+    const targetCategory = curtainCategoryOf(c);
+    const r = roomWithSurveyTaste(room, dirOverride);
+    let pool = [];
+    if (window.concierge && typeof window.concierge.categoryPool === 'function') {
+        pool = window.concierge.categoryPool(targetCategory);
+    }
+    if (!pool || !pool.length) {
+        pool = FABRIC_DB.filter(f => !isCustomerHidden(f) && (f.categoryType === targetCategory || (targetCategory === '블라인드' && f.calcType === 'hebe')));
+        if (!pool.length) pool = FABRIC_DB.filter(f => f.categoryType === targetCategory || (targetCategory === '블라인드' && f.calcType === 'hebe'));
+    }
+    if (!pool || !pool.length) return null;
+    const fits = f => (typeof colorPlanFits === 'function') ? colorPlanFits(f, r, targetCategory) : true;
+    const ranked = pool.map(f => ({ f, fit: fits(f), best: bestColorFor(f, r, targetCategory) }));
+    ranked.sort((a, b) => ((b.fit ? 1 : 0) - (a.fit ? 1 : 0)) || (b.best.score - a.best.score)
+        || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
+    const top = ranked[0];
+    if (!top || !top.f) return null;
+    const colorName = top.best.color || (top.best.ranked[0] && top.best.ranked[0].name) || '';
+    return {
+        fabric: top.f,
+        fabricId: top.f.id,
+        colorName: colorName,
+        dir: dirOverride || r.linkDir || defaultSurveyDir(room),
+        score: top.best.score
+    };
+}
+
+// 설문 답이나 방 색이 바뀔 때 커튼 줄에 1등 원단·색 자동 채움 (사장님이 바꾼 줄·손님이 고객 화면에서 고른 줄은 건드리지 않음, 116번)
+function autoFillSurveyPicks(onlyRoomId) {
+    const list = onlyRoomId ? rooms.filter(r => r.id === onlyRoomId) : rooms;
+    list.forEach(room => {
+        (room.curtains || []).forEach(c => {
+            const best = bestForCurtain(room, c);
+            if (!best) return;
+            c.aiPick = { fabricId: best.fabricId, colorName: best.colorName || '', dir: best.dir };
+            if (!c.staffPicked && !c.custPicked) {
+                c.fabricId = best.fabricId;
+                c.colorName = best.colorName || '';
+                c.pickDir = best.dir;
+                if (best.fabric && best.fabric.calcType === 'hebe') c.hotelFit = false;
+                if (c.bookFilter && c.bookFilter !== 'ALL' && best.fabric && best.fabric.book !== c.bookFilter) c.bookFilter = 'ALL';
+            }
+        });
+    });
+}
+
+function pickCurtainDir(roomId, curtainId, dir) {
+    const room = rooms.find(r => r.id === roomId);
+    const c = room && (room.curtains || []).find(x => x.id === curtainId);
+    if (!room || !c) return;
+    if (!c.aiPick) {
+        const def = bestForCurtain(room, c);
+        if (def) c.aiPick = { fabricId: def.fabricId, colorName: def.colorName || '', dir: def.dir };
+    }
+    const cand = bestForCurtain(room, c, dir);
+    if (!cand) return;
+    c.fabricId = cand.fabricId;
+    c.colorName = cand.colorName || '';
+    c.pickDir = dir;
+    delete c.toneStep; delete c.baseFabricId; delete c.baseColorName;
+    if (cand.fabric && cand.fabric.calcType === 'hebe') c.hotelFit = false;
+    if (c.bookFilter && c.bookFilter !== 'ALL' && cand.fabric && cand.fabric.book !== c.bookFilter) c.bookFilter = 'ALL';
+    const aiDir = (c.aiPick && c.aiPick.dir) || defaultSurveyDir(room);
+    c.custPicked = false;      // 직원이 바꾸면 손님 표시는 내림 (116번)
+    if (c.aiPick && c.fabricId === c.aiPick.fabricId && (c.colorName || '') === (c.aiPick.colorName || '') && dir === aiDir) {
+        c.staffPicked = false;
+        c.staffPick = null;
+        c.changeReason = null;
+    } else {
+        c.staffPicked = true;
+        c.staffPick = { fabricId: c.fabricId, colorName: c.colorName || '', dir };
+    }
+    renderRooms();
+    calculateAll();
+    saveDraftTick();
+}
+
+function setCurtainChangeReason(roomId, curtainId, reason) {
+    const room = rooms.find(r => r.id === roomId);
+    const c = room && (room.curtains || []).find(x => x.id === curtainId);
+    if (!c) return;
+    c.changeReason = c.changeReason === reason ? null : reason;
+    renderRooms();
+    saveDraftTick();
+}
+
+function resetCurtainToSurvey(roomId, curtainId) {
+    const room = rooms.find(r => r.id === roomId);
+    const c = room && (room.curtains || []).find(x => x.id === curtainId);
+    if (!room || !c) return;
+    c.staffPicked = false;
+    c.custPicked = false;
+    c.staffPick = null;
+    c.changeReason = null;
+    delete c.toneStep; delete c.baseFabricId; delete c.baseColorName;
+    const best = bestForCurtain(room, c);
+    if (best) {
+        c.aiPick = { fabricId: best.fabricId, colorName: best.colorName || '', dir: best.dir };
+        c.fabricId = best.fabricId;
+        c.colorName = best.colorName || '';
+        c.pickDir = best.dir;
+    } else if (c.aiPick) {
+        c.fabricId = c.aiPick.fabricId;
+        c.colorName = c.aiPick.colorName || '';
+        c.pickDir = c.aiPick.dir || defaultSurveyDir(room);
+    }
+    renderRooms();
+    calculateAll();
+    saveDraftTick();
+}
+
+function curtainFeatureMeta(curFab, c) {
+    if (!curFab) return '';
+    const cat = curtainCategoryOf(c);
+    const parts = [];
+    if (cat === '블라인드') {
+        const k = typeof blindKind === 'function' ? blindKind(curFab) : null;
+        const bl = typeof blindLight === 'function' ? blindLight(curFab) : null;
+        if (k && BLIND_KIND_LABELS[k]) parts.push(BLIND_KIND_LABELS[k]);
+        if (bl && BLIND_LIGHT_LABELS[bl]) parts.push(BLIND_LIGHT_LABELS[bl]);
+    } else if (cat === '속지') {
+        if (curFab.texture && TEXTURE_LABELS[curFab.texture]) parts.push(TEXTURE_LABELS[curFab.texture]);
+        if (curFab.density && DENSITY_LABELS[curFab.density]) parts.push(DENSITY_LABELS[curFab.density]);
+    } else {
+        if (curFab.texture && TEXTURE_LABELS[curFab.texture]) parts.push(TEXTURE_LABELS[curFab.texture]);
+        const bo = typeof blackoutLevel === 'function' ? blackoutLevel(curFab) : null;
+        if (bo && BLACKOUT_LABELS[bo]) parts.push(BLACKOUT_LABELS[bo]);
+    }
+    const mat = typeof materialOf === 'function' ? materialOf(curFab) : null;
+    if (mat && (mat === 'linen' || mat === 'linenlook') && MATERIAL_LABELS[mat] && !parts.includes(MATERIAL_LABELS[mat])) {
+        parts.push(MATERIAL_LABELS[mat]);
+    }
+    return parts.join(' · ') || curFab.categoryType || '';
+}
+
+function curtainPickBarHtml(room, c, curFab) {
+    const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    if (!c.aiPick) {
+        const def = bestForCurtain(room, c);
+        if (def) c.aiPick = { fabricId: def.fabricId, colorName: def.colorName || '', dir: def.dir };
+    }
+    const swHex = (typeof colorFillOf === 'function' && curFab) ? colorFillOf(curFab.id, c.colorName) : '#ddd3c2';
+    const suf = (typeof colorSuffix === 'function' && curFab) ? colorSuffix(c.colorName, curFab.id) : (c.colorName ? ' ' + c.colorName : '');
+    const dispName = curFab ? `${curFab.name}${suf}` : '원단 미선택';
+    const meta = curtainFeatureMeta(curFab, c);
+    const mc = room && room.measuredColor;
+    const hasW = !!(mc && mc.wall && typeof mc.wall.L === 'number');
+    const hasF = !!(mc && mc.floor && typeof mc.floor.L === 'number');
+    const availDirs = [];
+    if (hasW) availDirs.push(['wall', '벽 쪽']);
+    if (hasW && hasF) availDirs.push(['bridge', '사이']);
+    if (hasF) availDirs.push(['floor', '바닥 쪽']);
+    const curDir = c.pickDir || (c.aiPick && c.aiPick.dir) || defaultSurveyDir(room);
+    const dirsHtml = availDirs.length ? `<div class="q-dirs">${availDirs.map(([d, lbl]) => {
+        const cand = bestForCurtain(room, c, d);
+        const cHex = (cand && typeof colorFillOf === 'function') ? colorFillOf(cand.fabricId, cand.colorName) : '#e5dfd5';
+        const cTitle = cand && cand.fabric ? `${cand.fabric.name}${colorSuffix(cand.colorName, cand.fabricId)}` : lbl;
+        const isOn = curDir === d && (!cand || (cand.fabricId === c.fabricId && (cand.colorName || '') === (c.colorName || '')));
+        return `<button type="button" class="q-dir${isOn ? ' on' : ''}" onclick="pickCurtainDir(${room.id}, ${c.id}, '${d}')" title="${esc(lbl + ': ' + cTitle)}"><i style="background:${cHex}"></i><span>${lbl}</span></button>`;
+    }).join('')}</div>` : '';
+
+    const whyHtml = c.staffPicked ? `<div class="q-why on">
+        <span>바꾼 이유 (선택)</span>
+        ${CHANGE_REASONS.map(r => `<button type="button" class="q-why-chip${c.changeReason === r ? ' on' : ''}" onclick="setCurtainChangeReason(${room.id}, ${c.id}, '${r}')">${r}</button>`).join('')}
+        <button type="button" class="q-reset" onclick="resetCurtainToSurvey(${room.id}, ${c.id})">설문대로</button>
+    </div>` : (c.custPicked ? `<div class="q-why on">
+        <span>손님이 고른 원단</span>
+        <button type="button" class="q-reset" onclick="resetCurtainToSurvey(${room.id}, ${c.id})">설문대로</button>
+    </div>` : '');      // 손님이 고른 줄은 자동 채움에서 빠짐 → 설문대로 되돌리는 버튼만 (116번)
+
+    return `<div class="q-pick-bar">
+        <b class="q-pick-sw" style="background:${swHex}"></b>
+        <div class="q-pick-info">
+            <div class="q-pick-name">${esc(dispName)}</div>
+            <div class="q-pick-meta">${esc(meta)}</div>
+        </div>
+        ${dirsHtml}
+    </div>${whyHtml}`;
+}
+
 function setHouseTaste(key, val) {
     houseTaste[key] = val;
-    renderSurvey();
+    autoFillSurveyPicks();
+    renderRooms();
+    calculateAll();
     saveDraftTick();
 }
 
@@ -2772,7 +3067,9 @@ function setRoomSurveyField(roomId, field, val) {
     const room = rooms.find(r => r.id === roomId);
     if (!room) return;
     room[field] = val;
-    renderSurvey();
+    autoFillSurveyPicks(roomId);
+    renderRooms();
+    calculateAll();
     saveDraftTick();
 }
 
@@ -2803,6 +3100,7 @@ function setRoomCurtainConfig(roomId, cfg) {
         if (added && room.width && room.height) { added.width = room.width; added.height = room.height; }
     });
     room.curtainConfig = cfg;
+    autoFillSurveyPicks(roomId);
     renderRooms();      // renderRooms가 상담란도 다시 그림
     calculateAll();
     saveDraftTick();
@@ -2816,7 +3114,9 @@ function toggleRoomOwnTaste(roomId) {
         if (!room.ownPres) room.ownPres = houseTaste.pres;
         if (!room.ownTex) room.ownTex = houseTaste.tex;
     }
-    renderSurvey();
+    autoFillSurveyPicks(roomId);
+    renderRooms();
+    calculateAll();
     saveDraftTick();
 }
 
@@ -2949,17 +3249,20 @@ function renderSurvey() {
 
             let furChips = '';
             if (Array.isArray(mc.furniture) && mc.furniture.length > 0) {
-                furChips = mc.furniture.filter(f => f && f.hex).map(f => {
+                furChips = mc.furniture.filter(f => f && f.hex).map((f, fIdx) => {
                     const fLabel = RC.furLabel ? RC.furLabel(f.n) : (f.n || '가구');
-                    return `<span class="survey-chip" title="가구 색"><b style="background:${f.hex}"></b>가구: ${esc(fLabel)}</span>`;
+                    return `<span class="survey-chip" title="클릭하면 이 가구 색을 뺍니다" onclick="event.stopPropagation(); RoomColor.staffFur(${room.id}, 'del', ${fIdx})"><b style="background:${f.hex}"></b>가구: ${esc(fLabel)} ×</span>`;
                 }).join('');
             }
+            const canAddFur = !Array.isArray(mc.furniture) || mc.furniture.length < (RC.FUR_MAX || 3);
+            const furAddBtn = canAddFur ? `<button type="button" class="survey-chip survey-fur-add" onclick="event.stopPropagation(); RoomColor.staffFur(${room.id}, 'add')" title="가구 색 추가">+ 가구</button>` : '';
 
             colorBundleHtml = `
                 <div class="survey-colors-bundle" onclick="RoomColor.open(${room.id})" title="방 색 수정하기 (벽·바닥·가구)">
                     ${hasWall ? `<span class="survey-chip"><b style="background:${mc.wall.hex}"></b>벽: ${esc(wName)}${esc(wMat)}</span>` : ''}
                     ${hasFloor ? `<span class="survey-chip"><b style="background:${mc.floor.hex}"></b>바닥: ${esc(fName)}${esc(fMat)}</span>` : ''}
                     ${furChips}
+                    ${furAddBtn}
                 </div>
             `;
         } else {
@@ -2979,6 +3282,15 @@ function renderSurvey() {
         const ownTaste = !!room.ownTaste;
         const ownPres = room.ownPres || null;
         const ownTex = room.ownTex || null;
+
+        // 자동 추천 원단 요약 줄 (116번: 설문·방 색에 따라 채워진 원단을 상담란에서도 바로 보고 찾기·견적란으로 이동)
+        const recPills = (room.curtains || []).map(c => {
+            const fab = FABRIC_DB.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);
+            if (!fab) return '';
+            const sw = (typeof colorFillOf === 'function') ? colorFillOf(fab.id, c.colorName) : '#ddd3c2';
+            const suf = (typeof colorSuffix === 'function') ? colorSuffix(c.colorName, fab.id) : (c.colorName ? ' ' + c.colorName : '');
+            return `<button type="button" class="survey-rec-pill" onclick="openFabricFinder(${room.id}, ${c.id})" title="클릭하면 이 조건에 맞는 추천 원단 목록이 열립니다"><i style="background:${sw}"></i><span>${esc(c.label)}: <b>${esc(fab.name + suf)}</b></span></button>`;
+        }).filter(Boolean).join('');
 
         roomsHtml += `
             <div class="survey-room">
@@ -3057,6 +3369,12 @@ function renderSurvey() {
                         </div>
                     </div>
                 </div>
+
+                <div class="survey-rec-bar">
+                    <span class="survey-rec-k">추천 원단</span>
+                    <div class="survey-rec-list">${recPills}</div>
+                    <button type="button" class="survey-rec-go" onclick="showStaffView('consult')">견적란에서 바꾸기 →</button>
+                </div>
             </div>
         `;
     });
@@ -3079,8 +3397,9 @@ function renderRooms() {
 
     if (rooms.length === 0) {
         container.innerHTML = `<div class="bg-white rounded-2xl p-8 border border-dashed border-slate-300 text-center text-sm text-slate-500">
-            등록된 공간이 없습니다. 오른쪽 위 <strong class="text-amber-800">공간 추가</strong>를 눌러 시작하세요.
+            등록된 공간이 없습니다. <button type="button" onclick="showStaffView('survey')" class="text-amber-800 font-bold underline underline-offset-4">상담란</button>에서 공간을 추가해 시작하세요.
         </div>`;
+        if (typeof renderSurvey === 'function') renderSurvey();
         return;
     }
 
@@ -3178,9 +3497,11 @@ function renderRooms() {
                         </div>
                     </div>
 
+                    ${curtainPickBarHtml(room, c, curFab)}
+
                     <div class="min-w-0">
                         <div class="flex justify-between items-center mb-0.5">
-                            <label class="block text-[10px] font-bold text-slate-500">원단 (책자·이름으로 찾기)</label>
+                            <label class="block text-[10px] font-bold text-slate-500">원단 직접 바꾸기 (책자·이름 검색)</label>
                             <span class="staff-chip">
                                 ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : ""}
                             </span>
@@ -3270,26 +3591,25 @@ function renderRooms() {
             `;
         });
 
+        const rW = room.width || (room.curtains[0] && room.curtains[0].width) || 340;
+        const rH = room.height || (room.curtains[0] && room.curtains[0].height) || 235;
+        const cfgSummary = room.curtains.map(c => c.label).join(' + ');
+
         roomCard.innerHTML = `
             <div class="staff-room-head">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="staff-room-name font-serif-kr outline-none border rounded px-1.5 py-0.5 w-full min-w-0">
+                    <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="staff-room-name font-serif-kr outline-none border rounded px-1.5 py-0.5 min-w-0">
+                    <span class="text-xs text-stone-500 whitespace-nowrap hidden sm:inline">${rW} × ${rH} cm${cfgSummary ? ' · ' + escText(cfgSummary) : ''}</span>
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
-                    <button type="button" onclick="RoomColor.open(${room.id})" class="staff-btn accent whitespace-nowrap">방 색 재기</button>
                     <button onclick="addCurtainToRoom(${room.id})" class="staff-btn whitespace-nowrap flex items-center gap-1">
-                        + 추가
-                    </button>
-                    <button onclick="removeRoom(${room.id})" class="whitespace-nowrap text-xs text-rose-500 hover:text-rose-700 font-bold px-2 py-1.5 rounded-xl hover:bg-rose-50 transition flex items-center gap-1">
-                        삭제
+                        + 커튼 줄 추가
                     </button>
                     <button type="button" onclick="toggleRoomCollapse(${room.id})" aria-expanded="true" class="whitespace-nowrap text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1.5 rounded-xl hover:bg-slate-100 transition flex items-center gap-1">
                         접기 <i class="fa-solid fa-chevron-up text-[10px]"></i>
                     </button>
                 </div>
             </div>
-            ${window.RoomColor ? RoomColor.summaryHtml(room) : ''}
-            ${staffWindowDirHtml(room)}
             <div class="staff-curtains">${curtainsHtml}</div>
             <div class="staff-room-sum">
                 <span class="truncate mr-2">${room.name} 소계</span>
@@ -5455,6 +5775,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                         colorName: c.colorName || '',
                         pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
                         baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)
+                        aiPick: c.aiPick || null, staffPick: c.staffPick || null, staffPicked: !!c.staffPicked, changeReason: c.changeReason || null, custPicked: !!c.custPicked,      // 세 픽·바꾼 이유·손님이 고른 원단 (116번)
                         rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
                         calc: c.calc
                     };

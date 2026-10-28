@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261144';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261145';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -371,6 +371,8 @@
             box.querySelector('input').style.setProperty('--mid', mc.bridge.hex);
         }
         if (!done) return;
+        if (typeof autoFillSurveyPicks === 'function') autoFillSurveyPicks(roomId);
+        if (typeof renderRooms === 'function') renderRooms();
         if (typeof calculateAll === 'function') calculateAll();          // 원단 찾기·추천이 새 이어주는 색으로
         if (typeof saveDraftTick === 'function') saveDraftTick();
         if (typeof renderFinder === 'function' && document.getElementById('finderOut')) { try { renderFinder(); } catch (e) {} }
@@ -427,10 +429,11 @@
         if (mc.floor) room.floorTone = mc.floor.tone;
         const name = room.name;
         window.RoomColor.close();
+        if (typeof autoFillSurveyPicks === 'function') autoFillSurveyPicks(room.id);
         if (typeof renderRooms === 'function') renderRooms();
         if (typeof calculateAll === 'function') calculateAll();
         if (goFinder && typeof openRoomColorFinder === 'function') { openRoomColorFinder(room.id); return; }      // 반영 뒤 원단 찾기로
-        if (typeof showToast === 'function') showToast(`[${name}] 잰 색을 반영했어요.`);
+        if (typeof showToast === 'function') showToast(`[${name}] 잰 색을 반영하고 추천 원단을 채웠어요.`);
     }
 
     function render() {
@@ -737,6 +740,7 @@
             const r2 = findRoom(roomId);
             if (!r2) return;
             r2.measuredColor = withFurniture(r2.measuredColor, list);
+            if (typeof autoFillSurveyPicks === 'function') autoFillSurveyPicks(roomId);
             redraw();
             if (act === 'add' && typeof showToast === 'function') showToast(`[${r2.name}] 가구를 담았어요.`);
         });

@@ -162,8 +162,8 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button onclick="addRoom()" class="bg-amber-800 hover:bg-amber-900 text-white font-bold py-2 px-3 sm:px-4 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0">
-                                <i class="fa-solid fa-plus text-[10px]"></i> 공간 추가
+                            <button type="button" onclick="showStaffView('survey')" class="bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 font-bold py-2 px-3 sm:px-3.5 rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
+                                <span>← 상담란 (공간·설문)</span>
                             </button>
                             <button onclick="presentToCustomer()" class="bg-indigo-950 hover:bg-indigo-900 text-white font-bold py-2 px-3 sm:px-3.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
                                 <i class="fa-solid fa-wand-magic-sparkles text-[10px] text-amber-200"></i>
@@ -802,13 +802,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261144"></script>
-    <script src="costing.js?v=20261144"></script>
-    <script src="data.js?v=20261144"></script>
-    <script src="calculator.js?v=20261144"></script>
-    <script src="concierge.js?v=20261144"></script>
-    <script src="app.js?v=20261144"></script>
-    <script src="room-color.js?v=20261144"></script>
+    <script src="pricing.js?v=20261145"></script>
+    <script src="costing.js?v=20261145"></script>
+    <script src="data.js?v=20261145"></script>
+    <script src="calculator.js?v=20261145"></script>
+    <script src="concierge.js?v=20261145"></script>
+    <script src="app.js?v=20261145"></script>
+    <script src="room-color.js?v=20261145"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

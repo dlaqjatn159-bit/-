@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261144';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261145';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -218,6 +218,7 @@
                     colorName: c.colorName || '',
                     pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
                     baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)
+                    aiPick: c.aiPick || null, staffPick: c.staffPick || null, staffPicked: !!c.staffPicked, changeReason: c.changeReason || null, custPicked: !!c.custPicked,      // 세 픽·바꾼 이유·손님이 고른 원단 (116번)
                     rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
             calc: c.calc
                 };
@@ -739,6 +740,7 @@
             delete c.baseColorName;
         }
         if (w.pickDir) c.pickDir = w.pickDir; else delete c.pickDir;
+        c.custPicked = true;      // 손님이 고객 화면에서 바꾼 원단 → 직원 화면 자동 채움이 덮지 않음 (116번)
         c.calc = calculateV1ItemPrice(c);
         r.subtotal = r.curtains.reduce((s, x) => s + ((x.calc && x.calc.curtainSubtotal) || 0), 0);
         syncToV1MasterRooms();
@@ -3300,6 +3302,7 @@
                         colorName: item.colorName || '',
                         baseFabricId: item.fabricId,
                         baseColorName: item.colorName || '',
+                        custPicked: !!item.fabricId,      // 손님이 고객 화면에서 고른 원단 → 직원 화면 자동 채움이 덮지 않음 (116번)
                         installType: isBlind ? 'none' : (item.presetType === 'panel' ? 'rail_2line' : 'rail'),
                         floorGap: item.floorGap || 0,
                         hwName: isBlind ? '블라인드 일체형' : (item.presetType === 'panel' ? '2줄 패널 레일' : '기본 레일'),
