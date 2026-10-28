@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261147';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261148';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261147';
+const REDAM_BUILD = '20261148';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -4969,7 +4969,41 @@ function houseDiagnosis(s, raw, sameAs) {
     else if (furTail) out.push(furTail);
     return out;
 }
+// 분위기 말 (118번): 커튼 느낌(pres) × 겉지 결(tex). 겉지가 없으면 커튼 느낌만. 답이 없으면 빈 말
+const HOUSE_MOOD_WORD = {
+    calm:   { smooth: '은은하고 차분한', fluffy: '은은하고 포근한', texture: '은은하고 자연스러운', '': '은은한' },
+    weight: { smooth: '단정하고 깊은', fluffy: '아늑하고 묵직한', texture: '깊고 자연스러운', '': '차분하고 깊은' },
+    point:  { smooth: '산뜻하고 또렷한', fluffy: '따뜻하고 생기 있는', texture: '생기 있고 자연스러운', '': '또렷한' }
+};
+function houseMoodWord(pres, tex, hasDrape) {
+    const row = HOUSE_MOOD_WORD[pres];
+    if (!row) return '';
+    return row[hasDrape && row[tex] ? tex : ''];
+}
+// 분위기 문장 (118번): 집 취향으로 한 문장 + "이 공간만 다르게"로 말이 달라진 공간은 같은 말끼리 묶어 한 문장씩
+function houseMoodLines(sp) {
+    const ht = (typeof houseTaste === 'object' && houseTaste) || {};
+    const drapeOf = s => s.fabs.some(f => f.k === '겉지');
+    const houseWord = houseMoodWord(ht.pres, ht.tex, sp.some(drapeOf));
+    const out = [];
+    if (houseWord) out.push(`${houseWord} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
+    const groups = [];
+    sp.forEach(s => {
+        const r = s.raw || {};
+        if (!r.ownTaste) return;
+        const w = houseMoodWord(r.ownPres || ht.pres, r.ownTex || ht.tex, drapeOf(s));
+        if (!w || w === houseWord) return;
+        const g = groups.find(x => x.w === w);
+        if (g) g.names.push(s.name); else groups.push({ w, names: [s.name] });
+    });
+    groups.forEach(g => {
+        const names = g.names.join('·');
+        out.push(`${names}${houseJosa(names, '은', '는')} ${g.w} 느낌으로 따로 맞췄습니다.`);
+    });
+    return out;
+}
 // 총평 (37-4): ① 흐름(한 문장) → ② 속지(속지 공간 2곳 이상일 때) → ③ 가구(집 전체 가구 중 가장 진한·밝은 것, 없으면 첫 가구, 진단 말투 65번·66번) · 최대 3문장
+//  118번: 맨 앞에 분위기 문장(취향 답이 있을 때만)을 더함 — 제안서에 한 번만
 function houseBrief(sp) {
     const out = [], S = sp.filter(houseRep), reps = S.map(s => houseRep(s).lab);
     const maxDist = list => { let m = 0; list.forEach((p, i) => list.forEach((q, j) => { if (j > i) m = Math.max(m, whyDE(p, q)); })); return m; };
@@ -5030,7 +5064,7 @@ function houseBrief(sp) {
         else if (base.length && Math.min(...base.map(o => whyDE(f, o))) <= HOUSE_FUR_NEAR) out.push(`${fs.name}의 ${f.n}${houseJosa(f.n, '은', '는')} 벽·바닥과 비슷한 색이라, 공간이 한 톤으로 이어집니다.`);
         else out.push(`${fs.name}의 ${nm}${f.n}${houseJosa(f.n, '은', '는')} 바탕색 사이에서 또렷하게 보입니다.`);
     }
-    return out.slice(0, 3);
+    return houseMoodLines(sp).concat(out.slice(0, 3));      // 118번
 }
 // 색 지도 (고객 더 보기 지도와 같은 축·같은 말): 900×470 좌표에 그림. ctx는 미리 옮기고 늘려 둠
 //  ● 고른 원단(같은 원단·같은 색은 하나로, "거실·안방 속지") · ■ 벽·바닥(모든 공간이 같으면 "벽") · ◆ 가구
