@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261164';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261165';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261164';
+const REDAM_BUILD = '20261165';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3788,7 +3788,7 @@ function ticketItemReason(r, c) {
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
-    const col = c.colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(c.colorName)) : null;
+    const col = c.colorName ? fabricColorOf(f.id, c.colorName) : null;
     const view = (col && col.tone) ? Object.assign({}, f, { tone: col.tone, manual: Object.assign({}, f.manual, { tone: true }) }) : f;
     try { return recommendReason(view, r, cat) || ''; } catch (e) { return ''; }
 }
@@ -3800,7 +3800,7 @@ function ticketKeepWord(r, c) {
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
-    const col = c.colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(c.colorName)) : null;
+    const col = c.colorName ? fabricColorOf(f.id, c.colorName) : null;
     const view = (col && col.tone) ? Object.assign({}, f, { tone: col.tone, manual: Object.assign({}, f.manual, { tone: true }) }) : f;
     try { return recommendReason(view, r, cat, 1, true) || ''; } catch (e) { return ''; }
 }
@@ -3849,7 +3849,7 @@ function ticketPlainName(c, calc) {
         color = (nm && nm.name) || '';
     }
     if (!color) {
-        const col = c.colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(c.colorName)) : null;
+        const col = c.colorName ? fabricColorOf(f.id, c.colorName) : null;
         const tone = (col && col.tone) || f.tone;
         color = TONE_LABELS[tone] ? `${TONE_LABELS[tone]} 톤` : '';
     }
@@ -3898,13 +3898,13 @@ const FABRIC_TONE_FILL = { warm: '#dcc3a4', cool: '#b9c4cb', neutral: '#d3cdc3',
 function fabricToneFill(fabricId, colorName) {
     const f = Pricing.pickFabric(FABRIC_DB, fabricId);
     if (!f) return '#d9cdbb';
-    const col = colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(colorName)) : null;
+    const col = colorName ? fabricColorOf(f.id, colorName) : null;
     return FABRIC_TONE_FILL[(col && col.tone) || f.tone] || '#d9cdbb';
 }
 // 견적서 원단 칸(사진이 없을 때)의 색 (35번): 잰 색(색상코드)이 있으면 그 색, 없으면 톤 대표색 (고객 화면 concierge colorFillOf와 같은 순서)
 //  톤 대표색은 4가지뿐이라 그레이·로즈 그레이·그레이지가 같은 색으로 보이던 것
 function fabricColorFill(fabricId, colorName) {
-    const col = (fabricId && colorName) ? getFabricColors(fabricId).find(x => x.name === normalizeColorName(colorName)) : null;
+    const col = (fabricId && colorName) ? fabricColorOf(fabricId, colorName) : null;
     return (col && /^#[0-9a-f]{6}$/i.test(col.hex || '')) ? col.hex : fabricToneFill(fabricId, colorName);
 }
 
@@ -4413,7 +4413,7 @@ function whyLabOf(c) {
 const whyDE = (p, q) => Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b);
 // 원단 색: 색상 입력표에서 잰 색(색상코드·밝기·붉은기·노란기)만. 코드만 있으면 코드에서 Lab을 셈. 없으면 null (칩·색 문장 없음)
 function whyFabricColor(fabricId, colorName) {
-    const col = (fabricId && colorName) ? getFabricColors(fabricId).find(x => x.name === normalizeColorName(colorName)) : null;
+    const col = (fabricId && colorName) ? fabricColorOf(fabricId, colorName) : null;
     if (!col) return null;
     const hex = /^#[0-9a-f]{6}$/i.test(col.hex || '') ? col.hex.toUpperCase() : null;
     let L = typeof col.light === 'number' ? col.light : null, a = typeof col.a === 'number' ? col.a : null, b = typeof col.b === 'number' ? col.b : null;

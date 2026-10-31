@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261164';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261165';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1014,9 +1014,13 @@ function colorSuffix(name, fabricId) {
     const base = isNo ? ` ${n}번` : ` ${n}`;
     return label ? `${base} (${label})` : base;
 }
+// 원단의 그 색 하나 꺼내기(번호·이름 다듬어 맞춤). 없으면 undefined (130-1번에서 9곳을 하나로)
+function fabricColorOf(fabricId, name) {
+    return getFabricColors(fabricId).find(x => x.name === normalizeColorName(name));
+}
 // 색 이름(예: 그레이지). 고객에게 보여주는 이름일 뿐, 색을 구분하는 기준은 번호
 function colorLabelOf(fabricId, name) {
-    const c = getFabricColors(fabricId).find(x => x.name === normalizeColorName(name));
+    const c = fabricColorOf(fabricId, name);
     return (c && c.label) ? c.label : '';
 }
 function setColorLabel(id, name, label) {

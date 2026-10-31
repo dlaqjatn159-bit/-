@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261164';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261165';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -159,8 +159,8 @@ function docFabName(calc, fab, isFactory, curtain) {
             n = `${n} [${fab.engName}]`;
         }
     }
-    if (isFactory && curtain && curtain.fabricId && curtain.colorName && typeof getFabricColors === 'function') {
-        const col = getFabricColors(curtain.fabricId).find(x => x.name === normalizeColorName(curtain.colorName));
+    if (isFactory && curtain && curtain.fabricId && curtain.colorName && typeof fabricColorOf === 'function') {
+        const col = fabricColorOf(curtain.fabricId, curtain.colorName);
         if (col && col.orderCode && !n.includes(col.orderCode)) {
             n += ` [${col.orderCode}]`;
         }
