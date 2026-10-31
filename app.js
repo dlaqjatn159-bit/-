@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261166';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261167';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261166';
+const REDAM_BUILD = '20261167';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3982,7 +3982,6 @@ function setQuoteValidOverride(v) {
     quoteValidOverride = (v === '' || !Number.isFinite(n) || n < 0) ? null : Math.min(365, Math.round(n));
     if (typeof saveDraftTick === 'function') saveDraftTick();
 }
-function localYmd(d) { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
 const TICKET_TEXT_KEYS = { pay: 'redam_ticket_pay_v1', custom: 'redam_ticket_custom_v1', supplier: 'redam_ticket_supplier_v1' };
 const TICKET_TEXT_INPUTS = { pay: 'ticketPayInput', custom: 'ticketCustomInput', supplier: 'ticketSupplierInput' };
 function loadTicketText(k) { try { return (localStorage.getItem(TICKET_TEXT_KEYS[k]) || '').trim(); } catch (e) { return ''; } }
@@ -4127,12 +4126,11 @@ function ticketData() {
     const custName = (document.getElementById('custName').value || '').trim();
     if (!quoteDate) { quoteDate = localYmd(new Date()); if (typeof saveDraftTick === 'function') saveDraftTick(); }      // 처음 만든 날로 고정 (85번)
     const [qy, qm, qd] = quoteDate.split('-').map(Number), d = new Date(qy, qm - 1, qd);
-    const pad = n => String(n).padStart(2, '0');
     const validDays = quoteValidOverride === null ? loadQuoteValidDays() : quoteValidOverride, until = new Date(qy, qm - 1, qd + validDays);
     return {
         validText: validDays > 0 ? `${until.getMonth() + 1}월 ${until.getDate()}일까지 유효` : '',
         recipient: custName ? `${custName} 고객님 귀하` : '고객님 귀하',      // 고객 이름·날짜는 견적서 머리글에만 (74번)
-        date: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`,
+        date: localYmd(d).replace(/-/g, '.'),      // 2026.10.31 (날짜 글자는 localYmd 한 곳, 130-1번)
         rooms: rooms.map(r => {
             const items = r.curtains.map(c => {
                 const calc = c.calc || {};

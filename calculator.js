@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261166';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261167';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -201,7 +201,7 @@ function generateDoc(type) {
     const textarea = document.getElementById('outputDoc');
 
     const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const dateStr = localYmd(today);      // 날짜 글자는 한 곳에서 (130-1번)
 
     const tv = docTotals();      // 서류·CSV 합계는 한 곳에서 (130-1번)
     const sellingPriceVal = tv.sellingPrice;
@@ -275,8 +275,8 @@ function downloadCsvFile() {
     calculateAll();
     const custName = (document.getElementById('custName').value || "고객").trim();
     const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const fileDateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    const dateStr = localYmd(today);      // 날짜 글자는 한 곳에서 (130-1번)
+    const fileDateStr = dateStr.replace(/-/g, '');
 
     const tc = docTotals();      // 서류·CSV 합계는 한 곳에서 (130-1번)
     const sellingPrice = tc.sellingPrice;

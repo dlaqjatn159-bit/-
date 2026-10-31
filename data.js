@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261166';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261167';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1014,6 +1014,8 @@ function colorSuffix(name, fabricId) {
     const base = isNo ? ` ${n}번` : ` ${n}`;
     return label ? `${base} (${label})` : base;
 }
+// 날짜 글자 2026-10-31 (그 기기의 날짜 기준). 견적 날짜·서류·CSV·백업 파일 이름이 함께 씀 (130-1번에서 app.js에서 옮겨 와 한 곳으로)
+function localYmd(d) { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
 // 원단의 그 색 하나 꺼내기(번호·이름 다듬어 맞춤). 없으면 undefined (130-1번에서 9곳을 하나로)
 function fabricColorOf(fabricId, name) {
     return getFabricColors(fabricId).find(x => x.name === normalizeColorName(name));
@@ -2459,7 +2461,7 @@ function exportPrivatePack() {
         history: (typeof loadHistory === 'function') ? loadHistory() : undefined };                    // 상담 기록(고객 이름·연락처 포함)
     const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
     const d = new Date();
-    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const stamp = localYmd(d).replace(/-/g, '');      // 20261031 (130-1번)
     const link = document.createElement('a');
     link.download = `redam_private_pack_${stamp}.json`;
     link.href = URL.createObjectURL(blob);
