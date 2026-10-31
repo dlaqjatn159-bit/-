@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261159';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261160';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1111,8 +1111,8 @@
             h += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${ed.spaceWidth || ed.width || 0} × ${ed.spaceHeight || ed.height || 0}cm</b></p>`;
         }
         h += '<div class="msr-grid">' +
-            msrBoxHtml('width', isPart ? '창 넓이' : '공간 넓이', curW) +
-            msrBoxHtml('height', isPart ? '창 높이' : '공간 높이', curH) +
+            msrBoxHtml('width', '가로', curW) +
+            msrBoxHtml('height', '세로', curH) +
             '</div>'; // 41번, 43번
         h += `<div class="ed-color">${row('벽', 'wall')}${row('바닥', 'floor')}`;
         if (house) h += '<button type="button" class="ed-sub" onclick="window.concierge.editRoomUseHouse()">집 기본 색으로 맞추기</button>';
@@ -1165,7 +1165,7 @@
     // 치수 미세 조절 버튼 (숫자를 누르면 키패드, 버튼은 조금씩 더하고 빼기)
     function nudgeRowHtml(target, steps) {
         return '<div class="nudge-row">' + steps.map(s =>
-            `<button type="button" class="nudge-btn font-serif-kr" aria-label="${target === 'width' ? '넓이' : '높이'} ${s > 0 ? '+' : '−'}${Math.abs(s)}cm" onclick="event.stopPropagation(); window.concierge.nudge('${target}', ${s})">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`
+            `<button type="button" class="nudge-btn font-serif-kr" aria-label="${target === 'width' ? '가로' : '세로'} ${s > 0 ? '+' : '−'}${Math.abs(s)}cm" onclick="event.stopPropagation(); window.concierge.nudge('${target}', ${s})">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`
         ).join('') + '</div>';
     }
     // 사진 화면의 질문: 사진 위 어두운 알약 대신 앞의 안내 장면에서 보여 줌 (73번). 사진 위에는 진행 선만
@@ -1356,8 +1356,8 @@
                     html += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${d.spaceWidth || d.width || 0} × ${d.spaceHeight || d.height || 0}cm</b></p>`;
                 }
                 html += '<div class="msr-grid">' +
-                    msrBoxHtml('width', isPart ? '창 넓이' : '넓이', curW) +
-                    msrBoxHtml('height', isPart ? '창 높이' : '높이', curH) +
+                    msrBoxHtml('width', '가로', curW) +
+                    msrBoxHtml('height', '세로', curH) +
                     '</div>'; // 41번, 43번
                 html += '<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.addRoomColor()">다음 →</button>';
                 html += '</div>';
@@ -1595,8 +1595,8 @@
 
                 html += '<div class="msr-stage">';
                 html += '<div class="msr-grid">';
-                html += msrBoxHtml('width', '넓이', curRoom.width); // 41번 · 73번
-                html += msrBoxHtml('height', '높이', curRoom.height);
+                html += msrBoxHtml('width', '가로', curRoom.width); // 41번 · 73번
+                html += msrBoxHtml('height', '세로', curRoom.height);
                 html += '</div>';
 
                 if (hasCurtain) {
@@ -3659,7 +3659,7 @@
             if (target === 'width') curVal = isPart ? (ed.partWidth != null ? ed.partWidth : ed.width) : (ed.spaceWidth != null ? ed.spaceWidth : ed.width);
             else curVal = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
 
-            const lbl = target === "width" ? (isPart ? "창 넓이" : "공간 넓이") : (isPart ? "창 높이" : "공간 높이");
+            const lbl = target === "width" ? "가로" : "세로";
             document.getElementById("v2KeypadTargetLabel").textContent = lbl;
             document.getElementById("v2KeypadValueDisplay").textContent = curVal;
             document.getElementById("v2VirtualKeypadSheet").classList.add("active");
