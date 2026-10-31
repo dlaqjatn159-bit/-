@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261158';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261159';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -157,9 +157,11 @@ function generateDoc(type) {
             if (c.calc) grandSubtotalVal += c.calc.curtainSubtotal || 0;
         });
     });
-    const sellingPriceVal = Math.ceil((grandSubtotalVal + globalInstallFee) / 1000) * 1000;
-    const vatAmountVal = globalVatOption === 'business' ? Math.ceil((sellingPriceVal * 0.1) / 1000) * 1000 : 0;
-    const finalPriceVal = sellingPriceVal + vatAmountVal;
+    // 합계는 Pricing.totals 한 곳에서 (127번)
+    const tv = Pricing.totals(grandSubtotalVal, globalInstallFee, globalVatOption);
+    const sellingPriceVal = tv.sellingPrice;
+    const vatAmountVal = tv.vatAmount;
+    const finalPriceVal = tv.finalPrice;
 
     // 서류 및 발주서용 원단명 표기: 공장 발주서·시트 상세·CSV 다운로드에서는 [영문품명] 병기 (51번)
     const formatFabDocName = (calc, fab, isFactory, curtain) => {
@@ -275,9 +277,11 @@ function downloadCsvFile() {
             if (c.calc) grandSubtotal += c.calc.curtainSubtotal || 0;
         });
     });
-    const sellingPrice = Math.ceil((grandSubtotal + globalInstallFee) / 1000) * 1000;
-    const vatAmount = globalVatOption === 'business' ? Math.ceil((sellingPrice * 0.1) / 1000) * 1000 : 0;
-    const finalPrice = sellingPrice + vatAmount;
+    // 합계는 Pricing.totals 한 곳에서 (127번)
+    const tc = Pricing.totals(grandSubtotal, globalInstallFee, globalVatOption);
+    const sellingPrice = tc.sellingPrice;
+    const vatAmount = tc.vatAmount;
+    const finalPrice = tc.finalPrice;
 
     const headers = ["일자", "고객명", "공간", "항목", "샘플북", "품목명", "실측가로", "실측세로", "설치방식", "바닥간격", "제작세로", "가공방식", "옵션", "수량", "단위", "단가", "부자재", "판매금액"];
     const escapeCsv = (val) => {

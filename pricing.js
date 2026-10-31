@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261158';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261159';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -169,7 +169,7 @@
     // 전체 합계 (시공비 포함, 천원 단위 올림, 부가세 옵션)
     function totals(roomSubtotalSum, installFee, vatOption) {
         const sellingPrice = Math.ceil((roomSubtotalSum + installFee) / 1000) * 1000;
-        const vatAmount = (vatOption === 'business') ? Math.ceil((sellingPrice * 0.1) / 1000) * 1000 : 0;
+        const vatAmount = (vatOption === 'business') ? Math.round(sellingPrice * 0.1) : 0;      // 정확히 10% (127번)
         return { sellingPrice, vatAmount, finalPrice: sellingPrice + vatAmount };
     }
 
