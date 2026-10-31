@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261165';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261166';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261165';
+const REDAM_BUILD = '20261166';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3804,16 +3804,20 @@ function ticketKeepWord(r, c) {
     const view = (col && col.tone) ? Object.assign({}, f, { tone: col.tone, manual: Object.assign({}, f.manual, { tone: true }) }) : f;
     try { return recommendReason(view, r, cat, 1, true) || ''; } catch (e) { return ''; }
 }
+// 원단 이름 다듬기: 괄호(폭·암막률·단가 등)·가격·앞의 책자 이름을 뺌. 다 빠지면 원래 이름 (130-1번에서 두 벌을 하나로)
+function ticketCleanName(f) {
+    let n = String(f.name || '').replace(/\([^)]*\)/g, ' ').replace(/[0-9,]+\s*원/g, ' ').replace(/\s+/g, ' ').trim();
+    const book = String(f.book || '').trim();
+    if (book && n.startsWith(book + ' ')) n = n.slice(book.length).trim();
+    return n || String(f.name || '원단');
+}
 // 고객에게 보여 줄 원단 이름: 괄호(폭·암막률·단가 등)·가격·앞의 책자 이름을 빼고, 색 표시(예: 3번 (그레이지))는 붙임
 function ticketFabricName(c, calc) {
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
     if (sf) return sf.name;
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return (calc && calc.fabName) || c.label || '원단';
-    let n = String(f.name || '').replace(/\([^)]*\)/g, ' ').replace(/[0-9,]+\s*원/g, ' ').replace(/\s+/g, ' ').trim();
-    const book = String(f.book || '').trim();
-    if (book && n.startsWith(book + ' ')) n = n.slice(book.length).trim();
-    return (n || String(f.name || '원단')) + colorSuffix(c.colorName, f.id);
+    return ticketCleanName(f) + colorSuffix(c.colorName, f.id);
 }// 견적서 원단 칸 이름 (75번, 10-25 사장님): 책자에 적힌 원단 이름 + 색 번호만. 예) 블랑 1번
 //  책자·공급처 이름, 괄호(폭·단가), 색 이름 괄호는 뺌. 색이 하나뿐인 원단(POA1 등)은 번호 없이 이름만
 function ticketBookName(c) {
@@ -3821,10 +3825,7 @@ function ticketBookName(c) {
     if (sf) return sf.name;
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return c.name || '원단';
-    let n = String(f.name || '').replace(/\([^)]*\)/g, ' ').replace(/[0-9,]+\s*원/g, ' ').replace(/\s+/g, ' ').trim();
-    const book = String(f.book || '').trim();
-    if (book && n.startsWith(book + ' ')) n = n.slice(book.length).trim();
-    n = n || String(f.name || '원단');
+    const n = ticketCleanName(f);
     const k = normalizeColorName(c.colorName);
     if (!k) return n;
     if (!/^\d+$/.test(k)) return `${n} ${k}`;
