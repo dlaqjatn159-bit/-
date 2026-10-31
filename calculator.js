@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261161';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261162';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -142,6 +142,13 @@ function blockIfNoFabric() {
     return true;
 }
 
+// 서류·CSV 합계: 품목 금액을 더해 판매가·부가세·최종금액 (127번 Pricing.totals, 130-1번에서 두 곳을 하나로)
+function docTotals() {
+    let sum = 0;
+    rooms.forEach(r => r.curtains.forEach(c => { if (c.calc) sum += c.calc.curtainSubtotal || 0; }));
+    return Pricing.totals(sum, globalInstallFee, globalVatOption);
+}
+
 function generateDoc(type) {
     if (blockIfNoFabric()) return;
     calculateAll();
@@ -151,14 +158,7 @@ function generateDoc(type) {
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    let grandSubtotalVal = 0;
-    rooms.forEach(r => {
-        r.curtains.forEach(c => {
-            if (c.calc) grandSubtotalVal += c.calc.curtainSubtotal || 0;
-        });
-    });
-    // 합계는 Pricing.totals 한 곳에서 (127번)
-    const tv = Pricing.totals(grandSubtotalVal, globalInstallFee, globalVatOption);
+    const tv = docTotals();      // 서류·CSV 합계는 한 곳에서 (130-1번)
     const sellingPriceVal = tv.sellingPrice;
     const vatAmountVal = tv.vatAmount;
     const finalPriceVal = tv.finalPrice;
@@ -271,14 +271,7 @@ function downloadCsvFile() {
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const fileDateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
-    let grandSubtotal = 0;
-    rooms.forEach(r => {
-        r.curtains.forEach(c => {
-            if (c.calc) grandSubtotal += c.calc.curtainSubtotal || 0;
-        });
-    });
-    // 합계는 Pricing.totals 한 곳에서 (127번)
-    const tc = Pricing.totals(grandSubtotal, globalInstallFee, globalVatOption);
+    const tc = docTotals();      // 서류·CSV 합계는 한 곳에서 (130-1번)
     const sellingPrice = tc.sellingPrice;
     const vatAmount = tc.vatAmount;
     const finalPrice = tc.finalPrice;
