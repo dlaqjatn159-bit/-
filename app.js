@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261163';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261164';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261163';
+const REDAM_BUILD = '20261164';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -2755,7 +2755,7 @@ function closeFabricSearch(input) {
     setTimeout(() => {
         if (!input.isConnected || document.activeElement === input) return;
         if (input.nextElementSibling) input.nextElementSibling.hidden = true;
-        const fab = FABRIC_DB.find(f => f.id === input.dataset.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(input.dataset.fabricId) : null);
+        const fab = Pricing.pickFabric(FABRIC_DB, input.dataset.fabricId);
         input.value = fabricSearchLabel(fab);
     }, 200);
 }
@@ -3305,7 +3305,7 @@ function renderSurvey() {
 
         // 자동 추천 원단 요약 줄 (116번: 설문·방 색에 따라 채워진 원단을 상담란에서도 바로 보고 찾기·견적란으로 이동)
         const recPills = (room.curtains || []).map(c => {
-            const fab = FABRIC_DB.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);
+            const fab = Pricing.pickFabric(FABRIC_DB, c.fabricId);
             if (!fab) return '';
             const sw = (typeof colorFillOf === 'function') ? colorFillOf(fab.id, c.colorName) : '#ddd3c2';
             const suf = (typeof colorSuffix === 'function') ? colorSuffix(c.colorName, fab.id) : (c.colorName ? ' ' + c.colorName : '');
@@ -3468,7 +3468,7 @@ function renderRooms() {
 
         let curtainsHtml = "";
         room.curtains.forEach((c, curtainIndex) => {
-            let curFab = FABRIC_DB.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);      // 못 찾으면 첫 원단으로 바꾸지 않고 "원단 없음" (126번)
+            let curFab = Pricing.pickFabric(FABRIC_DB, c.fabricId);      // 못 찾으면 첫 원단으로 바꾸지 않고 "원단 없음" (126번)
             const isBlind = curFab && curFab.calcType === "hebe";
             const fabColors = curFab ? getFabricColors(curFab.id) : [];
             const colorSelect = fabColors.length ? `<div class="mt-1.5"><label class="block text-[10px] font-bold ${c.colorName ? 'text-slate-500' : 'text-rose-600'} mb-0.5">색상 번호 ${c.colorName ? '' : '(선택 필요)'}</label><select onchange="updateCurtainData(${room.id}, ${c.id}, 'colorName', this.value)" class="w-full px-2 py-1 border ${c.colorName ? 'border-slate-300' : 'border-rose-400'} rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0"><option value="">(색상 선택)</option>${fabColors.map(cl => `<option value="${cl.name}" ${c.colorName === cl.name ? 'selected' : ''}>${cl.name}${/^\d+$/.test(cl.name) ? '번' : ''}${cl.label ? ' · ' + cl.label : ''}${cl.tone ? ' · ' + TONE_LABELS[cl.tone] : ''}</option>`).join('')}</select></div>` : '';
@@ -3896,7 +3896,7 @@ function ticketKindLabel(c) {
 // 사진이 없을 때 원단 칸을 채우는 색: 고른 색(없으면 원단)의 톤으로 짐작. 제안서·견적서·첫 화면 공간 칸이 함께 씀
 const FABRIC_TONE_FILL = { warm: '#dcc3a4', cool: '#b9c4cb', neutral: '#d3cdc3', deep: '#7a695c' };
 function fabricToneFill(fabricId, colorName) {
-    const f = FABRIC_DB.find(x => x.id === fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(fabricId) : null);
+    const f = Pricing.pickFabric(FABRIC_DB, fabricId);
     if (!f) return '#d9cdbb';
     const col = colorName ? getFabricColors(f.id).find(x => x.name === normalizeColorName(colorName)) : null;
     return FABRIC_TONE_FILL[(col && col.tone) || f.tone] || '#d9cdbb';
@@ -4441,7 +4441,7 @@ function whyRoomCtx(room) {
     };
 }
 function whyItemFacts(it, R) {
-    const f = FABRIC_DB.find(x => x.id === it.fabricId) || (typeof sampleBlindFabric === 'function' && sampleBlindFabric(it.fabricId)) || {};
+    const f = Pricing.pickFabric(FABRIC_DB, it.fabricId) || {};
     const kind = it.kindKey === 'sheer' ? 'sheer' : (it.kindKey === 'blind' ? 'blind' : 'drape');
     const col = whyFabricColor(it.fabricId, it.colorName);
     return { it, f, kind, hex: col && col.hex, lab: col && typeof col.L === 'number' ? col : null, link: it.pickDir || R.room.linkDir || null,
