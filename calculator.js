@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261162';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261163';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -149,6 +149,51 @@ function docTotals() {
     return Pricing.totals(sum, globalInstallFee, globalVatOption);
 }
 
+// 서류 및 발주서용 원단명 표기: 공장 발주서·시트 상세·CSV 다운로드에서는 [영문품명] 병기 (51번, 130-1번에서 두 벌을 하나로)
+function docFabName(calc, fab, isFactory, curtain) {
+    let n = (calc && calc.fabName) || (fab && fab.name) || '';
+    if (isFactory && fab && fab.engName) {
+        if (fab.name && n.includes(fab.name)) {
+            n = n.replace(fab.name, `${fab.name} [${fab.engName}]`);
+        } else {
+            n = `${n} [${fab.engName}]`;
+        }
+    }
+    if (isFactory && curtain && curtain.fabricId && curtain.colorName && typeof getFabricColors === 'function') {
+        const col = getFabricColors(curtain.fabricId).find(x => x.name === normalizeColorName(curtain.colorName));
+        if (col && col.orderCode && !n.includes(col.orderCode)) {
+            n += ` [${col.orderCode}]`;
+        }
+    }
+    return n;
+}
+
+// 공장 발주 표(서류 시트·CSV 같은 칸): 머리 줄과 품목마다 한 줄 (130-1번에서 두 벌을 하나로)
+const DOC_ORDER_HEADERS = ["일자", "고객명", "공간", "항목", "샘플북", "품목명", "실측가로", "실측세로", "설치방식", "바닥간격", "제작세로", "가공방식", "옵션", "수량", "단위", "단가", "부자재", "판매금액"];
+function docOrderRows(dateStr, custName) {
+    const out = [];
+    rooms.forEach(r => {
+        r.curtains.forEach(c => {
+            const calc = c.calc || {};
+            const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
+            const fabDisplayName = docFabName(calc, fab, true, c);
+            const qtyVal = calc.calcType === 'hebe' ? calc.appliedHebe : (calc.calcType === 'width' ? calc.numWidths : calc.totalYards);
+            const optText = `${c.shapeFee > 0 ? '형상 ' : ''}${c.leadBand ? '리드밴드' : ''}`.trim() || '기본';
+            const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
+
+            out.push([
+                dateStr, custName, r.name, c.label, calc.fabBook || "", fabDisplayName || "",
+                c.width, c.height, calc.installDesc || "레일", `${calc.floorGapVal || 0}cm`,
+                calc.actualCurtainHeight || c.height,
+                methodDesc, optText, qtyVal, fab.unit || "", fab.price || 0,
+                calc.calcType === 'hebe' ? '미적용' : `${c.hwName} (${calc.numJa}자)`,
+                calc.curtainSubtotal || 0
+            ]);
+        });
+    });
+    return out;
+}
+
 function generateDoc(type) {
     if (blockIfNoFabric()) return;
     calculateAll();
@@ -163,30 +208,11 @@ function generateDoc(type) {
     const vatAmountVal = tv.vatAmount;
     const finalPriceVal = tv.finalPrice;
 
-    // 서류 및 발주서용 원단명 표기: 공장 발주서·시트 상세·CSV 다운로드에서는 [영문품명] 병기 (51번)
-    const formatFabDocName = (calc, fab, isFactory, curtain) => {
-        let n = (calc && calc.fabName) || (fab && fab.name) || '';
-        if (isFactory && fab && fab.engName) {
-            if (fab.name && n.includes(fab.name)) {
-                n = n.replace(fab.name, `${fab.name} [${fab.engName}]`);
-            } else {
-                n = `${n} [${fab.engName}]`;
-            }
-        }
-        if (isFactory && curtain && curtain.fabricId && curtain.colorName && typeof getFabricColors === 'function') {
-            const col = getFabricColors(curtain.fabricId).find(x => x.name === normalizeColorName(curtain.colorName));
-            if (col && col.orderCode && !n.includes(col.orderCode)) {
-                n += ` [${col.orderCode}]`;
-            }
-        }
-        return n;
-    };
-
     const buildRoomSummaries = (isFactory) => rooms.map((r, i) => {
         let curtainLines = r.curtains.map((c) => {
             const calc = c.calc || {};
             const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
-            const fabDisplayName = formatFabDocName(calc, fab, isFactory, c);
+            const fabDisplayName = docFabName(calc, fab, isFactory, c);
             const optionsList = [];
             if (c.shapeFee > 0) optionsList.push("형상기억");
             if (c.leadBand) optionsList.push("리드밴드");
@@ -215,28 +241,9 @@ function generateDoc(type) {
             // 손님에게 보내는 글은 견적서의 [카톡 글 복사]와 같은 글 (62번): 책자 이름·공장용 말 대신 색 이름 · 재질
             textarea.value = ticketKakaoText();
         } else if (type === 'sheet') {
-            const headers = ["일자", "고객명", "공간", "항목", "샘플북", "품목명", "실측가로", "실측세로", "설치방식", "바닥간격", "제작세로", "가공방식", "옵션", "수량", "단위", "단가", "부자재", "판매금액"];
-            let rows = [headers.join('\t')];
-
-            rooms.forEach(r => {
-                r.curtains.forEach(c => {
-                    const calc = c.calc || {};
-                    const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
-                    const fabDisplayName = formatFabDocName(calc, fab, true, c);
-                    const qtyVal = calc.calcType === 'hebe' ? calc.appliedHebe : (calc.calcType === 'width' ? calc.numWidths : calc.totalYards);
-                    const optText = `${c.shapeFee > 0 ? '형상 ' : ''}${c.leadBand ? '리드밴드' : ''}`.trim() || '기본';
-                    const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
-
-                    rows.push([
-                        dateStr, custName, r.name, c.label, calc.fabBook || "", fabDisplayName || "",
-                        c.width, c.height, calc.installDesc || "레일", `${calc.floorGapVal || 0}cm`,
-                        calc.actualCurtainHeight || c.height,
-                        methodDesc, optText, qtyVal, fab.unit || "", fab.price || 0,
-                        calc.calcType === 'hebe' ? '미적용' : `${c.hwName} (${calc.numJa}자)`,
-                        calc.curtainSubtotal || 0
-                    ].join('\t'));
-                });
-            });
+            // 공장 발주 표 줄은 CSV와 한 곳에서 (130-1번)
+            let rows = [DOC_ORDER_HEADERS.join('\t')];
+            docOrderRows(dateStr, custName).forEach(row => rows.push(row.join('\t')));
 
             rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "전체 시공비", globalInstallFee].join('\t'));
             rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "최종 금액", finalPriceVal].join('\t'));
@@ -247,7 +254,7 @@ function generateDoc(type) {
             let firstItem = "커튼";
             if (firstCurtain && firstCurtain.calc) {
                 const fFab = FABRIC_DB.find(f => f.id === firstCurtain.fabricId) || {};
-                firstItem = formatFabDocName(firstCurtain.calc, fFab, true, firstCurtain);
+                firstItem = docFabName(firstCurtain.calc, fFab, true, firstCurtain);
             }
             let totalCount = rooms.reduce((acc, curr) => acc + curr.curtains.length, 0);
 
@@ -276,52 +283,14 @@ function downloadCsvFile() {
     const vatAmount = tc.vatAmount;
     const finalPrice = tc.finalPrice;
 
-    const headers = ["일자", "고객명", "공간", "항목", "샘플북", "품목명", "실측가로", "실측세로", "설치방식", "바닥간격", "제작세로", "가공방식", "옵션", "수량", "단위", "단가", "부자재", "판매금액"];
     const escapeCsv = (val) => {
         const s = String(val ?? '');
         return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
     };
 
-    const formatFabDocName = (calc, fab, isFactory, curtain) => {
-        let n = (calc && calc.fabName) || (fab && fab.name) || '';
-        if (isFactory && fab && fab.engName) {
-            if (fab.name && n.includes(fab.name)) {
-                n = n.replace(fab.name, `${fab.name} [${fab.engName}]`);
-            } else {
-                n = `${n} [${fab.engName}]`;
-            }
-        }
-        if (isFactory && curtain && curtain.fabricId && curtain.colorName && typeof getFabricColors === 'function') {
-            const col = getFabricColors(curtain.fabricId).find(x => x.name === normalizeColorName(curtain.colorName));
-            if (col && col.orderCode && !n.includes(col.orderCode)) {
-                n += ` [${col.orderCode}]`;
-            }
-        }
-        return n;
-    };
+    let csvContent = '\uFEFF' + DOC_ORDER_HEADERS.map(escapeCsv).join(',') + '\r\n';
 
-    let csvContent = '\uFEFF' + headers.map(escapeCsv).join(',') + '\r\n';
-
-    rooms.forEach(r => {
-        r.curtains.forEach(c => {
-            const calc = c.calc || {};
-            const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
-            const fabDisplayName = formatFabDocName(calc, fab, true, c);
-            const qtyVal = calc.calcType === 'hebe' ? calc.appliedHebe : (calc.calcType === 'width' ? calc.numWidths : calc.totalYards);
-            const optText = `${c.shapeFee > 0 ? '형상 ' : ''}${c.leadBand ? '리드밴드' : ''}`.trim() || '기본';
-            const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
-
-            const row = [
-                dateStr, custName, r.name, c.label, calc.fabBook || "", fabDisplayName || "",
-                c.width, c.height, calc.installDesc || "레일", `${calc.floorGapVal || 0}cm`,
-                calc.actualCurtainHeight || c.height,
-                methodDesc, optText, qtyVal, fab.unit || "", fab.price || 0,
-                calc.calcType === 'hebe' ? '미적용' : `${c.hwName} (${calc.numJa}자)`,
-                calc.curtainSubtotal || 0
-            ];
-            csvContent += row.map(escapeCsv).join(',') + '\r\n';
-        });
-    });
+    docOrderRows(dateStr, custName).forEach(row => { csvContent += row.map(escapeCsv).join(',') + '\r\n'; });      // 시트와 한 곳에서 (130-1번)
 
     csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "전체 시공비", globalInstallFee].map(escapeCsv).join(',') + '\r\n';
     csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "최종 금액", finalPrice].map(escapeCsv).join(',') + '\r\n';
