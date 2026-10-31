@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261157';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261158';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261157';
+const REDAM_BUILD = '20261158';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'app.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -3468,11 +3468,7 @@ function renderRooms() {
 
         let curtainsHtml = "";
         room.curtains.forEach((c, curtainIndex) => {
-            let curFab = FABRIC_DB.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);
-            if (!curFab && FABRIC_DB.length > 0) {
-                curFab = FABRIC_DB[0];
-                c.fabricId = curFab.id;
-            }
+            let curFab = FABRIC_DB.find(f => f.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);      // 못 찾으면 첫 원단으로 바꾸지 않고 "원단 없음" (126번)
             const isBlind = curFab && curFab.calcType === "hebe";
             const fabColors = curFab ? getFabricColors(curFab.id) : [];
             const colorSelect = fabColors.length ? `<div class="mt-1.5"><label class="block text-[10px] font-bold ${c.colorName ? 'text-slate-500' : 'text-rose-600'} mb-0.5">색상 번호 ${c.colorName ? '' : '(선택 필요)'}</label><select onchange="updateCurtainData(${room.id}, ${c.id}, 'colorName', this.value)" class="w-full px-2 py-1 border ${c.colorName ? 'border-slate-300' : 'border-rose-400'} rounded-lg text-xs font-semibold text-indigo-950 bg-white outline-none min-w-0"><option value="">(색상 선택)</option>${fabColors.map(cl => `<option value="${cl.name}" ${c.colorName === cl.name ? 'selected' : ''}>${cl.name}${/^\d+$/.test(cl.name) ? '번' : ''}${cl.label ? ' · ' + cl.label : ''}${cl.tone ? ' · ' + TONE_LABELS[cl.tone] : ''}</option>`).join('')}</select></div>` : '';
@@ -3535,7 +3531,7 @@ function renderRooms() {
                         <div class="flex justify-between items-center mb-0.5">
                             <label class="block text-[10px] font-bold text-slate-500">원단 직접 바꾸기 (책자·이름 검색)</label>
                             <span class="staff-chip">
-                                ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : ""}
+                                ${curFab ? (isBlind ? "블라인드" : (curFab.calcType === "width" ? `폭당 ${curFab.specCm}cm` : `Y당 ${curFab.specCm}cm`)) : '<span class="no-fabric">원단 없음 — 다시 골라 주세요</span>'}
                             </span>
                         </div>
                         <div class="flex items-stretch gap-1.5">
@@ -4148,7 +4144,7 @@ function ticketData() {
                     label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
                     name: ticketPlainName(c, calc), tone: ticketToneWord(r, c),      // 이유 장·우리 집 색: 색 이름 · 재질 + 벽·바닥과 톤 관계 (61번)
                     bookName: ticketBookName(c),      // 견적서(그림·세로 화면·카톡 글): 책자 원단 이름 + 색 번호, 예) 블랑 1번 (75번)
-                    fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly,
+                    fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly: sampleOnly || !!calc.noFabric,      // 원단 없는 품목은 금액을 숨김 (126번)
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || ''),
@@ -5593,6 +5589,7 @@ function joinTicketCanvases(canvases) {
 // 선명한 JPG로 갤러리에 저장 → 카카오톡에서 사진으로 보내면 됨 (탭에서 공유 창이 끝없이 로딩돼 "공유" 대신 "저장")
 let __saveBusy = false;
 async function saveTicketImage() {
+    if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
     if (__saveBusy) return;          // 연타해도 여러 번 저장되지 않게
     __saveBusy = true;
     showToast("견적서 만드는 중...", "info");
@@ -5661,6 +5658,7 @@ function ticketKakaoText(data) {
 }
 async function copyTicketText() {
     let txt = '';
+    if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
     try { txt = ticketKakaoText(); } catch (err) { console.error(err); showToast("글을 만들지 못했습니다.", "error"); return; }
     // 숨은 글상자로 먼저 복사 (누른 순간에 바로 해야 됨 — 기다린 뒤엔 막히는 창이 있음). 안 되면 클립보드로
     let ok = false;
@@ -5739,6 +5737,7 @@ function removePrintFrame() {
     if (__printFrame) { try { __printFrame.remove(); } catch (e) {} __printFrame = null; }
 }
 async function printTicket() {
+    if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
     let canvases;
     try { ({ canvases } = await makeTicketBlobs()); }
     catch (err) { console.error(err); showToast("견적서 인쇄 준비 중 오류가 발생했습니다.", "error"); return; }

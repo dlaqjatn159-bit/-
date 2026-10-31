@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261157';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261158';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -149,8 +149,8 @@
 
     // 판매가 계산은 직원 화면과 같은 엔진(pricing.js)을 사용합니다.
     function calculateV1ItemPrice(c) {
-        const fab = window.Pricing.pickFabric(getLiveDb(), c.fabricId);
-        const p = window.Pricing.priceItem(c, fab);
+        const fab = window.Pricing.pickFabric(getLiveDb(), c.fabricId) || {};      // 원단 없음이면 금액 0 (126번)
+        const p = window.Pricing.priceItem(c, fab.id ? fab : null);
         const isBlind = (c.presetType === 'blind' || fab.calcType === 'hebe');
         return {
             curtainSubtotal: p.curtainSubtotal,

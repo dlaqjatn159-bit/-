@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261157';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261158';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -16,6 +16,7 @@ function calculateAll() {
     const mx = (typeof loadMultiples === 'function') ? loadMultiples() : null;
     const grp = { curtain: { sell: 0, buy: 0, miss: false, want: 0, noCurve: false }, blind: { sell: 0, buy: 0, miss: false, want: 0, noCurve: false } };      // want: 곡선대로라면 나올 판매가 합 (109번)
 
+    let noFabCount = 0;      // 원단을 못 찾은 품목 수 (126번)
     const summaryListContainer = document.getElementById('summaryRoomList');
     if (summaryListContainer) summaryListContainer.innerHTML = '';
 
@@ -25,7 +26,8 @@ function calculateAll() {
         room.curtains.forEach(c => {
             const fab = Pricing.pickFabric(FABRIC_DB, c.fabricId);
             const p = Pricing.priceItem(c, fab);
-            const cost = staff ? Costing.costItem(c, fab, p) : null;
+            if (p.noFabric) noFabCount++;
+            const cost = (staff && fab) ? Costing.costItem(c, fab, p) : null;
 
             c.calc = {
                 fabName: (p.fabName || '') + (typeof colorSuffix === 'function' ? colorSuffix(c.colorName, c.fabricId) : ''), fabBook: p.fabBook, calcType: p.calcType,
@@ -35,7 +37,8 @@ function calculateAll() {
                 actualCurtainHeight: p.actualCurtainHeight,
                 installDesc: p.installDesc,
                 floorGapVal: p.floorGapVal,
-                isSeamless: p.isSeamless
+                isSeamless: p.isSeamless,
+                noFabric: !!p.noFabric
             };
 
             if (cost) {
@@ -52,7 +55,7 @@ function calculateAll() {
                 sumHwCost += cost.hwCost;
             }
 
-            if (staff) {
+            if (staff && fab) {
                 const g = grp[p.calcType === 'hebe' ? 'blind' : 'curtain'];
                 if (cost) {
                     // 리드밴드는 원가=판매가라 부가세를 얹지 않음
@@ -69,7 +72,8 @@ function calculateAll() {
             const qtyEl = document.getElementById(`curtainQty_${c.id}`);
             const subEl = document.getElementById(`curtainSub_${c.id}`);
             if (qtyEl) qtyEl.textContent = c.calc.qtyText;
-            if (subEl) subEl.textContent = `${p.curtainSubtotal.toLocaleString()}원`;
+            if (subEl) subEl.textContent = p.noFabric ? '' : `${p.curtainSubtotal.toLocaleString()}원`;      // 원단 없음은 금액을 비워 둠 (126번)
+            if (qtyEl) qtyEl.classList.toggle('no-fabric', !!p.noFabric);
         });
 
         grandSubtotal += roomSubtotalSum;
@@ -86,6 +90,13 @@ function calculateAll() {
             `;
         }
     });
+
+    // 원단 없는 품목이 있으면 견적 요약 맨 아래에 경고 (126번)
+    const noFabEl = document.getElementById('summaryNoFabric');
+    if (noFabEl) {
+        noFabEl.hidden = noFabCount === 0;
+        noFabEl.textContent = noFabCount ? `원단 없는 품목 ${noFabCount}개 — 금액에서 빠져 있어요. 원단을 다시 골라 주세요.` : '';
+    }
 
     const t = Pricing.totals(grandSubtotal, globalInstallFee, globalVatOption);
     const sellingPrice = t.sellingPrice;
@@ -121,7 +132,18 @@ function calculateAll() {
 // ==============================================================
 // DOCUMENT GENERATORS & CSV EXPORT
 // ==============================================================
+// 원단 없는 품목이 있으면 서류·견적서를 내보내지 못하게 막음 (126번). 막았으면 true
+function blockIfNoFabric() {
+    calculateAll();
+    let n = 0;
+    rooms.forEach(r => r.curtains.forEach(c => { if (c.calc && c.calc.noFabric) n++; }));
+    if (!n) return false;
+    showToast(`원단 없는 품목이 ${n}개 있어서 내보낼 수 없어요. 원단을 다시 골라 주세요.`, 'error');
+    return true;
+}
+
 function generateDoc(type) {
+    if (blockIfNoFabric()) return;
     calculateAll();
     const custName = document.getElementById('custName').value || "고객";
     const textarea = document.getElementById('outputDoc');
@@ -240,6 +262,7 @@ function generateDoc(type) {
 }
 
 function downloadCsvFile() {
+    if (blockIfNoFabric()) return;
     calculateAll();
     const custName = (document.getElementById('custName').value || "고객").trim();
     const today = new Date();

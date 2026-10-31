@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261157';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261158';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -28,8 +28,8 @@
 
     function pickFabric(db, fabricId) {
         if (typeof sampleBlindFabric === 'function' && sampleBlindFabric(fabricId)) return sampleBlindFabric(fabricId);
-        if (!Array.isArray(db)) return {};
-        return db.find(f => f.id === fabricId) || db[0] || {};
+        if (!Array.isArray(db)) return null;
+        return db.find(f => f.id === fabricId) || null;      // 못 찾으면 첫 원단 대신 "없음" (126번)
     }
 
     /**
@@ -40,7 +40,11 @@
      * @param fab 원단 { calcType, specCm, price, extra, categoryType, name, book }
      */
     function priceItem(c, fab) {
-        fab = fab || {};
+        if (!fab) {      // 원단을 못 찾은 품목: 다른 원단 값으로 셈하지 않고 금액 0 + 표시 (126번)
+            return { noFabric: true, fabName: '', fabBook: '', calcType: '', numWidths: 0, totalYards: 0, appliedHebe: 0, qtyText: '원단 없음',
+                curtainSubtotal: 0, numJa: 0, leadBandCost: 0, actualCurtainHeight: Number(c && c.height) || 0,
+                installDesc: (c && c.hwName) || '레일', floorGapVal: parseFloat(c && c.floorGap) || 0, isSeamless: false, q: {} };
+        }
         const r = (c.rates && typeof c.rates === 'object') ? c.rates : null;
         const rn = v => Number(v) || 0;
         const byWidth = fab.calcType === 'width';      // 폭당 원단은 폭 수 × 폭당 단가, 마당 원단(대폭 무이음·소폭 이음)은 마 수 × 마당 단가

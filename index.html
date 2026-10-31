@@ -181,6 +181,7 @@
                                 <h2 class="font-serif-kr">견적 요약</h2>
 
                                 <div id="summaryRoomList"></div>
+                                <div id="summaryNoFabric" class="staff-nofab" hidden></div>
                                 <div class="staff-sum-line strong">
                                     <span>공간별 제품 합산</span>
                                     <span><span id="resRoomsSubtotal">0</span>원</span>
@@ -802,13 +803,13 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261157"></script>
-    <script src="costing.js?v=20261157"></script>
-    <script src="data.js?v=20261157"></script>
-    <script src="calculator.js?v=20261157"></script>
-    <script src="concierge.js?v=20261157"></script>
-    <script src="app.js?v=20261157"></script>
-    <script src="room-color.js?v=20261157"></script>
+    <script src="pricing.js?v=20261158"></script>
+    <script src="costing.js?v=20261158"></script>
+    <script src="data.js?v=20261158"></script>
+    <script src="calculator.js?v=20261158"></script>
+    <script src="concierge.js?v=20261158"></script>
+    <script src="app.js?v=20261158"></script>
+    <script src="room-color.js?v=20261158"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

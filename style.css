@@ -2990,3 +2990,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .house-comp .hc-line .heard-row { flex: 1; min-width: 0; }
 .house-comp .hc-point { flex: none; margin-bottom: 8px; padding: 0 16px; border: 0; background: #f4efe7; font-family: var(--sans); font-size: var(--t-small); color: var(--muted); cursor: pointer; }
 .house-comp .hc-point.is-on { color: var(--earth); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+
+/* 원단 없는 품목 경고 (126번) */
+.staff-nofab { margin: 0.4rem 0; padding: 0.45rem 0.6rem; font-size: 0.78rem; font-weight: 700; color: #be123c; background: #fff1f2; border: 1px solid #fda4af; border-radius: 0.5rem; }
+.no-fabric { color: #be123c !important; font-weight: 700; }

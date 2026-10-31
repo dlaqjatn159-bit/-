@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-guide.js']='20261157';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-guide.js']='20261158';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 색 기법 교과서 (95번): 직원 화면 › 색 기법. 열 때만 불러옴. 손님 화면에는 없음
 //  기법 하나 = 카드 한 장: 방 그림 + Lab 색상환·밝기 막대 → 이름 · 앱 반영 → 효과 → 쓰는 법·조심 → 손님에게 하는 말
