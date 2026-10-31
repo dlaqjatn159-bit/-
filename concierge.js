@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261160';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261161';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -941,7 +941,7 @@
             const boxH = isAllMode ? 54 : 84, floorH = isAllMode ? 11 : 16, aboveH = boxH - floorH;
             h += `<section class="dos-room${isAllMode ? '' : ' is-hero'}">`;
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
-                + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured ? `<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button>` : `<button type="button" class="dos-todo" onclick="window.concierge.consultRoom(${r.id})">상담하기</button>`}</span></div>`;
+                + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured ? `<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button>` : ''}</span></div>`;
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f, cls) => `<div class="${(dark(bg) ? 'is-dark ' : '') + (cls || '')}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;
@@ -1032,7 +1032,6 @@
             h += `<div class="arch-layer-box" style="height:${boxH}px"><div class="arch-mid-window${furHtml ? ' has-fur' : ''}" style="height:${midWindowH}px">${topSegs}</div>${wallBaseHtml}<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="height:${floorH}px;background:${fHex}"><span>바닥</span></div>${furHtml}</div>`;
             if (!r.isConfigured) {
                 h += `<div class="dos-empty-cta"><p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 채워집니다.</p>`
-                    + (!isAllMode ? `<button type="button" class="txt-cta font-serif-kr" onclick="window.concierge.consultRoom(${r.id})">${flowNow && flowNow.kind === 'fabric' ? `${esc(r.name)} 원단 고르기` : (started ? '이어서 상담하기' : '상담 시작')} →</button>` : '')
                     + `</div></section>`;
                 return;
             }
@@ -1081,8 +1080,6 @@
         if (next) h += `<button type="button" class="dos-act is-main" onclick="window.concierge.flowNext()">${flowNow && flowNow.kind === 'fabric' ? `${esc(flowNow.room.name)} 원단 고르기` : (started ? '이어서 상담하기' : '상담 시작')} →</button>`;
         if (doneN) h += `<button type="button" class="dos-act${next ? '' : ' is-main'}" onclick="window.concierge.goToCheckout()">최종 제안 보기${next ? '' : ' →'}</button>`;
         h += '<button type="button" class="dos-act dos-act-add" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button>';
-        h += '</div><div class="dos-subacts">';
-        h += '<button type="button" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button>';
         h += '</div></div>';
         h += '</div></div>';
         return h;
@@ -2032,7 +2029,7 @@
         h += '<footer class="fin-ed-closing"><div class="fin-closing-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="fin-closing-mark font-serif-kr">Re<i>.</i>dam</div></footer>';
         h += '<div class="fin-ed-foot font-serif-kr">';
         h += '<div class="fin-ed-foot-main"><button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button><button type="button" class="dos-act" onclick="window.concierge.copyQuoteText()">카톡 글 복사</button><button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button></div>';
-        h += '<div class="fin-ed-foot-sub"><button type="button" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button><button type="button" onclick="if (typeof startNewConsultation === \'function\') startNewConsultation();">다음 상담 시작</button></div>';
+        h += '<div class="fin-ed-foot-sub"><button type="button" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button></div>';
         h += '</div>';
         h += '</article>';
 
@@ -3238,12 +3235,6 @@
             flowNext();
         },
         flowNext: function() { flowNext(); },
-        // 중심 화면의 공간별 버튼: 원단 차례면 그 공간 원단부터(손님이 먼저 보고 싶은 공간), 아니면 이어서
-        consultRoom: function(roomId) {
-            const r = state.roomsCart.find(x => x.id === roomId), nx = flowPeek();
-            if (r && !r.isConfigured && nx && nx.kind === 'fabric') { startFabric(r); return; }
-            flowNext();
-        },
         // 기법 고르기 (120번): 고른 기법(빈칸 = 맡김)으로 원단 3장. 뒤로 가면 이 화면으로 돌아와 다른 기법을 고를 수 있음
         pickPointTech: function(k) {
             const ed = state.editingRoom;
