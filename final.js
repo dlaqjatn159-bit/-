@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261189';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -294,7 +294,7 @@
                 // 141번(B-4 결정): 공간 이름 줄은 지도 아래(명조 22), 고른 이름 앞 흙빛 점 → 바로 아래 그 공간 문장 한 줄(17, 옅게). 처음엔 첫 공간
                 h += '<div class="jg-map-rooms" role="group" aria-label="공간">' + sp.map((s, i) => `<button type="button" class="font-serif-kr" data-map-room="${i}">${esc(s.name)}</button>`).join('') + '</div>';
                 h += '<p class="jg-map-say" id="finMapSay"></p>';
-            } else if (roomLines.length) h += '<div class="jg-map-read">' + roomLines.map(r => `<div><h3 class="font-serif-kr">${esc(r.name)}</h3><p>${esc(r.text)}</p></div>`).join('') + '</div>';
+            } else if (roomLines.length) h += '<div class="jg-map-read">' + roomLines.map(r => `<div><p>${esc(r.text)}</p></div>`).join('') + '</div>';
             if (brief.length) h += `<p class="jg-lead-quote font-serif-kr">${esc(brief.join(' '))}</p>`;
             h += '</section>';
         }
@@ -349,9 +349,11 @@
         h += '<section class="jg-invoice-sec" id="finSecEst">';
         h += '<div class="jg-sec-head" style="margin-bottom:2rem;"><h2 class="jg-sec-ttl font-serif-kr">견적서</h2></div>';
         h += `<div class="fin-est-meta"><span class="font-serif-kr">${esc(data.recipient)}</span><span class="fin-est-date">${esc(String(data.date || '').replace(/\./g, '. '))}${data.validText ? ' · ' + esc(data.validText) : ''}</span></div><div class="fin-est-table">`;
-        (data.rooms || []).concat(data.light ? [data.light] : []).forEach(room => {      // 131번: 빛 묶음은 맨 뒤
+        const estRooms = (data.rooms || []).concat(data.light ? [data.light] : []);
+        const oneRoom = estRooms.filter(r => r.items && r.items.length).length === 1;      // 143번: 공간 하나면 공간 이름 머리줄 뺌 (이름이 너무 되풀이됨, 합계는 아래에)
+        estRooms.forEach(room => {      // 131번: 빛 묶음은 맨 뒤
             h += '<div class="fin-est-space">';
-            h += `<div class="fin-est-hd"><span class="fin-est-rname font-serif-kr">${esc(room.name)}</span>${room.sampleOnly ? '' : `<span class="fin-est-rsum font-serif-kr">${room.total.toLocaleString()}원</span>`}</div>`;
+            if (!oneRoom) h += `<div class="fin-est-hd"><span class="fin-est-rname font-serif-kr">${esc(room.name)}</span>${room.sampleOnly ? '' : `<span class="fin-est-rsum font-serif-kr">${room.total.toLocaleString()}원</span>`}</div>`;
             (room.items || []).forEach(it => {
                 h += '<div class="fin-est-line">';
                 h += `<div class="fin-est-chip" style="${room.isLight ? `background:${it.fill}` : fabricFillStyle(it.fabricId, it.colorName)}"></div>`;

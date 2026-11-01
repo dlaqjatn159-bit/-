@@ -345,7 +345,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 /* 고른 뒤 잠깐 쉼 (concierge.js PICK_PAUSE_MS 동안) */
 /* 137번: 모든 사진 칸·원단 카드 — 고른 것은 이름 위 점 + 짙은 글자, 나머지는 사진 옅게 · 글자 #6F5F4F. 머무는 동안 다른 칸을 누르면 바뀜 */
 .bookmark-canvas .bookmark-card .bookmark-bg, .bookmark-canvas .bookmark-card .fabric-photo { transition: opacity 0.16s ease-out; }
-.bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .bookmark-bg, .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fabric-photo { opacity: 0.45; }
+/* 143번: 사진 칸은 고를 때 나머지 사진을 옅게 하지 않음 (사진이 흐려지며 넘어가 어색함) — 띠 글자만 옅게 */
 .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-vname, .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-vdesc { color: #6F5F4F; }
 .bookmark-canvas.has-pick .bookmark-card.is-picked { z-index: 5; }      /* 140번: 큰 사진을 키우면 끊겨 보여 뺌 */
 
@@ -1894,6 +1894,14 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .keypad-sheet, .keypad-grid, .key-btn, .key-btn:nth-child(3n+1), .key-btn:nth-child(3n+2),
 .more-side, .more-back, .more-seg, .more-dirs, .more-chip, .more-sort, .more-face i, .more-cands, .more-cand, .more-sheet, .more-sheet-ph,
 .dos-stage .dos-sheet, .dos-acts { border-width: 0.5px !important; }
+/* 143번: 위 규칙이 네 변 모두 굵기를 줘서, 선이 한 변만 있어야 할 칸에 정체불명 네모가 생겼음 → 원래 선이 있는 변만 남김 */
+.fur-box:not(.rc-fur), .dir-pick, .dos-acts, .home-fields, .keypad-grid, .more-cands { border-style: solid none none none; }
+.ed-comp, .more-dirs { border-style: none none solid none; }
+.home-f + .home-f { border-style: none none none solid; }
+.more-side { border-style: none solid none none; }
+.dos-stage .dos-sheet { border-style: none solid; }
+.ed-color, .ed-color + .dir-pick, .ask-house, .msr-grid, .cm-adj, .ask-stage .dir-pick { border-style: none; }
+@media (max-width: 760px) { .more-side { border-style: none none solid none; } }
 .more-gl { stroke: #e5dcd0; stroke-width: 0.5; }
 .ambient-light-glow {
     position: absolute;
@@ -2996,3 +3004,9 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .bookmark-stage .bookmark-card.is-picked .fab-hname::before { content: ''; position: absolute; left: -0.62em; top: calc(50% - 4.5px); width: 0.35em; height: 0.35em; margin-top: -0.175em; border-radius: 50% !important; background: var(--earth); animation: pickDot 0.2s ease both; }
 @media (prefers-reduced-motion: reduce) { .bookmark-stage .bookmark-card.is-picked .fab-hname::before { animation: none; } }
 .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-hname, .bookmark-stage .bookmark-card.was-picked .fab-hname { color: var(--band-sub); }
+/* 143번: 최종 제안 큰 구획(표지 · 공간의 색과 빛 · 공간 제안 · 견적서 · 이 집의 밤) 사이가 좁아 보여 넓힘 (약 96px → 160px, 좁은 화면 112px) */
+.jg-cover-sec { margin-bottom: 10rem; }
+.jg-overview { padding-bottom: 10rem; }
+.jg-invoice-sec { margin-top: 10rem; }
+.fin-night { margin-top: 10rem; }
+@media (max-width: 720px) { .jg-cover-sec { margin-bottom: 7rem; } .jg-overview { padding-bottom: 7rem; } .jg-invoice-sec { margin-top: 7rem; } .fin-night { margin-top: 7rem; } }

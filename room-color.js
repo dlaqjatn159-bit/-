@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261189';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -474,15 +474,13 @@
             STEPS.forEach((s2, i) => {
                 pinsOf(s2.key).forEach(p => {
                     if (p.v !== st.view) return;
-                    if (MULTI[s2.key]) {      // 바닥·벽은 읽는 동그라미도 보여 줌
-                        h += `<span class="rc-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv) / cv.width * 100).toFixed(2)}%;border-color:${s2.color}"></span>`;
-                    }
+                    // 143번: 점 둘레 읽는 범위 표시(네모로 보이던 것)는 뺌
                     h += `<span class="rc-pin${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%;background:${s2.color}">${PIN_WORD[s2.key]}</span>`;
                 });
             });
             h += glossMark() + '</div>';
             const anyPin = Object.values(st.pins).some(ps => ps.length);
-            h += `<div class="rc-guide"><span>${stp && MULTI[stp.key] ? `${stp.label.slice(2)}은 동그라미 안을 평균해요. 판자·타일·무늬가 다른 <b>${AREA_POINTS}곳</b>을 눌러 주세요.` : (stp ? '카드는 가운데를 한 번 눌러 주세요.' : '')} 잘못 찍은 점은 <b>점을 누르면 지워져요.</b></span>`
+            h += `<div class="rc-guide"><span>${stp && MULTI[stp.key] ? `${stp.label.slice(2)}은 누른 자리 둘레를 평균해요. 판자·타일·무늬가 다른 <b>${AREA_POINTS}곳</b>을 눌러 주세요.` : (stp ? '카드는 가운데를 한 번 눌러 주세요.' : '')} 잘못 찍은 점은 <b>점을 누르면 지워져요.</b></span>`
                 + (anyPin ? `<button type="button" onclick="RoomColor.undo()">방금 것 지우기</button>` : '') + '</div>';
         } else {
             h += '<div class="rc-empty">';
@@ -649,7 +647,7 @@
         if (cv) {
             h += `<div class="cm-wrap" id="cmWrap" style="aspect-ratio:${cv.width} / ${cv.height}">`;
             keys.forEach((k, i) => pinsOf(k).forEach(p => {
-                if (MULTI[k]) h += `<span class="cm-area" style="left:${p.x * 100}%;top:${p.y * 100}%;width:${(2 * areaRadiusPx(cv) / cv.width * 100).toFixed(2)}%"></span>`;
+                // 143번: 점 둘레 읽는 범위 표시(정체불명 네모)는 뺌
                 h += `<span class="cm-dot cm-dot-${k}${i === st.active ? ' on' : ''}" style="left:${p.x * 100}%;top:${p.y * 100}%">${PIN_WORD[k]}</span>`;
             }));
             h += glossMark() + '</div>';

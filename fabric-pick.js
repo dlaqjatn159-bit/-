@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261189';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -311,7 +311,7 @@
     // ---- 원단 고르는 한 화면 (140번, B-6): "골랐습니다" + "찾는 중"을 합침 ----
     //  - 제목 "…겉지를 고르고 있습니다" + 원단 색 조각이 사진이 준비되는 대로 하나씩 + 옅은 아래 줄
     //  - 다 되면(최소 1.2초, 같은 공간 두 번째 칸부터 0.8초, 최대 3초) 제목이 "겉지 세 가지를 골랐습니다"로, 아래 줄은 사라짐
-    //  - 공간의 첫 칸은 "원단 보기"를 눌러야 넘어가고, 두 번째 칸부터는 0.6초 뒤 저절로(then)
+    //  - 다 고르면 0.6초 뒤 저절로(then) 넘어감 (143번: 첫 칸의 "원단 보기" 버튼 뺌)
     const SEEK_MIN_MS = 1200, SEEK_MIN_NEXT_MS = 800, SEEK_MAX_MS = 3000, SEEK_DONE_MS = 600;
     const SEEK_COUNT = ['', '한 가지', '두 가지', '세 가지', '네 가지', '다섯 가지'];
     let seekToken = 0;
@@ -345,7 +345,7 @@
                 if (what) what.textContent = `${typeLabel}${n ? ' ' + (SEEK_COUNT[n] || n + '가지') : ''}를 골랐습니다`;
                 if (sub) sub.classList.add('is-gone');
                 if (done) done();
-                if (!auto) { stage.classList.add('is-done'); return; }
+                stage.classList.add('is-done');      // 143번: 첫 칸도 "원단 보기" 없이 저절로 넘어감 (기다리는 시간만 첫 칸이 조금 김)
                 return sleep(SEEK_DONE_MS).then(() => { if (live() && then) then(); });
             });
     }

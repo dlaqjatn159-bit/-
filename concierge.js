@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261189';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -57,7 +57,8 @@
         // 140번: 화면이 한순간에 사라지면 끊겨 보임 → 지금 화면을 0.2초 서서히 걷은 뒤 넘어감
         pickTimer = setTimeout(() => {
             if (!still()) { pickTimer = null; return; }
-            const page = el.closest('.stage-transition');
+            // 143번: 사진 화면(사진 칸)은 걷지 않음 — 큰 사진이 흐려지며 넘어가면 어색함. 고른 사진 그대로 두고 바로 다음 화면으로
+            const page = group.classList.contains('bookmark-canvas') ? null : el.closest('.stage-transition');
             if (page) page.classList.add('is-leaving');
             pickTimer = setTimeout(() => { pickTimer = null; if (still()) fn(); else if (page) page.classList.remove('is-leaving'); }, page ? PICK_LEAVE_MS : 0);
         }, PICK_PAUSE_MS);
@@ -1147,7 +1148,7 @@
                 html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br><span class="fab-seek-what">${typeLabel}를 고르고 있습니다</span></h2>`;
                 html += seekChipsHtml();
                 html += '<p class="q-sub fab-seek-sub font-serif-kr">바닥·벽의 색과 들어오는 햇빛을 보고 있습니다</p>';
-                html += '<button type="button" class="txt-cta font-serif-kr home-go fab-seek-go">원단 보기</button>';
+                // 143번: "원단 보기" 버튼 없이 다 고르면 저절로 넘어감 (첫 칸도)
                 html += '</div>';
                 break;
             }
@@ -1250,7 +1251,7 @@
             if (introWant && photoQuestion) playPhotoIntro(photoQuestion);
         }
         introWant = false;
-        // 140번: 원단 고르는 한 화면이면 바로 사진 받기 시작 (첫 칸은 "원단 보기"를 누를 때까지, 두 번째 칸부터는 저절로)
+        // 140번: 원단 고르는 한 화면이면 바로 사진 받기 시작 (143번: 첫 칸도 저절로)
         const seekStage = document.getElementById('fabSeekStage');
         if (seekStage) {
             const cur = state.pendingItemQueue[state.currentItemIndex] || {};

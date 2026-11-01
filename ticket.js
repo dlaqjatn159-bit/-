@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261189';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1970,63 +1970,35 @@ async function saveTicketImage() {
     }
 }
 
-// 카톡 글 복사 (62번): 이유 카드·견적서 내용을 그대로 글로 (새 문구 없이 이유 문장표 문장 그대로). 이유 쪽 원단은 61번처럼 "색 이름 · 재질", 견적서 쪽은 "블랑 1번" (75번)
-//  잰 색 코드·책자(공급처) 이름은 넣지 않음(색 번호는 견적서 쪽에만). 이유 카드는 손님이 답한 공간이 있을 때만, 그때 견적서는 품목당 한 줄(추천 이유는 이유 쪽에)
+// 카톡 글 복사 (62번 → 143번): 견적서 위주로 짧게. 원단을 고른 이유·이 집의 밤·맞춤 제작·공급자는 PDF·이미지로 따로 보내므로 뺌
+//  순서: 제목 → 공간별 품목 → 빛 → 시공비·부가세·합계 → 결제 조건·안내. 견적서 원단 이름은 "블랑 1번" (75번)
 function ticketKakaoText(data) {
     data = data || ticketData();
-    const out = [], why = whySetsOf(data), won = n => `${Number(n || 0).toLocaleString()}원`;
+    const out = [], won = n => `${Number(n || 0).toLocaleString()}원`;
     const custName = (document.getElementById('custName').value || '').trim();
-    out.push(`[Re.dam] ${custName ? custName + ' 고객님 ' : ''}공간 제안 · ${data.date}${data.validText ? ' (' + data.validText + ')' : ''}`);
-    const nameOf = it => (it.kind === '블라인드' && it.name.includes('블라인드')) ? it.name : `${it.kind} · ${it.name}`;
-    if (why.rooms.length) {
-        out.push('', '〈원단을 고른 이유〉');
-        const sp = (typeof houseSpacesOf === 'function') ? houseSpacesOf(data) : [];
-        why.rooms.forEach(R => {
-            out.push('', `■ ${R.name}`);
-            // 네 칸 단락 (83번): 값만 한 줄 → ① 들은 말 → ② 본 것 → ③ 고른 것 → 원단마다 ④ 원단 줄
-            const room = data.rooms.find(x => x.name === R.name) || {}, raw = room.raw || {};
-            const C = window.concierge, row = (C && typeof C.showroomRows === 'function') ? (C.showroomRows(data).find(x => x.name === R.name) || null) : null;
-            if (row && row.metaLine) out.push(row.metaLine);
-            const s0 = sp.find(x => x.name === R.name);
-            const paras = row ? row.paras : [R.heard, (s0 ? houseDiagnosis(s0, raw, R.sameAs) : []).join(' '), (R.chose || []).join(' ')].filter(Boolean);      // 화면 쇼룸 시트와 같은 글
-            paras.forEach(t => out.push(t));
-            R.sets.forEach(s => {
-                out.push('', `· ${nameOf(s.it)}`);
-                if (s.lines.length) out.push(s.lines.join(' '));
-                if (s.note) out.push(`(${s.note})`);
-            });
-            if (R.night && typeof SHEER_NIGHT_NOTE === 'string') out.push('', `(${SHEER_NIGHT_NOTE})`);
-        });
-    }
-    out.push('', '〈견적서〉');
+    out.push(`[Re.dam] ${custName ? custName + ' 고객님 ' : ''}견적서 · ${data.date}${data.validText ? ' (' + data.validText + ')' : ''}`);
     data.rooms.forEach(room => {
         if (!room.items.length) return;
         out.push('', `■ ${room.name}${room.sampleOnly ? '' : ' ' + won(room.total)}`);
         room.items.forEach(it => {
-            out.push(`· ${it.kind} · ${it.bookName || it.name}`);      // 견적서는 책자 원단 이름 + 색 번호 (75번)
+            out.push(`· ${it.kind} · ${it.bookName || it.name}`);
             const sub = [it.size, it.meta, it.sampleOnly ? '' : won(it.price)].filter(Boolean).join(' · ');
             if (sub) out.push(`  ${sub}`);
-            if (!why.rooms.length && it.reason) out.push(`  ${it.reason}`);
         });
     });
     if (data.light) {      // 131번
         out.push('', `■ 빛 ${won(data.light.total)}`);
         data.light.items.forEach(it => out.push(`· ${[it.kind, it.name].filter(Boolean).join(' · ')}`, `  ${[it.size, it.meta, won(it.price)].filter(Boolean).join(' · ')}`));
     }
-    const N = houseNightOf(data);
-    if (N) {
-        out.push('', `〈이 집의 밤 · ${N.k}K〉`);
-        N.times.forEach(t => out.push(`${t.t}: ${t.p}`));
-        out.push(`· ${N.lamp.title} (${N.lamp.spec.join(' · ')})`, ...N.lamp.rows.map(r => `  ${r[0]}: ${r[1]}`));
-    }
     out.push('');
     if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
     if (data.vatText) out.push(`${data.vatLabel || '부가세'} ${data.vatText}`);      // 132번
     out.push(`합계 금액 (시공비 포함) ${data.total}원`);
-    [['안내', data.note], ['결제 조건', data.pay], ['맞춤 제작 안내', data.custom], ['공급자', data.supplier]].forEach(([k, v]) => {
+    [['결제 조건', data.pay], ['안내', data.note]].forEach(([k, v]) => {
         const t = String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         if (t.length) out.push('', `[${k}]`, ...t);
     });
+    out.push('', '자세한 제안서는 PDF·이미지로 함께 보내 드립니다.');
     return out.join('\n');
 }
 async function copyTicketText() {
