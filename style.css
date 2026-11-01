@@ -339,10 +339,11 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     transform: scale(0.98);
     filter: grayscale(25%);
 }
-/* 고른 뒤 잠깐 쉼(pause-pick): 고른 칸은 그대로, 나머지는 어두워짐 (concierge.js PICK_PAUSE_MS 동안) */
-.bookmark-canvas .bookmark-card.pause-pick { transition: filter 0.16s ease-out, transform 0.16s ease-out; }
-.bookmark-canvas.has-pick { pointer-events: none; }
-.bookmark-canvas.has-pick .bookmark-card.pause-pick:not(.is-picked) { filter: brightness(0.72) saturate(0.85); }
+/* 고른 뒤 잠깐 쉼 (concierge.js PICK_PAUSE_MS 동안) */
+/* 137번: 모든 사진 칸·원단 카드 — 고른 것은 이름 위 점 + 짙은 글자, 나머지는 사진 옅게 · 글자 #6F5F4F. 머무는 동안 다른 칸을 누르면 바뀜 */
+.bookmark-canvas .bookmark-card .bookmark-bg, .bookmark-canvas .bookmark-card .fabric-photo { transition: opacity 0.16s ease-out; }
+.bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .bookmark-bg, .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fabric-photo { opacity: 0.45; }
+.bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-vname, .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-vdesc { color: #6F5F4F; }
 .bookmark-canvas.has-pick .bookmark-card.is-picked { transform: scale(1.012); z-index: 5; }
 
 .confirm-pill {
@@ -1777,10 +1778,10 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 #trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { color: #fff; opacity: 0.75; left: auto; right: 0.35rem; padding-bottom: 0.7rem; writing-mode: vertical-rl; letter-spacing: 0.2em; font-size: 0.85rem; line-height: 1; bottom: 0.8rem; text-shadow: none; }   /* 꽉 찬 화면 위에서도 Re.dam이 보이게 오른쪽 아래에 세로로 · 글자 아래선(1.5rem)과 맞춤 */
 .bookmark-stage .bookmark-card.was-picked .fab-vname, .bookmark-stage .bookmark-card.was-picked .fab-vdesc { color: var(--muted); }
 /* 133번: 고른 칸(사진 화면) · 한 번 누른 원단(원단 세 장)의 이름 위에 흙빛 점 — 세로 이름이라 첫 글자 위가 "앞" */
-.bookmark-stage .bookmark-card.is-picked .fab-vname, .bookmark-stage .bookmark-card.is-armed .fab-vname { position: relative; }
-.bookmark-stage .bookmark-card.is-picked .fab-vname::before, .bookmark-stage .bookmark-card.is-armed .fab-vname::before {
+.bookmark-stage .bookmark-card.is-picked .fab-vname { position: relative; }
+.bookmark-stage .bookmark-card.is-picked .fab-vname::before {
     content: ''; position: absolute; left: 50%; top: -0.62em; width: 0.35em; height: 0.35em; margin-left: -0.175em; border-radius: 50% !important; background: var(--earth); animation: pickDot 0.2s ease both; }
-@media (prefers-reduced-motion: reduce) { .bookmark-stage .bookmark-card.is-picked .fab-vname::before, .bookmark-stage .bookmark-card.is-armed .fab-vname::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bookmark-stage .bookmark-card.is-picked .fab-vname::before { animation: none; } }
 
 /* 위 질문: 그라데이션 대신 글자 뒤 작은 판(띠와 같은 종이색, 반투명 — 133번) */
 .bookmark-stage .step-head {
@@ -1860,7 +1861,6 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 
 /* 분위기 칸 넓히기 (22-2): 첫 터치는 넓어지기만, 한 번 더 누르면 선택 */
 .bookmark-canvas.has-expand { transition: grid-template-columns 0.35s ease; }
-.bookmark-canvas.has-expand .bookmark-card:not(.is-expanded) { filter: brightness(0.7); }
 .bookmark-card .expand-hint { display: none; position: absolute; left: 0; right: 0; bottom: calc(var(--band-h, 205px) + 1rem); z-index: 14; text-align: center; font-size: 0.85rem; color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55); pointer-events: none; }
 .bookmark-card.is-expanded .expand-hint { display: block; }
 
@@ -2460,8 +2460,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .room-mini-box .room-mini { width: 100%; height: auto; display: block; }
 .room-mini-box.is-more { position: static; width: 100%; max-width: 220px; margin: 0 0 1rem; box-shadow: none; outline: 1px solid #e5dcd0; }
 
-/* 110번: 미니맵에 비춰 보는 중인 원단 — 한 번 더 누르면 선택 */
-.bookmark-card.is-armed::after { content: '한 번 더 누르면 선택'; position: absolute; left: 50%; bottom: calc(var(--band-h, 205px) + 1rem); transform: translateX(-50%); z-index: 6; padding: 0.35rem 0.8rem; border-radius: 999px; background: rgba(251, 249, 245, 0.92); color: var(--ink); font-size: 0.8rem; font-weight: 600; white-space: nowrap; pointer-events: none; }      /* 133번: 밝은 바탕 */
+/* 137번: 원단 카드마다 작은 창 그림 — 오른쪽 위, 가운데 질문 판 아래 */
+.room-mini-box.card-mini { top: 4.8rem; right: 0.9rem; width: 120px; z-index: 6; }
 
 /* ===== 106번: 치수·사진 화면의 종이색 면을 빼고, 사진 불러오기 칸만 테두리 선. 1~4 단계 줄은 선·면 없이 ===== */
 .msr-stage .measure-box.msr-box, .msr-stage .measure-box.msr-box + .msr-box { background: none; border: 0; }

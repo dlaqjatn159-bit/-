@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261182';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261183';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -42,7 +42,18 @@
     // 분위기·속지 느낌·창 구성·블라인드 종류 사진을 미리 받기: 앱을 켜면 뒤에서 받아 두고 decode(그릴 준비)까지 끝내 둠
     // → 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15, 38번)
     let lastRenderedStep = null;      // 최종 제안의 쪽 번호·크게 보기 값은 final.js로 옮김 (130-4③)
-    const PICK_PAUSE_MS = 220;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 450일 때 "렉 같다"는 말이 있어 줄임(10-15). 더 여유를 주려면 300~350
+    const PICK_PAUSE_MS = 250;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 모든 화면 하나(137번). 450일 때 "렉 같다"는 말이 있어 줄였고(10-15), 점이 맺히는 0.2초보다 조금 길게
+    // 137번: 한 번 누르면 고름 — 점 + 나머지 옅게 → PICK_PAUSE_MS 뒤 넘어감. 머무는 동안 다른 것을 누르면 그것으로 바뀌고 시간이 다시 시작
+    let pickTimer = null;
+    function pickThenGo(el, group, sel, fn) {
+        clearTimeout(pickTimer);
+        group.querySelectorAll(sel).forEach(x => { x.classList.remove('is-picked'); x.removeAttribute('aria-pressed'); });
+        el.classList.add('is-picked');
+        el.setAttribute('aria-pressed', 'true');
+        group.classList.add('has-pick');
+        const step = state.step, idx = state.currentItemIndex;
+        pickTimer = setTimeout(() => { pickTimer = null; if (el.isConnected && state.step === step && state.currentItemIndex === idx) fn(); }, PICK_PAUSE_MS);      // 그사이 뒤로 갔으면 넘어가지 않음
+    }
     const FEEL_PHOTOS = SCENE_PHOTOS.feel;   // 속지 느낌 3장도 같이 미리 받음 (10-15)
     const COMP_PHOTOS = SCENE_PHOTOS.comp || [];   // 창 구성 4장 (38-1)
     const BLIND_PHOTOS = SCENE_PHOTOS.blind || []; // 블라인드 종류 4장 (38-2)
@@ -310,7 +321,6 @@
 
     function prevStep() {
         if (state.step === "7-Final-Dossier" && finalPageNow() > 0) { setFinalPage(finalPageNow() - 1); return; }      // 견적서 쪽에서 ← 는 먼저 앞 쪽으로
-        if (collapseMoodCards(document.querySelector(".bookmark-canvas.has-expand"))) return;
         hideKeypadDirectly();
         if (stepHistory.length > 0) {
             const prev = stepHistory.pop();
@@ -1113,7 +1123,7 @@
             }
 
             // [구성 제안 (117번)] 예전 구성 사진 4칸 그대로. 앱이 권하는 칸을 처음부터 넓게 펼쳐 두고(분위기 화면의 넓어지는 칸과 같은 방식),
-            //  그 칸 띠에 손님 답을 되받는 한 줄. 펼친 칸을 누르면 그대로 진행, 다른 칸은 첫 터치에 넓어지고 한 번 더 누르면 그것으로
+            //  그 칸 띠에 손님 답을 되받는 한 줄. 어느 칸이든 한 번 누르면 그것으로(137번: 넓히기 단계 없앰)
             case "3-Config-Style": {
                 const ed = state.editingRoom;
                 const rec = (typeof recommendComposition === 'function' ? recommendComposition(ed) : null) || 'double';
@@ -1124,7 +1134,7 @@
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 [['double', 'comp_double', SOLID_TEXTURES.l1], ['sheer_only', 'comp_sheer', SOLID_TEXTURES.l2], ['drape_only', 'comp_drape', SOLID_TEXTURES.l3], ['blind_only', 'comp_blind', SOLID_TEXTURES.oak]].forEach(([k, ph, fb]) => {
                     html += renderBookmarkCard(COMP_NAMES[k], "", "", compBg(ph, fb), function() { window.concierge.chooseWindowComposition(k); },
-                        'vdesc pause-pick expand-pick' + (k === rec ? ' comp-rec' : '') + was('comp', k), k === rec ? why : '');
+                        'vdesc' + (k === rec ? ' comp-rec' : '') + was('comp', k), k === rec ? why : '');
                 });
                 html += '</div></div>';
                 break;
@@ -1186,9 +1196,7 @@
                 const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
                 html += '<div class="bookmark-stage">';
                 html += stepHead('마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
-                state.miniArmed = null;      // 110번
-                state.miniPick = { fabId: showcaseList[0].f.id, color: state.colorPick[showcaseList[0].f.id] || colorDeckOrder(showcaseList[0].best)[0] || '' };
-                html += `<div class="room-mini-box" id="roomMiniBox">${fabricMiniSvg()}</div>`;      // 104번 미니맵
+                // 창 그림(104번)은 원단 카드마다 하나씩 (137번, fabric-pick.js fabricCardHtml)
                 html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
                 state.fabPanelCount = showcaseList.length;      // 마지막 칸에 Re.dam 표시를 넣기 위해
                 showcaseList.forEach((entry, idx) => {
@@ -1349,47 +1357,21 @@
     function swapFabricPanel(...a) { return cz.swapFabricPanel(...a); }
     function playFabricSeek(...a) { return cz.playFabricSeek(...a); }
 
-    // 분위기 칸 넓히기(22-2): 누른 칸은 2.4배로 넓어지고 나머지는 좁아짐. 넓어진 칸에 "한 번 더 누르면 선택됩니다" 안내
+    // 구성 제안에서 권하는 칸만 처음부터 넓게 (117번). 누를 때 넓어지는 단계는 없앰 (137번)
     function expandMoodCard(canvas, el) {
         const cards = Array.from(canvas.children);
         canvas.classList.add('has-expand');
         cards.forEach(c => c.classList.toggle('is-expanded', c === el));
         canvas.style.gridTemplateColumns = cards.map(c => c === el ? '2.4fr' : '1fr').join(' ');
     }
-    function collapseMoodCards(canvas) {
-        if (!canvas || !canvas.classList.contains('has-expand')) return false;
-        canvas.classList.remove('has-expand');
-        Array.from(canvas.children).forEach(c => c.classList.remove('is-expanded'));
-        canvas.style.gridTemplateColumns = '';
-        return true;
-    }
 
     function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass, note) {
         const id = "bk_" + Math.random().toString(36).substr(2, 9);
-        // 'pause-pick' 칸: 누르면 고른 칸만 남기고 나머지는 어두워진 뒤 PICK_PAUSE_MS 만큼 쉬었다가 다음 화면으로 (10-15)
-        //  - 고객이 "내가 이걸 골랐구나" 느낄 틈을 줌. 쉬는 동안 다시 누르는 건 무시
-        const pausePick = /\bpause-pick\b/.test(extraClass || '');
+        // 사진 칸 모두(바닥·벽·결·블라인드·창 구성): 한 번 누르면 이름 위 점 + 나머지 옅게 → 0.25초 → 넘어감 (137번)
         setTimeout(() => {
             const el = document.getElementById(id);
             if (!el) return;
-            if (!pausePick) { el.onclick = onClickFn; return; }
-            el.onclick = () => {
-                const canvas = el.closest('.bookmark-canvas');
-                if (!canvas || canvas.classList.contains('has-pick')) return;
-                // 'expand-pick' 칸(분위기 화면, 22-2): 첫 터치는 그 칸이 옆으로 넓어지기만 하고, 넓어진 칸을 한 번 더 누르면 선택
-                if (/\bexpand-pick\b/.test(extraClass || '') && !el.classList.contains('is-expanded')) { expandMoodCard(canvas, el); return; }
-                // 넓어진 칸을 한 번 더 누름: 접지 않고 넓어진 그대로 바로 다음 화면으로 (접히면서 넘어가 덜컥거리던 것, 10-15 사장님)
-                if (el.classList.contains('is-expanded')) {
-                    const hint = el.querySelector('.expand-hint');
-                    if (hint) hint.remove();
-                    canvas.classList.add('has-pick');
-                    onClickFn();
-                    return;
-                }
-                canvas.classList.add('has-pick');
-                el.classList.add('is-picked');
-                setTimeout(onClickFn, PICK_PAUSE_MS);
-            };
+            el.onclick = () => pickThenGo(el, el.closest('.bookmark-canvas') || el.parentNode, '.bookmark-card', onClickFn);
         }, 0);
 
         // 원단 칸과 같은 ㄴ자 배치: 왼쪽 아래 세로 제목(아래 정렬) + 그 오른쪽 아래 가로 설명 (extraClass에 'vdesc'가 있으면 설명도 제목 옆에 작게 세로로)
@@ -1433,8 +1415,6 @@
             if (state.step === "7-Final-Dossier" && finalPageNow() > 0) { setFinalPage(finalPageNow() - 1); return true; }
             const ov = document.getElementById('optInfoOverlay');
             if (ov && getComputedStyle(ov).display !== 'none') { ov.style.display = 'none'; return true; }
-            // 분위기 화면에서 넓어진 칸은 "떠 있는 것"처럼 뒤로를 누르면 먼저 접힘 (22-2)
-            if (collapseMoodCards(document.querySelector('.bookmark-canvas.has-expand'))) return true;
             return closeAllColors();
         },
         // "찾는 중" 화면이 떠 있으면 뒤로를 무시 (끝나면 원단 화면이 열림)
@@ -1580,17 +1560,10 @@
             if (ed.addDraft) { window.concierge.finishAddRoom('none'); return; }
             prevStep();
         },
-        // 글 질문 화면 2번 터치 선택 (76번: 실수 터치 방지 및 밑줄 확인 후 두 번째 터치에 이동)
+        // 글 질문: 한 번 누르면 점 → 0.25초 → 넘어감 (137번, 예전 76번 두 번 누르기)
         tapAskOpt: function(btn, fn) {
             if (!btn) return;
-            if (btn.classList.contains('is-picked')) {
-                fn();
-                return;
-            }
-            const stage = btn.closest('.ask-stage') || document;
-            stage.querySelectorAll('.ask-opt.is-picked, .r-quiet.is-picked').forEach(el => { el.classList.remove('is-picked'); el.removeAttribute('aria-pressed'); });
-            btn.classList.add('is-picked');
-            btn.setAttribute('aria-pressed', 'true');      // 133번: 점과 함께 화면 읽기 프로그램에도 "선택됨"
+            pickThenGo(btn, btn.closest('.ask-stage') || document.body, '.ask-opt, .r-quiet', fn);
         },
         copyBaseFromPrev: function(same) {
             const src = copySourceRoom();
@@ -2088,12 +2061,13 @@
             state.colorPick = state.colorPick || {};
             const order = colorDeckOrder(best);
             const chosen = state.colorPick[fabId] || order[0] || '';
-            // 110번: 미니맵이 다른 원단을 보여 주고 있으면 첫 터치는 미니맵에 비춰 보기만, 두 번째 터치에 선택
-            const mini = document.getElementById('roomMiniBox');
-            if (mini && mini.innerHTML.trim() && state.miniArmed !== fabId) {      // 처음 비춰 둔 맨 왼쪽 원단도 한 번 눌러 둔 뒤에만 선택
-                refreshMini(fabId, chosen);
-                return;
-            }
+            // 137번: 한 번 누르면 이름 위 점 + 다른 카드 옅게 → 0.25초 → 고름 (예전 110번 비춰 보기 → 한 번 더)
+            const card = document.querySelector(`.fab-panel .bookmark-card[data-fab="${fabId}"]`);
+            const go = () => window.concierge.pickQueueFabric(fabId, chosen);
+            if (card) pickThenGo(card, card.closest('.bookmark-canvas') || document.body, '.bookmark-card', go); else go();
+        },
+        pickQueueFabric: function(fabId, chosen) {
+            const item = state.pendingItemQueue[state.currentItemIndex];
             item.fabricId = fabId;
             item.colorName = chosen;
             state.colorPick = {};

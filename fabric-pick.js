@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261182';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261183';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -13,10 +13,11 @@
         return list.map(r => r.name);
     }
     // 방 그림 미니맵 (104번): 지금 고르는 칸은 마지막으로 본 원단 색, 같은 공간의 다른 칸은 이미 고른 원단 색으로
-    function fabricMiniSvg() {
+    //  137번: 원단 카드마다 하나씩 — 그 카드의 원단·색(fabId, color)으로 그림
+    function fabricMiniSvg(fabId, color) {
         const ed = state.editingRoom, item = state.pendingItemQueue && state.pendingItemQueue[state.currentItemIndex];
         if (!ed || !item || !window.RoomColor || !RoomColor.roomMiniSvg || !roomHasLab(ed)) return '';
-        const o = {}, mp = state.miniPick || {};
+        const o = {}, mp = { fabId, color };
         let curFab = null;
         (ed.items || []).forEach(it => {
             const k = it.presetType;
@@ -29,13 +30,9 @@
         return RoomColor.roomMiniSvg(ed.measuredColor, o);
     }
     function refreshMini(fabId, color) {
-        state.miniPick = { fabId, color };
-        const box = document.getElementById('roomMiniBox');
-        if (box) box.innerHTML = fabricMiniSvg();
-        // 110번: 미니맵에 비춰 보는 원단 칸에 "한 번 더 누르면 선택" (미니맵이 그려질 때만)
-        const on = !!(box && box.innerHTML.trim());
-        state.miniArmed = on ? fabId : null;      // 색을 바꿔 칸을 새로 그려도 표시가 남게
-        document.querySelectorAll('.fab-panel .bookmark-card').forEach(c => c.classList.toggle('is-armed', on && c.getAttribute('data-fab') === fabId));
+        // 137번: 색을 바꾸면 그 카드의 창 그림만 다시 그림
+        const box = document.querySelector(`.fab-panel[data-fab="${fabId}"] .card-mini`);
+        if (box) box.innerHTML = fabricMiniSvg(fabId, color);
     }
     // 색 하나의 바탕색: 색상 입력표에서 잰 색(색상코드)이 있으면 그 색, 없으면 톤으로 짐작한 색. 사진이 없을 때 칸 바탕과 견본 칩에 씀
     function colorFillOf(fabricId, colorName) {
@@ -74,13 +71,15 @@
         // 글자 수 세기: 영어·숫자는 눕혀 쓰므로 0.6자(대문자 0.78자)로 셈
         const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&-]/.test(ch) ? 0.6 : 1)), 0) || 1;   // 영어 대문자는 조금 더 넓게
         const isLast = idx === (state.fabPanelCount || 1) - 1;
-        let h = `<div class="bookmark-card color-top${state.miniArmed === f.id ? ' is-armed' : ''}" data-fab="${f.id}" style="right: 0;" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
+        let h = `<div class="bookmark-card color-top" data-fab="${f.id}" style="right: 0;" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
         h += `<div class="bookmark-bg" style="background: ${colorFillOf(f.id, pick)};"></div>`;
         // 사진은 앞·뒤 두 장: 색을 바꿀 때 뒤 장에 새 사진을 받아 겹쳐 바꿈. 주소는 미리 찾아 둔 것만 씀(아직 모르면 찾은 뒤 넣음)
         const known = knownPhoto(f.id, pick);
         h += `<img class="fabric-photo is-front" alt="" data-id="${f.id}" data-color="${pick}"${known ? ` src="${known}"` : (known === undefined ? ' data-pending="1"' : '')}>`;
         h += '<img class="fabric-photo is-back" alt="">';
         h += '<div class="bookmark-gradient fab-gradient"></div>';
+        const mini = fabricMiniSvg(f.id, pick);      // 137번: 카드마다 작은 창 그림 (색을 잰 공간일 때만)
+        if (mini) h += `<div class="room-mini-box card-mini" aria-hidden="true">${mini}</div>`;
         // 아래 띠: 왼쪽에 세로 이름(아래 정렬), 그 오른쪽에 세로 색 이름. 오른쪽 끝 아래에 견본 칩
         h += `<div class="fab-band${isLast ? ' is-last' : ''}">`;
         const latin = /[A-Za-z]{3,}/.test(name);      // 영어 낱말(3글자 이상)이 있을 때만 눕혀 씀. "울피치 A"처럼 한두 글자는 한글처럼 세워 씀
