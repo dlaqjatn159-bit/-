@@ -156,6 +156,9 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .stage-transition {
     animation: cleanFade var(--page-transition-duration) var(--page-transition-ease) forwards;
 }
+/* 140번: 고른 뒤 넘어가기 전, 지금 화면을 서서히 걷음 */
+.stage-transition.is-leaving { animation: pageLeave 0.2s ease forwards; pointer-events: none; }
+@keyframes pageLeave { from { opacity: 1; } to { opacity: 0; } }
 
 @keyframes cleanFade {
     from { opacity: 0; transform: scale(0.995); }
@@ -344,7 +347,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .bookmark-canvas .bookmark-card .bookmark-bg, .bookmark-canvas .bookmark-card .fabric-photo { transition: opacity 0.16s ease-out; }
 .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .bookmark-bg, .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fabric-photo { opacity: 0.45; }
 .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-vname, .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-vdesc { color: #6F5F4F; }
-.bookmark-canvas.has-pick .bookmark-card.is-picked { transform: scale(1.012); z-index: 5; }
+.bookmark-canvas.has-pick .bookmark-card.is-picked { z-index: 5; }      /* 140번: 큰 사진을 키우면 끊겨 보여 뺌 */
 
 .confirm-pill {
     display: inline-flex;
@@ -1797,30 +1800,20 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .bookmark-stage .fab-panel .fabric-photo.is-back { opacity: 0; }
 .bookmark-stage .fab-panel .fabric-photo:not([src]) { visibility: hidden; }
 
-/* "찾는 중" 화면: 원단 화면이 열리기 전, 사진을 미리 받는 동안. 흰빛이 모여 살구빛 → 흙빛 점(로고 모션과 같은 결), 점은 숨 쉬듯 */
-.fab-seek { position: fixed; inset: 0; z-index: 240; display: grid; place-items: center; background: var(--brand-bg); text-align: center; transition: opacity 0.55s ease; }
-.fab-seek.is-out { opacity: 0; pointer-events: none; }
-.fab-seek-in { display: flex; flex-direction: column; align-items: center; padding: 0 1.5rem; }
-.fab-seek-light { position: relative; display: grid; place-items: center; width: 220px; height: 220px; }
-.fab-seek-light i { position: absolute; display: block; border-radius: 50%; }
-.fab-seek-glow { width: 220px; height: 220px; background: radial-gradient(circle, #fff 0%, rgba(255, 247, 238, 0.9) 35%, rgba(251, 249, 245, 0) 70%); box-shadow: 0 0 80px 30px rgba(255, 255, 255, 0.8); animation: seekGather 1.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.fab-seek-dot { width: 18px; height: 18px; background: #d9a988; opacity: 0; animation: seekSettle 1.6s ease forwards, seekBreathe 1.8s ease-in-out 1.6s infinite; }
-@keyframes seekGather { 0% { transform: scale(2.4); opacity: 0; } 25% { opacity: 1; } 100% { transform: scale(0.18); opacity: 0; } }
-@keyframes seekSettle { 0%, 45% { opacity: 0; transform: scale(2.2); background: #fff3e6; } 75% { opacity: 1; background: #e6b597; } 100% { opacity: 1; transform: scale(1); background: #b8714a; } }
-@keyframes seekBreathe { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(184, 113, 74, 0); } 50% { transform: scale(1.12); box-shadow: 0 0 0 12px rgba(184, 113, 74, 0.08); } }
-.fab-seek-q { margin: 6px 0 0; font-size: clamp(1.4rem, 2.6vw, 2rem); font-weight: 600; letter-spacing: -0.01em; color: var(--brand-dark); }
-.fab-seek-sub { min-height: 1.5em; margin: 10px 0 0; font-size: 0.95rem; color: var(--brand-muted); }
+/* 140번(B-6): 원단 고르는 한 화면 — 아래 줄은 다 고르면 사라지고, 첫 칸은 그때 "원단 보기"가 나타남 */
+.fab-seek-stage .fab-seek-sub { transition: opacity 0.35s ease; }
+.fab-seek-stage .fab-seek-sub.is-gone { opacity: 0; }
+.fab-seek-stage .fab-seek-go { opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+.fab-seek-stage.is-done .fab-seek-go { opacity: 1; pointer-events: auto; }
+.fab-seek-stage .fab-seek-found { justify-content: center; }
 /* 원단 하나가 준비될 때마다 그 원단 색 조각이 하나씩 나타남 */
 .fab-seek-found { display: flex; gap: 14px; min-height: 30px; margin-top: 26px; }
 .fab-seek-found i { display: block; width: 22px; height: 30px; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); opacity: 0; transform: translateY(6px); transition: opacity 0.35s ease, transform 0.35s ease; }
 .fab-seek-found i.on { opacity: 1; transform: none; }
-/* 움직임 줄이기: 흰빛 없이 점만 서서히 나타남 */
+/* 움직임 줄이기: 색 조각은 서서히 나타나기만 */
 @media (prefers-reduced-motion: reduce) {
-    .fab-seek-glow { display: none; }
-    .fab-seek-dot { background: #b8714a; animation: seekFade 0.8s ease forwards; }
     .fab-seek-found i { transition: opacity 0.35s ease; transform: none; }
 }
-@keyframes seekFade { from { opacity: 0; } to { opacity: 1; } }
 
 /* 분위기 칸 넓히기 (22-2): 첫 터치는 넓어지기만, 한 번 더 누르면 선택 */
 .bookmark-canvas.has-expand { transition: grid-template-columns 0.35s ease; }
@@ -2295,9 +2288,9 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 @keyframes piFade { from { opacity: 0; } to { opacity: 1; } }
 .photo-veil { position: absolute; inset: 0; z-index: 56; background: var(--paper-sheet); opacity: 0; pointer-events: none; transition: opacity var(--pi-veil, 0.45s) ease; }
 .photo-veil.on { opacity: 1; }
-#v2Viewport .bookmark-stage.is-soft { opacity: 0; transform: scale(1.025); }
+#v2Viewport .bookmark-stage.is-soft { opacity: 0; }      /* 140번: 크기 바뀜 없이 투명도만 (큰 사진을 키웠다 줄이면 끊겨 보임) */
 #v2Viewport .bookmark-stage.is-hidden { opacity: 0; }
-#v2Viewport .bookmark-stage.is-focusing { transition: transform var(--pi-focus, 0.65s) cubic-bezier(0.2, 0.9, 0.3, 1), opacity var(--pi-focus, 0.65s) ease; will-change: opacity, transform; }
+#v2Viewport .bookmark-stage.is-focusing { transition: opacity var(--pi-focus, 0.65s) ease; }
 @media (prefers-reduced-motion: reduce) { .photo-intro-q, .photo-intro.is-first .photo-intro-q { animation: piFade 0.6s ease both; } }
 
 /* "이렇게 들었어요" 화면: 표 선 없이 글로만, 줄 간격으로 나누고 누르면 짙은 밑줄 (81번 → 133번) */

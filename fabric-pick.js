@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261185';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261187';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -308,48 +308,47 @@
         });
     }
 
-    // ---- "찾는 중" 화면: 원단 화면이 열리기 전, 보여 줄 원단 3개의 모든 색 사진을 미리 받아 둠 ----
-    //  - 밝은 종이색 바탕 + 흰빛이 모여 살구빛 → 흙빛 점(로고 모션과 같은 결), 점은 천천히 숨 쉬듯
-    //  - 원단 하나가 준비될 때마다 그 원단 색 조각이 하나씩 나타남. 다 되면 "3가지 원단을 골랐어요" → 0.6초 뒤 원단 화면
-    //  - 최소 1.2초(같은 공간의 두 번째 칸부터는 0.8초), 최대 3초(넘으면 넘어가고 남은 사진은 뒤에서 계속 받음)
+    // ---- 원단 고르는 한 화면 (140번, B-6): "골랐습니다" + "찾는 중"을 합침 ----
+    //  - 제목 "…겉지를 고르고 있습니다" + 원단 색 조각이 사진이 준비되는 대로 하나씩 + 옅은 아래 줄
+    //  - 다 되면(최소 1.2초, 같은 공간 두 번째 칸부터 0.8초, 최대 3초) 제목이 "겉지 세 가지를 골랐습니다"로, 아래 줄은 사라짐
+    //  - 공간의 첫 칸은 "원단 보기"를 눌러야 넘어가고, 두 번째 칸부터는 0.6초 뒤 저절로(then)
     const SEEK_MIN_MS = 1200, SEEK_MIN_NEXT_MS = 800, SEEK_MAX_MS = 3000, SEEK_DONE_MS = 600;
-    function playFabricSeek(then) {
+    const SEEK_COUNT = ['', '한 가지', '두 가지', '세 가지', '네 가지', '다섯 가지'];
+    let seekToken = 0;
+    function seekChipsHtml() {
         const { showcaseList } = fabricShowcase();
-        const second = state.currentItemIndex > 0;      // 같은 공간의 두 번째 칸(겉지 다음 속지 등)은 짧게
-        const minMs = second ? SEEK_MIN_NEXT_MS : SEEK_MIN_MS;
+        return '<div class="fab-seek-found" aria-hidden="true">' + showcaseList.map(e => {
+            const pick = colorDeckOrder(e.best)[0] || '';
+            return `<i style="background: ${colorFillOf(e.f.id, pick)};"></i>`;
+        }).join('') + '</div>';
+    }
+    function playFabricSeek(stage, typeLabel, auto, then, done) {
+        const token = ++seekToken;
+        const { showcaseList } = fabricShowcase();
+        const minMs = auto ? SEEK_MIN_NEXT_MS : SEEK_MIN_MS;
         const sleep = ms => new Promise(r => setTimeout(r, ms));
-        const box = document.createElement('div');
-        box.className = 'fab-seek';
-        box.setAttribute('role', 'status');
-        box.innerHTML = '<div class="fab-seek-in"><div class="fab-seek-light" aria-hidden="true"><i class="fab-seek-glow"></i><i class="fab-seek-dot"></i></div>'
-            + '<p class="fab-seek-q font-serif-kr">공간에 맞는 원단을 찾고 있습니다</p>'
-            + '<p class="fab-seek-sub">바닥·벽의 색과 들어오는 햇빛을 보고 있습니다</p>'
-            + '<div class="fab-seek-found" aria-hidden="true">' + showcaseList.map(e => {
-                const pick = colorDeckOrder(e.best)[0] || '';
-                return `<i style="background: ${colorFillOf(e.f.id, pick)};"></i>`;
-            }).join('') + '</div></div>';
-        document.body.appendChild(box);
-        const chips = box.querySelectorAll('.fab-seek-found i'), sub = box.querySelector('.fab-seek-sub');
+        const live = () => token === seekToken && document.body.contains(stage);
+        const chips = stage.querySelectorAll('.fab-seek-found i'), sub = stage.querySelector('.fab-seek-sub'), what = stage.querySelector('.fab-seek-what');
         const t0 = Date.now();
         const all = Promise.all(showcaseList.map((e, i) => {
             const colors = colorDeckOrder(e.best);
             return Promise.all((colors.length ? colors : ['']).map(c => findPhoto(e.f.id, c)))
-                .then(() => sleep(Math.max(0, (second ? 300 : 600) + i * 200 - (Date.now() - t0))))      // 한꺼번에 뜨지 않고 하나씩
-                .then(() => chips[i].classList.add('on'));
+                .then(() => sleep(Math.max(0, (auto ? 300 : 600) + i * 200 - (Date.now() - t0))))      // 한꺼번에 뜨지 않고 하나씩
+                .then(() => { if (chips[i]) chips[i].classList.add('on'); });
         }));
         Promise.race([all, sleep(SEEK_MAX_MS)])
             .then(() => sleep(Math.max(0, minMs - (Date.now() - t0))))
             .then(() => {
+                if (!live()) return;
                 chips.forEach(c => c.classList.add('on'));
-                sub.textContent = showcaseList.length ? `${showcaseList.length}가지 원단을 골랐습니다` : '원단을 골랐습니다';
-                return sleep(SEEK_DONE_MS);
-            })
-            .then(() => {
-                if (then) then();               // 원단 화면을 아래에 그린 뒤 이 화면을 서서히 걷음
-                box.classList.add('is-out');
-                setTimeout(() => box.remove(), 600);
+                const n = showcaseList.length;
+                if (what) what.textContent = `${typeLabel}${n ? ' ' + (SEEK_COUNT[n] || n + '가지') : ''}를 골랐습니다`;
+                if (sub) sub.classList.add('is-gone');
+                if (done) done();
+                if (!auto) { stage.classList.add('is-done'); return; }
+                return sleep(SEEK_DONE_MS).then(() => { if (live() && then) then(); });
             });
     }
 
-    Object.assign(cz, { colorDeckOrder, fabricMiniSvg, refreshMini, colorFillOf, splitNameColor, fabricCardHtml, closeAllColors, bindColorDecks, roomWithTaste, fabricShowcase, findPhoto, forgetPhotos, swapFabricPanel, playFabricSeek });      // concierge.js가 부름
+    Object.assign(cz, { colorDeckOrder, fabricMiniSvg, refreshMini, colorFillOf, splitNameColor, fabricCardHtml, closeAllColors, bindColorDecks, roomWithTaste, fabricShowcase, findPhoto, forgetPhotos, swapFabricPanel, playFabricSeek, seekChipsHtml });      // concierge.js가 부름
 })();

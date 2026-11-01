@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261185';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261187';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -43,6 +43,7 @@
     // → 화면이 열리자마자 사진이 있어서 "색 바탕 → 사진" 깜빡임이 없음 (10-15, 38번)
     let lastRenderedStep = null;      // 최종 제안의 쪽 번호·크게 보기 값은 final.js로 옮김 (130-4③)
     const PICK_PAUSE_MS = 250;      // 고르고 다음 화면으로 넘어가기 전 쉬는 시간(밀리초). 모든 화면 하나(137번). 450일 때 "렉 같다"는 말이 있어 줄였고(10-15), 점이 맺히는 0.2초보다 조금 길게
+    const PICK_LEAVE_MS = 200;      // 140번: 고른 뒤 지금 화면이 걷히는 시간
     // 137번: 한 번 누르면 고름 — 점 + 나머지 옅게 → PICK_PAUSE_MS 뒤 넘어감. 머무는 동안 다른 것을 누르면 그것으로 바뀌고 시간이 다시 시작
     let pickTimer = null;
     function pickThenGo(el, group, sel, fn) {
@@ -52,7 +53,14 @@
         el.setAttribute('aria-pressed', 'true');
         group.classList.add('has-pick');
         const step = state.step, idx = state.currentItemIndex;
-        pickTimer = setTimeout(() => { pickTimer = null; if (el.isConnected && state.step === step && state.currentItemIndex === idx) fn(); }, PICK_PAUSE_MS);      // 그사이 뒤로 갔으면 넘어가지 않음
+        const still = () => el.isConnected && state.step === step && state.currentItemIndex === idx;      // 그사이 뒤로 갔으면 넘어가지 않음
+        // 140번: 화면이 한순간에 사라지면 끊겨 보임 → 지금 화면을 0.2초 서서히 걷은 뒤 넘어감
+        pickTimer = setTimeout(() => {
+            if (!still()) { pickTimer = null; return; }
+            const page = el.closest('.stage-transition');
+            if (page) page.classList.add('is-leaving');
+            pickTimer = setTimeout(() => { pickTimer = null; if (still()) fn(); else if (page) page.classList.remove('is-leaving'); }, page ? PICK_LEAVE_MS : 0);
+        }, PICK_PAUSE_MS);
     }
     const FEEL_PHOTOS = SCENE_PHOTOS.feel;   // 속지 느낌 3장도 같이 미리 받음 (10-15)
     const COMP_PHOTOS = SCENE_PHOTOS.comp || [];   // 창 구성 4장 (38-1)
@@ -601,8 +609,8 @@
     // 사진 화면 앞 안내 장면: 종이 화면에 질문 한 줄 → 흰빛이 차오름 → 사진이 흐릿하고 밝은 상태에서 또렷해짐 (로고 모션의 뜻만, 점은 안 씀)
     //  그 공간의 첫 사진 화면은 글자가 흰빛 속에서 살구빛을 거쳐 먹색으로 맺히고(약 3.4초), 그다음은 글자가 그냥 나타남(약 2.2초)
     //  누르지 않아도 넘어가고, 안내 중 아무 데나 누르면 바로 사진으로. 시간(밀리초)은 여기 한 곳에서 조절
-    const PHOTO_INTRO = { firstText: 1200, firstHold: 900, nextText: 350, nextHold: 550, veil: 450, focus: 650 };
-    const PHOTO_INTRO_STEPS = ["0.6-House-Tex", "2-Base-Floor", "2-Base-Wall", "3-Config-Style", "2-Base-SheerFeel", "2-Base-BlindKind"];      // 원단 화면은 "골랐습니다" 화면·찾는 중 화면이 이미 앞에 있음
+    const PHOTO_INTRO = { firstText: 700, firstHold: 500, nextText: 250, nextHold: 350, veil: 450, focus: 450 };      // 140번(B-6): 첫 1.2초 · 다음 0.6초 · 맺힘 0.45초
+    const PHOTO_INTRO_STEPS = ["0.6-House-Tex", "2-Base-Floor", "2-Base-Wall", "3-Config-Style", "2-Base-SheerFeel", "2-Base-BlindKind"];      // 원단 화면은 원단 고르는 한 화면(140번)이 이미 앞에 있음
     let introWant = false, introRoomKey = null, introTimers = [], photoQuestion = '';
     // 안내 장면(1~2초) 동안은 뒤로를 숨김 — 지나가는 장면이라 누를 일이 없음 (74번)
     function quietBack(on) { const btn = document.getElementById("v2FloatingPrevBtn"); if (btn) btn.classList.toggle('is-quiet', !!on); }
@@ -651,8 +659,11 @@
             settle();
         };
         box.onclick = () => reveal(true);
-        if (reduced) { introTimers.push(setTimeout(() => reveal(false), hold)); return; }
-        introTimers.push(setTimeout(() => reveal(false), hold));      // 흐림(blur) 대신 투명도·크기만 바꿔 끊기지 않게
+        // 140번: 사진이 다 풀린(decode) 뒤에 맺히게 — 덜 받은 사진이 맺히는 도중 튀어나오면 끊겨 보임 (늦어도 0.8초 더 기다리면 넘어감)
+        const imgs = Array.from(stage.querySelectorAll('img')).filter(im => im.getAttribute('src'));
+        const ready = Promise.all(imgs.map(im => (im.decode ? im.decode() : Promise.resolve()).catch(() => {})));
+        const wait = ms => new Promise(r => introTimers.push(setTimeout(r, ms)));
+        Promise.all([wait(hold), Promise.race([ready, wait(hold + 800)])]).then(() => reveal(false));
     }
     // 고른 원단으로 칸을 채우는 스타일: 톤 색 위에 사진(있으면)을 덮음. 첫 화면 공간 칸·제안서 원단 칸이 함께 씀
     function fabricFillStyle(fabricId, colorName) {
@@ -815,11 +826,23 @@
     }
     // 누른 뒤 줄만 다시 그리고 누른 자리에 초점을 돌려 둠
     function refreshFinishOpts(sel) {
-        const box = document.getElementById('finishOpts');
-        if (!box || !state.editingRoom) return;
-        box.outerHTML = finishOptsHtml(state.editingRoom);
-        const again = sel && document.querySelector('#finishOpts ' + sel);
-        if (again) again.focus();
+        const box = document.getElementById('finishOpts'), room = state.editingRoom;
+        if (!box || !room) return;
+        // 140번: 목록을 통째로 다시 그리면 켜진 줄의 점이 모두 다시 나타나며 깜빡임 → 누른 줄만 바꿈
+        box.querySelectorAll('.fo-act').forEach(btn => {
+            const on = !!room[btn.getAttribute('data-k')], row = btn.closest('.fo-row');
+            if (row.classList.contains('on') === on) return;
+            row.classList.toggle('on', on);
+            const nm = row.querySelector('.fo-nm').textContent;
+            btn.textContent = on ? '빼기' : '넣기';
+            btn.setAttribute('aria-label', `${nm} ${on ? '빼기' : '넣기'}`);
+        });
+        box.querySelectorAll('.fo-pick button').forEach(btn => {
+            const on = (btn.getAttribute('data-hem') === '1') === !!room.leadBand;
+            if (btn.classList.contains('on') === on) return;
+            btn.classList.toggle('on', on);
+            btn.setAttribute('aria-pressed', String(on));
+        });
     }
 
     // ---- 두 번째 공간부터: 앞에서 진단한 공간과 바닥·벽이 같으면 바로 넘어가기 ----
@@ -1111,7 +1134,7 @@
                 const typeLabel = curItem.presetType === 'sheer' ? '속지' : (curItem.presetType === 'drape' ? '겉지' : '블라인드');
                 // 120번: 포인트 공간의 겉지·블라인드는 "골랐습니다" 대신 기법부터 고름 (용어 그대로, 후보 있는 것만, 하나뿐이면 묻지 않음)
                 const techs = pointTechsFor(curItem);
-                if (techs.length > 1) {
+                if (techs.length > 1 && !state.seekNow) {
                     const ed = state.editingRoom;
                     html += askStage('어떤 기법으로 포인트를 주고 싶으세요?', '', techs.map(o => (
                         { label: o.term, on: `window.concierge.pickPointTech('${o.key}')`, was: ed.pointTech === o.key }))
@@ -1119,10 +1142,12 @@
                     break;
                 }
                 if (techs.length === 1) state.editingRoom.pointTech = techs[0].key;
-                html += '<div class="ambient-stage" onclick="window.concierge.proceedToFabricQueue()">' + progHtml();
-                html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br>${typeLabel}를 골랐습니다.</h2>`;
-                html += '<p class="q-sub font-serif-kr">바닥·벽의 색과 들어오는 햇빛을 보고 고른 원단입니다.</p>';
-                html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.proceedToFabricQueue()">원단 보기 →</button>'; // 42번
+                // 140번(B-6): "골랐습니다" + "찾는 중"을 한 화면으로. 들어오자마자 사진을 받고, 다 되면 제목이 "골랐습니다"로
+                html += '<div class="ambient-stage fab-seek-stage" id="fabSeekStage" role="status" onclick="window.concierge.proceedToFabricQueue()">' + progHtml();
+                html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br><span class="fab-seek-what">${typeLabel}를 고르고 있습니다</span></h2>`;
+                html += seekChipsHtml();
+                html += '<p class="q-sub fab-seek-sub font-serif-kr">바닥·벽의 색과 들어오는 햇빛을 보고 있습니다</p>';
+                html += '<button type="button" class="txt-cta font-serif-kr home-go fab-seek-go">원단 보기</button>';
                 html += '</div>';
                 break;
             }
@@ -1225,6 +1250,16 @@
             if (introWant && photoQuestion) playPhotoIntro(photoQuestion);
         }
         introWant = false;
+        // 140번: 원단 고르는 한 화면이면 바로 사진 받기 시작 (첫 칸은 "원단 보기"를 누를 때까지, 두 번째 칸부터는 저절로)
+        const seekStage = document.getElementById('fabSeekStage');
+        if (seekStage) {
+            const cur = state.pendingItemQueue[state.currentItemIndex] || {};
+            const label = cur.presetType === 'sheer' ? '속지' : (cur.presetType === 'drape' ? '겉지' : '블라인드');
+            state.seeking = true;
+            const open = () => { state.seeking = false; state.seekNow = false; goToStep("4-Fabric-Queue"); };
+            try { playFabricSeek(seekStage, label, state.currentItemIndex > 0, open, () => { state.seeking = false; }); }
+            catch (e) { open(); }      // 문제가 생겨도 원단 화면은 열림
+        } else state.seeking = false;
         // 스크롤 복원 (48번)
         if (state.step === "1-Space") {
             if (prevRightScroll) {
@@ -1279,6 +1314,7 @@
     function forgetPhotos(...a) { return cz.forgetPhotos(...a); }
     function swapFabricPanel(...a) { return cz.swapFabricPanel(...a); }
     function playFabricSeek(...a) { return cz.playFabricSeek(...a); }
+    function seekChipsHtml(...a) { try { return cz.seekChipsHtml(...a); } catch (e) { return ''; } }
 
     function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass, note) {
         const id = "bk_" + Math.random().toString(36).substr(2, 9);
@@ -1325,7 +1361,7 @@
             return closeAllColors();
         },
         // "찾는 중" 화면이 떠 있으면 뒤로를 무시 (끝나면 원단 화면이 열림)
-        isSeeking: function() { return !!state.seeking || !!document.querySelector('.fab-seek'); },
+        isSeeking: function() { return !!state.seeking; },
         // 화면 왼쪽 위 ← 가 할 일이 있는지 (없으면 뒤로를 눌러도 아무 일도 없음)
         canGoBack: function() { return stepHistory.length > 0; },
         goToSpaceCanvas: function() {
@@ -1865,14 +1901,16 @@
             if (!ed) return;
             ed.pointTech = k || null;
             ed.pointAsked = true;
-            window.concierge.proceedToFabricQueue();
+            state.seekNow = true;      // 140번: 같은 자리에서 원단 고르는 화면으로 (뒤로 오면 다시 기법부터)
+            render();
         },
-        // "원단 보기": "찾는 중" 화면에서 사진을 미리 받은 뒤 원단 화면으로 (두 번 눌러도 한 번만)
+        // "원단 보기" (140번): 다 고른 뒤에만 눌림 — 고르는 중에는 무시
         proceedToFabricQueue: function() {
-            if (state.seeking) return;
-            state.seeking = true;
-            const open = () => { state.seeking = false; goToStep("4-Fabric-Queue"); };
-            try { playFabricSeek(open); } catch (e) { open(); }      // 찾는 중 화면에 문제가 생겨도 원단 화면은 열림
+            const st = document.getElementById('fabSeekStage');
+            if (state.seeking || !st || !st.classList.contains('is-done')) return;
+            st.classList.remove('is-done');      // 두 번 눌러도 한 번만
+            state.seekNow = false;
+            goToStep("4-Fabric-Queue");
         },
         // 목록에 없는 블라인드 종류(우드·알루미늄 등, 38-2): 실물 샘플 안내 후 바로 공간에 담음
         proceedSampleBlind: function() {
