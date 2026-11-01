@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261187';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261188';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -289,7 +289,11 @@
             h += '<div class="jg-sec-head"><h2 class="jg-sec-ttl font-serif-kr">공간의 색과 빛</h2></div>';
             if (hasLine && typeof HOUSE_MAP_LEAD === 'string') h += `<p class="jg-map-lead font-serif-kr">${esc(HOUSE_MAP_LEAD)}</p>`;
             h += `<div class="jg-map-box"><canvas id="finEdMapCanvas" class="fin-ed-map" width="${(typeof HOUSE_MAP_W === 'number' ? HOUSE_MAP_W : 900) * 2}" height="${(typeof HOUSE_MAP_H === 'number' ? HOUSE_MAP_H : 470) * 2}"></canvas></div>`;
-            if (roomLines.length) h += '<div class="jg-map-read">' + roomLines.map(r => `<div><h3 class="font-serif-kr">${esc(r.name)}</h3><p>${esc(r.text)}</p></div>`).join('') + '</div>';
+            if (sp.length > 1) {
+                // 141번(B-4 결정): 공간 이름 줄은 지도 아래(명조 22), 고른 이름 앞 흙빛 점 → 바로 아래 그 공간 문장 한 줄(17, 옅게). 처음엔 첫 공간
+                h += '<div class="jg-map-rooms" role="group" aria-label="공간">' + sp.map((s, i) => `<button type="button" class="font-serif-kr" data-map-room="${i}">${esc(s.name)}</button>`).join('') + '</div>';
+                h += '<p class="jg-map-say" id="finMapSay"></p>';
+            } else if (roomLines.length) h += '<div class="jg-map-read">' + roomLines.map(r => `<div><h3 class="font-serif-kr">${esc(r.name)}</h3><p>${esc(r.text)}</p></div>`).join('') + '</div>';
             if (brief.length) h += `<p class="jg-lead-quote font-serif-kr">${esc(brief.join(' '))}</p>`;
             h += '</section>';
         }
@@ -412,13 +416,32 @@
         if (showHouse && typeof drawHouseMap === 'function') {
             const cv = document.getElementById('finEdMapCanvas');
             if (cv) {
-                const ctx = cv.getContext('2d');
-                ctx.save();
-                ctx.scale(2, 2);
-                ctx.fillStyle = '#fffdf9';      // 132번: 상자 없이 종이 위에 바로 (도록의 말)
-                ctx.fillRect(0, 0, cv.width / 2, cv.height / 2);
-                drawHouseMap(ctx, sp, '#fffdf9');
-                ctx.restore();
+                const many = sp.length > 1;      // 141번: 공간이 둘 이상이면 한 공간씩 진하게
+                const lines = (typeof houseRoomLines === 'function') ? houseRoomLines(sp) : [];
+                let hits = [];
+                const paint = sel => {
+                    const ctx = cv.getContext('2d');
+                    ctx.save();
+                    ctx.scale(2, 2);
+                    ctx.fillStyle = '#fffdf9';      // 132번: 상자 없이 종이 위에 바로 (도록의 말)
+                    ctx.fillRect(0, 0, cv.width / 2, cv.height / 2);
+                    hits = drawHouseMap(ctx, sp, '#fffdf9', many ? { sel } : undefined) || [];
+                    ctx.restore();
+                    if (!many) return;
+                    box.querySelectorAll('[data-map-room]').forEach(b => { const on = +b.dataset.mapRoom === sel; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+                    const say = document.getElementById('finMapSay'), ln = lines.find(r => r.name === sp[sel].name);
+                    if (say) say.textContent = ln ? ln.text : '';
+                };
+                paint(0);
+                if (many) {
+                    box.querySelectorAll('[data-map-room]').forEach(b => b.addEventListener('click', () => paint(+b.dataset.mapRoom)));
+                    // 흐린 조각을 눌러도 그 공간으로 (지도 좌표 900×520)
+                    cv.addEventListener('click', e => {
+                        const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * (cv.width / 2) / r.width, y = (e.clientY - r.top) * (cv.height / 2) / r.height;
+                        const hit = hits.find(q => x >= q.x1 && x <= q.x2 && y >= q.y1 && y <= q.y2);
+                        if (hit && typeof hit.room === 'number') paint(hit.room);
+                    });
+                }
             }
         }
     }

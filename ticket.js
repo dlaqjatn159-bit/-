@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261187';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261188';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1190,6 +1190,7 @@ function houseBrief(sp) {
 const HOUSE_MAP_W = 900, HOUSE_MAP_H = 520;
 const HOUSE_LINE_NEAR = 7;       // 원단이 벽–바닥 선에서 이 안(밝기·따뜻함 칸 거리)이면 "선 가까이"
 const HOUSE_MAP_LEAD = '선은 공간마다 벽에서 바닥까지입니다. 커튼이 선 가까이 있으면 공간의 색을 잇고, 선에서 멀어지면 무게나 포인트가 됩니다.';
+//  o.sel (141번): 고른 공간 번호 — 그 공간만 조각·선이 진하고 이름표(품목 + 색 이름), 나머지는 흐리게(18%) 자리만. 누를 자리 [{x1,y1,x2,y2,room}]를 돌려줌
 //  o: { W, H, nf, cf } — 저장 이미지는 지도를 줄이지 않고 종이 글자(75번 F4)로 그림. 없으면 화면 크기(900×520 · 17 · 15)
 function drawHouseMap(ctx, sp, bg, o) {
     o = o || {};
@@ -1210,11 +1211,13 @@ function drawHouseMap(ctx, sp, bg, o) {
         s.fabs.forEach(f => {
             if (!f.lab) return;
             const key = 'f' + f.k + f.fabricId + '|' + f.colorName;
-            if (seen[key]) { if (!seen[key].who.includes(s.name)) seen[key].who.push(s.name); return; }
+            if (seen[key]) { if (!seen[key].who.includes(s.name)) { seen[key].who.push(s.name); seen[key].rooms.push(si); } return; }
             marks.push(seen[key] = { t: 'c', c: Object.assign({ hex: f.hex }, f.lab), k: f.k, cn: f.cn || '', who: [s.name], rooms: [si] });
         });
     });
-    if (!marks.length) return;
+    if (!marks.length) return [];
+    const SEL = typeof o.sel === 'number' ? o.sel : null;      // 141번
+    const act = m => SEL === null || m.rooms.includes(SEL);
     const Ls = marks.map(m => m.c.L), bs = marks.map(m => m.c.b);
     let Lmin = Math.min(...Ls) - 3, Lmax = Math.max(...Ls) + 3, bmin = Math.min(...bs) - 3, bmax = Math.max(...bs) + 3;
     // 색이 몇 개 안 되거나 서로 가까우면 조금 벌어진 것도 크게 보이므로 눈금 폭을 조금은 남김
@@ -1253,8 +1256,12 @@ function drawHouseMap(ctx, sp, bg, o) {
         const w = pts.find(p => p.m.t === 's' && p.m.k === '벽' && p.m.rooms.includes(si));
         const f = pts.find(p => p.m.t === 's' && p.m.k === '바닥' && p.m.rooms.includes(si));
         if (!w || !f) return;
-        ctx.setLineDash(nLine ? [4, 4] : []);
+        const on = SEL === null || SEL === si;      // 141번: 고른 공간 선은 조금 짙고 굵게, 나머지는 흐리게
+        ctx.setLineDash(SEL === null && nLine ? [4, 4] : []);
+        ctx.globalAlpha = on ? 1 : 0.18;
+        ctx.strokeStyle = SEL !== null && on ? '#8c7a66' : '#b7a48d'; ctx.lineWidth = SEL !== null && on ? 1.5 : 1;
         line(w.x, w.y, f.x, f.y);
+        ctx.globalAlpha = 1;
         nLine++;
     });
     ctx.setLineDash([]);
@@ -1264,14 +1271,15 @@ function drawHouseMap(ctx, sp, bg, o) {
         ctx.fillStyle = p.m.c.hex; ctx.fillRect(x, y, w, h);
         ctx.strokeStyle = 'rgba(43,34,26,0.22)'; ctx.lineWidth = 0.5; ctx.strokeRect(x + 0.25, y + 0.25, w - 0.5, h - 0.5);
     };
-    pts.filter(p => p.m.t !== 'c').forEach(chip);
-    pts.filter(p => p.m.t === 'c').forEach(chip);
+    ctx.globalAlpha = 0.18; pts.filter(p => !act(p.m)).forEach(chip); ctx.globalAlpha = 1;      // 141번: 흐린 공간 먼저, 고른 공간은 위에
+    pts.filter(p => act(p.m) && p.m.t !== 'c').forEach(chip);
+    pts.filter(p => act(p.m) && p.m.t === 'c').forEach(chip);
     // 이름표: 오른쪽 → 왼쪽 → 위 → 아래 → 비스듬히 중 조각·다른 이름표와 안 겹치는 자리 (원단 이름표 먼저)
     const boxes = pts.map(p => ({ x1: p.x - p.hw, y1: p.y - p.hh, x2: p.x + p.hw, y2: p.y + p.hh })).concat(axisBoxes);
     const over = q => boxes.reduce((a, o) => a + Math.max(0, Math.min(q.x2 + 6, o.x2) - Math.max(q.x1 - 6, o.x1)) * Math.max(0, Math.min(q.y2 + 4, o.y2) - Math.max(q.y1 - 4, o.y1)), 0)
         + ((q.x1 < 2 || q.x2 > W - 2 || q.y1 < 0 || q.y2 > H) ? 1e6 : 0);
     const put = p => {
-        const name = (p.m.t === 's' && p.m.who.length === sp.length && sp.length > 1) ? p.m.k : p.m.who.join('·') + ' ' + p.m.k;
+        const name = SEL !== null ? p.m.k : (p.m.t === 's' && p.m.who.length === sp.length && sp.length > 1) ? p.m.k : p.m.who.join('·') + ' ' + p.m.k;
         ctx.font = `400 ${NF}px ${SERIF}`; const wN = ctx.measureText(name).width;
         ctx.font = `400 ${CF}px ${SANS}`; const wC = p.m.cn ? ctx.measureText(p.m.cn).width + 6 : 0;
         const tw = wN + wC, g = 10, mid = p.y + NF * 0.35;
@@ -1294,8 +1302,9 @@ function drawHouseMap(ctx, sp, bg, o) {
         ctx.font = `400 ${NF}px ${SERIF}`; ctx.strokeText(name, bestQ.x1, pick[1]); ctx.fillStyle = INK; ctx.fillText(name, bestQ.x1, pick[1]);
         if (p.m.cn) { ctx.font = `400 ${CF}px ${SANS}`; ctx.strokeText(p.m.cn, bestQ.x1 + wN + 6, pick[1]); ctx.fillStyle = MUTED; ctx.fillText(p.m.cn, bestQ.x1 + wN + 6, pick[1]); }
     };
-    pts.filter(p => p.m.t === 'c').forEach(put);
-    pts.filter(p => p.m.t !== 'c').forEach(put);
+    pts.filter(p => act(p.m) && p.m.t === 'c').forEach(put);
+    pts.filter(p => act(p.m) && p.m.t !== 'c').forEach(put);
+    return pts.map(p => ({ x1: p.x - p.hw - 4, y1: p.y - p.hh - 4, x2: p.x + p.hw + 4, y2: p.y + p.hh + 4, room: p.m.rooms.includes(SEL) ? SEL : p.m.rooms[0] }));
 }
 // 색 지도 아래 공간별 문장 (132번): 원단이 그 공간의 벽–바닥 선 가까이 있는지, 벗어났다면 어느 쪽인지를 담백하게 (원단을 사람처럼 움직이지 않음)
 //  벽·바닥을 둘 다 잰 공간만. [{ name, text }]
@@ -1332,15 +1341,25 @@ function houseRoomLines(sp) {
     });
     return out;
 }
-// 공간의 색과 빛 장 (132번): 머리글 → 읽는 법 한 문장 → 색 지도 → 공간별 문장 → 집 전체 총평. 쪽 나눔 없음 (75번)
-//  글자는 75번 종이 규칙(화면 22 → F3 명조, 17·15 → F4) — 11-01 사장님: 저장 이미지는 종이 규칙 그대로
+// 공간의 색과 빛 장 (132번 → 141번 B-4 결정): 저장 이미지·인쇄·카톡 이미지는 사분면 지도 대신 무드보드
+//  공간마다 한 줄: 이름(F3 명조) | 색 띠 벽 → 속지 → 겉지 → 바닥(폭 34:22:22:22, 칸 사이 틈, 초세선 테두리) | 띠 아래 문장(F4, 옅게) → 집 전체 총평
+//  칸 이름은 맨 위 한 번만. 없는 품목은 칸을 비움(회색으로 채우지 않음). 블라인드만인 공간은 커튼 두 칸 자리를 블라인드 하나가 쓰고 그 줄에만 칸 이름
+//  화면(지도, 한 공간씩 진하게)과 순서만 같고 모양은 다름 — 80번 원칙의 의도한 예외(141번)
+const HOUSE_MB_COLS = [['벽', 34], ['속지', 22], ['겉지', 22], ['바닥', 22]];
+function houseMoodParts(s) {
+    const okHex = h => /^#[0-9a-f]{6}$/i.test(h || '');
+    const fab = k => { const f = s.fabs.find(x => x.k === k && okHex(x.hex)); return f ? f.hex : null; };
+    const wall = s.wall ? s.wall.hex : null, floor = s.floor ? s.floor.hex : null;
+    const hasCurtain = s.fabs.some(x => x.k === '속지' || x.k === '겉지');
+    if (!hasCurtain && s.fabs.some(x => x.k === '블라인드')) return { odd: true, parts: [[wall, 34, '벽'], [fab('블라인드'), 44, '블라인드'], [floor, 22, '바닥']] };
+    return { odd: false, parts: [[wall, 34, '벽'], [fab('속지'), 22, '속지'], [fab('겉지'), 22, '겉지'], [floor, 22, '바닥']] };
+}
 function planHouse(data) {
     const sp = houseSpacesOf(data), brief = houseBrief(sp), roomLines = houseRoomLines(sp);
-    const hasLine = sp.some(s => s.wall && s.floor);
-    const DARK = '#2b221a', LINE = '#e5dcd0';
+    const DARK = '#2b221a', MUTED = '#6f5f4f', LINE = '#e5dcd0';
     const W = PAPER_W, CX = TICKET_PAD, RX = W - TICKET_PAD, CW = RX - CX;
-    const fLead = `400 ${PAPER_F3}px ${PAPER_SERIF}`, fBody = `400 ${PAPER_F4}px ${PAPER_SANS}`, fBrief = `400 ${PAPER_F4}px ${PAPER_SERIF}`;
-    const LH3 = 44, LH4 = 34;
+    const fName = `400 ${PAPER_F3}px ${PAPER_SERIF}`, fBody = `400 ${PAPER_F4}px ${PAPER_SANS}`, fBrief = `400 ${PAPER_F4}px ${PAPER_SERIF}`, fKey = `400 ${Math.round(PAPER_F4 * 0.85)}px ${PAPER_SANS}`;
+    const LH4 = 34, NAME_W = 150, COL_G = 36, SX = CX + NAME_W + COL_G, SW = RX - SX, SH = 72, GAP = 3;
     const meas = document.createElement('canvas').getContext('2d');
     const wrap = (str, maxW, font) => {
         meas.font = font;
@@ -1353,17 +1372,24 @@ function planHouse(data) {
         if (cur) lines.push(cur);
         return lines;
     };
+    const cells = parts => {      // 띠 칸 자리 [{x, w, hex, k}]
+        const tot = parts.reduce((a, p) => a + p[1], 0), free = SW - GAP * (parts.length - 1);
+        let x = SX;
+        return parts.map(p => { const w = free * p[1] / tot, o = { x, w, hex: p[0], k: p[2] }; x += w + GAP; return o; });
+    };
     let y = TICKET_HEAD_Y + 24;
-    const leadLines = hasLine ? wrap(HOUSE_MAP_LEAD, CW, fLead) : [];
-    const leadY = y + PAPER_F3;
-    if (leadLines.length) y = leadY + (leadLines.length - 1) * LH3 + 30;
-    // 132번: 지도는 종이 양옆 여백을 조금 넘겨 넓게, 이름표는 종이의 가장 작은 글자(F4) — 카톡 폭에서도 읽히게
-    const MAP_X = 24, MAP_W = W - MAP_X * 2, MAP_Y = y, MAP_H = Math.round(MAP_W * 0.62);
-    y += MAP_H + 30;
-    const rooms = roomLines.map(r => {
-        const o = { r, nameY: y + PAPER_F3, lines: wrap(r.text, CW, fBody) };
-        o.textY = o.nameY + 14 + PAPER_F4;
-        y = o.textY + (o.lines.length - 1) * LH4 + 32;
+    const headY = y + PAPER_F4, headCells = cells(HOUSE_MB_COLS.map(c => [null, c[1], c[0]]));
+    y = headY + 14;
+    const rows = sp.map(s => {
+        const mp = houseMoodParts(s), ln = roomLines.find(r => r.name === s.name);
+        const o = { s, odd: mp.odd, cells: cells(mp.parts), stripY: y };
+        o.nameY = y + 16 + PAPER_F3;
+        let ty = y + SH;
+        if (o.odd) { o.keyY = ty + 8 + PAPER_F4 * 0.85; ty = o.keyY; }
+        o.lines = ln ? wrap(ln.text, SW, fBody) : [];
+        o.textY = ty + 14 + PAPER_F4;
+        const end = o.lines.length ? o.textY + (o.lines.length - 1) * LH4 : ty;
+        y = Math.max(end, o.nameY) + 40;
         return o;
     });
     const bLines = brief.length ? wrap(brief.join(' '), CW, fBrief) : [];
@@ -1373,13 +1399,17 @@ function planHouse(data) {
     const draw = (c, pi, label) => {
         const t = drawWhy(c, data, W, false, '공간의 색과 빛');      // 65번
         t.hdr();
-        c.textAlign = 'left'; c.fillStyle = DARK;
-        c.font = fLead; leadLines.forEach((ln, i) => c.fillText(ln, CX, leadY + i * LH3));
-        c.save(); c.translate(MAP_X, MAP_Y); drawHouseMap(c, sp, '#fffdf9', { W: MAP_W, H: MAP_H, nf: PAPER_F4, cf: Math.round(PAPER_F4 * 0.85) }); c.restore();
-        rooms.forEach(o => {
-            c.textAlign = 'left'; c.fillStyle = DARK;
-            c.font = fLead; c.fillText(o.r.name, CX, o.nameY);
-            c.font = fBody; o.lines.forEach((ln, i) => c.fillText(ln, CX, o.textY + i * LH4));
+        c.textAlign = 'left';
+        c.font = fKey; c.fillStyle = MUTED; headCells.forEach(q => c.fillText(q.k, q.x, headY));
+        rows.forEach(o => {
+            c.font = fName; c.fillStyle = DARK; c.fillText(o.s.name, CX, o.nameY);
+            o.cells.forEach(q => {
+                if (!q.hex) return;      // 없는 품목·못 잰 색은 비워 둠
+                c.fillStyle = q.hex; c.fillRect(q.x, o.stripY, q.w, SH);
+                c.strokeStyle = 'rgba(35,28,22,0.14)'; c.lineWidth = PAPER_HL; c.strokeRect(q.x + PAPER_HL / 2, o.stripY + PAPER_HL / 2, q.w - PAPER_HL, SH - PAPER_HL);
+            });
+            if (o.odd) { c.font = fKey; c.fillStyle = MUTED; o.cells.forEach(q => { if (q.hex) c.fillText(q.k, q.x, o.keyY); }); }
+            c.font = fBody; c.fillStyle = MUTED; o.lines.forEach((ln, i) => c.fillText(ln, SX, o.textY + i * LH4));
         });
         if (bLines.length) {
             c.strokeStyle = LINE; c.lineWidth = 0.6; c.beginPath(); c.moveTo(CX, briefLineY); c.lineTo(RX, briefLineY); c.stroke();

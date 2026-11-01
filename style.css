@@ -1561,6 +1561,15 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .jg-map-read { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-top: 2.25rem; }
 .jg-map-read h3 { margin: 0 0 0.5rem; font-size: 22px; font-weight: 400; color: #2b221a; }
 .jg-map-read p { margin: 0; font-size: 17px; line-height: 1.8; color: #2b221a; word-break: keep-all; }
+.jg-map-rooms { display: flex; flex-wrap: wrap; gap: 8px 32px; margin: 28px 0 0; } /* 141번: 지도 아래 공간 이름 줄, 고른 이름 앞 흙빛 점 */
+.jg-map-rooms button { position: relative; padding: 8px 0; background: none; border: 0; font-size: 22px; font-weight: 400; color: #6f5f4f; cursor: pointer; }
+.jg-map-rooms button::after { content: ""; position: absolute; inset: -8px -14px; }
+.jg-map-rooms button.is-on { color: #2b221a; }
+.jg-map-rooms button.is-on::before { content: ""; position: absolute; left: -0.62em; top: 50%; width: 0.35em; height: 0.35em; margin-top: -0.175em; border-radius: 50%; background: var(--earth); animation: jgMapDot 0.2s ease both; }
+@keyframes jgMapDot { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .jg-map-rooms button.is-on::before { animation: none; } }
+.jg-map-say { margin: 12px 0 0; min-height: 1.8em; font-size: 17px; line-height: 1.8; color: #6f5f4f; word-break: keep-all; }
+.fin-ed-map { cursor: pointer; }
 .jg-lead-quote { margin: 2.5rem 0 0; padding-top: 1.6rem; border-top: 0.5px solid #e6dfd5; font-size: 17px; font-weight: 400; line-height: 1.8; color: #2b221a; word-break: keep-all; }
 
 /* 3. 공간별 쇼룸 시트: 왼쪽(공간 이름 · 값 한 줄 · 겹친 견본) + 오른쪽(창가 색 띠 · 들은 말 · 본 것 · 고른 것 · 원단 줄) (76번 → 132번) */
