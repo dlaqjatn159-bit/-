@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261176';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261177';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -178,7 +178,8 @@
             const dirTxt = (R && R.dirText) || (raw.windowDir ? windowDirText(windowDirOf(raw.windowDir)) : '');
             const st = (s && typeof houseStripOf === 'function') ? houseStripOf(s, raw) : null;
             const seenLines = (s && typeof houseDiagnosis === 'function') ? houseDiagnosis(s, raw, R ? R.sameAs : '') : [];
-            const paras = [R ? R.heard : '', seenLines.join(' '), (R && R.chose) ? R.chose.join(' ') : ''].filter(Boolean);      // 네 칸 단락 ①②③ (83번)
+            const paraParts = [{ k: 'heard', t: R ? R.heard : '' }, { k: 'seen', t: seenLines.join(' ') }, { k: 'chose', t: (R && R.chose) ? R.chose.join(' ') : '' }].filter(p => p.t);      // 132번: 단락마다 글자 크기가 달라 종류를 같이 넘김
+            const paras = paraParts.map(p => p.t);      // 네 칸 단락 ①②③ (83번)
             const metaLine = [dirTxt ? dirTxt + '향' : '', sz ? `${sz.w} × ${sz.h}` : '', COMP_SAY[comp] || ''].filter(Boolean).join(' · ');
             const sets = (R && R.sets && R.sets.length) ? R.sets : (rm.items || []).map(it => ({
                 it, hex: it.fill || '', lines: it.reason ? [it.reason] : [], note: ''
@@ -189,7 +190,7 @@
                 back = sets.find(x => x.it.kindKey === 'drape' || x.it.kind === '겉지') || sets[0];
                 front = sets.find(x => x !== back && (x.it.kindKey === 'sheer' || x.it.kind === '속지')) || sets.find(x => x !== back) || sets[1];
             }
-            return { rm, name: rm.name, sz, compLabel: COMP_NAMES[comp] || '', dirTxt, metaLine, st, paras, commentTxt: paras.join(' '),
+            return { rm, name: rm.name, sz, compLabel: COMP_NAMES[comp] || '', dirTxt, metaLine, st, paras, paraParts, commentTxt: paras.join(' '),
                 sets, back, front, night: !!(R && R.night && typeof SHEER_NIGHT_NOTE === 'string') };
         });
     }
@@ -216,24 +217,24 @@
 
         h += '<article class="fin-ed-doc jg-doc">';
 
-        // [도입부] 태블릿 화면 세로 100% 독점 + Re.dam 로고 + 16:10 액자 비례 미니멀 조각보 (76번)
+        // [표지] 16:10 조각보(79번) + 아래에 "빛을, / 다시 담습니다"(명조) · "커튼 · 블라인드 방문 상담"(고딕) · 로고 (132번, 시안 v2 1장)
+        //  로고는 길게 누르면 직원 화면 PIN 창(data-staff-hold)이라 자리만 아래로 옮김
         h += '<section class="jg-cover-sec">';
-        h += '<header class="jg-head"><div class="fin-ed-logo font-serif-kr" data-staff-hold>Re<i>.</i>dam</div></header>';
         h += `<div class="jg-canvas-wrap"><div class="jg-canvas">${buildJogakboHtml(data)}</div></div>`;
+        h += '<footer class="jg-cover-foot"><div><div class="jg-cover-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="jg-cover-sub">커튼 · 블라인드 방문 상담</div></div>';
+        h += '<div class="fin-ed-logo font-serif-kr" data-staff-hold>Re<i>.</i>dam</div></footer>';
         h += '</section>';
 
-        // [전체 조망] 공간의 색과 빛: 0.5px 초세선 색 분포 지도 + 집 전체 총평 (중복 가로 막대 6개는 각 공간 쇼룸 시트로 이동, 76번)
+        // [공간의 색과 빛] 132번: 사분면을 살려 도록의 말로 — 읽는 법 한 문장 → 색 조각 지도(범례 없음) → 공간별 문장 → 집 전체 총평
         if (showHouse) {
             const brief = (typeof houseBrief === 'function') ? houseBrief(sp) : [];
-            const hasFur = sp.some(s => s.fur && s.fur.length);
+            const roomLines = (typeof houseRoomLines === 'function') ? houseRoomLines(sp) : [];
+            const hasLine = sp.some(s => s.wall && s.floor);
             h += '<section class="jg-overview" id="finSecHouse">';
             h += '<div class="jg-sec-head"><h2 class="jg-sec-ttl font-serif-kr">공간의 색과 빛</h2></div>';
-            h += '<div class="jg-map-box"><canvas id="finEdMapCanvas" class="fin-ed-map" width="1800" height="940"></canvas>';
-            h += '<div class="jg-map-legend">';
-            h += '<span><i class="lg-c" style="background:#b8a99a"></i>고른 원단</span>';
-            h += '<span><i class="lg-s" style="background:#8a7f75"></i>벽 · 바닥</span>';
-            if (hasFur) h += '<span><i class="lg-d" style="background:#8a7f75"></i>가구</span>';
-            h += '</div></div>';
+            if (hasLine && typeof HOUSE_MAP_LEAD === 'string') h += `<p class="jg-map-lead font-serif-kr">${esc(HOUSE_MAP_LEAD)}</p>`;
+            h += `<div class="jg-map-box"><canvas id="finEdMapCanvas" class="fin-ed-map" width="${(typeof HOUSE_MAP_W === 'number' ? HOUSE_MAP_W : 900) * 2}" height="${(typeof HOUSE_MAP_H === 'number' ? HOUSE_MAP_H : 470) * 2}"></canvas></div>`;
+            if (roomLines.length) h += '<div class="jg-map-read">' + roomLines.map(r => `<div><h3 class="font-serif-kr">${esc(r.name)}</h3><p>${esc(r.text)}</p></div>`).join('') + '</div>';
             if (brief.length) h += `<p class="jg-lead-quote font-serif-kr">${esc(brief.join(' '))}</p>`;
             h += '</section>';
         }
@@ -242,12 +243,20 @@
         if (configuredRooms.length) {
             h += '<section class="jg-showrooms" id="finSecWhy">';
             showroomRowsOf(data).forEach(row => {
-                const { rm, metaLine, st, paras, sets, back, front, night } = row;
+                const { rm, metaLine, st, paraParts, sets, back, front, night } = row;
+                // 132번: 비어 있던 왼쪽 칸(공간 이름 아래)에 원단 견본 — 겉지 뒤, 속지 앞으로 겹침
+                let swHtml = '';
+                if (sets.length) {
+                    swHtml = back
+                        ? `<div class="jg-layered-sw"><div class="jg-sw-back" style="${fabricFillStyle(back.it.fabricId, back.it.colorName)}"></div><div class="jg-sw-front" style="${fabricFillStyle(front.it.fabricId, front.it.colorName)}"></div></div>`
+                        : `<div class="jg-sw-single" style="${fabricFillStyle(sets[0].it.fabricId, sets[0].it.colorName)}"></div>`;
+                }
 
                 h += '<div class="jg-showroom">';
                 h += '<div class="jg-sr-left">';
                 h += `<h3 class="jg-sr-name font-serif-kr">${esc(rm.name)}</h3>`;
                 if (metaLine) h += `<div class="jg-sr-meta is-line">${esc(metaLine)}</div>`;      // 83번: 이름표 없이 값만 한 줄
+                if (swHtml) h += `<div class="jg-sr-sw">${swHtml}</div>`;
                 h += '</div>';
 
                 h += '<div class="jg-sr-right">';
@@ -261,30 +270,21 @@
                         + `<div class="arch-bot-floor" style="background:${st.fHex}"></div>`
                         + `</div>`;
                 }
-                paras.forEach(t => { h += `<p class="jg-sr-comment">${esc(t)}</p>`; });      // ① 들은 말 → ② 본 것 → ③ 고른 것 (83번)
+                // ① 들은 말(명조 22) → ② 본 것(17 muted) → ③ 고른 것(17) (83번 · 132번)
+                paraParts.forEach(p => { h += `<p class="jg-sr-comment is-${p.k}${p.k === 'heard' ? ' font-serif-kr' : ''}">${esc(p.t)}</p>`; });
 
                 if (sets.length) {
-                    const isLayered = !!back;
-                    let swHtml = '';
-                    if (isLayered) {
-                        swHtml = `<div class="jg-layered-sw">`
-                            + `<div class="jg-sw-back" style="${fabricFillStyle(back.it.fabricId, back.it.colorName)}"></div>`
-                            + `<div class="jg-sw-front" style="${fabricFillStyle(front.it.fabricId, front.it.colorName)}"></div>`
-                            + `</div>`;
-                    } else {
-                        swHtml = `<div class="jg-sw-single" style="${fabricFillStyle(sets[0].it.fabricId, sets[0].it.colorName)}"></div>`;
-                    }
                     const descsHtml = sets.map(sItem => {
                         const baseName = sItem.it.name;
                         const hideKind = sItem.it.kind === '블라인드' && baseName.includes('블라인드');
                         return `<div class="jg-fab-block">`
-                            + `<div class="jg-fab-k">${hideKind ? '' : `<span>${esc(sItem.it.kind)}</span>`}${sItem.hex ? `<span class="hex-code">${esc(sItem.hex)}</span>` : ''}</div>`
+                            + (hideKind ? '' : `<div class="jg-fab-k"><span>${esc(sItem.it.kind)}</span></div>`)      // 132번: 색 코드는 뺌
                             + `<h4 class="jg-fab-title font-serif-kr">${esc(baseName)}</h4>`
                             + (sItem.lines && sItem.lines.length ? `<p class="jg-fab-desc">${esc(sItem.lines.join(' '))}</p>` : '')
                             + (sItem.note ? `<p class="jg-fab-note">${esc(sItem.note)}</p>` : '')
                             + `</div>`;
                     }).join('');
-                    h += `<div class="jg-sr-pair${isLayered ? '' : ' is-single'}">${swHtml}<div class="jg-sr-descs">${descsHtml}</div></div>`;
+                    h += `<div class="jg-sr-descs">${descsHtml}</div>`;
                 }
                 if (night) {
                     h += `<p class="jg-fab-note jg-night-note">${esc(SHEER_NIGHT_NOTE)}</p>`;
@@ -314,7 +314,11 @@
         });
         h += '</div>';
         h += '<div class="fin-est-foot">';
-        h += `<label class="fin-est-install"><span>시공 및 설치비</span><span class="font-serif-kr"><input type="number" step="5000" inputmode="numeric" value="${state.installFee}" oninput="window.concierge.updateInstallFee(this.value)" class="fin-ed-fee-in font-serif-kr">원</span></label>`;
+        // 132번: 손님 화면에서는 입력 칸 대신 글자 "30,000원"(고치는 것은 직원 화면 견적 칸) + 부가세 줄(일반 판매가 "포함" / 세금계산서 10% 금액)
+        h += '<div class="fin-est-sums">';
+        if (data.install > 0) h += `<div class="fin-est-install"><span>시공 및 설치비</span><span class="font-serif-kr">${Number(data.install).toLocaleString()}원</span></div>`;
+        if (data.vatText) h += `<div class="fin-est-install"><span>${esc(data.vatLabel || '부가세')}</span><span class="font-serif-kr">${esc(data.vatText)}</span></div>`;
+        h += '</div>';
         h += `<div class="fin-est-total-row"><span class="fin-est-total-lbl">합계 금액 (시공비 포함)</span><span class="fin-est-total-num font-serif-kr"><span id="finEdTotalNum">${esc(data.total)}</span><small>원</small></span></div>`;
         const infoRows = [
             ['안내', data.note],
@@ -327,6 +331,7 @@
         }
         h += '</div></section>';
 
+        // [맺음] 132번: 견적서 아래 시를 떼어 어두운 바탕 한 장으로 — 금액이 마지막 인상이 되지 않게
         h += '<footer class="fin-ed-closing"><div class="fin-closing-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="fin-closing-mark font-serif-kr">Re<i>.</i>dam</div></footer>';
         h += '<div class="fin-ed-foot font-serif-kr">';
         h += '<div class="fin-ed-foot-main"><button type="button" class="dos-act is-main" onclick="window.concierge.saveQuote()">견적서 저장</button><button type="button" class="dos-act" onclick="window.concierge.copyQuoteText()">카톡 글 복사</button><button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button></div>';
@@ -341,9 +346,9 @@
                 const ctx = cv.getContext('2d');
                 ctx.save();
                 ctx.scale(2, 2);
-                ctx.fillStyle = '#faf7f1';
-                ctx.fillRect(0, 0, 900, 470);
-                drawHouseMap(ctx, sp);
+                ctx.fillStyle = '#fffdf9';      // 132번: 상자 없이 종이 위에 바로 (도록의 말)
+                ctx.fillRect(0, 0, cv.width / 2, cv.height / 2);
+                drawHouseMap(ctx, sp, '#fffdf9');
                 ctx.restore();
             }
         }

@@ -1547,22 +1547,25 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-paper, .fin-side { display: none !important; }
 .fin-ed { display: block; width: 100%; min-height: 100%; background: #fffdf9; color: #231c16; }
 .fin-ed-bar { position: sticky; top: 0; z-index: 30; display: flex; justify-content: space-between; align-items: center; gap: 1rem; height: 48px; padding: 0 2.6rem; background: rgba(255, 253, 249, 0.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 0.5px solid #e6dfd5; box-sizing: border-box; }
-.fin-ed-back { background: none; border: none; cursor: pointer; padding: 0.25rem 0; font-family: Pretendard, sans-serif; font-size: 12.5px; font-weight: 400; color: #6f6256; }
+.fin-ed-back { background: none; border: none; cursor: pointer; padding: 0.25rem 0; font-family: Pretendard, sans-serif; font-size: 15px; font-weight: 400; color: #6f6256; }
 .fin-ed-back:hover { color: #231c16; }
 .fin-ed-nav { display: flex; align-items: center; gap: 1.5rem; }
-.fin-ed-nav button { background: none; border: none; cursor: pointer; padding: 0.25rem 0; font-family: Pretendard, sans-serif; font-size: 12.5px; font-weight: 400; color: #6f6256; }
+.fin-ed-nav button { background: none; border: none; cursor: pointer; padding: 0.25rem 0; font-family: Pretendard, sans-serif; font-size: 15px; font-weight: 400; color: #6f6256; }
 .fin-ed-nav button:hover, .fin-ed-nav button:active { color: #8a4a22; }
-.fin-ed-nav button.is-save { font-family: 'Noto Serif KR', Georgia, serif; font-size: 13.5px; font-weight: 500; color: #8a4a22; border-bottom: 1px solid #8a4a22; padding-bottom: 2px; }
+.fin-ed-nav button.is-save { font-family: 'Noto Serif KR', Georgia, serif; font-size: 15px; font-weight: 500; color: #8a4a22; border-bottom: 1px solid #8a4a22; padding-bottom: 2px; }
 
 .fin-ed-doc.jg-doc { width: 100%; max-width: 880px; margin: 0 auto; padding: 0 3.5rem 7rem; box-sizing: border-box; display: flex; flex-direction: column; }
 
 /* 1. 도입부: 태블릿 가로 주 방향 기준 시원한 대형 액자 + 몬드리안 비대칭 조각보 (76·77번) */
 .jg-cover-sec { width: min(86vw, 1140px); align-self: center; min-height: calc(100dvh - 48px); padding: 2.2rem 0 2.8rem; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 6rem; box-sizing: border-box; }
-.jg-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.2rem; flex: none; }
-.fin-ed-logo { font-size: 24px; font-weight: 400; line-height: 1; letter-spacing: 0.035em; color: #231c16; cursor: pointer; }
+/* 132번: 표지 아래 한 줄 정의 + 로고 (시안 v2 1장) */
+.jg-cover-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; padding-top: 2rem; flex: none; }
+.jg-cover-poem { font-size: 40px; font-weight: 400; line-height: 1.35; color: #2b221a; }
+.jg-cover-sub { margin-top: 10px; font-size: 17px; color: #6f5f4f; }
+.fin-ed-logo { font-size: 22px; font-weight: 400; line-height: 1; letter-spacing: 0.035em; color: #231c16; cursor: pointer; }
 .fin-ed-logo i, .fin-closing-mark i { font-style: normal; color: #8a4a22; }
 .jg-canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; }
-.jg-canvas { width: 100%; aspect-ratio: 16 / 10; max-height: calc(100dvh - 150px); display: flex; flex-direction: row; gap: 6px; background: #fffdf9; }
+.jg-canvas { width: 100%; aspect-ratio: 16 / 10; max-height: calc(100dvh - 300px); display: flex; flex-direction: row; gap: 6px; background: #fffdf9; }
 .jg-group { display: flex; gap: 6px; min-width: 0; min-height: 0; }
 .jg-group.is-row { flex-direction: row; }
 .jg-group.is-col { flex-direction: column; }
@@ -1575,26 +1578,24 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .jg-t-fab { flex: 1; display: flex; min-height: 0; }
 .jg-t-fab > div + div { border-left: 0.5px solid rgba(35, 28, 22, 0.07); }
 
-/* 2. 공간의 색과 빛: 0.5px 초세선 색 지도 + 총평 (76번) */
+/* 2. 공간의 색과 빛: 읽는 법 한 문장 → 색 조각 지도(범례 없음) → 공간별 문장 → 총평 (76번 → 132번) */
 .jg-overview { padding-bottom: 6rem; }
 .jg-sec-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.8rem; }
-.jg-sec-ttl { margin: 0; font-size: 24px; font-weight: 400; letter-spacing: -0.01em; color: #231c16; }
-.jg-map-box { position: relative; padding: 2rem 1.8rem 1.5rem; background: #faf7f1; border-top: 0.5px solid #e6dfd5; border-bottom: 0.5px solid #e6dfd5; }
+.jg-sec-ttl { margin: 0; font-size: 40px; font-weight: 400; letter-spacing: 0.01em; color: #231c16; }
+.jg-map-lead { margin: 0 0 2.5rem; max-width: 30em; font-size: 22px; font-weight: 400; line-height: 1.75; color: #2b221a; word-break: keep-all; }
+.jg-map-box { position: relative; margin: 0 -3.5rem; } /* 132번: 900 좌표 지도가 줄지 않게 양옆 여백까지 (이름표 17px 그대로) */
 .fin-ed-map { display: block; width: 100%; height: auto; }
-.jg-map-legend { display: flex; justify-content: flex-end; gap: 1.4rem; margin-top: 0.9rem; font-size: 11.5px; color: #6f6256; }
-.jg-map-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.lg-c { display: inline-block; width: 9px; height: 9px; border-radius: 50% !important; border: 0.5px solid rgba(35, 28, 22, 0.3); }
-.lg-s { display: inline-block; width: 9px; height: 9px; border: 0.5px solid rgba(35, 28, 22, 0.3); }
-.lg-d { display: inline-block; width: 8px; height: 8px; transform: rotate(45deg); border: 0.5px solid rgba(35, 28, 22, 0.3); }
-.jg-lead-quote { margin: 2.2rem 0 0; font-size: 18px; font-weight: 400; line-height: 1.75; color: #231c16; word-break: keep-all; }
+.jg-map-read { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-top: 2.25rem; }
+.jg-map-read h3 { margin: 0 0 0.5rem; font-size: 22px; font-weight: 400; color: #2b221a; }
+.jg-map-read p { margin: 0; font-size: 17px; line-height: 1.8; color: #2b221a; word-break: keep-all; }
+.jg-lead-quote { margin: 2.5rem 0 0; padding-top: 1.6rem; border-top: 0.5px solid #e6dfd5; font-size: 17px; font-weight: 400; line-height: 1.8; color: #2b221a; word-break: keep-all; }
 
-/* 3. 공간별 완결형 쇼룸 시트 (좌측 26% 스펙 + 우측 74% 입면 색띠·진단·겹침 스와치·원단 설명, 76번) */
-.jg-showroom { padding: 4.2rem 0; border-top: 0.5px solid #d5cbbd; display: grid; grid-template-columns: 26% minmax(0, 1fr); gap: 3.2rem; align-items: start; }
+/* 3. 공간별 쇼룸 시트: 왼쪽(공간 이름 · 값 한 줄 · 겹친 견본) + 오른쪽(창가 색 띠 · 들은 말 · 본 것 · 고른 것 · 원단 줄) (76번 → 132번) */
+.jg-showroom { padding: 4.2rem 0; border-top: 0.5px solid #d5cbbd; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 3rem; align-items: start; }
 .jg-sr-left { display: flex; flex-direction: column; }
-.jg-sr-name { margin: 0; font-size: 23px; font-weight: 400; color: #231c16; line-height: 1.3; }
-.jg-sr-meta { margin-top: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 12.5px; color: #6f6256; }
-.jg-sr-meta div { display: flex; gap: 0.8rem; line-height: 1.5; }
-.jg-sr-meta span:first-child { color: #9c8f82; min-width: 48px; word-break: keep-all; }
+.jg-sr-name { margin: 0; font-size: 40px; font-weight: 400; color: #231c16; line-height: 1.3; }
+.jg-sr-meta { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 15px; color: #6f5f4f; }
+.jg-sr-sw { margin-top: 2.5rem; }
 .jg-sr-right { display: flex; flex-direction: column; min-width: 0; }
 .jg-sr-elev.arch-layer-box.is-mini { width: 100%; height: 48px; margin-bottom: 0; display: flex; flex-direction: column; outline: 0.5px solid rgba(35, 28, 22, 0.14); outline-offset: -0.5px; }
 .jg-sr-elev .arch-mid-window { width: 100%; flex: 1; min-height: 0; display: flex; }
@@ -1602,58 +1603,57 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .jg-sr-elev .arch-wall-base { width: 100%; flex: none; }
 .jg-sr-elev .arch-bot-floor { height: 10px; width: 100%; flex: none; border-top: 0.5px solid rgba(35, 28, 22, 0.1); }
 .jg-sr-elev span { display: none !important; }
-.jg-sr-comment { margin: 0.85rem 0 0; font-size: 13.5px; line-height: 1.65; color: #6f6256; word-break: keep-all; }
-.jg-sr-comment + .jg-sr-comment { margin-top: 0.45rem; } /* 83번: 네 칸 단락 ①②③ 사이 */
+.jg-sr-comment { margin: 0.9rem 0 0; font-size: 17px; line-height: 1.8; color: #2b221a; word-break: keep-all; }
+.jg-sr-comment.is-heard { margin-top: 1.9rem; font-size: 22px; line-height: 1.7; } /* 132번: 들은 말 명조 22 */
+.jg-sr-comment.is-seen { color: #6f5f4f; } /* 132번: 본 것 17 muted */
 .jg-sr-meta.is-line { line-height: 1.5; word-break: keep-all; } /* 83번: 이름표 없이 값만 한 줄 */
-.jg-sr-pair { margin-top: 2.2rem; display: grid; grid-template-columns: 156px minmax(0, 1fr); gap: 2.2rem; align-items: start; }
-.jg-sr-pair.is-single { grid-template-columns: 104px minmax(0, 1fr); }
 .jg-layered-sw { position: relative; width: 156px; height: 148px; flex: none; }
 .jg-sw-back { position: absolute; left: 0; top: 0; width: 104px; height: 132px; background-size: cover; background-position: center; outline: 0.5px solid rgba(35, 28, 22, 0.12); outline-offset: -0.5px; }
 .jg-sw-front { position: absolute; right: 0; bottom: 0; width: 104px; height: 132px; background-size: cover; background-position: center; outline: 0.5px solid rgba(35, 28, 22, 0.14); outline-offset: -0.5px; box-shadow: -6px -6px 18px rgba(35, 28, 22, 0.08); }
 .jg-sw-single { width: 104px; height: 132px; background-size: cover; background-position: center; outline: 0.5px solid rgba(35, 28, 22, 0.12); outline-offset: -0.5px; }
-.jg-sr-descs { display: flex; flex-direction: column; gap: 1.4rem; min-width: 0; }
-.jg-sr-pair.is-single .jg-sr-descs { justify-content: center; min-height: 132px; }
-.jg-fab-k { font-size: 11.5px; color: #6f6256; display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.25rem; }
-.jg-fab-k .hex-code { font-size: 11px; color: #9c8f82; }
-.jg-fab-title { margin: 0 0 0.38rem; font-size: 17px; font-weight: 400; color: #231c16; line-height: 1.38; word-break: keep-all; }
-.jg-fab-desc { margin: 0; font-size: 13.5px; line-height: 1.72; color: #6f6256; word-break: keep-all; }
-.jg-fab-note { margin: 0.45rem 0 0; font-size: 12px; line-height: 1.6; color: #9c8f82; word-break: keep-all; }
+.jg-sr-descs { margin-top: 2rem; display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.jg-fab-k { font-size: 15px; color: #6f5f4f; margin-bottom: 0.15rem; }
+.jg-fab-title { margin: 0 0 0.4rem; font-size: 22px; font-weight: 400; color: #231c16; line-height: 1.4; word-break: keep-all; }
+.jg-fab-desc { margin: 0; font-size: 17px; line-height: 1.8; color: #2b221a; word-break: keep-all; }
+.jg-fab-note { margin: 0.45rem 0 0; font-size: 15px; line-height: 1.7; color: #6f5f4f; word-break: keep-all; }
 .jg-night-note { margin-top: 1.1rem; }
 
 /* 4. 마지막 섹션: 호텔 인보이스 견적서 (0.5px 초세선, 76번) */
 .jg-invoice-sec { margin-top: 6.5rem; padding-top: 4.5rem; border-top: 0.5px solid rgba(35, 28, 22, 0.55); }
-.fin-est-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: 1rem; border-bottom: 0.5px solid rgba(35, 28, 22, 0.55); font-size: 16px; color: #231c16; }
-.fin-est-date { font-family: Pretendard, sans-serif; font-size: 12.5px; letter-spacing: 0.08em; color: #6f6256; }
+.fin-est-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: 1rem; border-bottom: 0.5px solid rgba(35, 28, 22, 0.55); font-size: 22px; color: #231c16; }
+.fin-est-date { font-family: Pretendard, sans-serif; font-size: 15px; color: #6f5f4f; }
 .fin-est-table { border-top: 0; }
 .fin-est-space { padding: 1.6rem 0; border-bottom: 0.5px solid #e6dfd5; }
 .fin-est-hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.9rem; }
-.fin-est-rname { font-size: 17px; font-weight: 400; color: #231c16; }
-.fin-est-rsum { font-size: 16px; font-weight: 400; color: #231c16; }
-.fin-est-line { display: grid; grid-template-columns: 32px 48px minmax(0, 1fr) auto 104px; gap: 0.9rem; align-items: center; padding: 0.45rem 0; font-size: 13.5px; }
+.fin-est-rname { font-size: 22px; font-weight: 400; color: #231c16; }
+.fin-est-rsum { font-size: 22px; font-weight: 400; color: #231c16; }
+.fin-est-line { display: grid; grid-template-columns: 32px 52px minmax(0, 1fr) auto 130px; gap: 1rem; align-items: center; padding: 0.5rem 0; font-size: 15px; }
 .fin-est-chip { width: 32px; height: 40px; background-size: cover; background-position: center; outline: 0.5px solid rgba(35, 28, 22, 0.14); outline-offset: -0.5px; }
-.fin-est-k { font-size: 12px; color: #6f6256; }
-.fin-est-nm { font-size: 15px; font-weight: 400; color: #231c16; }
-.fin-est-nm small { margin-left: 0.5rem; font-family: Pretendard, sans-serif; font-size: 12px; font-weight: 400; color: #9c8f82; }
-.fin-est-sz { font-size: 12.5px; color: #6f6256; }
-.fin-est-pr { font-size: 15px; font-weight: 400; color: #231c16; text-align: right; font-variant-numeric: tabular-nums; }
+.fin-est-k { font-size: 15px; color: #6f5f4f; }
+.fin-est-nm { font-size: 17px; font-weight: 400; color: #231c16; }
+.fin-est-nm small { margin-left: 0.5rem; font-family: Pretendard, sans-serif; font-size: 15px; font-weight: 400; color: #6f5f4f; }
+.fin-est-sz { font-size: 15px; color: #6f5f4f; }
+.fin-est-pr { font-size: 17px; font-weight: 400; color: #231c16; text-align: right; font-variant-numeric: tabular-nums; }
 .fin-est-foot { padding-top: 1.25rem; }
-.fin-est-install { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 1.2rem; border-bottom: 0.5px solid rgba(35, 28, 22, 0.55); font-size: 13.5px; color: #6f6256; }
-.fin-ed-fee-in { width: 6.4rem; padding: 0.15rem 0.15rem; margin-right: 0.15rem; border: none !important; border-bottom: 0.5px solid #b9a893 !important; background: transparent !important; box-shadow: none !important; border-radius: 0; outline: none; text-align: right; font-size: 15px; font-weight: 400; color: #231c16; }
-.fin-ed-fee-in::-webkit-outer-spin-button, .fin-ed-fee-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fin-est-sums { padding-bottom: 0.8rem; border-bottom: 0.5px solid rgba(35, 28, 22, 0.55); }
+.fin-est-install { display: flex; justify-content: space-between; align-items: baseline; padding: 0.4rem 0; font-size: 15px; color: #6f5f4f; }
+.fin-est-install span:last-child { font-size: 17px; color: #231c16; } /* 132번: 시공비는 글자, 부가세 줄 */
 .fin-est-total-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2rem 0 2.4rem; border-bottom: 0.5px solid #e6dfd5; }
-.fin-est-total-lbl { font-size: 13px; color: #6f6256; }
-.fin-est-total-num { font-size: 32px; font-weight: 400; color: #231c16; }
-.fin-est-total-num small { margin-left: 0.25rem; font-size: 16px; font-weight: 400; }
-.fin-est-dl { margin: 0; padding-top: 1.4rem; display: grid; grid-template-columns: 110px minmax(0, 1fr); row-gap: 0.5rem; font-size: 12.5px; line-height: 1.7; color: #6f6256; }
-.fin-est-dl dt { color: #9c8f82; }
+.fin-est-total-lbl { font-size: 17px; color: #2b221a; }
+.fin-est-total-num { font-size: 40px; font-weight: 400; color: #231c16; }
+.fin-est-total-num small { margin-left: 0.25rem; font-size: 17px; font-weight: 400; }
+.fin-est-dl { margin: 0; padding-top: 1.4rem; display: grid; grid-template-columns: 120px minmax(0, 1fr); row-gap: 0.6rem; column-gap: 1rem; font-size: 15px; line-height: 1.7; color: #2b221a; }
+.fin-est-dl dt { color: #6f5f4f; }
 .fin-est-dl dd { margin: 0; }
-.fin-ed-closing { margin-top: 4.5rem; padding-top: 1.75rem; border-top: 0.5px solid #e6dfd5; display: flex; justify-content: space-between; align-items: flex-end; }
-.fin-closing-poem { font-size: 15px; font-weight: 400; line-height: 1.7; color: #6f6256; }
-.fin-closing-mark { font-size: 24px; font-weight: 400; letter-spacing: 0.035em; color: #231c16; }
+/* 132번: 맺음 — 어두운 바탕 한 장 (02 로고 규칙의 어두운 바탕 색), 문서 양옆 여백까지 채움 */
+.fin-ed-closing { margin: 6rem -3.5rem 0; padding: 80px 3.5rem 56px; background: #2b221a; color: #efe6da; display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; }
+.fin-closing-poem { font-size: 40px; font-weight: 400; line-height: 1.45; color: #efe6da; }
+.fin-closing-mark { font-size: 40px; font-weight: 400; line-height: 1; letter-spacing: 0.035em; color: #efe6da; }
+.fin-closing-mark i { color: #d19a72; }
 .fin-ed-foot { margin-top: 2.8rem; padding-top: 1.4rem; border-top: 0.5px solid #e6dfd5; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
 .fin-ed-foot-main { display: flex; align-items: center; gap: 2rem; }
 .fin-ed-foot-sub { display: flex; align-items: center; gap: 1.4rem; }
-.fin-ed-foot-sub button { background: none; border: none; cursor: pointer; padding: 0.4rem 0.2rem; font-size: 12.5px; font-weight: 400; color: #6f6256; }
+.fin-ed-foot-sub button { background: none; border: none; cursor: pointer; padding: 0.4rem 0.2rem; font-size: 15px; font-weight: 400; color: #6f6256; }
 .fin-ed-foot-sub button:hover { color: #231c16; }
 
 @media (max-width: 720px) {
@@ -1661,7 +1661,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .fin-ed-doc.jg-doc { padding: 0 1.4rem 4.5rem; }
     .jg-showroom { grid-template-columns: 1fr; gap: 1.6rem; padding: 3rem 0; }
     .jg-sr-meta { margin-top: 0.6rem; flex-direction: row; flex-wrap: wrap; gap: 0.4rem 1.2rem; }
-    .jg-sr-pair, .jg-sr-pair.is-single { grid-template-columns: 1fr; gap: 1.4rem; }
+    .jg-sr-sw { margin-top: 1.4rem; }
+    .jg-map-read { grid-template-columns: 1fr; gap: 1.5rem; }
+    .jg-map-box { margin: 0 -1.4rem; }
+    .jg-cover-poem, .fin-closing-poem, .fin-closing-mark { font-size: 30px; }
+    .fin-ed-closing { margin: 4.5rem -1.4rem 0; padding: 48px 1.4rem 40px; }
     .fin-est-line { grid-template-columns: 28px 40px minmax(0, 1fr) auto; }
     .fin-est-sz { display: none; }
 }
@@ -1877,7 +1881,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
    모서리 모두 각지게 · 그림자 없음 · 점선 없음(실선만) · 흙빛은 "지금 누를 것 · 고른 것 · 로고 점"에만
    밑줄은 주요 행동과 고른 것에만. 명조 = 목소리(질문·선택·버튼), 고딕 = 정보(위치·숫자표·안내)
    ========================================================================== */
-#trackCurationSection *:not(.photo-intro-q):not(.jg-sw-front):not(.lg-c), #roomColorCust *, .more-overlay *, .opt-info-overlay * { border-radius: 0 !important; box-shadow: none !important; text-shadow: none !important; }
+#trackCurationSection *:not(.photo-intro-q):not(.jg-sw-front), #roomColorCust *, .more-overlay *, .opt-info-overlay * { border-radius: 0 !important; box-shadow: none !important; text-shadow: none !important; }
 #trackCurationSection b, #trackCurationSection strong, #roomColorCust b, #roomColorCust strong { font-weight: 600; }
 /* 그림자로 그리던 색 조각 테두리는 0.5px 초세선으로 (76번) */
 .dos-sw, .dos-house-strip, .arch-layer-box, .dos-bc-row > i, .dos-wfrow > i, .dos-tone button i, .heard-dot, .room-chip .rc i, .link-bar,
