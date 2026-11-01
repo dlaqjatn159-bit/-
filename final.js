@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261188';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261189';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -272,11 +272,12 @@
 
         h += '<article class="fin-ed-doc jg-doc">';
 
-        // [표지] 16:10 조각보(79번) + 아래에 "빛을, / 다시 담습니다"(명조) · "커튼 · 블라인드 방문 상담"(고딕) · 로고 (132번, 시안 v2 1장)
+        // [표지] 16:10 조각보(79번) + 아래에 "빛을, / 다시 담습니다"(명조) · 로고 (132번) — 142번: 소개 문구 빼고 그림 아래 오른쪽 한 줄
         //  로고는 길게 누르면 직원 화면 PIN 창(data-staff-hold)이라 자리만 아래로 옮김
         h += '<section class="jg-cover-sec">';
         h += `<div class="jg-canvas-wrap"><div class="jg-canvas">${buildJogakboHtml(data)}</div></div>`;
-        h += '<footer class="jg-cover-foot"><div><div class="jg-cover-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="jg-cover-sub">커튼 · 블라인드 방문 상담</div></div>';
+        if (typeof coverCaptionOf === 'function') h += `<p class="jg-cover-cap">${esc(coverCaptionOf(data))}</p>`;      // 142번(B-5)
+        h += '<footer class="jg-cover-foot"><div><div class="jg-cover-poem font-serif-kr">빛을,<br>다시 담습니다</div></div>';
         h += '<div class="fin-ed-logo font-serif-kr" data-staff-hold>Re<i>.</i>dam</div></footer>';
         h += '</section>';
 
@@ -319,16 +320,7 @@
                 h += '</div>';
 
                 h += '<div class="jg-sr-right">';
-                if (st) {
-                    const MID = 38;
-                    const baseH = st.baseR ? Math.round(MID * st.baseR) : 0;
-                    const midSegs = st.mid.map(m => `<div style="flex:${m.f};background:${m.hex}"></div>`).join('');
-                    h += `<div class="jg-sr-elev arch-layer-box is-mini">`
-                        + `<div class="arch-mid-window" style="height:${MID - baseH}px">${midSegs}</div>`
-                        + (baseH ? `<div class="arch-wall-base" style="height:${baseH}px;background:${st.wHex}"></div>` : '')
-                        + `<div class="arch-bot-floor" style="background:${st.fHex}"></div>`
-                        + `</div>`;
-                }
+                // 142번(B-5): 창가 색 띠 뺌 — 오른쪽 글은 들은 말부터
                 // ① 들은 말(명조 22) → ② 본 것(17 muted) → ③ 고른 것(17) (83번 · 132번)
                 paraParts.forEach(p => { h += `<p class="jg-sr-comment is-${p.k}${p.k === 'heard' ? ' font-serif-kr' : ''}">${esc(p.t)}</p>`; });
 

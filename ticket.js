@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261188';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261189';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1474,22 +1474,31 @@ function paperSwatch(ctx, it, photos, x, y, w, h) {
     }
     ctx.strokeStyle = 'rgba(35,28,22,0.14)'; ctx.lineWidth = PAPER_HL; ctx.strokeRect(x + PAPER_HL / 2, y + PAPER_HL / 2, w - PAPER_HL, h - PAPER_HL);
 }
+// 142번(B-5): 표지 그림 아래 한 줄 — 품목 낱말은 그 집에 있는 것만
+function coverCaptionOf(data) {
+    const its = (data && data.rooms || []).flatMap(r => r.items || []);
+    const curtain = its.some(it => it.kind !== '블라인드' && !String(it.kind || '').includes('블라인드'));
+    const blind = its.some(it => String(it.kind || '').includes('블라인드'));
+    const kinds = ['벽', '바닥'].concat(curtain || !blind ? ['커튼'] : [], blind ? ['블라인드'] : []);
+    return `이 집의 ${kinds.join('·')} 색 비율로 지은 그림입니다`;
+}
 // [표지] Re.dam 로고 + 16:10 조각보 (화면 .jg-canvas와 같은 나눔, 조각 사이 틈)
 function buildCoverCanvas(data, pr) {
     const C = window.concierge;
     if (!C || typeof C.jogakbo !== 'function') return null;
     const jg = C.jogakbo(data);      // 134번: 무작위 칸 + 비율대로 칠한 색 (화면과 같은 칸)
-    // 132번: 조각보를 위에 두고, 아래에 "빛을, / 다시 담습니다"(명조) + "커튼 · 블라인드 방문 상담"(고딕) + 오른쪽 아래 로고 (시안 v2 1장)
+    // 132번 → 142번(B-5): 조각보 → 바로 아래 오른쪽 한 줄(옅게) → "빛을, / 다시 담습니다"(명조) + 오른쪽 아래 로고. 소개 문구는 뺌
     const CX = TICKET_PAD, RX = PAPER_W - TICKET_PAD, CW = RX - CX, TOP = TICKET_PAD, CH = Math.round(CW * 10 / 16), GAP = 4;
-    const L1 = TOP + CH + 46 + PAPER_F2, L2 = L1 + Math.round(PAPER_F2 * 1.4), SUB = L2 + 22 + PAPER_F4;
-    const H = SUB + TICKET_PAD;
+    const CAP = TOP + CH + 28 + PAPER_F4;
+    const L1 = CAP + 46 + PAPER_F2, L2 = L1 + Math.round(PAPER_F2 * 1.4);
+    const H = L2 + TICKET_PAD;
     const { canvas, ctx } = paperCanvas(H, pr);
+    ctx.font = `400 ${PAPER_F4}px ${PAPER_SANS}`; ctx.fillStyle = '#6f5f4f'; ctx.textAlign = 'right';
+    ctx.fillText(coverCaptionOf(data), RX, CAP);
     ctx.textAlign = 'left'; ctx.fillStyle = '#2b221a';
     ctx.font = `400 ${PAPER_F2}px ${PAPER_SERIF}`;
     ctx.fillText('빛을,', CX, L1); ctx.fillText('다시 담습니다', CX, L2);
-    ctx.font = `400 ${PAPER_F4}px ${PAPER_SANS}`; ctx.fillStyle = '#6f5f4f';
-    ctx.fillText('커튼 · 블라인드 방문 상담', CX, SUB);
-    paperLogo(ctx, RX, SUB, PAPER_F3, '#2b221a', '#8a4a22');
+    paperLogo(ctx, RX, L2, PAPER_F3, '#2b221a', '#8a4a22');
     const cells = jg ? jg.cells : [{ x: 0, y: 0, w: 16, h: 10, hex: '#efe9df' }];
     cells.forEach(c => {
         const x = CX + c.x / 16 * CW + GAP / 2, y = TOP + c.y / 10 * CH + GAP / 2, w = c.w / 16 * CW - GAP, h = c.h / 10 * CH - GAP;
@@ -1529,8 +1538,7 @@ function buildShowroomCanvas(data, pr, pageNo, total) {
         let y = 44 + F2;                        // 공간 이름 글줄
         const nameY = y;
         const metaY = meta.length ? (y += 36) : 0;
-        const stripY = (y += r.st ? 26 : 0);
-        if (r.st) y += STRIP_H;
+        const stripY = (y += 12);      // 142번(B-5): 창가 색 띠 뺌 — 들은 말부터 바로
         // 네 칸 단락 ①②③ (83번): 단락마다 새 줄, 단락 사이 조금 띄움
         // 132번: 들은 말은 명조로 가장 먼저 읽히게(화면 22 → F3), 본 것은 muted, 고른 것은 ink
         const cLines = [];
@@ -1582,23 +1590,6 @@ function buildShowroomCanvas(data, pr, pageNo, total) {
         text(r.name, CX, top + P.nameY, DARK, fName);
         // 공간 정보: 이름표(흐린 글) + 값, 한 줄에 이어 씀
         if (P.meta.length) text(P.meta[0], CX, top + P.metaY, MUTED, fSans);
-        // 창가 색 띠: 가운데 창 줄(벽·원단) → 커튼 아래 벽(부분 치수일 때만) → 바닥. 글자 없음 (76번)
-        if (r.st) {
-            const sy = top + P.stripY, MID = STRIP_H - FLOOR_H;
-            const baseH = r.st.baseR ? Math.round(MID * r.st.baseR) : 0, winH = MID - baseH;
-            const tot = r.st.mid.reduce((a, m) => a + m.f, 0) || 1;
-            let sx = CX;
-            r.st.mid.forEach((m, k) => {
-                const w = k === r.st.mid.length - 1 ? RX - sx : CW * m.f / tot;
-                ctx.fillStyle = m.hex; ctx.fillRect(sx, sy, w + 0.5, winH);
-                if (k > 0) { ctx.strokeStyle = 'rgba(35,28,22,0.06)'; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + winH); ctx.stroke(); }
-                sx += w;
-            });
-            if (baseH) { ctx.fillStyle = r.st.wHex; ctx.fillRect(CX, sy + winH, CW, baseH); }
-            ctx.fillStyle = r.st.fHex; ctx.fillRect(CX, sy + MID, CW, FLOOR_H);
-            ctx.strokeStyle = 'rgba(35,28,22,0.1)'; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, sy + MID); ctx.lineTo(RX, sy + MID); ctx.stroke();
-            ctx.strokeStyle = 'rgba(35,28,22,0.14)'; ctx.strokeRect(CX + PAPER_HL / 2, sy + PAPER_HL / 2, CW - PAPER_HL, STRIP_H - PAPER_HL);
-        }
         P.cLines.forEach(c => text(c.ln, CX, top + c.y, c.color, c.font));
         // 스와치: 겹치면 겉지(뒤, 왼쪽 위) → 속지(앞, 오른쪽 아래, 옅은 그림자) (78번)
         if (r.sets.length) {
