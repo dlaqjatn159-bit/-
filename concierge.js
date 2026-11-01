@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261184';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261185';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -280,8 +280,6 @@
 
     function goToStep(nextStep, pushHistory, fwd) {
         hideKeypadDirectly();
-        const optOv = document.getElementById('optInfoOverlay');
-        if (optOv) optOv.style.display = 'none';
         // 몇 번째 칸(속지·겉지)이었는지도 같이 적어 둠 → 뒤로 가면 겉지에서 속지 고르기로 돌아감
         if (pushHistory !== false && state.step !== nextStep) {
             stepHistory.push({ step: state.step, idx: state.currentItemIndex, room: state.editingRoom, roomId: state.editingRoomId });      // 119번: 집 전체로 넘어가면 공간이 바뀌므로 그때의 공간도 같이 적어 둠
@@ -395,7 +393,7 @@
             sizeKnown: !!(Number(target.width) && Number(target.height)),      // 공간 추가 때 크기를 적었으면 원단 뒤에는 옵션(마무리)만
             shapeFee: true,
             hotelFit: true,
-            leadBand: true,
+            leadBand: false,      // 139번: 밑단 기본은 시접 (리드밴드는 고를 때만)
             items: []
         };
         if (target.isConfigured && target.curtains && target.curtains.length > 0) {
@@ -791,56 +789,37 @@
         return progHtml();
     }
 
-    // ---- 옵션 설명 그림 (적용 전 / 적용 후). 가격 대신 "무엇이 좋아지는지"를 보여줌 ----
-    // 커튼을 세로 띠(주름)로 그림. 위(레일)·아래 폭, 주름 수, 흔들림, 밑단 모양을 바꿔 차이를 표현
-    function curtainSvg(o) {
-        const W = 220, H = 150, top = 16, bot = 136;
-        const n = o.n, jit = o.jitter || [], wave = o.wave || 0;
-        const xs = (l, r, i) => l + (r - l) * i / n;
-        const by = i => bot + (wave ? Math.sin(i * 1.7) * wave + (i % 3 === 0 ? wave * 0.6 : 0) : 0);
-        let g = `<line x1="${o.topL - 12}" y1="${top}" x2="${o.topR + 12}" y2="${top}" stroke="#6f5f4f" stroke-width="3" stroke-linecap="round"/>`;
-        for (let i = 0; i < n; i++) {
-            const t1 = xs(o.topL, o.topR, i), t2 = xs(o.topL, o.topR, i + 1);
-            const b1 = xs(o.botL, o.botR, i) + (jit[i] || 0), b2 = xs(o.botL, o.botR, i + 1) + (jit[i + 1] || 0);
-            const fill = i % 2 === 0 ? o.c1 : o.c2;
-            g += `<path d="M${t1},${top + 2} L${t2},${top + 2} L${b2},${by(i + 1)} L${b1},${by(i)} Z" fill="${fill}" fill-opacity="${o.op || 1}"/>`;
+    // ---- 마무리 옵션 줄 (139번, 디자인점검 B-3 시안 B안): 형상기억·호텔핏은 줄마다 빼기/넣기, 밑단은 시접/리드밴드 중 하나 ----
+    // 옵션 미리보기 창(그림)은 과장이 있어 없앰 (139번)
+    function finishOptsHtml(room) {
+        const hasSheer = room.items.some(i => i.presetType === 'sheer');
+        const hasDrape = room.items.some(i => i.presetType === 'drape');
+        let h = '<div class="fo-list" id="finishOpts">';
+        const row = (key, name, say) => {
+            const on = !!room[key];
+            return `<div class="fo-row${on ? ' on' : ''}"><span class="fo-nm font-serif-kr">${name}</span>`
+                + `<button type="button" class="fo-act" data-k="${key}" aria-label="${name} ${on ? '빼기' : '넣기'}" onclick="window.concierge.toggleFinishOpt('${key}')">${on ? '빼기' : '넣기'}</button>`
+                + `<p class="fo-say">${say}</p></div>`;
+        };
+        if (hasDrape) {
+            h += row('shapeFee', '형상기억 가공', '주름을 열로 잡아 두어 더 가지런하게 떨어집니다');
+            h += row('hotelFit', '호텔핏', '원단을 한 폭 더 넣어 주름이 깊고 풍성해집니다');
         }
-        if (o.band) g += `<path d="M${o.botL},${bot - 4} L${o.botR},${bot - 4} L${o.botR},${bot} L${o.botL},${bot} Z" fill="#8a6d52"/>`;
-        return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" aria-hidden="true">${g}</svg>`;
-    }
-    const OPTION_INFO = {
-        shapeFee: {
-            title: '형상기억 가공',
-            desc: '주름 모양을 열로 고정해, 커튼을 걷거나 내려도 반듯한 주름이 그대로 유지됩니다.',
-            off: { topL: 55, topR: 165, botL: 22, botR: 198, n: 8, jitter: [0, 6, -5, 9, -7, 4, -8, 5, 0], wave: 5, c1: '#d9c7ae', c2: '#c4ad8e' },
-            on: { topL: 55, topR: 165, botL: 55, botR: 165, n: 8, c1: '#d9c7ae', c2: '#c4ad8e' }
-        },
-        hotelFit: {
-            title: '호텔핏 (+1폭 볼륨)',
-            desc: '원단을 한 폭 더 넣어 주름이 깊고 풍성해집니다. 호텔처럼 꽉 차고 도톰한 느낌입니다.',
-            off: { topL: 40, topR: 180, botL: 40, botR: 180, n: 5, c1: '#d9c7ae', c2: '#cdb89b' },
-            on: { topL: 40, topR: 180, botL: 40, botR: 180, n: 11, c1: '#dccab1', c2: '#b89f7e' }
-        },
-        leadBand: {
-            title: '하단 리드밴드',
-            desc: '속지 밑단에 무게감 있는 끈을 넣어, 밑단이 일자로 반듯하게 떨어지고 바람에 덜 날립니다.',
-            textOnly: true      // 그림 없이 문구만 보여 줌
+        if (hasSheer) {
+            const lead = !!room.leadBand;
+            h += '<div class="fo-row fo-hem"><span class="fo-nm font-serif-kr">밑단</span><div class="fo-pick" role="group" aria-label="밑단">'
+                + `<button type="button" data-hem="0" class="${lead ? '' : 'on'}" aria-pressed="${!lead}" onclick="window.concierge.setHem(false)">시접</button>`
+                + `<button type="button" data-hem="1" class="${lead ? 'on' : ''}" aria-pressed="${lead}" onclick="window.concierge.setHem(true)">리드밴드</button></div></div>`;
         }
-    };
-    function optionInfoHtml(keys) {
-        let h = '<div class="opt-info-sheet" onclick="event.stopPropagation()">';
-        h += '<div class="opt-info-head font-serif-kr">제작 옵션 미리보기</div>';
-        keys.forEach(k => {
-            const o = OPTION_INFO[k];
-            h += `<div class="opt-info-row${o.textOnly ? ' text-only' : ''}">`;
-            h += `<div class="opt-info-text"><strong class="font-serif-kr">${o.title}</strong><p>${o.desc}</p></div>`;
-            if (o.textOnly) { h += '</div>'; return; }
-            h += `<figure><div class="opt-info-pic">${curtainSvg(o.off)}</div><figcaption>기본</figcaption></figure>`;
-            h += `<figure><div class="opt-info-pic on">${curtainSvg(o.on)}</div><figcaption>적용</figcaption></figure>`;
-            h += '</div>';
-        });
-        h += '<button class="opt-info-close" onclick="window.concierge.closeOptionInfo()">닫기</button>';
         return h + '</div>';
+    }
+    // 누른 뒤 줄만 다시 그리고 누른 자리에 초점을 돌려 둠
+    function refreshFinishOpts(sel) {
+        const box = document.getElementById('finishOpts');
+        if (!box || !state.editingRoom) return;
+        box.outerHTML = finishOptsHtml(state.editingRoom);
+        const again = sel && document.querySelector('#finishOpts ' + sel);
+        if (again) again.focus();
     }
 
     // ---- 두 번째 공간부터: 앞에서 진단한 공간과 바닥·벽이 같으면 바로 넘어가기 ----
@@ -1190,25 +1169,13 @@
                 const hasSheer = curRoom.items.some(i => i.presetType === 'sheer');
                 const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
                 const hasCurtain = hasSheer || hasDrape;
-                const optBtn = (key, label, on, fn) =>
-                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" aria-pressed="${!!on}" onclick="${fn}">${label}</button>`;
-
                 html += '<div class="msr-stage">';
                 html += '<div class="msr-grid">';
                 html += msrBoxHtml('width', '가로', curRoom.width); // 41번 · 73번
                 html += msrBoxHtml('height', '세로', curRoom.height);
                 html += '</div>';
 
-                if (hasCurtain) {
-                    html += '<div class="msr-opts">';
-                    if (hasDrape) {
-                        html += optBtn('shapeFee', '형상기억 가공', curRoom.shapeFee, 'window.concierge.toggleNudgeShapeFee()');
-                        html += optBtn('hotelFit', '호텔핏', curRoom.hotelFit, 'window.concierge.toggleNudgeHotelFit()');
-                    }
-                    if (hasSheer) html += optBtn('leadBand', '하단 리드밴드', curRoom.leadBand, "window.concierge.fastToggleOption('leadBand')");
-                    html += '</div>';
-                    html += '<button class="opt-info-link" onclick="window.concierge.showOptionInfo()">옵션을 적용하면 어떻게 달라지나요?</button>';
-                }
+                if (hasCurtain) html += finishOptsHtml(curRoom);      // 139번: 마무리 화면과 같은 줄 모양
 
                 html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name}에 추가</button>`;
                 html += '</div>';
@@ -1218,20 +1185,10 @@
             // [마무리(옵션)] 원단을 고른 뒤: 크기는 공간 추가 때 적었으므로 옵션만 (실측 화면의 옵션 글자 모양 그대로) → "○○ 마치기" → 중심 화면
             case "6-Finish": {
                 const curRoom = state.editingRoom;
-                const hasSheer = curRoom.items.some(i => i.presetType === 'sheer');
-                const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
-                const optBtn = (key, label, on, fn) =>
-                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" aria-pressed="${!!on}" onclick="${fn}">${label}</button>`;
                 html += '<div class="msr-stage msr-finish">' + progHtml();
-                // 옵션은 처음부터 모두 켜져 있음 → "더할 것"이 아니라 "이렇게 마무리" + 뺄 것을 누르게 (10-15 사장님)
+                // 옵션은 처음부터 들어가 있음 → "이렇게 마무리" + 줄마다 빼기/넣기, 밑단은 시접/리드밴드 (139번)
                 html += '<h2 class="msr-title font-serif-kr">이렇게 마무리해 드립니다</h2>';
-                html += '<div class="msr-opts">';
-                if (hasDrape) {
-                    html += optBtn('shapeFee', '형상기억 가공', curRoom.shapeFee, 'window.concierge.toggleNudgeShapeFee()');
-                    html += optBtn('hotelFit', '호텔핏', curRoom.hotelFit, 'window.concierge.toggleNudgeHotelFit()');
-                }
-                if (hasSheer) html += optBtn('leadBand', '하단 리드밴드', curRoom.leadBand, "window.concierge.fastToggleOption('leadBand')");
-                html += '</div>';      // 133번(재검토 A3): "빼고 싶은 것은 눌러 주세요"·"옵션을 적용하면…" 줄은 뺌 (옵션 그림은 크기 화면에 그대로)
+                html += finishOptsHtml(curRoom);
                 html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name} 마치기</button>`;
                 html += '</div>';
                 break;
@@ -1365,8 +1322,6 @@
             const pad = document.getElementById("v2VirtualKeypadSheet");
             if (pad && pad.classList.contains("active")) { hideKeypadDirectly(); return true; }
             if (state.step === "7-Final-Dossier" && finalPageNow() > 0) { setFinalPage(finalPageNow() - 1); return true; }
-            const ov = document.getElementById('optInfoOverlay');
-            if (ov && getComputedStyle(ov).display !== 'none') { ov.style.display = 'none'; return true; }
             return closeAllColors();
         },
         // "찾는 중" 화면이 떠 있으면 뒤로를 무시 (끝나면 원단 화면이 열림)
@@ -1531,28 +1486,6 @@
             } else {
                 goToStep("2-Base-Floor");
             }
-        },
-        showOptionInfo: function() {
-            const room = state.editingRoom;
-            if (!room) return;
-            const keys = [];
-            if (room.items.some(i => i.presetType === 'drape')) keys.push('shapeFee', 'hotelFit');
-            if (room.items.some(i => i.presetType === 'sheer')) keys.push('leadBand');
-            if (!keys.length) return;
-            let ov = document.getElementById('optInfoOverlay');
-            if (!ov) {
-                ov = document.createElement('div');
-                ov.id = 'optInfoOverlay';
-                ov.className = 'opt-info-overlay';
-                ov.onclick = () => window.concierge.closeOptionInfo();
-                document.body.appendChild(ov);
-            }
-            ov.innerHTML = optionInfoHtml(keys);
-            ov.style.display = 'flex';
-        },
-        closeOptionInfo: function() {
-            const ov = document.getElementById('optInfoOverlay');
-            if (ov) ov.style.display = 'none';
         },
         selectFloorTone: function(tone) {
             if (!state.editingRoom.editOnly) cardPickInRoom('floor', tone);
@@ -2027,20 +1960,16 @@
                 goToStep("6-Measure");
             }
         },
-        toggleNudgeShapeFee: function() {
-            state.editingRoom.shapeFee = !state.editingRoom.shapeFee;
-            const chip = document.getElementById("chip_shapeFee");
-            if (chip) { chip.classList.toggle("active", !!state.editingRoom.shapeFee); chip.setAttribute("aria-pressed", String(!!state.editingRoom.shapeFee)); }
+        // 139번: 형상기억·호텔핏 빼기/넣기, 밑단 시접/리드밴드
+        toggleFinishOpt: function(key) {
+            if (!state.editingRoom || (key !== 'shapeFee' && key !== 'hotelFit')) return;
+            state.editingRoom[key] = !state.editingRoom[key];
+            refreshFinishOpts(`[data-k="${key}"]`);
         },
-        toggleNudgeHotelFit: function() {
-            state.editingRoom.hotelFit = !state.editingRoom.hotelFit;
-            const chip = document.getElementById("chip_hotelFit");
-            if (chip) { chip.classList.toggle("active", !!state.editingRoom.hotelFit); chip.setAttribute("aria-pressed", String(!!state.editingRoom.hotelFit)); }
-        },
-        fastToggleOption: function(optKey) {
-            state.editingRoom[optKey] = !state.editingRoom[optKey];
-            const chip = document.getElementById(`chip_${optKey}`);
-            if (chip) { chip.classList.toggle("active", !!state.editingRoom[optKey]); chip.setAttribute("aria-pressed", String(!!state.editingRoom[optKey])); }
+        setHem: function(lead) {
+            if (!state.editingRoom) return;
+            state.editingRoom.leadBand = !!lead;
+            refreshFinishOpts(`[data-hem="${lead ? 1 : 0}"]`);
         },
         commitRoomCart: function() {
             const roomTarget = state.roomsCart.find(r => r.id === state.editingRoomId);

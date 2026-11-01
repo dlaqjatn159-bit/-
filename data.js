@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261184';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261185';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -124,7 +124,7 @@ function savePriceCurve(curve) {
     o.curve = curve;
     saveOptionPricesStore(o);
 }
-// 기준 창(가로 300 × 세로 235, 2배 주름, 기본 레일, 속지면 리드밴드, 형상기억 끔)으로 원단 하나의 곡선 판매 단가를 셈
+// 기준 창(가로 300 × 세로 235, 2배 주름, 기본 레일, 밑단 시접(139번), 형상기억 끔)으로 원단 하나의 곡선 판매 단가를 셈
 // 매입 = (원가 합계 − 리드밴드) × 1.1, 폭당 매입 = 매입 ÷ 4. 단가 = (매입 × 배수 − 리드밴드 − 레일) ÷ 원단 단위 수, 천 원 올림
 // 셀 수 없으면(곡선·원가 규칙·원가 없음) null
 function curvePrice(fab, pv) {
@@ -151,8 +151,7 @@ function curveMultOf(fab, pv) {
 function curveStd(fab, pv, cv) {
     if (!cv.ok || typeof Costing === 'undefined' || !Costing.state.rules) return null;
     const rates = optionRatesNow('rail');
-    const isSheer = fab.categoryType === '속지' || /쉬폰/.test(fab.name || '');
-    const c = { width: 300, height: 235, pleat: 2, pleatType: '', installType: 'rail', floorGap: 0, hotelFit: false, leadBand: isSheer, shapeFee: 0, hwPrice: hwPriceOf('rail'), rates };
+    const c = { width: 300, height: 235, pleat: 2, pleatType: '', installType: 'rail', floorGap: 0, hotelFit: false, leadBand: false, shapeFee: 0, hwPrice: hwPriceOf('rail'), rates };      // 139번: 밑단 기본 시접
     const unitFab = Object.assign({}, fab, { price: 1, extra: null });
     const pr = Pricing.priceItem(c, unitFab);
     const k = Costing.costItem(c, unitFab, pr, pv);
