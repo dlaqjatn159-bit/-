@@ -2122,10 +2122,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 /* "앞 공간과 같나요?" 질문 아래 이 집의 기본 색 (벽 위 · 바닥 아래, 중심 화면과 같은 모양) */
 .ask-house { position: relative; z-index: 10; display: inline-flex; flex-direction: column; margin-top: 1rem; text-align: left; gap: 8px; padding: 16px 24px; border-top: 0; border-bottom: 0; background: #f4efe7; }
 
+/* 135번: 중심 화면 글자는 40·22·17·15 넷만 */
 /* ===== 공간 목록 (중심 화면): 왼쪽 목차 + 한 공간씩 크게 보기 작업대 (+ 전체 한눈에 2열 전환) + 이유 문구 제거 (76·77번) ===== */
-.dos-top h1 { line-height: 1; cursor: pointer; font-size: 24px; font-weight: 400; letter-spacing: 0.035em; }
-.dos-who, .dos-stage .dos-who { font-family: var(--serif); font-size: 13.5px; color: var(--muted); margin: 0.45rem 0 0; }
-.dos-lead { color: #2b221a; font-size: 19px; font-weight: 400; line-height: 1.5; letter-spacing: -0.01em; margin: 1.35rem 0 1.8rem; }
+.dos-top h1 { line-height: 1; cursor: pointer; font-size: 22px; font-weight: 400; letter-spacing: 0.035em; }
+.dos-who, .dos-stage .dos-who { font-family: var(--serif); font-size: 15px; color: var(--muted); margin: 0.45rem 0 0; }
+.dos-lead { color: #2b221a; font-size: 17px; font-weight: 400; line-height: 1.5; letter-spacing: -0.01em; margin: 1.35rem 0 1.8rem; }
 .dos-house { border-top: 0.5px solid var(--line); padding-top: 1.2rem; }
 .dos-house-strip { border-radius: 2px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.08); height: 22px; display: flex; }
 .dos-strip-seg { display: flex; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; position: relative; }
@@ -2139,19 +2140,19 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-nav-dots { display: inline-flex; align-items: center; gap: 4px; }
 .dos-nav-dots i { display: inline-block; width: 12px; height: 15px; outline: 0.5px solid rgba(43, 34, 26, 0.16); outline-offset: -0.5px; }
 .dos-view-bar { grid-column: 1 / -1; display: flex; justify-content: flex-end; align-items: center; margin-bottom: -1.2rem; }
-.dos-view-toggle { padding: 4px 0; border: 0; border-bottom: 0.5px solid var(--line); background: none; cursor: pointer; font-family: var(--sans); font-size: var(--t-small); font-weight: 400; color: var(--muted); transition: color 0.15s ease, border-color 0.15s ease; }
+.dos-view-toggle { padding: 4px 0; border: 0; border-bottom: 0.5px solid var(--line); background: none; cursor: pointer; font-family: var(--sans); font-size: 15px; font-weight: 400; color: var(--muted); transition: color 0.15s ease, border-color 0.15s ease; }
 .dos-view-toggle:hover { color: var(--ink); border-bottom-color: var(--ink); }
-.dos-bc-row, .dos-bc-k, .dos-bc-row .hex-code { font-family: var(--sans); font-size: 12px; font-weight: 400; letter-spacing: 0; }
+.dos-bc-row, .dos-bc-k, .dos-bc-row .hex-code { font-family: var(--sans); font-size: 15px; font-weight: 400; letter-spacing: 0; }
 .arch-layer-box { display: flex; flex-direction: column; border-radius: 0; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.08); position: relative; height: 54px; margin-bottom: 0; }
 .arch-layer-box .arch-mid-window > div + div { border-left: 0.5px solid rgba(43, 34, 26, 0.06); }
 .arch-layer-box .arch-mid-window > div span, .arch-layer-box .arch-bot-floor span { display: none !important; }
 .arch-layer-box .arch-bot-floor { height: 11px; border-top: 0.5px solid rgba(43, 34, 26, 0.1); }
 .dos-room { border-top: 0.5px solid rgba(43, 34, 26, 0.45); padding-top: 1.15rem; }
 .dos-rhead { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 0.9rem; }
-.dos-rname { font-weight: 400; display: flex; align-items: baseline; color: #2b221a; font-size: 18px; gap: 0.6rem; }
-.dos-rmeta { font-family: var(--sans); font-size: 12.5px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
-.dos-redit, .dos-todo { padding: 2px 2px; border: 0; font-family: var(--sans); font-size: 12.5px; font-weight: 400; }
-.dos-why, .dos-room > .dos-why { font-family: var(--sans); font-size: 13px; font-weight: 400; line-height: 1.65; margin: 1.1rem 0 1.2rem; color: var(--muted); letter-spacing: 0; }
+.dos-rname { font-weight: 400; display: flex; align-items: baseline; color: #2b221a; font-size: 22px; gap: 0.6rem; }
+.dos-rmeta { font-family: var(--sans); font-size: 15px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
+.dos-redit, .dos-todo { padding: 2px 2px; border: 0; font-family: var(--sans); font-size: 15px; font-weight: 400; }
+.dos-why, .dos-room > .dos-why { font-family: var(--sans); font-size: 15px; font-weight: 400; line-height: 1.65; margin: 1.1rem 0 1.2rem; color: var(--muted); letter-spacing: 0; }
 .dos-room.dos-first, .dos-right .dos-room.dos-first { margin: auto; padding: 0; border-top: 0; align-items: center; gap: 28px; }      /* 133번: 빈 첫 화면 = 흙빛 점 하나 + "+ 공간 추가" 하나 */
 .dos-first-dot { display: block; width: 12px; height: 12px; border-radius: 50% !important; background: var(--earth); }
 .dos-items-wrap { display: flex; flex-direction: column; margin-top: 1rem; }
@@ -2160,40 +2161,43 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-item-main { display: flex; width: 100%; align-items: flex-start; gap: 1.1rem; }
 .dos-sw { border-radius: 0; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.12); flex: 0 0 52px; width: 52px; height: 66px; }
 .dos-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.dos-kind { font-family: var(--sans); font-size: 11.5px; font-weight: 400; letter-spacing: 0; color: var(--muted); margin-bottom: 0.18rem; }
-.dos-fab { font-weight: 400; color: #2b221a; word-break: keep-all; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.42rem; margin-top: 0; line-height: 1.38; font-size: 16.5px; }
-.dos-fname { font-family: var(--serif); font-size: 16.5px; font-weight: 400; color: var(--ink); letter-spacing: -0.01em; }
-.dos-fcolor { font-family: var(--serif); font-size: 14px; font-weight: 400; color: var(--muted); }
-.dos-fab em.dos-fopts { font-family: var(--sans); font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 0.1rem; letter-spacing: 0; }
+.dos-kind { font-family: var(--sans); font-size: 15px; font-weight: 400; letter-spacing: 0; color: var(--muted); margin-bottom: 0.18rem; }
+.dos-fab { font-weight: 400; color: #2b221a; word-break: keep-all; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.42rem; margin-top: 0; line-height: 1.38; font-size: 17px; }
+.dos-fname { font-family: var(--serif); font-size: 17px; font-weight: 400; color: var(--ink); letter-spacing: -0.01em; }
+.dos-fcolor { font-family: var(--serif); font-size: 15px; font-weight: 400; color: var(--muted); }
+.dos-fab em.dos-fopts { font-family: var(--sans); font-size: 15px; font-weight: 400; color: var(--muted); margin-left: 0.1rem; letter-spacing: 0; }
 .dos-item-sub { padding-left: 0; margin-top: 0.65rem; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
-.dos-more { transition: color 0.15s ease; display: inline-block; background: none; border: none; cursor: pointer; font-family: var(--sans); font-size: 12.5px; font-weight: 400; color: var(--ink); padding: 2px 0; }
+.dos-more { transition: color 0.15s ease; display: inline-block; background: none; border: none; cursor: pointer; font-family: var(--sans); font-size: 15px; font-weight: 400; color: var(--ink); padding: 2px 0; }
 .dos-tone { flex: none; display: flex; align-items: center; gap: 0.85rem; margin-left: auto; }
 .dos-tone button, .dos-tone button:hover:not([disabled]) { padding: 2px 0; border: 0; background: none; gap: 0.35rem; }
 .dos-tone button i { border-radius: 0; box-shadow: inset 0 0 0 1px rgba(43, 34, 26, 0.15); flex: none; width: 12px; height: 15px; }
-.dos-tone button span { white-space: nowrap; font-family: var(--sans); font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.dos-tone button span { white-space: nowrap; font-family: var(--sans); font-size: 15px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
 /* 한 공간씩 크게 보기 (is-hero) — 원단 사진 4배 확대 & 2열 배치 (77번) */
 .dos-room.is-hero { width: 100%; max-width: 880px; margin: 0 auto; padding-top: 1.5rem; }
 .dos-room.is-hero .dos-rhead { padding-bottom: 1.25rem; }
-.dos-room.is-hero .dos-rname { font-size: 28px; gap: 0.85rem; }
-.dos-room.is-hero .dos-rmeta { font-size: 13.5px; }
-.dos-room.is-hero .dos-redit, .dos-room.is-hero .dos-todo { font-size: 13.5px; }
+.dos-room.is-hero .dos-rname { font-size: 40px; gap: 0.85rem; }
+.dos-room.is-hero .dos-rmeta { font-size: 15px; }
+.dos-room.is-hero .dos-redit, .dos-room.is-hero .dos-todo { font-size: 15px; }
 .dos-room.is-hero .dos-items-wrap { margin-top: 2.4rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2.6rem; border-top: 0.5px solid var(--line); padding-top: 2.2rem; }
 .dos-room.is-hero .dos-item { border-top: 0; padding: 0; }
 .dos-room.is-hero .dos-item-main { gap: 1.5rem; align-items: stretch; }
 .dos-room.is-hero .dos-sw { flex: 0 0 116px; width: 116px; height: 148px; }
 .dos-room.is-hero .dos-txt { justify-content: center; }
-.dos-room.is-hero .dos-kind { font-size: 12.5px; margin-bottom: 0.3rem; }
-.dos-room.is-hero .dos-fname { font-size: 21px; }
-.dos-room.is-hero .dos-fcolor { font-size: 16px; }
-.dos-room.is-hero .dos-fab em.dos-fopts { display: block; width: 100%; margin: 0.35rem 0 0; font-size: 12.5px; }
+.dos-room.is-hero .dos-kind { font-size: 15px; margin-bottom: 0.3rem; }
+.dos-room.is-hero .dos-fname { font-size: 22px; }
+.dos-room.is-hero .dos-fcolor { font-size: 17px; }
+.dos-room.is-hero .dos-fab em.dos-fopts { display: block; width: 100%; margin: 0.35rem 0 0; font-size: 15px; }
 .dos-room.is-hero .dos-item-sub { margin-top: 1.3rem; justify-content: flex-start; gap: 1.6rem; }
 .dos-room.is-hero .dos-tone { margin-left: 0; gap: 1.1rem; }
-.dos-room.is-hero .dos-more { font-size: 13.5px; border-bottom: 1px solid var(--ink); padding-bottom: 2px; }
+.dos-room.is-hero .dos-more { font-size: 15px; border-bottom: 1px solid var(--ink); padding-bottom: 2px; }
 .dos-room.is-hero .dos-tone button i { width: 14px; height: 18px; }
-.dos-room.is-hero .dos-tone button span { font-size: 13px; }
-#trackCurationSection .dos-act.is-main { font-size: 16.5px; font-weight: 500; padding: 4px 2px; }
+.dos-room.is-hero .dos-tone button span { font-size: 15px; }
+#trackCurationSection .dos-act.is-main { font-size: 17px; font-weight: 500; padding: 4px 2px; }
 .dos-addbtn, .dos-act, .dos-act-add, .dos-acts .dos-act-add { font-family: var(--serif); font-size: 15px; font-weight: 400; color: var(--ink); padding: 2px 0; }
-.dos-subacts button { font-size: 12.5px; padding: 2px 0; }
+.dos-subacts button { font-size: 15px; padding: 2px 0; }
+.dos-stage .dos-wfrow, .dos-stage .dos-wfk { font-size: 15px; }      /* 135번 */
+.dos-stage .dos-wfn { font-size: 17px; }
+.dos-stage .dos-fab em { font-size: 15px; }
 @media (min-width: 960px) and (min-aspect-ratio: 1/1) {
     .dos-right .dos-add { margin-top: 0.4rem; border-top: 0.5px solid var(--line); padding-top: 1.2rem; }
     .dos-stage .dos-sheet { max-width: none; height: 100%; padding: 0; border: none; display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: 300px minmax(0, 1fr); }

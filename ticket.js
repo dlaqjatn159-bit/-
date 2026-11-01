@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261179';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261180';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -424,10 +424,10 @@ function drawTicket(ctx, data, W, slim) {
 const TICKET_W = 1080;
 const TICKET_PAGE_H = Math.round(TICKET_W * 1.414);
 const TICKET_PAD = 64, TICKET_HEAD_Y = 188;      // 종이 안쪽 여백(인쇄 여백 10mm와 겹치지 않게 줄임)·머리글 굵은 선 높이. 카드와 견적서가 같이 씀
-// 화면용 종이 (75번, 10-25 사장님: A4 인쇄는 나중에 따로): 폭 1080 그림에 1.4배로 그려 글자는 60·40·32·28(화면 사다리의 2배)만,
-//  장 높이는 내용만큼(쪽 나눔 없음). 탭에서 폭 540으로 보이면 30·20·16·14
+// 화면용 종이 (75번, 10-25 사장님: A4 인쇄는 나중에 따로): 폭 1080 그림에 1.4배로 그려 글자는 80·44·34·30(정보 화면 사다리 40·22·17·15의 2배, 135번)만,
+//  장 높이는 내용만큼(쪽 나눔 없음). 탭에서 폭 540으로 보이면 40·22·17·15
 const PAPER_K = 1.4, PAPER_W = Math.round(TICKET_W / PAPER_K);
-const PAPER_F1 = 60 / PAPER_K, PAPER_F2 = 40 / PAPER_K, PAPER_F3 = 32 / PAPER_K, PAPER_F4 = 28 / PAPER_K;      // 로고·합계 / 장 제목·공간 이름 / 본문 / 작게
+const PAPER_F1 = 80 / PAPER_K, PAPER_F2 = 44 / PAPER_K, PAPER_F3 = 34 / PAPER_K, PAPER_F4 = 30 / PAPER_K;      // 로고·합계 / 장 제목·공간 이름 / 본문 / 작게 — 135번: 화면 사다리 40·22·17·15의 2배
 const TICKET_SCALES = [1, 0.95, 0.9, 0.85, 0.8];
 function planTicket(data, s, slim) {
     const W = PAPER_W, PAGE_H = 1e6, GAP = slim ? 16 : 34, BOTTOM = 80;      // 쪽 나눔 없음: 장 높이는 내용만큼 (75번)
