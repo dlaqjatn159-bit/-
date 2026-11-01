@@ -182,6 +182,7 @@
 
                                 <div id="summaryRoomList"></div>
                                 <div id="summaryNoFabric" class="staff-nofab" hidden></div>
+                                <div id="summaryLightWarn" class="staff-nofab" hidden></div>
                                 <div class="staff-sum-line strong">
                                     <span>공간별 제품 합산</span>
                                     <span><span id="resRoomsSubtotal">0</span>원</span>
@@ -195,6 +196,12 @@
                                         <select id="expressVatOption" onchange="updateGlobalVatOption(this.value)">
                                             <option value="consumer" selected>일반 판매가</option>
                                             <option value="business">세금계산서 (+10%)</option>
+                                        </select>
+                                    </label>
+                                    <label><span>빛 · 스탠드 (이케아 가격 + 구매·설치 대행)</span>
+                                        <select id="expressLightStand" onchange="updateGlobalLightStand(this.value)">
+                                            <option value="" selected>견적서에 넣지 않음</option>
+                                            <option value="1">견적서에 넣기</option>
                                         </select>
                                     </label>
                                     <label><span>유효기간 (일, 이 상담만 · 0이면 표시 안 함)</span>
@@ -602,6 +609,12 @@
                         <label class="staff-field"><span>기본 시공·출장비 (새 상담을 시작할 때 들어가는 금액)</span>
                             <input type="number" id="defaultInstallFeeInput" step="5000" min="0" inputmode="numeric" placeholder="30000" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveDefaultInstallFee(this.value)">
                         </label>
+                        <label class="staff-field"><span>빛 · 스탠드 이케아 가격 (토가르프 + 전구, 견적서에 그대로 적힘)</span>
+                            <input type="number" id="lightStandPriceInput" step="1000" min="0" inputmode="numeric" placeholder="비어 있음" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveLightStand('price', this.value)">
+                        </label>
+                        <label class="staff-field"><span>빛 · 스탠드 구매·설치 대행비</span>
+                            <input type="number" id="lightStandFeeInput" step="1000" min="0" inputmode="numeric" placeholder="비어 있음" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveLightStand('fee', this.value)">
+                        </label>
                         <label class="staff-field"><span>견적서 유효기간 (일, 0이면 표시 안 함 · 기본 14)</span>
                             <input type="number" id="quoteValidDaysInput" step="1" min="0" max="365" inputmode="numeric" placeholder="14" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveQuoteValidDays(this.value)">
                         </label>
@@ -799,24 +812,24 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261180"></script>
-    <script src="costing.js?v=20261180"></script>
-    <script src="data.js?v=20261180"></script>
-    <script src="calculator.js?v=20261180"></script>
-    <script src="concierge.js?v=20261180"></script>
-    <script src="intro.js?v=20261180"></script>
-    <script src="fabric-pick.js?v=20261180"></script>
-    <script src="space.js?v=20261180"></script>
-    <script src="final.js?v=20261180"></script>
-    <script src="app.js?v=20261180"></script>
-    <script src="more.js?v=20261180"></script>
-    <script src="survey.js?v=20261180"></script>
-    <script src="ticket.js?v=20261180"></script>
-    <script src="color-dict.js?v=20261180"></script>
-    <script src="fabrics.js?v=20261180"></script>
-    <script src="finder.js?v=20261180"></script>
-    <script src="settings.js?v=20261180"></script>
-    <script src="room-color.js?v=20261180"></script>
+    <script src="pricing.js?v=20261181"></script>
+    <script src="costing.js?v=20261181"></script>
+    <script src="data.js?v=20261181"></script>
+    <script src="calculator.js?v=20261181"></script>
+    <script src="concierge.js?v=20261181"></script>
+    <script src="intro.js?v=20261181"></script>
+    <script src="fabric-pick.js?v=20261181"></script>
+    <script src="space.js?v=20261181"></script>
+    <script src="final.js?v=20261181"></script>
+    <script src="app.js?v=20261181"></script>
+    <script src="more.js?v=20261181"></script>
+    <script src="survey.js?v=20261181"></script>
+    <script src="ticket.js?v=20261181"></script>
+    <script src="color-dict.js?v=20261181"></script>
+    <script src="fabrics.js?v=20261181"></script>
+    <script src="finder.js?v=20261181"></script>
+    <script src="settings.js?v=20261181"></script>
+    <script src="room-color.js?v=20261181"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

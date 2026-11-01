@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261180';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -186,6 +186,11 @@ function autoQuoteNotes(roomList) {
 }
 function ticketData() {
     calculateAll();
+    const d = ticketDataBase();
+    d.light = ticketLightOf(d);      // 131번: 견적서 빛 묶음 (넣지 않으면 null)
+    return d;
+}
+function ticketDataBase() {
     const custName = (document.getElementById('custName').value || '').trim();
     if (!quoteDate) { quoteDate = localYmd(new Date()); if (typeof saveDraftTick === 'function') saveDraftTick(); }      // 처음 만든 날로 고정 (85번)
     const [qy, qm, qd] = quoteDate.split('-').map(Number), d = new Date(qy, qm - 1, qd);
@@ -433,7 +438,7 @@ function planTicket(data, s, slim) {
     const W = PAPER_W, PAGE_H = 1e6, GAP = slim ? 16 : 34, BOTTOM = 80;      // 쪽 나눔 없음: 장 높이는 내용만큼 (75번)
     const probe = document.createElement('canvas').getContext('2d');
     const T = drawTicket(probe, data, W, slim);
-    const layouts = data.rooms.map(r => T.layoutRoom(r));
+    const layouts = data.rooms.map(r => T.layoutRoom(r)).concat(data.light ? [T.layoutRoom(data.light)] : []);      // 131번: 빛 묶음은 맨 뒤
     const F = T.layoutFooter();
     const pages = [];
     let cur = { items: [], y: T.START_Y };
@@ -1598,6 +1603,185 @@ function paperLogo(ctx, rx, y, size, ink, dot) {
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     ctx.textAlign = 'left';
 }
+// ==============================================================
+// 〈이 집의 밤〉 (131번, 시안 131_최종제안_흐름_시안_v2.html 5장): 견적서 다음, 맺음 앞. 조명을 사지 않는 손님에게도 나감
+//  ① 권하는 색온도 하나(조명연계_정리.md "조명 결정 규칙": 면적 큰 벽·바닥의 따뜻함 → 2700·3000·4000K, 북향 창은 따뜻한 쪽)
+//  ② 표지 조각보를 "지금의 방등 아래" / "권하는 빛 아래" 두 장으로 다시 칠함(방 그림 없음)
+//  ③ 시간 순서 글 세 칸(해 질 무렵 · 저녁 · 잠들기 전) ④ 제품 카드(구매하실 때 / 맡기실 때)
+//  문장은 가족 집 시험 전 임시(11-01 사장님) — 시험 뒤 바꿀 때는 NIGHT_SAY·NIGHT_LAMP만 고침. 화면(final.js)과 저장 이미지가 같이 씀
+// ==============================================================
+const NIGHT_WARM_B = 8, NIGHT_COOL_B = 3;      // 벽 60% · 바닥 40%로 섞은 따뜻함(Lab b*)이 8 이상이면 따뜻한 바탕, 3 아래면 차가운 바탕 (처음 값)
+const NIGHT_SAY = {
+    dusk: {
+        north: '커튼은 열어 둡니다. 해가 직접 들지 않는 창이라, 이때부터 스탠드를 켜 두시면 낮과 밤의 차이가 줄어듭니다.',
+        floor: f => `커튼은 열어 둡니다. ${f} 바닥에 남은 햇빛이 이 집의 온기를 먼저 보여 줍니다.`,
+        wall: w => `커튼은 열어 둡니다. 해가 지는 동안 ${w} 벽이 천천히 가라앉으며 이 집의 차분한 색을 먼저 보여 줍니다.`,
+        plain: '커튼은 열어 둡니다. 남은 햇빛이 이 집의 색을 먼저 보여 줍니다.'
+    },
+    evening: {
+        drape: '방등을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 겉지 주름의 윗부분부터 결을 드러냅니다.',
+        sheer: '방등을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 속지에 부드럽게 번져 창 쪽이 은은하게 밝아집니다.',
+        blind: '방등을 끄고 창 옆 스탠드만 켭니다. 천장으로 올린 빛이 공간을 낮게 감싸 줍니다.'
+    },
+    sleep: {
+        double: '겉지까지 칩니다. 속지만 쳐 두면 밖에서 실루엣이 보입니다. 빛은 그대로 두셔도 좋습니다.',
+        sheer: '속지만 있는 창은 밤에 안의 그림자가 비칠 수 있습니다. 잠들기 전에는 스탠드를 창에서 먼 쪽으로 옮기시거나 꺼 두시면 좋습니다.',
+        drape: '겉지를 칩니다. 빛은 그대로 두셔도 좋습니다.',
+        blind: '블라인드를 내립니다. 빛은 그대로 두셔도 좋습니다.'
+    }
+};
+const NIGHT_LAMP = { name: '이케아 토가르프', type: '상향식 플로어스탠드', socket: '일반 전구 소켓(E26)', cri: '연색성 90 이상',
+    buy: '이케아에서 같은 이름으로 찾으실 수 있습니다', entrust: '시공날 맞는 전구를 끼워 함께 놓아 드립니다' };
+// 빛 아래 색 (그림용 어림): 지금의 방등 = 흔한 주광색 LED(푸르고 납작하게) · 권하는 빛 = 그 색온도의 빛 색을 절반만 섞음
+const NIGHT_CEIL = { tint: [0.93, 0.96, 1], sat: 0.75, gain: 0.9 };
+function nightKelvinRgb(K) {      // 색온도 → 빛 색 (0~1, 흑체 어림식)
+    const t = K / 100, c = v => Math.max(0, Math.min(255, v)) / 255;
+    const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+    const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+    const b = t >= 66 ? 255 : (t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307);
+    return [c(r), c(g), c(b)];
+}
+function nightLitHex(hex, o) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    const n = parseInt(m[1], 16), rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    const y = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+    return '#' + rgb.map((v, i) => {
+        const x = (y + (v - y) * o.sat) * o.tint[i] * o.gain;
+        return Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0');
+    }).join('');
+}
+function nightLampOpt(K) {
+    const t = nightKelvinRgb(K), mx = Math.max(...t), MIX = 0.5;
+    return { tint: t.map(v => 1 - MIX + MIX * v / mx), sat: 1, gain: 0.96 };
+}
+// 이 집의 대표 창: 창이 가장 큰 공간 (원단을 담은 공간 중)
+function nightMainOf(sp) {
+    const areaOf = s => ((s.raw && s.raw.curtains) || []).reduce((a, c) => Math.max(a, (Number(c.width) || 0) * (Number(c.height) || 0)), 0);
+    return sp.slice().sort((x, y) => areaOf(y) - areaOf(x))[0] || null;
+}
+// 권하는 색온도: { k, tone: 'warm'|'neutral'|'cool'|'' }
+function nightKelvinOf(sp, main) {
+    let w = 0, n = 0;
+    sp.forEach(s => { if (s.wall) { w += s.wall.b * 0.6; n += 0.6; } if (s.floor) { w += s.floor.b * 0.4; n += 0.4; } });
+    if (!n) sp.forEach(s => s.fabs.forEach(f => { if (f.lab) { w += f.lab.b; n += 1; } }));      // 잰 벽·바닥이 없으면 원단 색으로
+    if (!n) return { k: 3000, tone: '' };
+    const b = w / n, tone = b >= NIGHT_WARM_B ? 'warm' : (b < NIGHT_COOL_B ? 'cool' : 'neutral');
+    const dirs = (main && typeof windowDirOf === 'function') ? windowDirOf(main.raw && main.raw.windowDir) : [];
+    const north = dirs.includes('N') && !dirs.includes('S');
+    return { k: tone === 'cool' ? 4000 : (tone === 'warm' && north ? 2700 : 3000), tone };
+}
+function houseNightOf(data, opts) {
+    if (opts && opts.noCard) return null;
+    const C = window.concierge;
+    const sp = houseSpacesOf(data);
+    if (!sp.length || !C || typeof C.jogakbo !== 'function') return null;
+    const jg = C.jogakbo(data);
+    if (!jg || !jg.cells || !jg.cells.length) return null;
+    const main = nightMainOf(sp), { k, tone } = nightKelvinOf(sp, main);
+    const kinds = main.fabs.map(f => f.k);
+    const comp = kinds.includes('겉지') && kinds.includes('속지') ? 'double' : (kinds.includes('겉지') ? 'drape' : (kinds.includes('속지') ? 'sheer' : 'blind'));
+    const dirs = typeof windowDirOf === 'function' ? windowDirOf(main.raw && main.raw.windowDir) : [];
+    const S = NIGHT_SAY;
+    const dusk = (dirs.includes('N') && !dirs.includes('S')) ? S.dusk.north
+        : (main.floor && main.floor.name && main.floor.b >= NIGHT_WARM_B) ? S.dusk.floor(main.floor.name)
+        : (main.wall && main.wall.name) ? S.dusk.wall(main.wall.name) : S.dusk.plain;
+    const lamp = nightLampOpt(k);
+    return {
+        k, tone, room: main.name,
+        before: jg.cells.map(c => Object.assign({}, c, { hex: nightLitHex(c.hex, NIGHT_CEIL) })),
+        after: jg.cells.map(c => Object.assign({}, c, { hex: nightLitHex(c.hex, lamp) })),
+        caps: ['지금의 방등 아래', `${k}K 빛 아래`],
+        times: [
+            { t: '해 질 무렵', p: dusk },
+            { t: '저녁', p: S.evening[comp === 'double' ? 'drape' : comp] },
+            { t: '잠들기 전', p: S.sleep[comp] }
+        ],
+        lamp: { title: `${NIGHT_LAMP.name} ${NIGHT_LAMP.type}`, spec: [NIGHT_LAMP.socket, `${k}K`, NIGHT_LAMP.cri], kTxt: `${k}K`, buy: NIGHT_LAMP.buy, entrust: NIGHT_LAMP.entrust }
+    };
+}
+// 견적서 빛 묶음 (131번): 공간 묶음과 같은 모양 { name, total, items } — 직원 화면에서 "견적서에 넣기"를 고르고 설정에 금액이 있을 때만
+function ticketLightOf(data) {
+    const L = (typeof lightStandOf === 'function') ? lightStandOf() : null;
+    if (!L || !L.on) return null;
+    const sp = houseSpacesOf(data), { k } = nightKelvinOf(sp, nightMainOf(sp));
+    const items = [
+        { kind: '스탠드', name: NIGHT_LAMP.name, bookName: NIGHT_LAMP.name, meta: `${k}K 전구 포함`, size: '이케아 가격', price: L.price, fill: '#f3cf9c' },
+        { kind: '', name: '구매·설치 대행', bookName: '구매·설치 대행', meta: '', size: '', price: L.fee, fill: '#f4efe7' }
+    ].filter(it => it.price > 0).map(it => Object.assign({ sampleOnly: false, photoKey: '', fabricId: '', colorName: '', opts: [] }, it));
+    return { name: '빛', total: L.total, sampleOnly: false, items, k, isLight: true };
+}
+// [이 집의 밤] 저장 이미지 한 장 (어두운 바탕: #2B221A · 글씨 #EFE6DA · 흐린 글 #C4B6A3 · 색온도 #FFC489)
+function buildNightCanvas(data, pr, N) {
+    if (!N) return null;
+    const CX = TICKET_PAD, RX = PAPER_W - TICKET_PAD, CW = RX - CX;
+    const ON = '#efe6da', MUTE = '#c4b6a3', KC = '#ffc489', LINE = 'rgba(239,230,218,0.2)';
+    const F1 = PAPER_F1, F2 = PAPER_F2, F3 = PAPER_F3, F4 = PAPER_F4;
+    const fT = `400 ${F2}px ${PAPER_SERIF}`, fK = `400 ${F1}px ${PAPER_SERIF}`, fP = `400 ${F3}px ${PAPER_SERIF}`, fS = `400 ${F4}px ${PAPER_SANS}`;
+    const meas = document.createElement('canvas').getContext('2d');
+    const wrap = (str, maxW, font) => {
+        meas.font = font;
+        const lines = []; let cur = '';
+        for (const word of String(str).split(' ')) {
+            const test = cur ? cur + ' ' + word : word;
+            if (meas.measureText(test).width <= maxW || !cur) { cur = test; continue; }
+            lines.push(cur); cur = word;
+        }
+        if (cur) lines.push(cur);
+        return lines;
+    };
+    const GAP = 20, QW = (CW - GAP) / 2, QH = Math.round(QW * 10 / 16), LHP = Math.round(F3 * 1.8), LHS = Math.round(F4 * 1.65);
+    // 자리 재기: 제목·색온도 → 조각보 두 장 + 아래 이름 → 시간 순서 세 칸 → 제품 카드 → 구매하실 때 / 맡기실 때
+    let y = TICKET_PAD + F1;
+    const headY = y;
+    const qY = (y += 36);
+    y += QH;
+    const capY = (y += 14 + F4);
+    const times = N.times.map(t => ({ t: t.t, lines: wrap(t.p, CW, fP) }));
+    y += 30;
+    times.forEach(t => { t.lineY = y; t.tY = y + 30 + F2; t.pY = t.tY + 14 + F3; y = t.pY + (t.lines.length - 1) * LHP + 30; });
+    const baseY = y + 6;
+    const titleLines = wrap(N.lamp.title, CW, fP);
+    const cardY = baseY + 30 + F3;
+    const specY = cardY + (titleLines.length - 1) * LHP + 12 + F4;
+    const DLX = CX + 150, rows = [['구매하실 때', wrap(N.lamp.buy, RX - DLX, fS)], ['맡기실 때', wrap(N.lamp.entrust, RX - DLX, fS)]];
+    let ry = specY + 30 + F4;
+    rows.forEach(r => { r.y = ry; ry += r[1].length * LHS + 8; });
+    const H = Math.ceil(ry - 8 + TICKET_PAD);
+    const { canvas, ctx } = paperCanvas(H, pr);
+    ctx.fillStyle = '#2b221a'; ctx.fillRect(0, 0, PAPER_W, H);
+    const text = (s, x, yy, color, font, align) => { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.fillText(s, x, yy); };
+    const hline = yy => { ctx.strokeStyle = LINE; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, yy); ctx.lineTo(RX, yy); ctx.stroke(); };
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+    text('이 집의 밤', CX, headY, MUTE, fT);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    text(N.k + 'K', RX, headY, KC, fK, 'right');
+    [N.before, N.after].forEach((cells, i) => {
+        const x0 = CX + i * (QW + GAP), G = 3;
+        cells.forEach(c => { ctx.fillStyle = c.hex; ctx.fillRect(x0 + c.x / 16 * QW + G / 2, qY + c.y / 10 * QH + G / 2, c.w / 16 * QW - G, c.h / 10 * QH - G); });
+        text(N.caps[i], x0, capY, MUTE, fS);
+    });
+    times.forEach((t, i) => {
+        if (i > 0) hline(t.lineY);
+        text(t.t, CX, t.tY, ON, fT);
+        t.lines.forEach((ln, k) => text(ln, CX, t.pY + k * LHP, ON, fP));
+    });
+    hline(baseY);
+    titleLines.forEach((ln, k) => text(ln, CX, cardY + k * LHP, ON, fP));
+    // 사양 줄: 색온도만 따뜻한 색
+    ctx.font = fS; ctx.textAlign = 'left';
+    let sx = CX;
+    N.lamp.spec.forEach((part, k) => {
+        const seg = k ? ' · ' : '';
+        if (seg) { ctx.fillStyle = MUTE; ctx.fillText(seg, sx, specY); sx += ctx.measureText(seg).width; }
+        ctx.fillStyle = part === N.lamp.kTxt ? KC : MUTE; ctx.fillText(part, sx, specY); sx += ctx.measureText(part).width;
+    });
+    rows.forEach(r => {
+        text(r[0], CX, r.y, MUTE, fS);
+        r[1].forEach((ln, k) => text(ln, DLX, r.y + k * LHS, ON, fS));
+    });
+    return canvas;
+}
 // [맺음] 132번: 견적서 아래 마무리 시를 떼어 맨 끝 어두운 장 한 장으로 (02 로고 규칙의 어두운 바탕: #2B221A · 글씨 #EFE6DA · 점 #D19A72)
 //  금액이 마지막 인상이 되지 않게, 표지의 한 줄을 끝에서 다시 씀
 function buildClosingCanvas(pr) {
@@ -1627,8 +1811,9 @@ function buildTicketCanvases(opts, preparedData) {
     const house = buildHouseCanvases(data, opts), hn = house.count;
     // 쇼룸 시트를 그릴 수 없을 때(고객 화면 파일이 없을 때)만 예전 "원단을 고른 이유" 카드
     const sn = hasShowroom ? 1 : 0;
+    const night = buildNightCanvas(data, pr, houseNightOf(data, opts));      // 131번: 견적서 다음 이 집의 밤
     const closing = opts.noCard ? null : buildClosingCanvas(pr);      // 132번: 맨 끝 맺음 장 (쪽 번호는 적지 않지만 전체 쪽 수에는 셈)
-    const en = closing ? 1 : 0;
+    const en = (closing ? 1 : 0) + (night ? 1 : 0);
     const total = n => cn + hn + n + pages.length + en;
     const whyPages = opts.noCard ? [] : (hasShowroom
         ? [buildShowroomCanvas(data, pr, cn + hn, total(sn))].filter(Boolean)
@@ -1654,8 +1839,9 @@ function buildTicketCanvases(opts, preparedData) {
         t.pageLabel(pi + off, pages.length + off + en, H);
         return canvas;
     });
-    const all = (cover ? [cover] : []).concat(housePages, whyPages, ticketPages, closing ? [closing] : []);
-    all.cardCount = off;          // 견적서 앞 쪽 수 (표지 + 공간의 색과 빛 + 쇼룸 시트)
+    const all = (cover ? [cover] : []).concat(housePages, whyPages, ticketPages, night ? [night] : [], closing ? [closing] : []);
+    all.cardCount = off;
+    all.nightAt = night ? off + ticketPages.length : -1;      // 131번: 밤 장의 쪽 자리 (쪽 넘기기 단추 이름)          // 견적서 앞 쪽 수 (표지 + 공간의 색과 빛 + 쇼룸 시트)
     all.houseCount = cn + hn;
     return all;
 }
@@ -1678,7 +1864,7 @@ async function makeTicketBlobs(opts) {
     } catch (e) {}
     const data = await loadTicketPhotos(ticketData());
     const canvases = buildTicketCanvases(opts, data);
-    if (opts.canvasOnly) return { canvases, blobs: [], type: null, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0 };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
+    if (opts.canvasOnly) return { canvases, blobs: [], type: null, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0, nightAt: canvases.nightAt };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
     const type = opts.type || 'image/png';
     const blobs = await Promise.all(canvases.map(c => new Promise(res => c.toBlob(res, type, 0.95))));
     return { canvases, blobs, type, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0 };
@@ -1783,6 +1969,16 @@ function ticketKakaoText(data) {
             if (!why.rooms.length && it.reason) out.push(`  ${it.reason}`);
         });
     });
+    if (data.light) {      // 131번
+        out.push('', `■ 빛 ${won(data.light.total)}`);
+        data.light.items.forEach(it => out.push(`· ${[it.kind, it.name].filter(Boolean).join(' · ')}`, `  ${[it.size, it.meta, won(it.price)].filter(Boolean).join(' · ')}`));
+    }
+    const N = houseNightOf(data);
+    if (N) {
+        out.push('', `〈이 집의 밤 · ${N.k}K〉`);
+        N.times.forEach(t => out.push(`${t.t}: ${t.p}`));
+        out.push(`· ${N.lamp.title} (${N.lamp.spec.join(' · ')})`, `  구매하실 때: ${N.lamp.buy}`, `  맡기실 때: ${N.lamp.entrust}`);
+    }
     out.push('');
     if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
     if (data.vatText) out.push(`${data.vatLabel || '부가세'} ${data.vatText}`);      // 132번

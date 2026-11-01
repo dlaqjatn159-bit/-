@@ -1654,6 +1654,29 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-closing-poem { font-size: 40px; font-weight: 400; line-height: 1.45; color: #efe6da; }
 .fin-closing-mark { font-size: 40px; font-weight: 400; line-height: 1; letter-spacing: 0.035em; color: #efe6da; }
 .fin-closing-mark i { color: #d19a72; }
+/* 131번: 이 집의 밤 — 견적서 다음 어두운 장, 바로 아래 맺음과 한 덩어리 (시안 131_최종제안_흐름_시안_v2.html 5장) */
+.fin-night { margin: 6rem -3.5rem 0; padding: 72px 3.5rem 56px; background: #2b221a; color: #efe6da; }
+.fin-night + .fin-ed-closing { margin-top: 0; border-top: 0.5px solid rgba(239, 230, 218, 0.12); }
+.fin-night-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 32px; }
+.fin-night-ttl { margin: 0; font-size: 22px; font-weight: 400; letter-spacing: 0.06em; color: #c4b6a3; }
+.fin-night-k { font-size: 40px; font-weight: 400; color: #ffc489; }
+.fin-night-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.fin-night-pair figure { margin: 0; }
+.fin-night-q { position: relative; width: 100%; aspect-ratio: 16 / 10; }
+.fin-night-q .jg-c { outline: none; }
+.fin-night-pair figcaption { margin-top: 12px; font-size: 15px; color: #c4b6a3; }
+.fin-night-times { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 40px; }
+.fin-night-times > div { padding-right: 28px; }
+.fin-night-times > div + div { padding-left: 28px; border-left: 0.5px solid rgba(239, 230, 218, 0.22); }
+.fin-night-times h3 { margin: 0 0 10px; font-size: 22px; font-weight: 400; color: #efe6da; }
+.fin-night-times p { margin: 0; font-size: 17px; line-height: 1.85; color: #efe6da; }
+.fin-night-base { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; margin-top: 40px; padding-top: 28px; border-top: 0.5px solid rgba(239, 230, 218, 0.18); font-size: 15px; line-height: 1.65; }
+.fin-night-card > div:first-child { font-size: 17px; }
+.fin-night-spec { color: #c4b6a3; }
+.fin-night-spec em { font-style: normal; color: #ffc489; }
+.fin-night-base dl { display: grid; grid-template-columns: auto 1fr; column-gap: 18px; row-gap: 8px; margin: 0; }
+.fin-night-base dt { color: #c4b6a3; }
+.fin-night-base dd { margin: 0; }
 .fin-ed-foot { margin-top: 2.8rem; padding-top: 1.4rem; border-top: 0.5px solid #e6dfd5; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
 .fin-ed-foot-main { display: flex; align-items: center; gap: 2rem; }
 
@@ -1667,6 +1690,10 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     .jg-map-box { margin: 0 -1.4rem; }
     .jg-cover-poem, .fin-closing-poem, .fin-closing-mark { font-size: 30px; }
     .fin-ed-closing { margin: 4.5rem -1.4rem 0; padding: 48px 1.4rem 40px; }
+    .fin-night { margin: 4.5rem -1.4rem 0; padding: 48px 1.4rem 40px; }
+    .fin-night-pair, .fin-night-base { grid-template-columns: 1fr; gap: 24px; }
+    .fin-night-times { grid-template-columns: 1fr; gap: 24px; }
+    .fin-night-times > div, .fin-night-times > div + div { padding: 0; border-left: none; }
     .fin-est-line { grid-template-columns: 28px 40px minmax(0, 1fr) auto; }
     .fin-est-sz { display: none; }
 }

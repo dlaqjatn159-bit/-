@@ -1,10 +1,10 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261180';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
     const cz = window.conciergeCore;      // concierge.js와 잇는 다리 (130-4)
     const { state, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, colorFillOf } = cz;
-    let finalPage = 0, finalCardCount = 0, finalHouseCount = 0, finalZoom = false;      // 최종 제안의 쪽 넘기기·크게 보기(39번). cardCount = 견적서 앞 쪽 수(우리 집 색 포함)
+    let finalPage = 0, finalCardCount = 0, finalHouseCount = 0, finalNightAt = -1, finalZoom = false;      // 최종 제안의 쪽 넘기기·크게 보기(39번). cardCount = 견적서 앞 쪽 수(우리 집 색 포함)
 
     // ---- 최종 제안 통합 에디토리얼 도록 (76번, 시안: 중심화면_최종제안_비교시안.html 탭 2) ----
     //  1) 도입부: 태블릿 세로 100dvh 독점 + Re.dam 로고 + 16:10 액자 비례 미니멀 조각보(창 면적 비례, 순수 단색, 글자·스티커 없음)
@@ -265,6 +265,8 @@
         if (showHouse) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecHouse\')">공간의 색과 빛</button>';
         if (configuredRooms.length) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">공간 제안</button>';
         h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
+        const night = (typeof houseNightOf === 'function') ? houseNightOf(data) : null;      // 131번
+        if (night) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">이 집의 밤</button>';
         h += '<button type="button" class="is-save" onclick="window.concierge.saveQuote()">견적서 저장</button>';
         h += '</nav></div>';
 
@@ -351,12 +353,12 @@
         h += '<section class="jg-invoice-sec" id="finSecEst">';
         h += '<div class="jg-sec-head" style="margin-bottom:2rem;"><h2 class="jg-sec-ttl font-serif-kr">견적서</h2></div>';
         h += `<div class="fin-est-meta"><span class="font-serif-kr">${esc(data.recipient)}</span><span class="fin-est-date">${esc(String(data.date || '').replace(/\./g, '. '))}${data.validText ? ' · ' + esc(data.validText) : ''}</span></div><div class="fin-est-table">`;
-        (data.rooms || []).forEach(room => {
+        (data.rooms || []).concat(data.light ? [data.light] : []).forEach(room => {      // 131번: 빛 묶음은 맨 뒤
             h += '<div class="fin-est-space">';
             h += `<div class="fin-est-hd"><span class="fin-est-rname font-serif-kr">${esc(room.name)}</span>${room.sampleOnly ? '' : `<span class="fin-est-rsum font-serif-kr">${room.total.toLocaleString()}원</span>`}</div>`;
             (room.items || []).forEach(it => {
                 h += '<div class="fin-est-line">';
-                h += `<div class="fin-est-chip" style="${fabricFillStyle(it.fabricId, it.colorName)}"></div>`;
+                h += `<div class="fin-est-chip" style="${room.isLight ? `background:${it.fill}` : fabricFillStyle(it.fabricId, it.colorName)}"></div>`;
                 h += `<span class="fin-est-k">${esc(it.kind)}</span>`;
                 h += `<span class="fin-est-nm font-serif-kr">${esc(it.bookName || it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
                 h += `<span class="fin-est-sz">${esc(it.size || '')}</span>`;
@@ -383,6 +385,19 @@
             h += '<dl class="fin-est-dl">' + infoRows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(String(v).trim()).replace(/\r?\n/g, '<br>')}</dd>`).join('') + '</dl>';
         }
         h += '</div></section>';
+
+        // [이 집의 밤] 131번: 표지 조각보를 지금의 방등 / 권하는 빛 아래 두 장 + 시간 순서 글 + 제품 카드 (ticket.js houseNightOf, 저장 이미지와 같은 글)
+        if (night) {
+            const cv = cells => '<div class="jg-cv">' + cells.map(c => `<span class="jg-c" style="left:calc(${c.x / 16 * 100}% + 1.5px);top:calc(${c.y / 10 * 100}% + 1.5px);width:calc(${c.w / 16 * 100}% - 3px);height:calc(${c.h / 10 * 100}% - 3px);background:${c.hex}"></span>`).join('') + '</div>';
+            h += '<section class="fin-night" id="finSecNight">';
+            h += `<div class="fin-night-top"><h2 class="fin-night-ttl font-serif-kr">이 집의 밤</h2><span class="fin-night-k font-serif-kr">${esc(night.k)}K</span></div>`;
+            h += '<div class="fin-night-pair">' + [night.before, night.after].map((cells, i) => `<figure><div class="fin-night-q">${cv(cells)}</div><figcaption>${esc(night.caps[i])}</figcaption></figure>`).join('') + '</div>';
+            h += '<div class="fin-night-times">' + night.times.map(t => `<div><h3 class="font-serif-kr">${esc(t.t)}</h3><p class="font-serif-kr">${esc(t.p)}</p></div>`).join('') + '</div>';
+            const spec = night.lamp.spec.map(x => x === night.lamp.kTxt ? `<em>${esc(x)}</em>` : esc(x)).join(' · ');
+            h += `<div class="fin-night-base"><div class="fin-night-card"><div class="font-serif-kr">${esc(night.lamp.title)}</div><div class="fin-night-spec">${spec}</div></div>`;
+            h += `<dl><dt>구매하실 때</dt><dd>${esc(night.lamp.buy)}</dd><dt>맡기실 때</dt><dd>${esc(night.lamp.entrust)}</dd></dl></div>`;
+            h += '</section>';
+        }
 
         // [맺음] 132번: 견적서 아래 시를 떼어 어두운 바탕 한 장으로 — 금액이 마지막 인상이 되지 않게
         h += '<footer class="fin-ed-closing"><div class="fin-closing-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="fin-closing-mark font-serif-kr">Re<i>.</i>dam</div></footer>';
@@ -435,8 +450,8 @@
         if (finalPage !== before) { const st = document.querySelector('.fin-stage'); if (st) st.scrollTop = 0; }      // 세로에서 아래까지 읽다 넘기면 새 쪽 맨 위부터 (39번)
         const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
         // 쪽 묶음 (37번): [0, house) = 우리 집 색 · [house, card) = 원단을 고른 이유 · [card, n) = 견적서
-        const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : 'ticket');
-        const nextWord = { why: '공간 제안', ticket: '견적서 보기' }, prevWord = { house: '공간의 색과 빛', why: '공간 제안' };
+        const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : (finalNightAt >= 0 && k >= finalNightAt ? 'night' : 'ticket'));      // 131번: 밤 장부터 끝(맺음)까지 'night'
+        const nextWord = { why: '공간 제안', ticket: '견적서 보기', night: '이 집의 밤' }, prevWord = { house: '공간의 색과 빛', why: '공간 제안', ticket: '견적서' };
         const pager = document.getElementById('finPager');
         if (pager) {
             // 세로 모드에서는 [← 이전 (맨 왼쪽)] · [쪽 번호 + 크게 보기 (가운데)] · [다음 → (맨 오른쪽)] 자리가 고정됨 (39번)
@@ -462,15 +477,16 @@
         const seq = ++finalPaperSeq;
         if (typeof window.makeTicketBlobs !== 'function') return;
         try {
-            const { canvases, cardCount, houseCount } = await window.makeTicketBlobs({ canvasOnly: true, pixelRatio: 1.5 });
+            const { canvases, cardCount, houseCount, nightAt } = await window.makeTicketBlobs({ canvasOnly: true, pixelRatio: 1.5 });
             const box = document.getElementById('finPaper');
             if (seq !== finalPaperSeq || !box || state.step !== "7-Final-Dossier") return;      // 그리는 사이 화면이 바뀌었으면 버림
             box.innerHTML = '';
             finalCardCount = cardCount || 0;
             finalHouseCount = houseCount || 0;
+            finalNightAt = typeof nightAt === 'number' ? nightAt : -1;
             canvases.forEach((c, k) => {
                 const img = document.createElement('img');
-                img.alt = k < finalHouseCount ? '공간의 색과 빛' : ((k < finalCardCount) ? '공간 제안' : '견적서');
+                img.alt = k < finalHouseCount ? '공간의 색과 빛' : ((k < finalCardCount) ? '공간 제안' : (finalNightAt >= 0 && k >= finalNightAt ? '이 집의 밤' : '견적서'));
                 img.src = c.toDataURL('image/png');
                 box.appendChild(img);
             });

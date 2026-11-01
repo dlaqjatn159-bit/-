@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261180';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -202,11 +202,27 @@ const TICKET_TEXT_KEYS = { pay: 'redam_ticket_pay_v1', custom: 'redam_ticket_cus
 const TICKET_TEXT_INPUTS = { pay: 'ticketPayInput', custom: 'ticketCustomInput', supplier: 'ticketSupplierInput' };
 function loadTicketText(k) { try { return (localStorage.getItem(TICKET_TEXT_KEYS[k]) || '').trim(); } catch (e) { return ''; } }
 function saveTicketText(k, v) { if (!TICKET_TEXT_KEYS[k]) return; try { localStorage.setItem(TICKET_TEXT_KEYS[k], String(v || '').trim()); } catch (e) {} }
+// 빛 · 스탠드 금액 (131번): 이케아 가격과 구매·설치 대행비. 가격은 코드에 적지 않고 이 기기에 저장 (비공개 팩으로 옮김)
+const LIGHT_STAND_KEYS = { price: 'redam_light_stand_price_v1', fee: 'redam_light_stand_fee_v1' };
+function loadLightStand(k) { try { const v = localStorage.getItem(LIGHT_STAND_KEYS[k]), n = Number(v); return (v !== null && v !== '' && Number.isFinite(n) && n >= 0) ? Math.round(n) : 0; } catch (e) { return 0; } }
+function saveLightStand(k, v) {
+    if (!LIGHT_STAND_KEYS[k]) return;
+    const n = Number(v);
+    try { if (v === '' || !Number.isFinite(n) || n < 0) localStorage.removeItem(LIGHT_STAND_KEYS[k]); else localStorage.setItem(LIGHT_STAND_KEYS[k], String(Math.round(n))); } catch (e) {}
+    if (typeof calculateAll === 'function') calculateAll();
+}
+// 이 상담의 빛 줄: 켜져 있고 금액이 하나라도 있을 때만 (견적서·합계·원가가 같이 씀)
+function lightStandOf() {
+    const price = loadLightStand('price'), fee = loadLightStand('fee');
+    const on = !!globalLightStand && (price + fee) > 0;
+    return { on, asked: !!globalLightStand, price: on ? price : 0, fee: on ? fee : 0, total: on ? price + fee : 0 };
+}
 function initTicketNoteInput() {
     const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote();
     Object.keys(TICKET_TEXT_INPUTS).forEach(k => { const t = document.getElementById(TICKET_TEXT_INPUTS[k]); if (t) t.value = loadTicketText(k); });
     const fee = document.getElementById('defaultInstallFeeInput'); if (fee) fee.value = loadDefaultInstallFee();
     const vd = document.getElementById('quoteValidDaysInput'); if (vd) vd.value = loadQuoteValidDays();
+    ['price', 'fee'].forEach(k => { const el = document.getElementById(k === 'price' ? 'lightStandPriceInput' : 'lightStandFeeInput'); if (el) el.value = loadLightStand(k) || ''; });      // 131번
     initMultiplesInputs();
     renderOptionPriceSettings();
     renderPriceCurveSettings();
@@ -283,13 +299,16 @@ function optionGainUpdate(row) {
 // 비공개 팩에 함께 담는 견적서 글 (불러올 때는 팩에 적힌 것만 덮어씀 — 비어 있으면 이 기기 것을 그대로 둠)
 function ticketTextsForPack() {
     const fee = storedDefaultInstallFee();          // 기본 시공비는 이 기기에서 정한 적이 있을 때만 팩에 담음
-    return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'), fee: fee === null ? undefined : fee, valid: loadQuoteValidDays() };
+    return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'), fee: fee === null ? undefined : fee, valid: loadQuoteValidDays(),
+        standPrice: loadLightStand('price') || undefined, standFee: loadLightStand('fee') || undefined };      // 131번
 }
 function applyTicketTextsFromPack(t) {
     if (!t || typeof t !== 'object') return;
     if (typeof t.note === 'string' && t.note.trim()) saveTicketNote(t.note);
     if (typeof t.valid === 'number' && Number.isFinite(t.valid) && t.valid >= 0) saveQuoteValidDays(t.valid);
     if (typeof t.fee === 'number' && Number.isFinite(t.fee) && t.fee >= 0) saveDefaultInstallFee(t.fee);
+    if (typeof t.standPrice === 'number' && t.standPrice > 0) saveLightStand('price', t.standPrice);      // 131번
+    if (typeof t.standFee === 'number' && t.standFee > 0) saveLightStand('fee', t.standFee);
     Object.keys(TICKET_TEXT_KEYS).forEach(k => { if (typeof t[k] === 'string' && t[k].trim()) saveTicketText(k, t[k]); });
     initTicketNoteInput();
 }

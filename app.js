@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261180';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261180';
+const REDAM_BUILD = '20261181';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -366,6 +366,8 @@ function startNewConsultationConfirmed() {
     jogakboSeed = newJogakboSeed();      // 새 상담은 새 조각보 (79번)
     globalInstallFee = loadDefaultInstallFee();
     globalVatOption = 'consumer';
+    globalLightStand = false;      // 131번
+    const lt0 = document.getElementById('expressLightStand'); if (lt0) lt0.value = '';
     const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
     const vat = document.getElementById('expressVatOption'); if (vat) vat.value = globalVatOption;
     if (window.concierge) window.concierge.resetAll();
@@ -593,6 +595,7 @@ function collectConsultation() {
         })),
         installFee: globalInstallFee,
         vat: globalVatOption,
+        lightStand: !!globalLightStand,      // 견적서 빛 줄 (131번)
         jogakboSeed: window.getJogakboSeed(),      // 조각보 모양 고정 (79번)
         picks: finderPicks.slice(),         // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
         quoteDate: quoteDate || null, quoteValid: quoteValidOverride,      // 견적 날짜 (85번)
@@ -678,6 +681,7 @@ function applySnapshot(snap) {
     rooms.forEach(migrateSurveyRoom);
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
+    globalLightStand = !!snap.lightStand;      // 131번 (옛 상담은 넣지 않음)
     jogakboSeed = (Number.isInteger(snap.jogakboSeed) && snap.jogakboSeed > 0) ? snap.jogakboSeed : newJogakboSeed();      // 옛 상담은 새 번호 (79번)
     quoteDate = /^\d{4}-\d{2}-\d{2}$/.test(snap.quoteDate || '') ? snap.quoteDate : null;      // 옛 상담은 처음 견적을 만들 때 정함 (85번)
     quoteValidOverride = (Number.isFinite(snap.quoteValid) && snap.quoteValid >= 0) ? Math.min(365, Math.round(snap.quoteValid)) : null;
@@ -687,7 +691,7 @@ function applySnapshot(snap) {
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set('custName', snap.name || ''); set('expressCustName', snap.name || ''); set('surveyCustName', snap.name || '');
     set('custPhone', snap.phone || ''); set('expressCustPhone', snap.phone || ''); set('surveyCustPhone', snap.phone || '');
-    set('expressInstallFee', globalInstallFee); set('expressVatOption', globalVatOption);
+    set('expressInstallFee', globalInstallFee); set('expressVatOption', globalVatOption); set('expressLightStand', globalLightStand ? '1' : '');
     renderSideCust();
     calculateAll();
     // 고객 화면은 순서 그대로 모든 공간으로 통째로 바꿈 (앞 상담의 상담 전 공간이 남지 않게)
@@ -859,6 +863,15 @@ function updateGlobalVatOption(val) {
     const expEl = document.getElementById('expressVatOption');
     if (expEl && expEl.value !== globalVatOption) expEl.value = globalVatOption;
     calculateAll();
+}
+
+// 견적서 빛 줄 켜고 끄기 (131번): 금액은 설정 › 견적서 고정 문구
+function updateGlobalLightStand(val) {
+    globalLightStand = !!val;
+    const el = document.getElementById('expressLightStand');
+    if (el && el.value !== (globalLightStand ? '1' : '')) el.value = globalLightStand ? '1' : '';
+    calculateAll();
+    if (typeof saveDraftTick === 'function') saveDraftTick();
 }
 
 // ==============================================================

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261180';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -206,6 +206,7 @@ function optionRatesNow(installType) {
 
 let globalInstallFee = loadDefaultInstallFee();
 let globalVatOption = "consumer";
+let globalLightStand = false;      // 이 상담 견적서에 빛(스탠드: 이케아 가격 + 구매·설치 대행비)을 넣을지 (131번)
 
 let currentMainTrack = 'curation';
 
