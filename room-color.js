@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261177';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261178';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -42,10 +42,10 @@
     const MAT_PART = { wall: '벽', floor: '바닥' };
     const HIT_PX = 22;                        // 이미 찍은 점에서 이만큼 안을 누르면 그 점을 지움
     // 찍는 방법 (37번): 방 문 앞에서 창 쪽을 넓게. 창 아래는 역광이라 카드가 어둡게 찍혀서 카드는 바닥 가운데쯤
-    const SHOOT_GUIDE = '방 문 앞에 서서 <b>창 쪽을 넓게</b> 찍어 주세요<br>(광각 0.6배)';
-    const SHOOT_CARD = '카드는 창 바로 아래가 아닌, 바닥 가운데쯤에 두면 빛이 고르게 받아요.';
+    const SHOOT_GUIDE = '공간 입구에 서서 <b>창 쪽을 넓게</b> 찍어 주세요<br>(광각 0.6배)';
+    const SHOOT_CARD = '카드는 창 바로 아래가 아닌, 바닥 가운데쯤에 두면 빛이 고르게 받습니다.';
     const SHOOT_FUR = '가구 위나 바로 옆에 회색·흰 카드를 두고<br><b>가까이</b> 찍어 주세요';      // 66번
-    const SHOOT_FUR_SUB = '카드와 가구가 같은 빛을 받게 붙여 두면 색이 정확해요. 한 장에 가구 하나예요.';
+    const SHOOT_FUR_SUB = '카드와 가구가 같은 빛을 받게 붙여 두면 색이 정확합니다. 한 장에 가구 하나입니다.';
 
     // st: 지금 열린 측정 창 상태. photos[0] = 카드가 있는 사진, photos[1] = 따로 찍은 벽 사진
     let st = null;
@@ -618,7 +618,7 @@
     // 바닥·벽을 다 찍은 뒤 나오는 이어주는 색 막대 (30번): 직원 화면 공간 카드 막대와 같은 모양·같은 값(bridgeK). 밀면 색 칸만 바뀜
     function custBridgeHtml(res) {
         const k = custK(), br = bridgeOf(res.wall, res.floor, k);
-        return `<div class="cm-adj" id="cmAdj"><span class="cm-adj-lbl">이 방은 어디가 더 많이 보이나요?</span>`
+        return `<div class="cm-adj" id="cmAdj"><span class="cm-adj-lbl">이 공간은 어디가 더 많이 보이나요?</span>`
             + `<div class="cm-adj-row"><span class="rc-adj-end">벽</span>`
             + `<input type="range" min="${Math.round((1 - BRIDGE_K_MAX) * 100)}" max="${Math.round((1 - BRIDGE_K_MIN) * 100)}" step="5" value="${Math.round((1 - k) * 100)}" style="--wall:${res.wall.hex};--floor:${res.floor.hex};--mid:${br.hex}" aria-label="벽과 바닥 중 많이 보이는 쪽" oninput="RoomColor.custBridge(+this.value)">`
             + `<span class="rc-adj-end">바닥</span></div>`
@@ -642,7 +642,7 @@
         if (!ov || !st || !st.cust) return;
         const o = st.cust, keys = stepKeys(), res = compute(), cv = st.photos[0];
         const done = keys.every(isFull), furOnly = !!o.furOnly;      // furOnly: 가구 따로 찍기 (66번)
-        let h = '<button type="button" class="cm-back" onclick="RoomColor.cancelCustomer()" aria-label="뒤로"><i class="fa-solid fa-arrow-left"></i></button>';
+        let h = `<button type="button" class="cm-back" onclick="RoomColor.cancelCustomer()">← ${esc(o.name)}</button>`;      // 133번(재검토 A6): 뒤로 가기는 다른 화면과 같은 "← 공간 이름" 글자 하나
         h += '<div class="cm-stage">';
         // 왼쪽: 사진 (없으면 찍기·불러오기)
         h += '<div class="cm-photo">';
@@ -656,15 +656,15 @@
         } else {
             h += `<div class="cm-empty"><p class="font-serif-kr">${furOnly ? SHOOT_FUR : SHOOT_GUIDE}</p><p class="cm-note">${furOnly ? SHOOT_FUR_SUB : SHOOT_CARD}</p>`;
             h += '<label class="cm-go font-serif-kr">사진 찍기 · 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
-            h += '<p class="cm-note">사진은 저장되지 않아요</p></div>';
+            h += '<p class="cm-note">사진은 저장되지 않습니다</p></div>';
         }
         h += '</div>';
         // 오른쪽: 차례 목록 → 결과
         h += '<div class="cm-side">';
-        h += `<span class="q-meta">${esc(o.name)} · ${furOnly ? '가구' : '색'}</span>`;
-        const doneTitle = furOnly ? (st.furKind ? '가구 색을 찾았어요' : '어떤 가구인가요?') : '이 공간의 색을 찾았어요';
+        // 133번(재검토 A3): 위 "거실 · 색" 머리말은 뺌 (공간 이름은 왼쪽 위 뒤로 가기에)
+        const doneTitle = furOnly ? (st.furKind ? '가구 색을 찾았습니다' : '어떤 가구인가요?') : '이 공간의 색을 찾았습니다';      // 133번(재검토 A7): 리담의 말은 "~습니다"
         h += `<h2 class="cm-title font-serif-kr">${done ? doneTitle : (cv ? (keys[st.active] ? `사진에서 ${CUST_ASK[keys[st.active]]}` : '사진을 눌러 주세요') : '먼저 사진을 찍어 주세요')}</h2>`;
-        h += `<p class="cm-sub">${done ? (o.doneNote || '') : (cv ? '잘못 찍은 점은 누르면 지워져요. 목록을 누르면 그것만 다시 찍어요.' : '회색·흰 카드로 사진의 빛을 맞춰서 실제 색을 찾아요.')}</p>`;
+        h += `<p class="cm-sub">${done ? (o.doneNote || '') : (cv ? '잘못 찍은 점은 누르면 지워집니다. 목록을 누르면 그것만 다시 찍습니다.' : '회색·흰 카드로 사진의 빛을 맞춰서 실제 색을 찾습니다.')}</p>`;
         h += '<ul class="cm-steps">';
         keys.forEach((k, i) => {
             const n = pinsOf(k).length, full = isFull(k), on = cv && i === st.active;
@@ -674,8 +674,8 @@
                 + (c ? `<i style="background:${c.hex}"></i>` : '') + '</li>';
         });
         h += '</ul>';
-        if (res.cardsSwapped) h += '<p class="cm-alert">흰 카드와 회색 카드를 바꿔 누른 것 같아요. 목록에서 카드를 눌러 다시 찍어 주세요.</p>';
-        else if (res.shadow >= SHADOW_DL) h += '<p class="cm-alert">카드에 그림자가 졌어요. 그대로 써도 되고, 조금 옮겨 다시 찍으면 더 정확해요.</p>';
+        if (res.cardsSwapped) h += '<p class="cm-alert">흰 카드와 회색 카드를 바꿔 누른 것 같습니다. 목록에서 카드를 눌러 다시 찍어 주세요.</p>';
+        else if (res.shadow >= SHADOW_DL) h += '<p class="cm-alert">카드에 그림자가 졌습니다. 그대로 써도 되고, 조금 옮겨 다시 찍으면 더 정확합니다.</p>';
         if (done && !res.cardsSwapped && furOnly) {
             // 가구 (66번): 색 한 줄 + 종류 칩. 종류를 골라야 담기
             const c = res.fur;

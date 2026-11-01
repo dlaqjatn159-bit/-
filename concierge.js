@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261177';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261178';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -899,8 +899,8 @@
                 html += '<div class="ambient-stage ask-stage wel-stage">';
                 html += '<h1 class="wel-brand font-serif-kr" data-staff-hold>Re<i class="logo-dot">.</i>dam</h1>';
                 html += '<p class="wel-sub font-serif-kr">빛을,<br>다시 담습니다</p>';
-                html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명 (선택)" oninput="window.concierge.setClientName(this.value)">`;
-                html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처 (선택)" oninput="window.concierge.setClientPhone(this)">`;
+                html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명" oninput="window.concierge.setClientName(this.value)">`;
+                html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처" oninput="window.concierge.setClientPhone(this)">`;
                 html += `<button type="button" class="txt-cta wel-go font-serif-kr" onclick="window.concierge.beginConsult()">${state.roomsCart.length ? '상담 이어가기' : '상담 시작'}</button>`;
                 html += '</div>';
                 break;
@@ -1049,12 +1049,13 @@
                 // 공간에 들어와 처음 묻는 질문 (117번): 위에 이 공간의 벽·바닥 확인 칩 (예전 빛 질문 자리에서 옮김 — 다르면 바닥·벽 카드로 고침)
                 const ed = state.editingRoom, wall = roomPart(ed, 'wall'), floor = roomPart(ed, 'floor');
                 const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 안 쟀어요'}</b></span>`;
-                const chip = ed.askCards ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
-                    + `<button type="button" onclick="window.concierge.fixRoomColors()">${wall && floor ? '다르면 수정' : '카드로 고르기'}</button></div>`;
+                // 133번(재검토 A3): 벽·바닥을 다 잰 공간은 이 줄을 뺌(사장님이 말로 하는 정보, 고칠 때는 중심 화면 "수정하기"). 못 잰 공간만 "카드로 고르기"를 남김
+                const chip = (ed.askCards || (wall && floor)) ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
+                    + `<button type="button" onclick="window.concierge.fixRoomColors()">카드로 고르기</button></div>`;
                 html += askStage('빛은 어느 정도 가리길 원하세요?', '', [
                     { label: '들어와도 괜찮아요', on: "window.concierge.selectLightBlock('light')", was: was('lightBlock', 'light') },
                     { label: '적당히 가려 주세요', on: "window.concierge.selectLightBlock('soft')", was: was('lightBlock', 'soft') },
-                    { label: '완전히 어둡게', on: "window.concierge.selectLightBlock('dark')", was: was('lightBlock', 'dark') }
+                    { label: '완전히 어둡게요', on: "window.concierge.selectLightBlock('dark')", was: was('lightBlock', 'dark') }
                 ], { top: chip });
                 break;
             }
@@ -1208,7 +1209,7 @@
                 const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
                 const hasCurtain = hasSheer || hasDrape;
                 const optBtn = (key, label, on, fn) =>
-                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" onclick="${fn}">${label}</button>`;
+                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" aria-pressed="${!!on}" onclick="${fn}">${label}</button>`;
 
                 html += '<div class="msr-stage">';
                 html += '<div class="msr-grid">';
@@ -1238,19 +1239,17 @@
                 const hasSheer = curRoom.items.some(i => i.presetType === 'sheer');
                 const hasDrape = curRoom.items.some(i => i.presetType === 'drape');
                 const optBtn = (key, label, on, fn) =>
-                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" onclick="${fn}">${label}</button>`;
+                    `<button type="button" id="chip_${key}" class="msr-opt font-serif-kr ${on ? 'active' : ''}" aria-pressed="${!!on}" onclick="${fn}">${label}</button>`;
                 html += '<div class="msr-stage msr-finish">' + progHtml();
                 // 옵션은 처음부터 모두 켜져 있음 → "더할 것"이 아니라 "이렇게 마무리" + 뺄 것을 누르게 (10-15 사장님)
                 html += '<h2 class="msr-title font-serif-kr">이렇게 마무리해 드립니다</h2>';
-                html += '<p class="q-sub">빼고 싶은 것은 눌러 주세요</p>';
                 html += '<div class="msr-opts">';
                 if (hasDrape) {
                     html += optBtn('shapeFee', '형상기억 가공', curRoom.shapeFee, 'window.concierge.toggleNudgeShapeFee()');
                     html += optBtn('hotelFit', '호텔핏', curRoom.hotelFit, 'window.concierge.toggleNudgeHotelFit()');
                 }
                 if (hasSheer) html += optBtn('leadBand', '하단 리드밴드', curRoom.leadBand, "window.concierge.fastToggleOption('leadBand')");
-                html += '</div>';
-                html += '<button class="opt-info-link" onclick="window.concierge.showOptionInfo()">옵션을 적용하면 어떻게 달라지나요?</button>';
+                html += '</div>';      // 133번(재검토 A3): "빼고 싶은 것은 눌러 주세요"·"옵션을 적용하면…" 줄은 뺌 (옵션 그림은 크기 화면에 그대로)
                 html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name} 마치기</button>`;
                 html += '</div>';
                 break;
@@ -1589,8 +1588,9 @@
                 return;
             }
             const stage = btn.closest('.ask-stage') || document;
-            stage.querySelectorAll('.ask-opt.is-picked, .r-quiet.is-picked').forEach(el => el.classList.remove('is-picked'));
+            stage.querySelectorAll('.ask-opt.is-picked, .r-quiet.is-picked').forEach(el => { el.classList.remove('is-picked'); el.removeAttribute('aria-pressed'); });
             btn.classList.add('is-picked');
+            btn.setAttribute('aria-pressed', 'true');      // 133번: 점과 함께 화면 읽기 프로그램에도 "선택됨"
         },
         copyBaseFromPrev: function(same) {
             const src = copySourceRoom();
@@ -2113,17 +2113,17 @@
         toggleNudgeShapeFee: function() {
             state.editingRoom.shapeFee = !state.editingRoom.shapeFee;
             const chip = document.getElementById("chip_shapeFee");
-            if (chip) chip.classList.toggle("active", state.editingRoom.shapeFee);
+            if (chip) { chip.classList.toggle("active", !!state.editingRoom.shapeFee); chip.setAttribute("aria-pressed", String(!!state.editingRoom.shapeFee)); }
         },
         toggleNudgeHotelFit: function() {
             state.editingRoom.hotelFit = !state.editingRoom.hotelFit;
             const chip = document.getElementById("chip_hotelFit");
-            if (chip) chip.classList.toggle("active", state.editingRoom.hotelFit);
+            if (chip) { chip.classList.toggle("active", !!state.editingRoom.hotelFit); chip.setAttribute("aria-pressed", String(!!state.editingRoom.hotelFit)); }
         },
         fastToggleOption: function(optKey) {
             state.editingRoom[optKey] = !state.editingRoom[optKey];
             const chip = document.getElementById(`chip_${optKey}`);
-            if (chip) chip.classList.toggle("active", state.editingRoom[optKey]);
+            if (chip) { chip.classList.toggle("active", !!state.editingRoom[optKey]); chip.setAttribute("aria-pressed", String(!!state.editingRoom[optKey])); }
         },
         commitRoomCart: function() {
             const roomTarget = state.roomsCart.find(r => r.id === state.editingRoomId);

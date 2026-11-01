@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261177';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261178';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -144,7 +144,7 @@
         let h = `<div class="dos-stage"><div class="dos-sheet${isAllMode ? ' is-all-mode' : ' is-single-mode'}">`;
         h += '<div class="dos-left">';
         h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>Re<i class="logo-dot">.</i>dam</h1></div>'; // 42번: 빛과 공간 제거
-        h += `<p class="dos-who font-serif-kr">${currentCust && currentCust !== '고객' ? `${esc(currentCust)} 고객님` : '고객님'}의 공간</p>`;
+        // 133번(재검토 A3): 로고 아래 "○○ 고객님의 공간" 이름표는 뺌 — 레이아웃이 설명하게
         h += doneN ? '<h2 class="dos-lead font-serif-kr">공간마다 알맞은<br>빛의 결을 찾았습니다</h2>' // 42번: 사족 설명 제거
                    : '<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴보겠습니다</h2>';
         // 맨 위 공간 전체 색 띠: 칸을 누르면 그 공간으로 이동 (77번)
@@ -155,7 +155,7 @@
                 : `<i style="background:${HATCH}"></i>`;
             return `<button type="button" class="dos-strip-seg${isSel ? ' is-active' : ''}" style="flex:${r.isConfigured && r.curtains.length ? r.curtains.length : 1}" onclick="window.concierge.selectSpaceRoom(${r.id})" aria-label="${esc(r.name)} 보기">${inner}</button>`;
         }).join('') : `<i style="background:${HATCH}"></i>`;
-        h += `<div class="dos-house"><div class="dos-house-lbl"><span>공간 전체 색 흐름</span></div><div class="dos-house-strip">${strip}</div>`;
+        h += `<div class="dos-house"><div class="dos-house-strip">${strip}</div>`;
         // 121번: 로고 아래 "우리 집 취향" 줄은 뺌 (포인트가 공간마다라 집 전체 이름표가 맞지 않음)
         if (list.length) {
             h += '<div class="dos-nav-list">';
@@ -177,9 +177,9 @@
         if (list.length > 1) {
             h += `<div class="dos-view-bar"><button type="button" class="dos-view-toggle" onclick="window.concierge.toggleSpaceViewMode()">${isAllMode ? '한 공간씩 크게 보기' : '전체 한눈에 보기'}</button></div>`;
         }
-        // 121번: 아직 공간이 없으면 오른쪽에 "+ 공간 추가" 버튼 하나만
+        // 121번: 아직 공간이 없으면 오른쪽에 "+ 공간 추가" 버튼 하나만 · 133번: 그 위에 흙빛 점 하나(빈 종이에 점 하나, 소책자 표지와 같은 얼굴)
         if (!list.length) {
-            h += '<section class="dos-room dos-add dos-first"><button type="button" class="txt-cta font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가 →</button></section>';
+            h += '<section class="dos-room dos-add dos-first"><i class="dos-first-dot" aria-hidden="true"></i><button type="button" class="txt-cta font-serif-kr" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button></section>';
         }
         const visibleRooms = isAllMode ? list : list.filter(r => r.id === state.activeSpaceId);
         visibleRooms.forEach(r => {
@@ -279,8 +279,7 @@
             }
             h += `<div class="arch-layer-box" style="height:${boxH}px"><div class="arch-mid-window${furHtml ? ' has-fur' : ''}" style="height:${midWindowH}px">${topSegs}</div>${wallBaseHtml}<div class="arch-bot-floor${dark(fHex) ? ' is-dark' : ''}" style="height:${floorH}px;background:${fHex}"><span>바닥</span></div>${furHtml}</div>`;
             if (!r.isConfigured) {
-                h += `<div class="dos-empty-cta"><p class="dos-why is-muted">상담하고 나면 고른 원단의 색이 여기에 채워집니다.</p>`
-                    + `</div></section>`;
+                h += '</section>';      // 133번(재검토 A3): "상담하고 나면 … 채워집니다" 설명 문장은 뺌
                 return;
             }
             // 중심 화면에서는 이유 설명 문장("벽과 바닥의 중간 톤으로 골랐어요…")을 빼서 여백과 원단 스와치에 집중 (77번 사장님 확정 — 이유는 최종 제안 쇼룸 시트에만)
@@ -325,9 +324,9 @@
         const next = list.find(r => !r.isConfigured);
         h += '<div class="dos-acts"><div class="dos-main font-serif-kr">';
         // 119번: 공간을 다 만든 뒤 "상담 시작" → 공간마다 질문 → 집 전체 구성 → 취향 → 원단(공간 하나 마치면 여기로, 다음 공간 원단 고르기)
-        if (next) h += `<button type="button" class="dos-act is-main" onclick="window.concierge.flowNext()">${flowNow && flowNow.kind === 'fabric' ? `${esc(flowNow.room.name)} 원단 고르기` : (started ? '이어서 상담하기' : '상담 시작')} →</button>`;
+        if (next) h += `<button type="button" class="dos-act is-main" onclick="window.concierge.flowNext()">${flowNow && flowNow.kind === 'fabric' ? `${esc(flowNow.room.name)} 원단 고르기` : (started ? '이어서 상담하기' : '질문 시작하기')} →</button>`;      // 133번(재검토 A5): 첫 화면 "상담 시작"과 이름이 겹쳐 다음에 나올 것(질문)을 말함
         if (doneN) h += `<button type="button" class="dos-act${next ? '' : ' is-main'}" onclick="window.concierge.goToCheckout()">최종 제안 보기${next ? '' : ' →'}</button>`;
-        h += '<button type="button" class="dos-act dos-act-add" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button>';
+        if (list.length) h += '<button type="button" class="dos-act dos-act-add" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button>';      // 133번(재검토 A4): 빈 화면엔 오른쪽 하나만
         h += '</div></div>';
         h += '</div></div>';
         return h;
