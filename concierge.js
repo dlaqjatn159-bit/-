@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261178';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261179';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1325,7 +1325,7 @@
     }
 
     // 최종 제안(도록·조각보·쇼룸·종이 쪽 넘기기)은 final.js로 옮김 (130-4③). 여기서 부르는 것:
-    function buildJogakboTree(...a) { return cz.buildJogakboTree(...a); }
+    function buildJogakbo(...a) { return cz.buildJogakbo(...a); }
     function showroomRowsOf(...a) { return cz.showroomRowsOf(...a); }
     function renderFinalEditorial(...a) { return cz.renderFinalEditorial(...a); }
     function setFinalPage(...a) { return cz.setFinalPage(...a); }
@@ -1418,7 +1418,7 @@
         // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
         // 직원 화면 "시험" 칸(fake-guest.js)이 고객 화면과 같은 원단 모음을 고르도록 꺼냄 (89번, 화면 변화 없음)
         categoryPool: cat => getLiveCategoryPool(cat),
-        jogakboTree: data => buildJogakboTree(data),
+        jogakbo: data => buildJogakbo(data),      // 134번: 칸 목록 { cells: [{ x, y, w, h, hex }] } (16×10)
         showroomRows: data => showroomRowsOf(data),
         start: function() {
             goToStep(state.roomsCart.length ? "1-Space" : "0-Start", false);

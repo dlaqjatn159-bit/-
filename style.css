@@ -1561,7 +1561,15 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-ed-logo { font-size: 22px; font-weight: 400; line-height: 1; letter-spacing: 0.035em; color: #231c16; cursor: pointer; }
 .fin-ed-logo i, .fin-closing-mark i { font-style: normal; color: #8a4a22; }
 .jg-canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; }
-.jg-canvas { width: 100%; aspect-ratio: 16 / 10; max-height: calc(100dvh - 300px); display: flex; flex-direction: row; gap: 6px; background: #fffdf9; }
+.jg-canvas { width: 100%; aspect-ratio: 16 / 10; max-height: calc(100dvh - 300px); position: relative; background: #fffdf9; }
+/* 134번: 조각보 칸 — 16×10 종이를 무작위로 나눈 칸(%)에 색을 칠함. 표지·중심 화면 같이 씀 */
+.jg-cv { position: absolute; inset: 0; }
+.jg-c { position: absolute; outline: 0.5px solid rgba(35, 28, 22, 0.14); outline-offset: -0.5px; transition: background-color 0.7s; }
+.jg-c.is-new { animation: jg-sew 0.9s ease-out; }
+@keyframes jg-sew { from { opacity: 0.15; } to { opacity: 1; } }
+.jg-cv-dot { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50% !important; background: var(--earth); }
+.dos-jogak { position: relative; width: 100%; max-width: 240px; aspect-ratio: 16 / 10; margin: 1.4rem 0 0.4rem; }
+@media (prefers-reduced-motion: reduce) { .jg-c { transition: none; } .jg-c.is-new { animation: none; } }
 .jg-group { display: flex; gap: 6px; min-width: 0; min-height: 0; }
 .jg-group.is-row { flex-direction: row; }
 .jg-group.is-col { flex-direction: column; }
@@ -1877,7 +1885,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
    모서리 모두 각지게 · 그림자 없음 · 점선 없음(실선만) · 흙빛은 "지금 누를 것 · 고른 것 · 로고 점"에만
    밑줄은 주요 행동과 고른 것에만. 명조 = 목소리(질문·선택·버튼), 고딕 = 정보(위치·숫자표·안내)
    ========================================================================== */
-#trackCurationSection *:not(.photo-intro-q):not(.jg-sw-front):not(.dos-first-dot), #roomColorCust *, .more-overlay *, .opt-info-overlay * { border-radius: 0 !important; box-shadow: none !important; text-shadow: none !important; }
+#trackCurationSection *:not(.photo-intro-q):not(.jg-sw-front):not(.dos-first-dot):not(.jg-cv-dot), #roomColorCust *, .more-overlay *, .opt-info-overlay * { border-radius: 0 !important; box-shadow: none !important; text-shadow: none !important; }
 #trackCurationSection b, #trackCurationSection strong, #roomColorCust b, #roomColorCust strong { font-weight: 600; }
 /* 그림자로 그리던 색 조각 테두리는 0.5px 초세선으로 (76번) */
 .dos-sw, .dos-house-strip, .arch-layer-box, .dos-bc-row > i, .dos-wfrow > i, .dos-tone button i, .heard-dot, .room-chip .rc i, .link-bar,

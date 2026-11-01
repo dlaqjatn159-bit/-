@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261178';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261179';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -11,60 +11,15 @@
     //  2) 공간의 색과 빛: 0.5px 초세선 색 분포 지도 + 집 전체 총평 (중복 가로 막대 6개 제거)
     //  3) 공간별 완결형 쇼룸 시트: 좌측(26% 공간명·빛 방향·창 크기·구성 방식) + 우측(74% 창가 입면 색띠 + 공간 진단 + 겹침 스와치 + 원단 이유)
     //  4) 견적서: 0.5px 초세선 호텔 인보이스 표 + 시공비 + 합계 + 안내 + 마무리 시
-    // 80번: 조각보 모양(나눔 나무)을 한 곳에서 만들어 화면(HTML)과 저장 이미지(app.js 그림)가 똑같은 그림을 씀
-    //  잎: { hex, area } · 묶음: { dir: 'row' | 'col', area, a, b } (area = flex 비율)
-    function buildJogakboHtml(data) {
-        const html = n => n.dir
-            ? `<div class="jg-group is-${n.dir}" style="flex:${n.area}">${html(n.a)}${html(n.b)}</div>`
-            : `<div class="jg-tile" style="flex:${n.area};background:${n.hex}"></div>`;
-        return html(buildJogakboTree(data));
-    }
-    // 113번: 눈으로 같은 색이면 한 조각으로 묶고, 그래도 조각이 많으면 가장 가까운 둘부터 합쳐 상한 이하로
-    //  벽·바닥은 종류를 넘어 묶고, 원단은 원단끼리만 묶음(원단이 주인공). 묶인 색은 면적 가중 평균, 면적은 합산
-    const JOGAK_DE = 3, JOGAK_MAX = 10;
-    function mergeCloseJogak(list) {
-        const RC = window.RoomColor;
-        if (!RC || !RC.rgbToLab || !RC.labToHex || typeof techDE2000 !== 'function') return list;
-        const labOf = hex => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''); return m ? RC.rgbToLab(parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)) : null; };
-        const nodes = list.map(b => ({ hex: b.hex, area: b.area, count: b.count, g: /^fab__/.test(b.key) ? 'fab' : 'surf', lab: labOf(b.hex) })).filter(n => n.lab);
-        if (nodes.length !== list.length) return list;
-        // 가장 가까운 쌍 (같은 무리끼리, limit 이하만 — sameOnly가 아니면 무리를 넘어서도)
-        const closest = (sameOnly, limit) => {
-            let best = null;
-            for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
-                if (sameOnly && nodes[i].g !== nodes[j].g) continue;
-                const d = techDE2000(nodes[i].lab, nodes[j].lab);
-                if (d <= limit && (!best || d < best.d)) best = { i, j, d };
-            }
-            return best;
-        };
-        const join = p => {
-            const x = nodes[p.i], y = nodes[p.j], t = (x.area + y.area) || 1;
-            const lab = { L: (x.lab.L * x.area + y.lab.L * y.area) / t, a: (x.lab.a * x.area + y.lab.a * y.area) / t, b: (x.lab.b * x.area + y.lab.b * y.area) / t };
-            x.lab = lab; x.hex = RC.labToHex(lab.L, lab.a, lab.b); x.area += y.area; x.count += y.count;
-            nodes.splice(p.j, 1);
-        };
-        let p;
-        while ((p = closest(true, JOGAK_DE))) join(p);
-        while (nodes.length > JOGAK_MAX && (p = closest(true, Infinity) || closest(false, Infinity))) join(p);
-        return nodes.map(n => ({ hex: n.hex, area: n.area, count: n.count }));
-    }
-    function buildJogakboTree(data) {
-        const rooms = (data.rooms || []).filter(r => r.items && r.items.length);
-        if (!rooms.length) return { hex: '#efe9df', area: 1 };
-        // 79번: 상담마다 정해진 조각보 번호로 만든 '정해진 순서의 무작위 수'(mulberry32) — 같은 번호·같은 공간·색이면 언제나 같은 그림
-        let seedState = (typeof window.getJogakboSeed === 'function' ? window.getJogakboSeed() : 1) >>> 0;
-        const rand = () => {
-            seedState = (seedState + 0x6D2B79F5) >>> 0;
-            let t = seedState;
-            t = Math.imul(t ^ (t >>> 15), t | 1);
-            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-        };
-        // 78번: 칸마다 반복되던 벽·바닥 얇은 띠를 없애고 모든 조각을 100% 순수 단색 사각형으로 구성.
-        // 공간 위계(거실 > 안방 > 방 > 서재/알파룸 > 드레스룸/베란다 + 창 면적)를 반영하되,
-        // 같은 벽 색·바닥 색·원단 색은 여러 사각형으로 중복 분할하지 않고 면적을 합산해 하나의 큰 면으로 표현.
-        const normHex = h => String(h || '#d9cdbb').trim().toLowerCase();
+    // 134번: 조각보 — 구도와 색을 따로 (시안 133_고른것_표시와_조각보_시안_v5.html 2·3부)
+    //  구도: 상담마다 정해진 번호(79번)로 16×10 종이를 무작위로 나눔(정사각 자르기 40%, 칸은 여섯부터, 가장 짧은 변 = 표지 높이 8%)
+    //  색: 그 집에서 잰 색을 비율대로 칸에 칠함(78·121번 면적, 113번 묶기, 색 여덟까지, 한 색 40%까지, 비슷한 색은 칸이 붙지 않게)
+    //  꿰매 넣기: 공간 순서대로(벽·바닥 → 원단) 하나씩 더해 간 과정을 매번 똑같이 다시 밟음 → 놓인 칸은 자리를 지키고 새 색만 칸을 받음
+    //  돌려주는 것: { cells: [{ x, y, w, h, hex }] } (16×10 좌표) · 색이 하나도 없으면 null. 화면(중심 화면·표지)과 저장 이미지(80번)가 같이 씀
+    const JOGAK_DE = 3, JOGAK_MAX = 8, JOGAK_SHARE = 0.4, JOGAK_NEAR = 8;      // 묶기 잣대(113번) · 색 상한 · 한 색 상한 · 붙이지 않을 비슷한 색
+    const JG_W = 16, JG_H = 10, JG_MIN = 0.8, JG_START = 6;
+    function jogakRooms(data) {
+        // 공간 목록: 고객 화면 공간(state.roomsCart) 순서. 없으면(직원 화면만 쓴 상담) 견적 공간에서
         const typeWeightOf = name => {
             const n = String(name || '').trim();
             if (/^거실\s*1?$|^거실$/.test(n)) return 1.45;
@@ -75,93 +30,191 @@
             if (/드레스|베란다|발코니|다용도/.test(n)) return 0.62;
             return 0.90;
         };
-        const buckets = new Map();
-        const addBucket = (key, hex, addArea, extraRate) => {
-            const cur = buckets.get(key);
-            if (!cur) {
-                buckets.set(key, { key, hex, area: Math.round(addArea), count: 1 });
-            } else {
-                cur.area += Math.round(addArea * extraRate);
-                cur.count += 1;
-            }
-        };
-
-        rooms.forEach(rm => {
-            const cartRoom = state.roomsCart.find(r => r.name === rm.name);
-            const raw = cartRoom || rm.raw || rm || {};
+        const weightOf = (name, raw) => {
             const sz = roomSize(raw) || { w: 240, h: 235 };
             const rawArea = Math.max(1200, (Number(sz.w) || 240) * (Number(sz.h) || 235));
-            const sizeFactor = Math.max(0.48, Math.min(1.80, Math.pow(rawArea / 55000, 0.62)));
-            const W = 1000 * typeWeightOf(rm.name) * sizeFactor;
-
-            const wallP = roomPart(raw, 'wall'), floorP = roomPart(raw, 'floor');
-            const wHex = (wallP && wallP.hex) || '#f2eee8';
-            const fHex = (floorP && floorP.hex) || '#e5ddcf';
-            // 벽·바닥: 모든 방이 같은 색이면 합쳐져 집 전체의 큰 바탕 면이 되고, 방마다 다르면 거실 > 안방 > 작은방 비례로 나뉨
-            // 121번: 사람 눈높이로 봐도 벽·바닥이 커튼보다 넓음 → 벽·바닥 몫을 키우고 여러 공간이 같은 색이면 더 많이 쌓임
-            addBucket('wall__' + normHex(wHex), wHex, W * 0.62, 0.50);
-            addBucket('floor__' + normHex(fHex), fHex, W * 0.46, 0.48);
-
-            // 원단: 여러 방에서 같은 원단 색을 쓰면 하나의 면적으로 합산하고, 다르면 공간 크기에 비례해 각자의 면적을 가짐
-            const items = rm.items || [];
-            const hasDrape = items.some(i => i.kindKey === 'drape' || i.kind === '겉지');
-            const hasSheer = items.some(i => i.kindKey === 'sheer' || i.kind === '속지');
-            if (items.length >= 2 && hasDrape && hasSheer) {
-                const drape = items.find(i => i.kindKey === 'drape' || i.kind === '겉지') || items[0];
-                const sheer = items.find(i => i.kindKey === 'sheer' || i.kind === '속지') || items[1];
-                const dHex = colorFillOf(drape.fabricId, drape.colorName) || drape.fill || '#b8a894';
-                const sHex = colorFillOf(sheer.fabricId, sheer.colorName) || sheer.fill || '#efede7';
-                // 121번: 원단은 벽·바닥의 약 절반 이하. 속지는 자주 쳐 두어 보이는 면이 크고, 겉지는 걷어 두는 때가 많아 작게
-                addBucket('fab__' + normHex(sHex), sHex, W * 0.32, 0.45);
-                addBucket('fab__' + normHex(dHex), dHex, W * 0.18, 0.45);
-            } else {
-                const it0 = items[0] || {};
-                const cHex = colorFillOf(it0.fabricId, it0.colorName) || it0.fill || '#d9cdbb';
-                addBucket('fab__' + normHex(cHex), cHex, W * 0.40, 0.45);      // 121번: 커튼 하나·블라인드도 벽·바닥보다 작게
-            }
-        });
-
-        const planes = mergeCloseJogak(Array.from(buckets.values())).map((b, idx) => {
-            // 같은 면적이 우연히 겹쳐도 기계적인 이등분이 되지 않도록 미세한 황금비 변주만 더함
-            const area = Math.max(180, Math.round(b.area * (1 + ((idx * 37) % 5 - 2) * 0.03)));
-            return { area, hex: b.hex };
-        });
-
-        // 조각 순서를 무작위로 섞되(Fisher-Yates), 각 조각의 면적(flex 비율)은 그대로 유지하여
-        // 벽·바닥·원단의 실제 면적 비례는 100% 지키면서 구도는 매번 역동적인 몬드리안 추상화로 배치 (78번)
-        const arranged = planes.slice();
-        for (let i = arranged.length - 1; i > 0; i--) {
-            const j = Math.floor(rand() * (i + 1));
-            const tmp = arranged[i]; arranged[i] = arranged[j]; arranged[j] = tmp;
-        }
-
-        // 현재 사각형의 가로·세로 비례(rectW, rectH)를 함께 계산해 지나치게 길쭉한 띠가 생기지 않도록 막으면서,
-        // 분할 비율(0.35~0.45 또는 0.55~0.65)과 방향을 역동적으로 교차
-        function slice(list, rectW, rectH) {
-            if (list.length === 1) return list[0];
-            const total = list.reduce((s, x) => s + x.area, 0) || 1;
-            const targetRatio = rand() < 0.5 ? (0.36 + rand() * 0.08) : (0.56 + rand() * 0.08);
-            let acc = 0, splitIdx = 1, bestDiff = Infinity;
-            for (let i = 1; i < list.length; i++) {
-                acc += list[i - 1].area;
-                const diff = Math.abs(acc / total - targetRatio);
-                if (diff < bestDiff) { bestDiff = diff; splitIdx = i; }
-            }
-            const a = list.slice(0, splitIdx), b = list.slice(splitIdx);
-            const sumA = a.reduce((s, x) => s + x.area, 0) || 1;
-            const sumB = b.reduce((s, x) => s + x.area, 0) || 1;
-            const fracA = sumA / (sumA + sumB), fracB = 1 - fracA;
-            const dir = (rectW / rectH > 1.32) ? 'row' : (rectH / rectW > 1.32) ? 'col' : (rand() < 0.5 ? 'row' : 'col');
-            const nextWA = dir === 'row' ? rectW * fracA : rectW;
-            const nextHA = dir === 'col' ? rectH * fracA : rectH;
-            const nextWB = dir === 'row' ? rectW * fracB : rectW;
-            const nextHB = dir === 'col' ? rectH * fracB : rectH;
-            const nodeA = a.length === 1 ? a[0] : slice(a, nextWA, nextHA);
-            const nodeB = b.length === 1 ? b[0] : slice(b, nextWB, nextHB);
-            return { dir, area: sumA + sumB, a: nodeA, b: nodeB };
-        }
-        return slice(arranged, 16, 10);
+            return 1000 * typeWeightOf(name) * Math.max(0.48, Math.min(1.80, Math.pow(rawArea / 55000, 0.62)));
+        };
+        const fabOf = (fabricId, colorName, fill) => colorFillOf(fabricId, colorName) || fill || '#d9cdbb';
+        const cart = (state.roomsCart || []);
+        const src = cart.length ? cart.map(r => ({
+            name: r.name, raw: r,
+            fabs: (r.isConfigured ? (r.curtains || []) : []).filter(c => c.fabricId).map(c => ({ kind: c.presetType, hex: fabOf(c.fabricId, c.colorName) }))
+        })) : ((data && data.rooms) || []).map(rm => ({
+            name: rm.name, raw: rm.raw || rm,
+            fabs: (rm.items || []).map(i => ({ kind: (i.kindKey === 'drape' || i.kind === '겉지') ? 'drape' : (i.kindKey === 'sheer' || i.kind === '속지') ? 'sheer' : 'other', hex: fabOf(i.fabricId, i.colorName, i.fill) }))
+        }));
+        return src.map(s => {
+            const wallP = roomPart(s.raw, 'wall'), floorP = roomPart(s.raw, 'floor');
+            return { W: weightOf(s.name, s.raw), wall: wallP && wallP.hex, floor: floorP && floorP.hex, fabs: s.fabs };
+        }).filter(r => r.wall || r.floor || r.fabs.length);
     }
+    // 색과 비율 (78·121·113번 + 134번 한 색 40%)
+    function jogakColors(rooms) {
+        const RC = window.RoomColor;
+        const normHex = h => String(h || '').trim().toLowerCase();
+        const labOf = hex => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''); return m ? RC.rgbToLab(parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)) : null; };
+        const m = new Map();
+        const add = (key, hex, a, rate, g) => { const c = m.get(key); if (!c) m.set(key, { keys: [key], hex, area: Math.round(a), g }); else c.area += Math.round(a * rate); };
+        rooms.forEach(r => {
+            // 121번: 벽·바닥이 원단보다 넓음. 여러 공간이 같은 색이면 쌓임
+            if (r.wall) add('wall__' + normHex(r.wall), r.wall, r.W * 0.62, 0.50, 's');
+            if (r.floor) add('floor__' + normHex(r.floor), r.floor, r.W * 0.46, 0.48, 's');
+            const sheer = r.fabs.find(f => f.kind === 'sheer'), drape = r.fabs.find(f => f.kind === 'drape');
+            if (r.fabs.length >= 2 && sheer && drape) {
+                add('fab__' + normHex(sheer.hex), sheer.hex, r.W * 0.32, 0.45, 'x');      // 속지는 자주 쳐 두어 크게
+                add('fab__' + normHex(drape.hex), drape.hex, r.W * 0.18, 0.45, 'x');      // 겉지는 걷어 두는 때가 많아 작게
+            } else if (r.fabs.length) add('fab__' + normHex(r.fabs[0].hex), r.fabs[0].hex, r.W * 0.40, 0.45, 'x');
+        });
+        const ns = [...m.values()].map(n => ({ ...n, lab: labOf(n.hex) })).filter(n => n.lab);
+        // 113번: 눈으로 같은 색(ΔE2000 3 이하)은 묶음. 벽·바닥끼리, 원단끼리 먼저. 그래도 많으면 가장 가까운 둘부터 합쳐 여덟 이하로
+        const closest = (same, lim) => {
+            let b = null;
+            for (let i = 0; i < ns.length; i++) for (let j = i + 1; j < ns.length; j++) {
+                if (same && ns[i].g !== ns[j].g) continue;
+                const d = techDE2000(ns[i].lab, ns[j].lab);
+                if (d <= lim && (!b || d < b.d)) b = { i, j, d };
+            }
+            return b;
+        };
+        const join = p => {
+            const x = ns[p.i], y = ns[p.j], t = (x.area + y.area) || 1;
+            x.lab = { L: (x.lab.L * x.area + y.lab.L * y.area) / t, a: (x.lab.a * x.area + y.lab.a * y.area) / t, b: (x.lab.b * x.area + y.lab.b * y.area) / t };
+            x.hex = RC.labToHex(x.lab.L, x.lab.a, x.lab.b); x.area = t; x.keys = x.keys.concat(y.keys);
+            ns.splice(p.j, 1);
+        };
+        let p;
+        while ((p = closest(true, JOGAK_DE))) join(p);
+        while (ns.length > JOGAK_MAX && (p = closest(true, Infinity) || closest(false, Infinity))) join(p);
+        // 한 색은 표지의 40%까지: 넘는 몫은 나머지 색에 비율대로 나눔 (흰 벽·흰 속지 집에서 흰색이 한 덩어리가 되지 않게)
+        const tot = ns.reduce((s, n) => s + n.area, 0) || 1;
+        ns.forEach(n => { n.share = n.area / tot; });
+        if (ns.length > 1) for (let it = 0; it < 6; it++) {
+            const over = ns.filter(n => n.share > JOGAK_SHARE);
+            if (!over.length) break;
+            let ex = 0; over.forEach(n => { ex += n.share - JOGAK_SHARE; n.share = JOGAK_SHARE; });
+            const rest = ns.filter(n => n.share < JOGAK_SHARE), rs = rest.reduce((s, n) => s + n.share, 0);
+            if (!rs) break;
+            rest.forEach(n => { n.share += ex * n.share / rs; });
+        }
+        return ns;
+    }
+    // 칸 하나를 자름: 길쭉하면 긴 쪽을, 비슷하면 무작위. 40%는 정사각으로 잘라 냄. 가장 짧은 변 0.8(표지 높이 8%) 아래면 못 자름
+    function jogakCut(c, rand, frac) {
+        const vert = c.w / c.h > 1.25 ? true : c.h / c.w > 1.25 ? false : rand() < 0.5;      // true = 세로선으로 자름
+        const len = vert ? c.w : c.h, other = vert ? c.h : c.w;
+        let f;
+        if (frac != null) f = frac;
+        else { const r = rand(); f = r < 0.4 ? other / len : [0.38, 0.5, 0.62, 0.3, 0.7][Math.floor(rand() * 5)]; if (rand() < 0.5 && r < 0.4) f = 1 - f; }
+        f = Math.max(JG_MIN / len, Math.min(1 - JG_MIN / len, f));
+        if (len * f < JG_MIN || len * (1 - f) < JG_MIN) return null;
+        return vert ? [{ x: c.x, y: c.y, w: c.w * f, h: c.h }, { x: c.x + c.w * f, y: c.y, w: c.w * (1 - f), h: c.h }]
+                    : [{ x: c.x, y: c.y, w: c.w, h: c.h * f }, { x: c.x, y: c.y + c.h * f, w: c.w, h: c.h * (1 - f) }];
+    }
+    function buildJogakbo(data) {
+        const RC = window.RoomColor;
+        if (!RC || !RC.rgbToLab || !RC.labToHex || typeof techDE2000 !== 'function') return null;
+        const rooms = jogakRooms(data);
+        if (!rooms.length) return null;
+        // 79번: 상담마다 정해진 조각보 번호로 만든 '정해진 순서의 무작위 수'(mulberry32)
+        let seedState = (typeof window.getJogakboSeed === 'function' ? window.getJogakboSeed() : 1) >>> 0;
+        const rand = () => {
+            seedState = (seedState + 0x6D2B79F5) >>> 0;
+            let t = seedState;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+        // 상담이 걸어온 길: 공간마다 벽·바닥을 잰 때 → 원단을 고른 때
+        const steps = [];
+        rooms.forEach((r, i) => {
+            const before = rooms.slice(0, i);
+            if ((r.wall || r.floor) && r.fabs.length) steps.push(before.concat([{ ...r, fabs: [] }]));
+            steps.push(rooms.slice(0, i + 1));
+        });
+        const area = c => c.w * c.h, TOT = JG_W * JG_H;
+        const touch = (a, b) => {
+            const e = 0.01;
+            const v = (Math.abs(a.x + a.w - b.x) < e || Math.abs(b.x + b.w - a.x) < e) && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > e;
+            const h = (Math.abs(a.y + a.h - b.y) < e || Math.abs(b.y + b.h - a.y) < e) && Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > e;
+            return v || h;
+        };
+        let cells = null, nextId = 1, known = [], cs = [];
+        steps.forEach(st => {
+            cs = jogakColors(st);
+            if (!cs.length) return;
+            // 앞 단계 색과 잇기(키가 겹치면 같은 색). 묶여 사라진 색의 칸은 비워 둠 → 옆 색이 이어받음
+            const used = new Set();
+            cs.forEach(c => { const k = known.filter(o => !used.has(o.id) && o.keys.some(x => c.keys.includes(x))).sort((a, b) => a.id - b.id)[0]; if (k) { c.id = k.id; used.add(k.id); } });
+            if (!cells) {
+                cells = [{ x: 0, y: 0, w: JG_W, h: JG_H }];
+                let guard = 0;
+                while (cells.length < JG_START && guard++ < 200) {
+                    let r = rand() * TOT, i = 0;
+                    for (; i < cells.length; i++) { r -= area(cells[i]); if (r <= 0) break; }
+                    i = Math.min(i, cells.length - 1);
+                    const parts = jogakCut(cells[i], rand);
+                    if (parts) cells.splice(i, 1, ...parts);
+                }
+            }
+            cells.forEach(c => { if (c.col && !used.has(c.col)) c.col = null; });
+            const byId = id => cs.find(c => c.id === id);
+            const have = id => cells.filter(c => c.col === id).reduce((s, c) => s + area(c), 0) / TOT;
+            const near = (cell, c) => cells.some(o => o !== cell && o.col && o.col !== c.id && touch(o, cell) && techDE2000(byId(o.col).lab, c.lab) < JOGAK_NEAR);
+            // 새 색: 빈 칸이나 넘치는 색의 칸을 받음 → 맞는 칸이 없으면 칸 하나를 나눠 받음(꿰매 넣기)
+            cs.filter(c => !c.id).sort((a, b) => b.share - a.share).forEach(c => {
+                c.id = nextId++;
+                const T = c.share * TOT;
+                const free = cells.filter(x => !x.col);
+                const donors = cells.filter(x => x.col && cells.filter(y => y.col === x.col).length > 1 && have(x.col) > byId(x.col).share);
+                const pool = free.length ? free : donors;
+                let best = null;
+                pool.forEach(x => { const s = Math.abs(Math.log(area(x) / T)) + (near(x, c) ? 1.2 : 0) + rand() * 0.3; if (!best || s < best.s) best = { x, s }; });
+                if (!best || area(best.x) > 1.9 * T) {
+                    const over = cells.filter(x => x.col).sort((a, b) => (have(b.col) - byId(b.col).share) - (have(a.col) - byId(a.col).share) || area(b) - area(a));
+                    const tgt = (best && area(best.x) > 1.9 * T) ? best.x : (over[0] || cells.slice().sort((a, b) => area(b) - area(a))[0]);
+                    const parts = jogakCut(tgt, rand, rand() < 0.5 ? T / area(tgt) : null) || jogakCut(tgt, rand);
+                    if (parts) {
+                        const i = cells.indexOf(tgt), keep = tgt.col;
+                        const pick = Math.abs(area(parts[0]) - T) < Math.abs(area(parts[1]) - T) ? 0 : 1;
+                        parts[pick].col = c.id; parts[1 - pick].col = keep;
+                        cells.splice(i, 1, ...parts);
+                        return;
+                    }
+                }
+                if (best) best.x.col = c.id;
+            });
+            // 빈 칸: 모자란 색부터 채움(비슷한 색과 붙지 않게)
+            cells.filter(x => !x.col).sort((a, b) => area(b) - area(a)).forEach(x => {
+                let bc = null;
+                cs.forEach(c => { const s = (c.share - have(c.id)) - (near(x, c) ? 0.15 : 0); if (!bc || s > bc.s) bc = { c, s }; });
+                x.col = bc.c.id;
+            });
+            known = cs.map(c => ({ id: c.id, keys: c.keys }));
+        });
+        if (!cells) return null;
+        const hexOf = id => { const c = cs.find(x => x.id === id); return c ? c.hex : '#efe9df'; };
+        return { cells: cells.map(c => ({ x: c.x, y: c.y, w: c.w, h: c.h, hex: hexOf(c.col) })) };
+    }
+    // 화면용 그림(표지·중심 화면): 칸을 % 자리로. 칸 사이 틈은 gap px. newKeys가 있으면 새로 생긴 칸에 is-new(꿰매 넣는 움직임)
+    function jogakboHtml(jg, gap, prevKeys) {
+        if (!jg) return '<div class="jg-cv is-empty"><i class="jg-cv-dot" aria-hidden="true"></i></div>';
+        const g = gap / 2;
+        return '<div class="jg-cv" aria-hidden="true">' + jg.cells.map(c => {
+            const isNew = prevKeys && !prevKeys.has(jogakKey(c));
+            return `<span class="jg-c${isNew ? ' is-new' : ''}" style="left:calc(${c.x / JG_W * 100}% + ${g}px);top:calc(${c.y / JG_H * 100}% + ${g}px);width:calc(${c.w / JG_W * 100}% - ${gap}px);height:calc(${c.h / JG_H * 100}% - ${gap}px);background:${c.hex}"></span>`;
+        }).join('') + '</div>';
+    }
+    const jogakKey = c => [c.x, c.y, c.w, c.h].map(v => v.toFixed(3)).join(',') + c.hex;
+    // 중심 화면 왼쪽 위 작은 조각보: 지난번 그림과 비교해 새로 생긴 칸만 서서히 나타남
+    let lastMiniKeys = null;
+    function jogakboMiniHtml() {
+        const jg = buildJogakbo(null);
+        const html = jogakboHtml(jg, 3, lastMiniKeys);
+        lastMiniKeys = new Set(jg ? jg.cells.map(jogakKey) : []);
+        return html;
+    }
+    function buildJogakboHtml(data) { return jogakboHtml(buildJogakbo(data), 6, null); }
 
     // 공간별 쇼룸 시트에 들어갈 내용 (80번: 화면과 저장 이미지가 같이 씀)
     //  { rm, name, sz, compLabel, dirTxt, metaLine(값만 한 줄), st(창가 색 띠), paras(① 들은 말 · ② 본 것 · ③ 고른 것, 83번), commentTxt, sets(원단별 ④ 원단 줄), back·front(겹침 스와치: 겉지 뒤·속지 앞, 한 장이면 null), night }
@@ -437,7 +490,7 @@
         clearTimeout(finalPaperTimer);
         finalPaperTimer = setTimeout(renderFinalPaper, 350);
     }
-    Object.assign(cz, { buildJogakboTree, showroomRowsOf, renderFinalEditorial, setFinalPage, finalPageNow, resetFinalPage, queueFinalPaper });      // concierge.js가 부름
+    Object.assign(cz, { buildJogakbo, jogakboMiniHtml, showroomRowsOf, renderFinalEditorial, setFinalPage, finalPageNow, resetFinalPage, queueFinalPaper });      // concierge.js가 부름
     Object.assign(window.concierge, {
         // 최종 제안 화면의 쪽 넘기기 · 세로 모드 크게 보기 (39번)
         finalNext: function() { setFinalPage(finalPage + 1); },
