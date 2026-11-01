@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261183';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261184';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -428,9 +428,7 @@
     function todoRooms() { return state.roomsCart.filter(r => !r.isConfigured); }
     function askedRoom(r) { return !!(r && r.lightBlock && r.privacy); }
     function planHas(r, kind) { return !!(r && r.planComp && COMP_KINDS[r.planComp] && COMP_KINDS[r.planComp].includes(kind)); }
-    function recCompOf(r) { return (typeof recommendComposition === 'function' ? recommendComposition(r) : null) || 'double'; }
-    // 손님이 직접 바꾸지 않은 공간은 답이 바뀌면 권하는 구성도 따라 바뀜
-    function fillPlan(r) { if (!r.planPicked || !r.planComp) r.planComp = recCompOf(r); return r.planComp; }
+    // 138번: 앱이 구성을 권하지 않음 — 손님이 공간마다 구성 사진 화면에서 직접 고름(자동 채우기 없앰)
     // 집에 들어가는 것: 상담을 마친 공간은 고른 품목, 아직인 공간은 정한 구성으로
     function houseHas(kind) {
         return state.roomsCart.some(r => r.isConfigured ? (r.curtains || []).some(c => c.presetType === kind) : planHas(r, kind));
@@ -450,8 +448,8 @@
         if (!todo.length) return null;
         const ask = todo.find(r => !askedRoom(r));
         if (ask) return { kind: 'ask', room: ask };
-        const noComp = todo.filter(r => !r.compOk);
-        if (noComp.length) return noComp.length > 1 ? { kind: 'houseComp' } : { kind: 'comp', room: noComp[0] };
+        const noComp = todo.find(r => !r.compOk || !r.planComp);      // 138번: 집 전체 구성 화면 없앰 → 공간마다 차례로 구성 사진 화면
+        if (noComp) return { kind: 'comp', room: noComp };
         // 123번: 커튼 느낌 · 겉지 결 · 속지 결 · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
         const r = todo[0];
         if (!(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };
@@ -479,7 +477,7 @@
             flowGo(ed.askCards ? "2-Base-Floor" : "2-Base-Block", ed, nx.room.id);
             return;
         }
-        if (nx.kind === 'comp') { openCompFor(nx.room, false); return; }
+        if (nx.kind === 'comp') { openCompFor(nx.room); return; }
         if (nx.kind === 'fabric') { startFabric(nx.room); return; }
         if (nx.room) {      // 123번: 그 공간의 취향 화면 (느낌 · 겉지 결 · 속지 결 · 블라인드 종류)
             const ed = loadEditing(nx.room);
@@ -488,13 +486,11 @@
             flowGo(ROOM_STEP[nx.kind], ed, nx.room.id, () => { if (nx.kind === 'pres' || nx.kind === 'tex') state.tasteFor = 'room'; });
             return;
         }
-        const STEP = { houseComp: "3.2-House-Comp" };
-        flowGo(STEP[nx.kind], null);
     }
-    // 한 공간 구성 사진 화면: 공간이 하나뿐일 때(③이 접힘) · 집 전체 구성에서 줄을 눌렀을 때
-    function openCompFor(room, fromHouse) {
+    // 한 공간 구성 사진 화면 (138번: 공간마다 차례로)
+    function openCompFor(room) {
         const ed = loadEditing(room);
-        ed.flow = true; ed.fromHouse = !!fromHouse;
+        ed.flow = true;
         if (room.planComp && room.planPicked) ed.prev = Object.assign({}, ed.prev, { comp: room.planComp });
         flowGo("3-Config-Style", ed, room.id);
     }
@@ -502,7 +498,7 @@
     function startFabric(room) {
         const ed = loadEditing(room);
         ed.flow = true;
-        setCompItems(ed, room.planComp || recCompOf(room));
+        setCompItems(ed, room.planComp || 'double');
         const hs = houseTasteNow().sheer;      // 123번: 공간 답이 먼저, 없으면 예전 집 답
         ed.sheerFeel = planHas(room, 'sheer') ? (room.sheerFeel || { smooth: 'smooth', texture: 'textured', thick: 'cozy', unknown: 'any' }[hs] || null) : null;
         flowGo("3.5-Bridge", ed, room.id, () => { state.pendingItemQueue = ed.items; state.currentItemIndex = 0; });
@@ -537,12 +533,6 @@
         else if (type === 'sheer_only') { ed.items = [one('sheer', '속지')]; ed.blindWant = null; }
         else if (type === 'drape_only') { ed.items = [one('drape', '겉지')]; ed.sheerFeel = null; ed.blindWant = null; }
         else if (type === 'blind_only') { ed.items = [one('blind', '블라인드')]; ed.sheerFeel = null; }
-    }
-    // 구성 제안 아래 한 줄: 손님이 방금 한 답을 그대로 되받음 (117번, 사장님 승인 — 질문 화면 설명 문장의 예외)
-    function compReasonLine(ed) {
-        const b = { light: '빛은 들어와도 괜찮고', soft: '빛은 적당히 가리고 싶고', dark: '빛은 완전히 가리고 싶고' }[ed.lightBlock];
-        const p = { open: '밖의 시선은 괜찮다고 하셨습니다', some: '밖의 시선이 조금 신경 쓰인다고 하셨습니다', high: '밖의 시선이 많이 신경 쓰인다고 하셨습니다' }[ed.privacy];
-        return b && p ? `${b}, ${p}` : '';
     }
     // 고른 블라인드 종류가 지금 단가표 목록에 있는지 확인 (우드·알루미늄처럼 아직 목록에 없으면 실물 샘플 안내로, 38-2)
     function hasBlindKindInPool(want) {
@@ -580,7 +570,7 @@
     // 진행 선: 화면 맨 위 가는 선(흙빛이 차오름). 공간 추가(종류 → 크기 → 색)와 공간 상담(질문들 → 원단 → 마무리)을 따로 셈
     const ADD_STEPS = ["1.5-Room-Type", "1.6-Add-Size", "1.7-Add-Same", "1.8-Add-Dir"];
     // 119번: 집 전체 흐름은 단계(질문 · 구성 · 취향 · 원단) 기준. 질문·원단은 공간 차례만큼 차오름
-    const FLOW_PHASE = { "2-Base-Floor": 0, "2-Base-Wall": 0, "2-Base-Block": 0, "2-Base-Privacy": 0, "3.2-House-Comp": 1, "3-Config-Style": 1,
+    const FLOW_PHASE = { "2-Base-Floor": 0, "2-Base-Wall": 0, "2-Base-Block": 0, "2-Base-Privacy": 0, "3-Config-Style": 1,
         "0.5-House-Taste": 2, "0.6-House-Tex": 2, "2-Base-SheerFeel": 2, "2-Base-BlindKind": 2, "3.5-Bridge": 3, "4-Fabric-Queue": 3, "6-Finish": 3 };
     function flowProg() {
         const ed = state.editingRoom, ph = FLOW_PHASE[state.step];
@@ -1107,34 +1097,16 @@
                 html += '</div></div>';
                 break;
 
-            // [집 전체 구성 (119번)] 공간마다 권하는 구성을 한눈에. 줄을 누르면 그 공간 구성 사진 화면(이 공간만 다르게도 거기서)
-            case "3.2-House-Comp": {
-                const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-                html += '<div class="ambient-stage ask-stage">' + progHtml();
-                html += '<h2 class="q-title font-serif-kr">공간마다 이렇게 권합니다</h2>';
-                html += '<div class="heard-list house-comp">' + todoRooms().map(r => {
-                    fillPlan(r);
-                    // 123번: 포인트는 공간마다 느낌 질문에서 고르므로 [포인트] 칩은 뺌
-                    return `<div class="hc-line"><button type="button" class="heard-row" onclick="window.concierge.openHouseComp(${r.id})"><span><span class="hc-nm">${esc(r.name)}</span><b>${COMP_NAMES[r.planComp]}</b></span><i>바꾸기</i></button></div>`;
-                }).join('') + '</div>';
-                html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.houseCompDone()">이대로 할게요</button>';
-                html += '</div>';
-                break;
-            }
-
-            // [구성 제안 (117번)] 예전 구성 사진 4칸 그대로. 앱이 권하는 칸을 처음부터 넓게 펼쳐 두고(분위기 화면의 넓어지는 칸과 같은 방식),
-            //  그 칸 띠에 손님 답을 되받는 한 줄. 어느 칸이든 한 번 누르면 그것으로(137번: 넓히기 단계 없앰)
+            // [창 구성 (138번 중립)] 구성 사진 4칸 같은 폭, 앱이 권하지 않음(커튼 박스·설치 여건은 사장님이 현장에서 말로). 한 번 누르면 그것으로(137번)
             case "3-Config-Style": {
                 const ed = state.editingRoom;
-                const rec = (typeof recommendComposition === 'function' ? recommendComposition(ed) : null) || 'double';
-                const why = compReasonLine(ed);
                 html += '<div class="bookmark-stage">';
-                const nm = COMP_NAMES[rec], code = nm.charCodeAt(nm.length - 1) - 0xAC00;
-                html += stepHead(`${ed.flow && state.roomsCart.length > 1 ? ed.name : '이 공간'}에는 ${nm}${code >= 0 && code % 28 ? '을' : '를'} 권합니다`);      // 블라인드를 / 이중 커튼을
+                const nm = String(ed.name || ''), code = nm.charCodeAt(nm.length - 1) - 0xAC00;
+                html += stepHead(ed.flow && state.roomsCart.length > 1 && nm ? `${nm}${code >= 0 && code < 11172 && code % 28 ? '은' : '는'} 어떤 구성을 원하세요?` : '어떤 구성을 원하세요?');      // 안방은 / 거실은
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 [['double', 'comp_double', SOLID_TEXTURES.l1], ['sheer_only', 'comp_sheer', SOLID_TEXTURES.l2], ['drape_only', 'comp_drape', SOLID_TEXTURES.l3], ['blind_only', 'comp_blind', SOLID_TEXTURES.oak]].forEach(([k, ph, fb]) => {
                     html += renderBookmarkCard(COMP_NAMES[k], "", "", compBg(ph, fb), function() { window.concierge.chooseWindowComposition(k); },
-                        'vdesc' + (k === rec ? ' comp-rec' : '') + was('comp', k), k === rec ? why : '');
+                        was('comp', k).trim());
                 });
                 html += '</div></div>';
                 break;
@@ -1199,6 +1171,8 @@
                 // 창 그림(104번)은 원단 카드마다 하나씩 (137번, fabric-pick.js fabricCardHtml)
                 html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
                 state.fabPanelCount = showcaseList.length;      // 마지막 칸에 Re.dam 표시를 넣기 위해
+                // 138번: 원단 차이 한 줄은 세 원단을 나란히 보고 정함 (처음 색은 어울리는 색 첫째)
+                state.fabDiffSet = showcaseList.map(e => Object.assign(Object.create(e.f), { id: e.f.id, __pick: colorDeckOrder(e.best)[0] || '' }));
                 showcaseList.forEach((entry, idx) => {
                     const f = entry.f, best = entry.best;
                     const order = colorDeckOrder(best);
@@ -1290,15 +1264,7 @@
         const photo = PHOTO_STEPS.includes(state.step);
         syncBack(photo);
         if (photo) {
-            const st = main.querySelector('.bookmark-stage');
-            if (st) {
-                let tall = 0;
-                st.querySelectorAll('.fab-vname, .fab-vdesc').forEach(el => { tall = Math.max(tall, el.offsetHeight); });
-                if (tall) st.style.setProperty('--band-h', Math.max(205, Math.ceil(tall + 52)) + 'px');
-            }
-            // 구성 제안 (117번): 앱이 권하는 칸을 처음부터 넓게
-            const recCard = state.step === "3-Config-Style" && main.querySelector('.bookmark-card.comp-rec');
-            if (recCard) expandMoodCard(recCard.closest('.bookmark-canvas'), recCard);
+            // 138번: 띠 높이는 120px 하나(가로쓰기라 글자 길이로 늘리지 않음)
             if (introWant && photoQuestion) playPhotoIntro(photoQuestion);
         }
         introWant = false;
@@ -1357,14 +1323,6 @@
     function swapFabricPanel(...a) { return cz.swapFabricPanel(...a); }
     function playFabricSeek(...a) { return cz.playFabricSeek(...a); }
 
-    // 구성 제안에서 권하는 칸만 처음부터 넓게 (117번). 누를 때 넓어지는 단계는 없앰 (137번)
-    function expandMoodCard(canvas, el) {
-        const cards = Array.from(canvas.children);
-        canvas.classList.add('has-expand');
-        cards.forEach(c => c.classList.toggle('is-expanded', c === el));
-        canvas.style.gridTemplateColumns = cards.map(c => c === el ? '2.4fr' : '1fr').join(' ');
-    }
-
     function renderBookmarkCard(title, desc, tag, bgStyle, onClickFn, extraClass, note) {
         const id = "bk_" + Math.random().toString(36).substr(2, 9);
         // 사진 칸 모두(바닥·벽·결·블라인드·창 구성): 한 번 누르면 이름 위 점 + 나머지 옅게 → 0.25초 → 넘어감 (137번)
@@ -1374,19 +1332,13 @@
             el.onclick = () => pickThenGo(el, el.closest('.bookmark-canvas') || el.parentNode, '.bookmark-card', onClickFn);
         }, 0);
 
-        // 원단 칸과 같은 ㄴ자 배치: 왼쪽 아래 세로 제목(아래 정렬) + 그 오른쪽 아래 가로 설명 (extraClass에 'vdesc'가 있으면 설명도 제목 옆에 작게 세로로)
-        const vdesc = /\bvdesc\b/.test(extraClass || '');
-        const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&,+-]/.test(ch) ? 0.6 : 1)), 0) || 1;
-        const latin = /[A-Za-z]{3,}/.test(title);     // 영어 낱말(3글자 이상)이 있을 때만 눕혀 씀. 한두 글자는 세워 씀
-        const stack = s => Array.from(String(s)).map(ch => ch === ' ' ? '<i class="vsp"></i>' : `<span>${ch}</span>`).join('');
-        const nameHtml = latin ? `<h3 class="fab-vname is-latin font-serif-kr" style="--len: ${vlen(title).toFixed(2)};">${title}</h3>`
-                               : `<h3 class="fab-vname vstack font-serif-kr" style="--len: ${vlen(title).toFixed(2)};">${stack(title)}</h3>`;
+        // 138번: 띠 안 가로쓰기 — 1줄 이름(명조). 다른 사진 칸은 둘째 줄 없음
         return `<div id="${id}" class="bookmark-card lcard${extraClass ? ' ' + extraClass : ''}" style="width: 100%; height: 100%; cursor: pointer;">` +
             `<div class="bookmark-bg" style="background: ${bgStyle}; pointer-events: none;"></div>` +
             '<div class="bookmark-gradient fab-gradient" style="pointer-events: none;"></div>' +
-            '<div class="fab-band">' + nameHtml +
-            (desc ? (vdesc ? `<p class="fab-vdesc vstack">${stack(desc)}</p>` : `<div class="fab-side"><p class="fab-hreason">${desc}</p></div>`) : '') +
-            (note ? `<div class="fab-side"><p class="fab-note">${note}</p></div>` : '') +     // 차분한 작은 안내 (33번 속지만 밤 안내)
+            `<div class="fab-band"><div class="fab-hrow"><h3 class="fab-hname font-serif-kr">${title}</h3></div>` +
+            (desc ? `<p class="fab-diff">${desc}</p>` : '') +
+            (note ? `<p class="fab-note">${note}</p>` : '') +     // 차분한 작은 안내 (33번 속지만 밤 안내)
             '</div></div>';
     }
 
@@ -1962,9 +1914,9 @@
             // 119번: 집 전체 흐름에서는 구성만 정해 두고(원단은 ⑤에서) 다음으로
             if (ed && ed.flow) {
                 const t = state.roomsCart.find(r => r.id === state.editingRoomId);
-                if (t) { t.planComp = type; t.planPicked = true; if (!ed.fromHouse) t.compOk = true; }
+                if (t) { t.planComp = type; t.planPicked = true; t.compOk = true; }
                 saveOwnTaste(ed);
-                if (ed.fromHouse) backTo("3.2-House-Comp"); else flowNext();
+                flowNext();
                 return;
             }
             setCompItems(ed, type);
@@ -1972,15 +1924,6 @@
             state.currentItemIndex = 0;
             // 117번: (집에서 처음 속지면 속지 결) → 블라인드면 종류 → 원단 찾는 중 (상담을 마친 공간을 다시 상담할 때)
             goToStep(stepAfterComp(ed));
-        },
-        // 119번 집 전체 구성: 줄을 누르면 그 공간 구성 사진 화면 / "다음"이면 모두 이대로
-        openHouseComp: function(roomId) {
-            const r = state.roomsCart.find(x => x.id === roomId);
-            if (r) openCompFor(r, true);
-        },
-        houseCompDone: function() {
-            todoRooms().forEach(r => { fillPlan(r); r.compOk = true; });
-            flowNext();
         },
         flowNext: function() { flowNext(); },
         // 기법 고르기 (120번): 고른 기법(빈칸 = 맡김)으로 원단 3장. 뒤로 가면 이 화면으로 돌아와 다른 기법을 고를 수 있음

@@ -3004,3 +3004,20 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 /* 원단 없는 품목 경고 (126번) */
 .staff-nofab { margin: 0.4rem 0; padding: 0.45rem 0.6rem; font-size: 0.78rem; font-weight: 700; color: #be123c; background: #fff1f2; border: 1px solid #fda4af; border-radius: 0.5rem; }
 .no-fabric { color: #be123c !important; font-weight: 700; }
+
+/* ===== 138번: 사진 칸 띠 가로쓰기 — 120px 린넨 #DDD2C2, 1줄 이름(명조 24) + 색 이름 · 오른쪽 끝 칩 / 2줄 원단 차이(16) ===== */
+.bookmark-stage { --band-h: 120px; --band-bg: #DDD2C2; --band-sub: #5A4A3C; }      /* 옅은 글자는 린넨 위 대비 위해 #5A4A3C */
+.bookmark-stage .fab-band { top: calc(100% - var(--band-h)); bottom: 0; display: block; padding: 17px 15px 0 30px; }
+.bookmark-stage .fab-band.is-last, .bookmark-stage .bookmark-canvas > :last-child .fab-band { padding-right: 15px; }
+.fab-hrow { display: flex; align-items: flex-end; min-width: 0; }
+.fab-hname { position: relative; flex: 0 1 auto; min-width: 0; margin: 0; padding-bottom: 9px; font-family: var(--serif); font-size: 24px; font-weight: 400; line-height: 1.25; color: var(--band-ink); white-space: nowrap; overflow: visible; text-overflow: ellipsis; }
+.fab-hcolor { color: var(--band-sub); }
+.bookmark-stage .fab-hrow .fab-chips { flex: 1 1 0; min-width: 88px; }
+.fab-diff { margin: -1px 0 0 !important; font-family: var(--sans); font-size: 16px; line-height: 1.5; color: var(--band-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bookmark-stage .fab-band > .fab-note { margin-top: 2px !important; }
+.bookmark-stage .card-brand { writing-mode: horizontal-tb; right: 28px; bottom: 16px; padding: 0; letter-spacing: 0.035em; font-size: 15px; opacity: 1; }
+#trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark { writing-mode: horizontal-tb; right: 28px; bottom: 16px; padding: 0; letter-spacing: 0.035em; font-size: 15px; color: var(--band-ink); opacity: 1; }
+/* 고른 칸: 이름 앞 흙빛 점, 나머지 칸 이름 #5A4A3C (137번 사진 옅게는 그대로) */
+.bookmark-stage .bookmark-card.is-picked .fab-hname::before { content: ''; position: absolute; left: -0.62em; top: calc(50% - 4.5px); width: 0.35em; height: 0.35em; margin-top: -0.175em; border-radius: 50% !important; background: var(--earth); animation: pickDot 0.2s ease both; }
+@media (prefers-reduced-motion: reduce) { .bookmark-stage .bookmark-card.is-picked .fab-hname::before { animation: none; } }
+.bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-hname, .bookmark-stage .bookmark-card.was-picked .fab-hname { color: var(--band-sub); }

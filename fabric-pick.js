@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261183';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261184';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -68,8 +68,6 @@
     function fabricCardHtml(f, best, idx, pick, queueItem, targetCategory) {
         const order = colorDeckOrder(best), n = order.length;
         const { name, colorTag } = splitNameColor(f, colorTagOf(f, pick, n));
-        // 글자 수 세기: 영어·숫자는 눕혀 쓰므로 0.6자(대문자 0.78자)로 셈
-        const vlen = s => Array.from(String(s)).reduce((a, ch) => a + (/[A-Z]/.test(ch) ? 0.78 : (/[a-z0-9 .\/%&-]/.test(ch) ? 0.6 : 1)), 0) || 1;   // 영어 대문자는 조금 더 넓게
         const isLast = idx === (state.fabPanelCount || 1) - 1;
         let h = `<div class="bookmark-card color-top" data-fab="${f.id}" style="right: 0;" onclick="window.concierge.handleQueueFabricClick('${f.id}')">`;
         h += `<div class="bookmark-bg" style="background: ${colorFillOf(f.id, pick)};"></div>`;
@@ -80,13 +78,9 @@
         h += '<div class="bookmark-gradient fab-gradient"></div>';
         const mini = fabricMiniSvg(f.id, pick);      // 137번: 카드마다 작은 창 그림 (색을 잰 공간일 때만)
         if (mini) h += `<div class="room-mini-box card-mini" aria-hidden="true">${mini}</div>`;
-        // 아래 띠: 왼쪽에 세로 이름(아래 정렬), 그 오른쪽에 세로 색 이름. 오른쪽 끝 아래에 견본 칩
-        h += `<div class="fab-band${isLast ? ' is-last' : ''}">`;
-        const latin = /[A-Za-z]{3,}/.test(name);      // 영어 낱말(3글자 이상)이 있을 때만 눕혀 씀. "울피치 A"처럼 한두 글자는 한글처럼 세워 씀
-        const stack = s => Array.from(String(s)).map(ch => ch === ' ' ? '<i class="vsp"></i>' : `<span>${ch}</span>`).join('');
-        h += latin ? `<h3 class="fab-vname is-latin font-serif-kr" style="--len: ${vlen(name).toFixed(2)};">${name}</h3>`
-                   : `<h3 class="fab-vname vstack font-serif-kr" style="--len: ${vlen(name).toFixed(2)};">${stack(name)}</h3>`;
-        if (colorTag) h += `<p class="fab-vdesc vstack">${stack(colorTag)}</p>`;
+        // 138번: 아래 띠 가로쓰기 — 1줄 이름 + 색 이름(같은 줄), 오른쪽 끝 견본 칩 / 2줄 원단 차이 한 줄
+        h += `<div class="fab-band${isLast ? ' is-last' : ''}"><div class="fab-hrow">`;
+        h += `<h3 class="fab-hname font-serif-kr">${name}${colorTag ? ` <span class="fab-hcolor">${colorTag}</span>` : ''}</h3>`;
         if (n > 1) {
             // 견본 칩: 색마다 하나(어울리는 색 순서). 누르면 그 색이 칸에 나옴, 지금 색은 밑줄. 칸(원단)을 누르면 지금 색으로 고름
             h += '<div class="fab-chips">' + order.map(nx => {
@@ -94,11 +88,56 @@
                 return `<button type="button" class="fab-chip${nx === pick ? ' on' : ''}" data-c="${String(nx).replace(/"/g, '&quot;')}" aria-label="${label}" aria-pressed="${nx === pick}" onclick="event.stopPropagation(); window.concierge.showColor('${f.id}', '${String(nx).replace(/'/g, "\\'")}')"><i style="background: ${colorFillOf(f.id, nx)};"></i></button>`;
             }).join('') + '</div>';
         }
-        h += '</div>';
+        h += `</div><p class="fab-diff">${fabricDiffLine(f.id)}</p></div>`;
         // 마지막 칸에만 Re.dam 표시 (오른쪽 아래). 2초 누르고 있으면 직원 화면
         if (isLast) h += '<div class="card-brand" data-staff-hold onclick="event.stopPropagation()">Re<i class="logo-dot">.</i>dam</div>';
         h += '</div>';
         return h;
+    }
+    // ---- 원단 차이 한 줄 (138번) ----
+    // 세 원단의 값을 나란히 놓고 셋이 같지 않은 것만 질감 → 빛 → 색 순서로 두 개까지. 모두 같으면 색만(못 잰 공간이면 빈 줄)
+    function diffTexWord(f) {
+        const m = typeof materialOf === 'function' ? materialOf(f) : null;
+        if (m === 'linen') return '린넨';
+        if (m === 'linenlook') return '린넨 느낌';
+        return ({ smooth: '매끈한 결', natural: '살아 있는 결', cozy: '도톰하고 포근한 결' })[f.texture] || '';
+    }
+    function diffLightWord(f) {
+        if (f.categoryType === '속지') return ({ light: '훤히 비침', medium: '은은한 비침', day: '낮에도 가림', heavy: '거의 안 비침' })[f.density] || '';
+        const bo = typeof blackoutLevel === 'function' ? blackoutLevel(f) : null;
+        return ({ none: '빛 스밈', mid: '반쯤 가림', life: '생활 암막', full: '완전 암막' })[bo] || '';
+    }
+    // 색: 잰 벽과 같은 계열(ticketToneWord와 같은 계산)이면 밝기로, 아니면 바닥에 더 가까울 때 "바닥 쪽"
+    function diffColorWord(f, pick) {
+        if (typeof whyFabricColor !== 'function' || typeof whyLabOf !== 'function') return '';
+        const fab = whyFabricColor(f.id, pick), mc = (state.editingRoom && state.editingRoom.measuredColor) || {};
+        const w = whyLabOf(mc.wall), fl = whyLabOf(mc.floor);
+        if (!fab || typeof fab.L !== 'number' || !w) return '';
+        const de = q => Math.hypot(fab.L - q.L, fab.a - q.a, fab.b - q.b);
+        let dh = Math.abs(Math.atan2(fab.b, fab.a) - Math.atan2(w.b, w.a)) * 180 / Math.PI; if (dh > 180) dh = 360 - dh;
+        const same = (fab.C < 6 && w.C < 6) || (fab.C >= 6 && w.C >= 6 && dh <= 30);
+        if (same && Math.abs(fab.L - w.L) < 8) return '벽과 같은 색';
+        if (!same && fl && de(fl) < de(w)) return '바닥 쪽 따뜻한 색';
+        return fab.L > w.L ? '벽보다 밝은 색' : '벽보다 짙은 색';
+    }
+    function fabricDiffWords() {
+        const list = (state.fabDiffSet || []).map(f => {
+            const pick = (state.colorPick && state.colorPick[f.id]) || f.__pick || '';
+            return [diffTexWord(f), diffLightWord(f), diffColorWord(f, pick)];
+        });
+        const out = {};
+        (state.fabDiffSet || []).forEach((f, i) => {
+            const vals = [0, 1, 2].filter(d => new Set(list.map(v => v[d])).size > 1).slice(0, 2);
+            const use = vals.length ? vals : [2];
+            out[f.id] = use.map(d => list[i][d]).filter(Boolean).join(', ');
+        });
+        return out;
+    }
+    function fabricDiffLine(fabId) { return fabricDiffWords()[fabId] || ''; }
+    // 색을 바꾸면 세 칸의 차이 줄을 다시 (색 낱말이 바뀔 수 있어서)
+    function refreshDiffs() {
+        const words = fabricDiffWords();
+        document.querySelectorAll('.fab-panel').forEach(p => { const d = p.querySelector('.fab-diff'); if (d) d.textContent = words[p.getAttribute('data-fab')] || ''; });
     }
     // (예전 "옆으로 밀기"·"뒤에 겹친 색 띠"는 뺐음 → 지금은 아래 띠의 견본 칩을 눌러 색을 바꿈)
     // 견본 칩은 아래 한 줄만 (원단마다 모양이 같게 — 10-14 사장님): 넘치면 줄 끝에 "+7" 칩 → 누르면 사진 위로 모든 색 판이 올라옴
@@ -235,10 +274,11 @@
         if (!card || !next) { panel.innerHTML = html; return; }
         const bg = card.querySelector('.bookmark-bg'), nbg = next.querySelector('.bookmark-bg');
         if (bg && nbg) bg.style.background = nbg.style.background;
-        const desc = card.querySelector('.fab-vdesc'), ndesc = next.querySelector('.fab-vdesc');
+        const desc = card.querySelector('.fab-hcolor'), ndesc = next.querySelector('.fab-hcolor');
         if (desc && ndesc) desc.innerHTML = ndesc.innerHTML;
         else if (desc) desc.remove();
-        else if (ndesc) { const name = card.querySelector('.fab-vname'); if (name) name.after(ndesc); }
+        else if (ndesc) { const name = card.querySelector('.fab-hname'); if (name) name.append(' ', ndesc); }
+        refreshDiffs();      // 138번
         const nchips = Array.from(next.querySelectorAll('.fab-chip'));
         card.querySelectorAll('.fab-chip').forEach((b, i) => {
             const on = !!nchips[i] && nchips[i].classList.contains('on');
