@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261182';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -394,8 +394,9 @@
             h += '<div class="fin-night-pair">' + [night.before, night.after].map((cells, i) => `<figure><div class="fin-night-q">${cv(cells)}</div><figcaption>${esc(night.caps[i])}</figcaption></figure>`).join('') + '</div>';
             h += '<div class="fin-night-times">' + night.times.map(t => `<div><h3 class="font-serif-kr">${esc(t.t)}</h3><p class="font-serif-kr">${esc(t.p)}</p></div>`).join('') + '</div>';
             const spec = night.lamp.spec.map(x => x === night.lamp.kTxt ? `<em>${esc(x)}</em>` : esc(x)).join(' · ');
-            h += `<div class="fin-night-base"><div class="fin-night-card"><div class="font-serif-kr">${esc(night.lamp.title)}</div><div class="fin-night-spec">${spec}</div></div>`;
-            h += `<dl><dt>구매하실 때</dt><dd>${esc(night.lamp.buy)}</dd><dt>맡기실 때</dt><dd>${esc(night.lamp.entrust)}</dd></dl></div>`;
+            const lampSvg = '<svg viewBox="0 0 44 64" aria-hidden="true"><path d="M12 10 L32 10 L27 18 L17 18 Z" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="22" y1="18" x2="22" y2="60" stroke="currentColor" stroke-width="1.2"/><line x1="15" y1="60" x2="29" y2="60" stroke="currentColor" stroke-width="1.2"/><path d="M14 6 L22 1 L30 6" fill="none" stroke="#e9a868" stroke-width="1"/></svg>';      // 136번: 상향식 스탠드 그림 (131 시안)
+            h += `<div class="fin-night-base"><div class="fin-night-card">${lampSvg}<div><div class="font-serif-kr">${esc(night.lamp.title)}</div><div class="fin-night-spec">${spec}</div></div></div>`;
+            h += `<dl>${night.lamp.rows.map(r => `<dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl></div>`;      // 136번: 색온도·연색성 풀이 + 구매·맡기기
             h += '</section>';
         }
 

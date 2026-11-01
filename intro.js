@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['intro.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['intro.js']='20261182';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // intro.js — 고객 화면 시작의 로고 모션 (82번). 130-4①에서 concierge.js에서 떼어 냄. concierge.js 다음에 읽힘
 
 (function() {
@@ -132,7 +132,10 @@
                 halves.forEach(h => set(h, { opacity: clamp(pl * 1.6), transform: `translate(0 ${(1 - pl) * 36})` }));
 
                 // 나타나기 · 첫 화면으로 넘어가기 (움직임 줄이기: 로고만 잠깐 나타났다가 넘어감)
-                let op = reduced ? 1 - io(prog(t, [1.2, 1.6])) : Math.min(clamp(t / T.fadeIn), 1 - io(prog(t, T.end)));
+                // 136번: 끝에는 배경만 걷히고 로고는 첫 화면 Re.dam 자리에 그대로 남음 → 로고가 두 번 나타나 보이지 않게 (자리를 못 찾으면 예전처럼 함께 흐려짐)
+                const endK = io(prog(t, T.end));
+                let op = reduced ? 1 - io(prog(t, [1.2, 1.6])) : Math.min(clamp(t / T.fadeIn), to ? 1 : 1 - endK);
+                if (!reduced) box.style.backgroundColor = `rgba(251, 249, 245, ${to ? 1 - endK : 1})`;
                 if (reduced) svg.style.opacity = clamp(t / .4);
                 if (skipAt !== null) op *= 1 - clamp((t - skipAt) / .15);
                 box.style.opacity = op;

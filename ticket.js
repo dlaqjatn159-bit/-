@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261181';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261182';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -68,6 +68,12 @@ function ticketBookName(c) {
 //  예: 그레이지 · 결 있는 질감 · 생활암막 / 아이보리 · 콤비 블라인드 · 암막. 원단 이름은 직원 화면과 고객 화면 최종 제안에만
 const PLAIN_TEXTURE_WORDS = { smooth: '매끈한 질감', natural: '결 있는 질감', cozy: '포근한 질감' };
 const PLAIN_BLIND_WORDS = { combi: '콤비 블라인드', roll: '롤스크린', print: '프린트 블라인드' };
+// 견적서 원단 이름 (136번): 책자 이름 뒤에 앞장(공간 제안)에서 쓴 "색 이름 · 재질"을 괄호로 — 두 장의 원단이 같은 것임을 알아보게
+function ticketEstName(c, calc) {
+    const book = ticketBookName(c);
+    const plain = String(ticketPlainName(c, calc) || '').split(' · ').filter(w => w && !book.includes(w)).join(' · ');      // 책자 이름에 이미 있는 말은 괄호에서 뺌
+    return plain ? `${book} (${plain})` : book;
+}
 function ticketPlainName(c, calc) {
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
     if (sf) return sf.name;
@@ -173,16 +179,18 @@ async function loadTicketPhotos(data) {
 // 해당 품목에만 붙는 안내 (87번): 소폭 이음 제작 커튼이 있으면 이음선 안내, 완전 암막 겉지가 있으면 빛샘 안내 — 각 한 번씩
 const SEAM_NOTE = '원단 폭이 좁은 제품은 폭을 이어 제작하므로, 커튼에 세로 이음선이 있습니다. 제작 과정상 자연스러운 것이며 불량이 아닙니다.';
 const LIGHT_LEAK_NOTE = '완전 암막 원단도 커튼 옆과 위로는 빛이 새어 들어올 수 있습니다. 원단 자체의 문제가 아니라 설치 구조상 생기는 현상입니다.';
+const HOTEL_FIT_NOTE = '호텔핏은 원단을 한 폭 더 넣어 주름을 깊고 풍성하게 만드는 리담의 마감입니다.';      // 136번
 function autoQuoteNotes(roomList) {
-    let seam = false, leak = false;
+    let seam = false, leak = false, hotel = false;
     (roomList || []).forEach(r => (r.curtains || []).forEach(c => {
         const k = c.calc || {};
         const panel = c.pleat === 'panel' || c.pleatType === '패널' || c.pleatType === '판넬';
         if (k.calcType && k.calcType !== 'width' && k.calcType !== 'hebe' && !panel && k.isSeamless === false && Number(c.width) > 0) seam = true;
         const f = c.fabricId ? FABRIC_DB.find(x => x.id === c.fabricId) : null;
         if (f && f.categoryType === '겉지' && blackoutLevel(f) === 'full') leak = true;
+        if (c.hotelFit) hotel = true;
     }));
-    return [seam ? SEAM_NOTE : '', leak ? LIGHT_LEAK_NOTE : ''].filter(Boolean);
+    return [seam ? SEAM_NOTE : '', leak ? LIGHT_LEAK_NOTE : '', hotel ? HOTEL_FIT_NOTE : ''].filter(Boolean);
 }
 function ticketData() {
     calculateAll();
@@ -210,7 +218,7 @@ function ticketDataBase() {
                 return {
                     label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
                     name: ticketPlainName(c, calc), tone: ticketToneWord(r, c),      // 이유 장·우리 집 색: 색 이름 · 재질 + 벽·바닥과 톤 관계 (61번)
-                    bookName: ticketBookName(c),      // 견적서(그림·세로 화면·카톡 글): 책자 원단 이름 + 색 번호, 예) 블랑 1번 (75번)
+                    bookName: ticketEstName(c, calc),      // 견적서(그림·세로 화면·카톡 글): 책자 원단 이름 + 색 번호 + (앞장 이름), 예) 블랑 1번 (오프화이트 · 생활암막) (75번 · 136번)
                     fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly: sampleOnly || !!calc.noFabric,      // 원단 없는 품목은 금액을 숨김 (126번)
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
@@ -1630,8 +1638,11 @@ const NIGHT_SAY = {
         blind: '블라인드를 내립니다. 빛은 그대로 두셔도 좋습니다.'
     }
 };
-const NIGHT_LAMP = { name: '이케아 토가르프', type: '상향식 플로어스탠드', socket: '일반 전구 소켓(E26)', cri: '연색성 90 이상',
-    buy: '이케아에서 같은 이름으로 찾으실 수 있습니다', entrust: '시공날 맞는 전구를 끼워 함께 놓아 드립니다' };
+// 136번: 제품 이름(브랜드) 대신 종류로만 적음. 색온도·연색성은 손님이 읽을 수 있게 풀이를 함께
+const NIGHT_LAMP = { name: '상향식 플로어스탠드', socket: '일반 전구 소켓(E26)', cri: '연색성 90 이상',
+    buy: '"상향식 플로어스탠드"로 찾으시고, 전구는 위 색온도와 연색성으로 고르시면 됩니다', entrust: '시공날 맞는 전구를 끼워 함께 놓아 드립니다',
+    kSay: '빛의 색을 숫자로 적은 것입니다. 낮을수록 노랗고 따뜻하게, 높을수록 희고 푸르게 보입니다.',
+    criSay: '빛 아래에서 색이 본래 색에 얼마나 가깝게 보이는지입니다. 90 이상이면 커튼과 벽이 낮에 본 색과 가깝게 보입니다.' };
 // 빛 아래 색 (그림용 어림): 지금의 방등 = 흔한 주광색 LED(푸르고 납작하게) · 권하는 빛 = 그 색온도의 빛 색을 절반만 섞음
 const NIGHT_CEIL = { tint: [0.93, 0.96, 1], sat: 0.75, gain: 0.9 };
 function nightKelvinRgb(K) {      // 색온도 → 빛 색 (0~1, 흑체 어림식)
@@ -1697,7 +1708,8 @@ function houseNightOf(data, opts) {
             { t: '저녁', p: S.evening[comp === 'double' ? 'drape' : comp] },
             { t: '잠들기 전', p: S.sleep[comp] }
         ],
-        lamp: { title: `${NIGHT_LAMP.name} ${NIGHT_LAMP.type}`, spec: [NIGHT_LAMP.socket, `${k}K`, NIGHT_LAMP.cri], kTxt: `${k}K`, buy: NIGHT_LAMP.buy, entrust: NIGHT_LAMP.entrust }
+        lamp: { title: NIGHT_LAMP.name, spec: [NIGHT_LAMP.socket, `${k}K`, NIGHT_LAMP.cri], kTxt: `${k}K`,
+            rows: [['색온도', NIGHT_LAMP.kSay], ['연색성', NIGHT_LAMP.criSay], ['구매하실 때', NIGHT_LAMP.buy], ['맡기실 때', NIGHT_LAMP.entrust]] }      // 136번: 화면·저장 이미지·카톡 글이 같은 줄
     };
 }
 // 견적서 빛 묶음 (131번): 공간 묶음과 같은 모양 { name, total, items } — 직원 화면에서 "견적서에 넣기"를 고르고 설정에 금액이 있을 때만
@@ -1706,7 +1718,7 @@ function ticketLightOf(data) {
     if (!L || !L.on) return null;
     const sp = houseSpacesOf(data), { k } = nightKelvinOf(sp, nightMainOf(sp));
     const items = [
-        { kind: '스탠드', name: NIGHT_LAMP.name, bookName: NIGHT_LAMP.name, meta: `${k}K 전구 포함`, size: '이케아 가격', price: L.price, fill: '#f3cf9c' },
+        { kind: '스탠드', name: NIGHT_LAMP.name, bookName: NIGHT_LAMP.name, meta: `${k}K 전구 포함`, size: '', price: L.price, fill: '#f3cf9c' },      // 136번: 브랜드 이름 안 씀
         { kind: '', name: '구매·설치 대행', bookName: '구매·설치 대행', meta: '', size: '', price: L.fee, fill: '#f4efe7' }
     ].filter(it => it.price > 0).map(it => Object.assign({ sampleOnly: false, photoKey: '', fabricId: '', colorName: '', opts: [] }, it));
     return { name: '빛', total: L.total, sampleOnly: false, items, k, isLight: true };
@@ -1741,11 +1753,12 @@ function buildNightCanvas(data, pr, N) {
     y += 30;
     times.forEach(t => { t.lineY = y; t.tY = y + 30 + F2; t.pY = t.tY + 14 + F3; y = t.pY + (t.lines.length - 1) * LHP + 30; });
     const baseY = y + 6;
-    const titleLines = wrap(N.lamp.title, CW, fP);
+    const IS = PAPER_F3 / 17, IW = Math.round(58 * IS);      // 136번: 스탠드 그림 자리(화면 44 + 간격 14를 글자 비율만큼 키움)
+    const titleLines = wrap(N.lamp.title, CW - IW, fP);
     const cardY = baseY + 30 + F3;
     const specY = cardY + (titleLines.length - 1) * LHP + 12 + F4;
-    const DLX = CX + 150, rows = [['구매하실 때', wrap(N.lamp.buy, RX - DLX, fS)], ['맡기실 때', wrap(N.lamp.entrust, RX - DLX, fS)]];
-    let ry = specY + 30 + F4;
+    const DLX = CX + 150, rows = N.lamp.rows.map(r => [r[0], wrap(r[1], RX - DLX, fS)]);      // 136번: 색온도 · 연색성 · 구매하실 때 · 맡기실 때
+    let ry = Math.max(specY + 30 + F4, baseY + 30 + 64 * IS + 24 + F4);      // 136번: 스탠드 그림 아래로 띄움
     rows.forEach(r => { r.y = ry; ry += r[1].length * LHS + 8; });
     const H = Math.ceil(ry - 8 + TICKET_PAD);
     const { canvas, ctx } = paperCanvas(H, pr);
@@ -1767,10 +1780,16 @@ function buildNightCanvas(data, pr, N) {
         t.lines.forEach((ln, k) => text(ln, CX, t.pY + k * LHP, ON, fP));
     });
     hline(baseY);
-    titleLines.forEach((ln, k) => text(ln, CX, cardY + k * LHP, ON, fP));
+    // 스탠드 그림 (화면 카드와 같은 선, 44×64)
+    ctx.save(); ctx.translate(CX, baseY + 30); ctx.scale(IS, IS); ctx.lineWidth = 1.2; ctx.strokeStyle = ON;
+    ctx.beginPath(); ctx.moveTo(12, 10); ctx.lineTo(32, 10); ctx.lineTo(27, 18); ctx.lineTo(17, 18); ctx.closePath();
+    ctx.moveTo(22, 18); ctx.lineTo(22, 60); ctx.moveTo(15, 60); ctx.lineTo(29, 60); ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = '#e9a868'; ctx.beginPath(); ctx.moveTo(14, 6); ctx.lineTo(22, 1); ctx.lineTo(30, 6); ctx.stroke();
+    ctx.restore();
+    titleLines.forEach((ln, k) => text(ln, CX + IW, cardY + k * LHP, ON, fP));
     // 사양 줄: 색온도만 따뜻한 색
     ctx.font = fS; ctx.textAlign = 'left';
-    let sx = CX;
+    let sx = CX + IW;
     N.lamp.spec.forEach((part, k) => {
         const seg = k ? ' · ' : '';
         if (seg) { ctx.fillStyle = MUTE; ctx.fillText(seg, sx, specY); sx += ctx.measureText(seg).width; }
@@ -1977,7 +1996,7 @@ function ticketKakaoText(data) {
     if (N) {
         out.push('', `〈이 집의 밤 · ${N.k}K〉`);
         N.times.forEach(t => out.push(`${t.t}: ${t.p}`));
-        out.push(`· ${N.lamp.title} (${N.lamp.spec.join(' · ')})`, `  구매하실 때: ${N.lamp.buy}`, `  맡기실 때: ${N.lamp.entrust}`);
+        out.push(`· ${N.lamp.title} (${N.lamp.spec.join(' · ')})`, ...N.lamp.rows.map(r => `  ${r[0]}: ${r[1]}`));
     }
     out.push('');
     if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
