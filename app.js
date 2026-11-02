@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261193';
+const REDAM_BUILD = '20261200';
 function checkFileVersions() {
     const expected = ['pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -367,6 +367,7 @@ function startNewConsultationConfirmed() {
     globalInstallFee = loadDefaultInstallFee();
     globalVatOption = 'consumer';
     globalLightStand = false;      // 131번
+    globalLineLight = { price: 0, fee: 0 }; lineLightInputsSync();      // 146번
     const lt0 = document.getElementById('expressLightStand'); if (lt0) lt0.value = '';
     const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
     const vat = document.getElementById('expressVatOption'); if (vat) vat.value = globalVatOption;
@@ -596,6 +597,7 @@ function collectConsultation() {
         installFee: globalInstallFee,
         vat: globalVatOption,
         lightStand: !!globalLightStand,      // 견적서 빛 줄 (131번)
+        lineLight: (globalLineLight.price || globalLineLight.fee) ? { price: globalLineLight.price, fee: globalLineLight.fee } : undefined,      // 146번
         jogakboSeed: window.getJogakboSeed(),      // 조각보 모양 고정 (79번)
         picks: finderPicks.slice(),         // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
         quoteDate: quoteDate || null, quoteValid: quoteValidOverride,      // 견적 날짜 (85번)
@@ -682,6 +684,8 @@ function applySnapshot(snap) {
     globalInstallFee = snap.installFee;
     globalVatOption = snap.vat || 'consumer';
     globalLightStand = !!snap.lightStand;      // 131번 (옛 상담은 넣지 않음)
+    globalLineLight = { price: Number(snap.lineLight && snap.lineLight.price) || 0, fee: Number(snap.lineLight && snap.lineLight.fee) || 0 };      // 146번
+    lineLightInputsSync();
     jogakboSeed = (Number.isInteger(snap.jogakboSeed) && snap.jogakboSeed > 0) ? snap.jogakboSeed : newJogakboSeed();      // 옛 상담은 새 번호 (79번)
     quoteDate = /^\d{4}-\d{2}-\d{2}$/.test(snap.quoteDate || '') ? snap.quoteDate : null;      // 옛 상담은 처음 견적을 만들 때 정함 (85번)
     quoteValidOverride = (Number.isFinite(snap.quoteValid) && snap.quoteValid >= 0) ? Math.min(365, Math.round(snap.quoteValid)) : null;
@@ -865,6 +869,16 @@ function updateGlobalVatOption(val) {
     calculateAll();
 }
 
+// 라인조명(COB) 설치 포함 금액 (146번): 이 상담만. 비우면 견적서에 나오지 않음
+function updateGlobalLineLight(k, v) {
+    const n = Math.round(Number(v));
+    globalLineLight[k] = (Number.isFinite(n) && n > 0) ? n : 0;
+    calculateAll();
+    if (typeof saveDraftTick === 'function') saveDraftTick();
+}
+function lineLightInputsSync() {
+    const el = document.getElementById('expressLinePrice'); if (el) el.value = globalLineLight.price || '';      // 설치 포함 한 칸
+}
 // 견적서 빛 줄 켜고 끄기 (131번): 금액은 설정 › 견적서 고정 문구
 function updateGlobalLightStand(val) {
     globalLightStand = !!val;

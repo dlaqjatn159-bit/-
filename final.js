@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -286,7 +286,7 @@
         if (configuredRooms.length) h += '<button type="button" data-sec="finSecWhy" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">공간 제안</button>';
         h += '<button type="button" data-sec="finSecEst" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
         const night = (typeof houseNightOf === 'function') ? houseNightOf(data) : null;      // 131번
-        if (night) h += '<button type="button" data-sec="finSecNight" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">이 집의 밤</button>';
+        if (night) h += '<button type="button" data-sec="finSecNight" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">공간의 밤</button>';
         h += '<button type="button" class="is-save" onclick="window.concierge.saveQuote()">견적서 저장</button>';
         h += '</nav></div>';
 
@@ -411,12 +411,17 @@
         if (night) {
             const cv = cells => '<div class="jg-cv">' + cells.map(c => `<span class="jg-c" style="left:calc(${c.x / 16 * 100}% + 1.5px);top:calc(${c.y / 10 * 100}% + 1.5px);width:calc(${c.w / 16 * 100}% - 3px);height:calc(${c.h / 10 * 100}% - 3px);background:${c.hex}"></span>`).join('') + '</div>';
             h += '<section class="fin-night" id="finSecNight">';
-            h += `<div class="fin-night-top"><h2 class="fin-night-ttl font-serif-kr">이 집의 밤</h2><span class="fin-night-k font-serif-kr">${esc(night.k)}K</span></div>`;
+            h += `<div class="fin-night-top"><h2 class="fin-night-ttl font-serif-kr">공간의 밤</h2><span class="fin-night-k font-serif-kr">${esc(night.k)}K</span></div>`;
             h += '<div class="fin-night-pair">' + [night.before, night.after].map((cells, i) => `<figure><div class="fin-night-q">${cv(cells)}</div><figcaption>${esc(night.caps[i])}</figcaption></figure>`).join('') + '</div>';
             h += '<div class="fin-night-times">' + night.times.map(t => `<div><h3 class="font-serif-kr">${esc(t.t)}</h3><p class="font-serif-kr">${esc(t.p)}</p></div>`).join('') + '</div>';
             const spec = night.lamp.spec.map(x => x === night.lamp.kTxt ? `<em>${esc(x)}</em>` : esc(x)).join(' · ');
             const lampSvg = '<svg viewBox="0 0 44 64" aria-hidden="true"><path d="M12 10 L32 10 L27 18 L17 18 Z" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="22" y1="18" x2="22" y2="60" stroke="currentColor" stroke-width="1.2"/><line x1="15" y1="60" x2="29" y2="60" stroke="currentColor" stroke-width="1.2"/><path d="M14 6 L22 1 L30 6" fill="none" stroke="#e9a868" stroke-width="1"/></svg>';      // 136번: 상향식 스탠드 그림 (131 시안)
-            h += `<div class="fin-night-base"><div class="fin-night-card">${lampSvg}<div><div class="font-serif-kr">${esc(night.lamp.title)}</div><div class="fin-night-spec">${spec}</div></div></div>`;
+            const A = night.lamp.alt;      // 146번: 라인조명 카드 (스탠드 아래 한 자리)
+            const lineSvg = '<svg viewBox="0 0 44 64" aria-hidden="true"><rect x="4" y="6" width="36" height="8" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="7" y1="17" x2="37" y2="17" stroke="#e9a868" stroke-width="1.6"/><path d="M10 21 L6 58 M22 21 L22 58 M34 21 L38 58" stroke="#e9a868" stroke-width="1" opacity=".5"/></svg>';
+            const aSpec = A ? A.spec.map(x => x === A.kTxt ? `<em>${esc(x)}</em>` : esc(x)).join(' · ') : '';
+            h += `<div class="fin-night-base"><div class="fin-night-cards"><div class="fin-night-card">${lampSvg}<div><div class="font-serif-kr">${esc(night.lamp.title)}</div><div class="fin-night-spec">${spec}</div></div></div>`;
+            if (A) h += `<div class="fin-night-card">${lineSvg}<div><div class="font-serif-kr">${esc(A.title)}</div><div class="fin-night-spec">${aSpec}</div><p class="fin-night-say">${esc(A.say)}</p></div></div>`;
+            h += '</div>';
             h += `<dl>${night.lamp.rows.map(r => `<dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl></div>`;      // 136번: 색온도·연색성 풀이 + 구매·맡기기
             h += '</section>';
         }
@@ -494,7 +499,7 @@
         const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
         // 쪽 묶음 (37번): [0, house) = 우리 집 색 · [house, card) = 원단을 고른 이유 · [card, n) = 견적서
         const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : (finalNightAt >= 0 && k >= finalNightAt ? 'night' : 'ticket'));      // 131번: 밤 장부터 끝(맺음)까지 'night'
-        const nextWord = { why: '공간 제안', ticket: '견적서 보기', night: '이 집의 밤' }, prevWord = { house: '공간의 색과 빛', why: '공간 제안', ticket: '견적서' };
+        const nextWord = { why: '공간 제안', ticket: '견적서 보기', night: '공간의 밤' }, prevWord = { house: '공간의 색과 빛', why: '공간 제안', ticket: '견적서' };
         const pager = document.getElementById('finPager');
         if (pager) {
             // 세로 모드에서는 [← 이전 (맨 왼쪽)] · [쪽 번호 + 크게 보기 (가운데)] · [다음 → (맨 오른쪽)] 자리가 고정됨 (39번)
@@ -529,7 +534,7 @@
             finalNightAt = typeof nightAt === 'number' ? nightAt : -1;
             canvases.forEach((c, k) => {
                 const img = document.createElement('img');
-                img.alt = k < finalHouseCount ? '공간의 색과 빛' : ((k < finalCardCount) ? '공간 제안' : (finalNightAt >= 0 && k >= finalNightAt ? '이 집의 밤' : '견적서'));
+                img.alt = k < finalHouseCount ? '공간의 색과 빛' : ((k < finalCardCount) ? '공간 제안' : (finalNightAt >= 0 && k >= finalNightAt ? '공간의 밤' : '견적서'));
                 img.src = c.toDataURL('image/png');
                 box.appendChild(img);
             });

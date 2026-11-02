@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -66,7 +66,7 @@ function ticketBookName(c) {
 
 // 손님이 가져가는 글(견적서·이유 카드·우리 집 색)의 원단 표기 (61번): 책자·원단 이름·색 번호 대신 "색 이름 · 재질"
 //  예: 그레이지 · 결 있는 질감 · 생활암막 / 아이보리 · 콤비 블라인드 · 암막. 원단 이름은 직원 화면과 고객 화면 최종 제안에만
-const PLAIN_TEXTURE_WORDS = { smooth: '매끈한 질감', natural: '결 있는 질감', cozy: '포근한 질감' };
+const PLAIN_TEXTURE_WORDS = { smooth: '매끈한 질감', natural: '짜임이 보이는 질감', cozy: '포근한 질감' };
 const PLAIN_BLIND_WORDS = { combi: '콤비 블라인드', roll: '롤스크린', print: '프린트 블라인드' };
 // 견적서 원단 이름 (136번): 책자 이름 뒤에 앞장(공간 제안)에서 쓴 "색 이름 · 재질"을 괄호로 — 두 장의 원단이 같은 것임을 알아보게
 function ticketEstName(c, calc) {
@@ -482,7 +482,7 @@ const WHY_SAY = {      // 손님 말 인용 (83번): concierge.js HEARD("이렇�
     light: { high: '햇빛이 많이 들어요', mid: '햇빛이 은은하게 들어요', low: '햇빛이 적게 들어요' },
     block: { light: '빛은 들어와도 좋아요', soft: '눈부심만 줄이고 싶어요', dark: '빛을 거의 막고 싶어요' },
     privacy: { open: '밖의 시선은 신경 쓰이지 않아요', some: '낮엔 적당히 가려지면 좋아요', high: '밖에서 잘 안 보였으면 해요' },
-    feel: { smooth: '매끈한 느낌이 좋아요', textured: '결 있는 느낌이 좋아요', cozy: '도톰한 느낌이 좋아요' }
+    feel: { smooth: '매끈한 느낌이 좋아요', textured: '짜임이 보이는 느낌이 좋아요', cozy: '도톰한 느낌이 좋아요' }
 };
 const whyQuote = (k, ans) => '“' + WHY_SAY[k][ans[k]] + '”';
 function whyJosa(name) {      // "거실과" / "안방과" / "방 2와" 처럼 받침에 따라
@@ -642,9 +642,9 @@ function whyItemCands(F, R, facts) {
     if (D) add('D', D[1], D[2]);
     // O3 · T. 재질 (결 이야기는 하나만)
     const feelMatch = kind === 'sheer' && ((R.feel === 'textured' && F.tex === 'natural') || (R.feel === 'cozy' && F.tex === 'cozy'));
-    if (F.tex === 'natural' && R.opp) add('T', 'O3', '반대쪽 창에서 든 빛이 커튼 앞면을 비춰, 낮에도 결이 잘 보입니다.');
-    if (feelMatch) add('T', 'T4', `고르신 ${R.feel === 'cozy' ? '도톰하고 보송한' : '결이 살아 있는'} 느낌 그대로입니다.`);
-    if (F.tex === 'natural' && !R.opp && (R.E || R.W || R.light === 'high')) add('T', 'T1', '결이 있어, 비스듬히 드는 햇빛에 결이 잘 보입니다.');
+    if (F.tex === 'natural' && R.opp) add('T', 'O3', '반대쪽 창에서 든 빛이 커튼 앞면을 비춰, 낮에도 짜임이 잘 보입니다.');
+    if (feelMatch) add('T', 'T4', `고르신 ${R.feel === 'cozy' ? '도톰하고 보송한' : '짜임이 보이는'} 느낌 그대로입니다.`);
+    if (F.tex === 'natural' && !R.opp && (R.E || R.W || R.light === 'high')) add('T', 'T1', '짜임이 있는 원단이라, 비스듬히 드는 햇빛에 질감이 잘 보입니다.');
     else if (F.tex === 'cozy') add('T', 'T2', '도톰하고 보송해서, 만지면 포근합니다.');
     else if (F.tex === 'smooth' && kind === 'sheer' && R.feel === 'smooth') add('T', 'T3', '매끈해서 주름이 곧고 깔끔하게 떨어집니다.');
     // P. 속지 ↔ 겉지 짝 (겉지 줄에만). 기운이 엇갈리는 짝(P4)은 문장 없음
@@ -1484,7 +1484,7 @@ function coverCaptionOf(data) {
     const curtain = its.some(it => it.kind !== '블라인드' && !String(it.kind || '').includes('블라인드'));
     const blind = its.some(it => String(it.kind || '').includes('블라인드'));
     const kinds = ['벽', '바닥'].concat(curtain || !blind ? ['커튼'] : [], blind ? ['블라인드'] : []);
-    return `이 집의 ${kinds.join('·')} 색 비율로 지은 그림입니다`;
+    return '공간의 색으로 그린 그림입니다';      // 146번: 실제 면적 비율은 잴 수 없어 '비율' 말을 뺌
 }
 // [표지] Re.dam 로고 + 16:10 조각보 (화면 .jg-canvas와 같은 나눔, 조각 사이 틈)
 function buildCoverCanvas(data, pr) {
@@ -1647,14 +1647,14 @@ const NIGHT_WARM_B = 8, NIGHT_COOL_B = 3;      // 벽 60% · 바닥 40%로 섞�
 const NIGHT_SAY = {
     dusk: {
         north: '커튼은 열어 둡니다. 해가 직접 들지 않는 창이라, 이때부터 스탠드를 켜 두시면 낮과 밤의 차이가 줄어듭니다.',
-        floor: f => `커튼은 열어 둡니다. ${f} 바닥에 남은 햇빛이 이 집의 온기를 먼저 보여 줍니다.`,
-        wall: w => `커튼은 열어 둡니다. 해가 지는 동안 ${w} 벽이 천천히 가라앉으며 이 집의 차분한 색을 먼저 보여 줍니다.`,
-        plain: '커튼은 열어 둡니다. 남은 햇빛이 이 집의 색을 먼저 보여 줍니다.'
+        floor: f => `커튼은 열어 둡니다. ${f} 바닥에 남은 햇빛이 공간의 온기를 먼저 보여 줍니다.`,
+        wall: w => `커튼은 열어 둡니다. 해가 지는 동안 ${w} 벽이 천천히 가라앉으며 공간의 차분한 색을 먼저 보여 줍니다.`,
+        plain: '커튼은 열어 둡니다. 남은 햇빛이 공간의 색을 먼저 보여 줍니다.'
     },
     evening: {
-        drape: '방등을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 겉지 주름의 윗부분부터 결을 드러냅니다.',
-        sheer: '방등을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 속지에 부드럽게 번져 창 쪽이 은은하게 밝아집니다.',
-        blind: '방등을 끄고 창 옆 스탠드만 켭니다. 천장으로 올린 빛이 공간을 낮게 감싸 줍니다.'
+        drape: '메인 조명을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 겉지 주름의 윗부분부터 질감을 드러냅니다.',
+        sheer: '메인 조명을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 속지에 부드럽게 번져 창 쪽이 은은하게 밝아집니다.',
+        blind: '메인 조명을 끄고 창 옆 스탠드만 켭니다. 천장으로 올린 빛이 공간을 낮게 감싸 줍니다.'
     },
     sleep: {
         double: '겉지까지 칩니다. 속지만 쳐 두면 밖에서 실루엣이 보입니다. 빛은 그대로 두셔도 좋습니다.',
@@ -1666,6 +1666,7 @@ const NIGHT_SAY = {
 // 136번: 제품 이름(브랜드) 대신 종류로만 적음. 색온도·연색성은 손님이 읽을 수 있게 풀이를 함께
 const NIGHT_LAMP = { name: '상향식 플로어스탠드', socket: '일반 전구 소켓(E26)', cri: '연색성 90 이상',
     buy: '"상향식 플로어스탠드"로 찾으시고, 전구는 위 색온도와 연색성으로 고르시면 됩니다', entrust: '시공날 맞는 전구를 끼워 함께 놓아 드립니다',
+    line: '커튼박스 안이나 천장 가장자리에 숨겨 달아, 끊김 없는 빛으로 커튼 전체를 고르게 비춥니다. 길이를 재어 따로 견적을 드립니다.',      // 146번
     kSay: '빛의 색을 숫자로 적은 것입니다. 낮을수록 노랗고 따뜻하게, 높을수록 희고 푸르게 보입니다.',
     criSay: '빛 아래에서 색이 본래 색에 얼마나 가깝게 보이는지입니다. 90 이상이면 커튼과 벽이 낮에 본 색과 가깝게 보입니다.' };
 // 빛 아래 색 (그림용 어림): 지금의 방등 = 흔한 주광색 LED(푸르고 납작하게) · 권하는 빛 = 그 색온도의 빛 색을 절반만 섞음
@@ -1727,14 +1728,15 @@ function houseNightOf(data, opts) {
         k, tone, room: main.name,
         before: jg.cells.map(c => Object.assign({}, c, { hex: nightLitHex(c.hex, NIGHT_CEIL) })),
         after: jg.cells.map(c => Object.assign({}, c, { hex: nightLitHex(c.hex, lamp) })),
-        caps: ['지금의 방등 아래', `${k}K 빛 아래`],
+        caps: ['지금 조명에 비친 원단', `${k}K 빛에 비친 원단`],      // 146번
         times: [
             { t: '해 질 무렵', p: dusk },
             { t: '저녁', p: S.evening[comp === 'double' ? 'drape' : comp] },
             { t: '잠들기 전', p: S.sleep[comp] }
         ],
         lamp: { title: NIGHT_LAMP.name, spec: [NIGHT_LAMP.socket, `${k}K`, NIGHT_LAMP.cri], kTxt: `${k}K`,
-            rows: [['색온도', NIGHT_LAMP.kSay], ['연색성', NIGHT_LAMP.criSay], ['구매하실 때', NIGHT_LAMP.buy], ['맡기실 때', NIGHT_LAMP.entrust]] }      // 136번: 화면·저장 이미지·카톡 글이 같은 줄
+            rows: [['색온도', NIGHT_LAMP.kSay], ['연색성', NIGHT_LAMP.criSay], ['구매하실 때', NIGHT_LAMP.buy], ['맡기실 때', NIGHT_LAMP.entrust]],
+            alt: { title: '라인조명(COB)', spec: [`${k}K`, NIGHT_LAMP.cri], kTxt: `${k}K`, say: NIGHT_LAMP.line } }      // 146번: 스탠드 옆 한 자리      // 136번: 화면·저장 이미지·카톡 글이 같은 줄
     };
 }
 // 견적서 빛 묶음 (131번): 공간 묶음과 같은 모양 { name, total, items } — 직원 화면에서 "견적서에 넣기"를 고르고 설정에 금액이 있을 때만
@@ -1744,7 +1746,8 @@ function ticketLightOf(data) {
     const sp = houseSpacesOf(data), { k } = nightKelvinOf(sp, nightMainOf(sp));
     const items = [
         { kind: '스탠드', name: NIGHT_LAMP.name, bookName: NIGHT_LAMP.name, meta: `${k}K 전구 포함`, size: '', price: L.price, fill: '#f3cf9c' },      // 136번: 브랜드 이름 안 씀
-        { kind: '', name: '구매·설치 대행', bookName: '구매·설치 대행', meta: '', size: '', price: L.fee, fill: '#f4efe7' }
+        { kind: '', name: '구매·설치 대행', bookName: '구매·설치 대행', meta: '', size: '', price: L.fee, fill: '#f4efe7' },
+        { kind: '라인조명', name: '라인조명(COB)', bookName: '라인조명(COB)', meta: `${k}K · 설치 포함`, size: '', price: L.linePrice + L.lineFee, fill: '#f3cf9c' }      // 146번: 한 줄로
     ].filter(it => it.price > 0).map(it => Object.assign({ sampleOnly: false, photoKey: '', fabricId: '', colorName: '', opts: [] }, it));
     return { name: '빛', total: L.total, sampleOnly: false, items, k, isLight: true };
 }
@@ -1783,7 +1786,12 @@ function buildNightCanvas(data, pr, N) {
     const cardY = baseY + 30 + F3;
     const specY = cardY + (titleLines.length - 1) * LHP + 12 + F4;
     const DLX = CX + 150, rows = N.lamp.rows.map(r => [r[0], wrap(r[1], RX - DLX, fS)]);      // 136번: 색온도 · 연색성 · 구매하실 때 · 맡기실 때
-    let ry = Math.max(specY + 30 + F4, baseY + 30 + 64 * IS + 24 + F4);      // 136번: 스탠드 그림 아래로 띄움
+    // 146번: 라인조명 카드 (스탠드 카드 아래 한 자리, 그림 + 이름 + 사양 + 한 줄)
+    const A = N.lamp.alt, aTop = Math.max(specY + 28, baseY + 30 + 64 * IS + 20);
+    const aTitleY = aTop + F3, aSpecY = aTitleY + 12 + F4;
+    const aSay = A ? wrap(A.say, CW - IW, fS) : [];
+    const aEnd = A ? Math.max(aSpecY + 10 + aSay.length * LHS, aTop + 64 * IS) : specY;
+    let ry = A ? aEnd + 30 + F4 : Math.max(specY + 30 + F4, baseY + 30 + 64 * IS + 24 + F4);      // 136번: 스탠드 그림 아래로 띄움
     rows.forEach(r => { r.y = ry; ry += r[1].length * LHS + 8; });
     const H = Math.ceil(ry - 8 + TICKET_PAD);
     const { canvas, ctx } = paperCanvas(H, pr);
@@ -1791,7 +1799,7 @@ function buildNightCanvas(data, pr, N) {
     const text = (s, x, yy, color, font, align) => { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.fillText(s, x, yy); };
     const hline = yy => { ctx.strokeStyle = LINE; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, yy); ctx.lineTo(RX, yy); ctx.stroke(); };
     if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
-    text('이 집의 밤', CX, headY, MUTE, fT);
+    text('공간의 밤', CX, headY, MUTE, fT);      // 146번: '이 집' 대신 '공간'
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     text(N.k + 'K', RX, headY, KC, fK, 'right');
     [N.before, N.after].forEach((cells, i) => {
@@ -1820,6 +1828,22 @@ function buildNightCanvas(data, pr, N) {
         if (seg) { ctx.fillStyle = MUTE; ctx.fillText(seg, sx, specY); sx += ctx.measureText(seg).width; }
         ctx.fillStyle = part === N.lamp.kTxt ? KC : MUTE; ctx.fillText(part, sx, specY); sx += ctx.measureText(part).width;
     });
+    if (A) {      // 146번: 라인조명 그림 (커튼박스 + 숨은 줄 빛 + 아래로 퍼지는 빛)
+        ctx.save(); ctx.translate(CX, aTop); ctx.scale(IS, IS); ctx.lineWidth = 1.2; ctx.strokeStyle = ON;
+        ctx.strokeRect(4, 6, 36, 8);
+        ctx.strokeStyle = '#e9a868'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(7, 17); ctx.lineTo(37, 17); ctx.stroke();
+        ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath(); [[10, 6], [22, 22], [34, 38]].forEach(([x0, x1]) => { ctx.moveTo(x0, 21); ctx.lineTo(x1, 58); }); ctx.stroke();
+        ctx.restore();
+        text(A.title, CX + IW, aTitleY, ON, fP);
+        ctx.font = fS; ctx.textAlign = 'left';
+        let ax = CX + IW;
+        A.spec.forEach((part, k) => {
+            const seg = k ? ' · ' : '';
+            if (seg) { ctx.fillStyle = MUTE; ctx.fillText(seg, ax, aSpecY); ax += ctx.measureText(seg).width; }
+            ctx.fillStyle = part === A.kTxt ? KC : MUTE; ctx.fillText(part, ax, aSpecY); ax += ctx.measureText(part).width;
+        });
+        aSay.forEach((ln, k) => text(ln, CX + IW, aSpecY + 10 + (k + 1) * LHS, MUTE, fS));
+    }
     rows.forEach(r => {
         text(r[0], CX, r.y, MUTE, fS);
         r[1].forEach((ln, k) => text(ln, DLX, r.y + k * LHS, ON, fS));

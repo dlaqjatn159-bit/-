@@ -3030,3 +3030,14 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-ed-nav button.is-here { color: var(--ink); }
 .fin-ed-nav button.is-here::before { content: ""; position: absolute; left: -0.62em; top: 50%; width: 0.35em; height: 0.35em; margin-top: -0.175em; border-radius: 50%; background: var(--earth); animation: jgMapDot 0.2s ease both; }
 @media (prefers-reduced-motion: reduce) { .fin-ed-nav button.is-here::before { animation: none; } }
+
+/* 146번: 포인트 방식 설명 — 이 공간 색으로 칠한 방 그림 + 고를 수 있는 색 */
+.pt-show { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; margin: 0.5rem 0 1.5rem; }
+.pt-room { display: block; width: min(360px, 80vw); height: auto; border-radius: 2px; }
+.pt-chips { display: flex; gap: 6px; }
+.pt-chip { display: block; width: 28px; height: 28px; border-radius: 2px; }
+.pt-cap { font-size: var(--t-small); color: var(--muted); }
+
+/* 146번: 밤 장 조명 카드 두 자리 (스탠드 · 라인조명) */
+.fin-night-cards { display: flex; flex-direction: column; gap: 28px; }
+.fin-night-say { margin: 6px 0 0; color: #c4b6a3; font-size: 14px; line-height: 1.6; }

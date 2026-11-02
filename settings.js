@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -214,8 +214,10 @@ function saveLightStand(k, v) {
 // 이 상담의 빛 줄: 켜져 있고 금액이 하나라도 있을 때만 (견적서·합계·원가가 같이 씀)
 function lightStandOf() {
     const price = loadLightStand('price'), fee = loadLightStand('fee');
-    const on = !!globalLightStand && (price + fee) > 0;
-    return { on, asked: !!globalLightStand, price: on ? price : 0, fee: on ? fee : 0, total: on ? price + fee : 0 };
+    const standOn = !!globalLightStand && (price + fee) > 0;
+    const lp = Math.max(0, Math.round(Number(globalLineLight && globalLineLight.price) || 0)), lf = Math.max(0, Math.round(Number(globalLineLight && globalLineLight.fee) || 0));      // 146번: 라인조명(COB)은 상담마다 금액을 넣음
+    const sp = standOn ? price : 0, sf = standOn ? fee : 0;
+    return { on: standOn || (lp + lf) > 0, standOn, asked: !!globalLightStand, price: sp, fee: sf, linePrice: lp, lineFee: lf, total: sp + sf + lp + lf };
 }
 function initTicketNoteInput() {
     const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote();

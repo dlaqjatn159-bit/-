@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -101,10 +101,10 @@ function calculateAll() {
     // 131번: 빛(스탠드) 줄 — 이케아 가격 + 대행비를 품목 합에 더함. 켰는데 금액이 없으면 직원 화면에 알림
     const light = (typeof lightStandOf === 'function') ? lightStandOf() : { on: false, asked: false, total: 0, price: 0 };
     if (summaryListContainer && light.on) {
-        summaryListContainer.innerHTML += `<div class="staff-sum-line"><span>빛 (스탠드 · 대행)</span><span>${light.total.toLocaleString()}원</span></div>`;
+        summaryListContainer.innerHTML += `<div class="staff-sum-line"><span>빛 (조명 · 설치)</span><span>${light.total.toLocaleString()}원</span></div>`;
     }
     const lightWarn = document.getElementById('summaryLightWarn');
-    if (lightWarn) { lightWarn.hidden = !(light.asked && !light.on); lightWarn.textContent = '빛 스탠드 금액이 설정에 없어 견적서에 넣지 못했어요. 설정 › 견적서 고정 문구에서 넣어 주세요.'; }
+    if (lightWarn) { lightWarn.hidden = !(light.asked && !light.standOn); lightWarn.textContent = '빛 스탠드 금액이 설정에 없어 견적서에 넣지 못했어요. 설정 › 견적서 고정 문구에서 넣어 주세요.'; }
     const t = Pricing.totals(grandSubtotal + light.total, globalInstallFee, globalVatOption);
     const sellingPrice = t.sellingPrice;
     const vatAmount = t.vatAmount;
@@ -253,7 +253,7 @@ function generateDoc(type) {
             let rows = [DOC_ORDER_HEADERS.join('\t')];
             docOrderRows(dateStr, custName).forEach(row => rows.push(row.join('\t')));
 
-            if (typeof lightStandOf === 'function' && lightStandOf().on) rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "빛 (스탠드·대행)", lightStandOf().total].join('\t'));      // 131번
+            if (typeof lightStandOf === 'function' && lightStandOf().on) rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "빛 (조명·설치)", lightStandOf().total].join('\t'));      // 131번
             rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "전체 시공비", globalInstallFee].join('\t'));
             rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "최종 금액", finalPriceVal].join('\t'));
             textarea.value = rows.join('\n');
@@ -301,7 +301,7 @@ function downloadCsvFile() {
 
     docOrderRows(dateStr, custName).forEach(row => { csvContent += row.map(escapeCsv).join(',') + '\r\n'; });      // 시트와 한 곳에서 (130-1번)
 
-    if (typeof lightStandOf === 'function' && lightStandOf().on) csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "빛 (스탠드·대행)", lightStandOf().total].map(escapeCsv).join(',') + '\r\n';      // 131번
+    if (typeof lightStandOf === 'function' && lightStandOf().on) csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "빛 (조명·설치)", lightStandOf().total].map(escapeCsv).join(',') + '\r\n';      // 131번
     csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "전체 시공비", globalInstallFee].map(escapeCsv).join(',') + '\r\n';
     csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "최종 금액", finalPrice].map(escapeCsv).join(',') + '\r\n';
 

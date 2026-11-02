@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // more.js — 고객 화면 중심 화면 › 더 보기(20번 4단계 · 72번): 카드 ↔ 색 지도, 조건·순서·잇는 방향, 후보 1~4, 후보 비교하기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -10,7 +10,7 @@
 const MORE_STAR_MAX = 4;
 const MORE_FILTERS = {
     bright: { label: '밝기', opts: { light: '밝은 색', mid: '중간 색', dark: '진한 색' }, of: e => e.L == null ? null : (e.L >= 85 ? 'light' : (e.L >= 55 ? 'mid' : 'dark')) },
-    tex: { label: '결', opts: { smooth: '매끈한', natural: '결 있는', cozy: '도톰한' }, of: e => e.texture },
+    tex: { label: '질감', opts: { smooth: '매끈한', natural: '짜임이 보이는', cozy: '도톰한' }, of: e => e.texture },
     see: { label: '비침', kind: 'sheer', opts: { clear: '많이 비침', soft: '적당히 비침', day: '거의 안 비침' }, of: e => ({ light: 'clear', medium: 'soft', day: 'day', heavy: 'day' })[e.density] || null },      // 72번: 판정 대신 사실
     block: { label: '빛 가림', kind: 'drape', opts: { life: '생활 암막', full: '완전 암막' }, of: e => (e.blackout === 'life' || e.blackout === 'full') ? e.blackout : null }
 };
@@ -258,7 +258,7 @@ function spaceMoreSheetHtml(d) {
     let word = '지금 고른 색이에요.';
     if (!isCur && cur && cur.L != null && e.L != null && cur.b != null && e.b != null) {
         const lw = e.L > cur.L + 1 ? '밝고' : (e.L < cur.L - 1 ? '진하고' : '비슷한 밝기에');
-        const bw = e.b > cur.b + 1.5 ? '조금 더 따뜻해요' : (e.b < cur.b - 1.5 ? '조금 더 차가워요' : '결이 비슷해요');      // 지도 축 말과 같게 (72번)
+        const bw = e.b > cur.b + 1.5 ? '조금 더 따뜻해요' : (e.b < cur.b - 1.5 ? '조금 더 차가워요' : '색감이 비슷해요');      // 지도 축 말과 같게 (72번)
         word = `지금 색보다 ${lw} ${bw}.`;
     } else if (!isCur) word = '';
     return `<div class="more-sheet"><div class="more-sheet-ph" style="${photo ? `background-image:url('${photo}');` : ''}background-color:${e.hex || 'var(--brand-panel)'}"></div>`

@@ -204,6 +204,9 @@
                                             <option value="1">견적서에 넣기</option>
                                         </select>
                                     </label>
+                                    <label><span>라인조명(COB) · 설치 포함 금액 (이 상담만 · 비우면 안 넣음)</span><!-- 146번 -->
+                                        <input type="number" id="expressLinePrice" min="0" step="1000" inputmode="numeric" placeholder="비어 있음" oninput="updateGlobalLineLight('price', this.value)">
+                                    </label>
                                     <label><span>유효기간 (일, 이 상담만 · 0이면 표시 안 함)</span>
                                         <input type="number" id="quoteValidOverrideInput" min="0" max="365" step="1" inputmode="numeric" placeholder="설정 값" oninput="setQuoteValidOverride(this.value)">
                                     </label>
@@ -812,24 +815,24 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261193"></script>
-    <script src="costing.js?v=20261193"></script>
-    <script src="data.js?v=20261193"></script>
-    <script src="calculator.js?v=20261193"></script>
-    <script src="concierge.js?v=20261193"></script>
-    <script src="intro.js?v=20261193"></script>
-    <script src="fabric-pick.js?v=20261193"></script>
-    <script src="space.js?v=20261193"></script>
-    <script src="final.js?v=20261193"></script>
-    <script src="app.js?v=20261193"></script>
-    <script src="more.js?v=20261193"></script>
-    <script src="survey.js?v=20261193"></script>
-    <script src="ticket.js?v=20261193"></script>
-    <script src="color-dict.js?v=20261193"></script>
-    <script src="fabrics.js?v=20261193"></script>
-    <script src="finder.js?v=20261193"></script>
-    <script src="settings.js?v=20261193"></script>
-    <script src="room-color.js?v=20261193"></script>
+    <script src="pricing.js?v=20261200"></script>
+    <script src="costing.js?v=20261200"></script>
+    <script src="data.js?v=20261200"></script>
+    <script src="calculator.js?v=20261200"></script>
+    <script src="concierge.js?v=20261200"></script>
+    <script src="intro.js?v=20261200"></script>
+    <script src="fabric-pick.js?v=20261200"></script>
+    <script src="space.js?v=20261200"></script>
+    <script src="final.js?v=20261200"></script>
+    <script src="app.js?v=20261200"></script>
+    <script src="more.js?v=20261200"></script>
+    <script src="survey.js?v=20261200"></script>
+    <script src="ticket.js?v=20261200"></script>
+    <script src="color-dict.js?v=20261200"></script>
+    <script src="fabrics.js?v=20261200"></script>
+    <script src="finder.js?v=20261200"></script>
+    <script src="settings.js?v=20261200"></script>
+    <script src="room-color.js?v=20261200"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

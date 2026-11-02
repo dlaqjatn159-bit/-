@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -205,6 +205,7 @@ function optionRatesNow(installType) {
 
 let globalInstallFee = loadDefaultInstallFee();
 let globalVatOption = "consumer";
+let globalLineLight = { price: 0, fee: 0 };      // 146번: 이 상담의 라인조명(COB) 금액·설치 시공비 (가격은 코드에 적지 않고 상담에 저장)
 let globalLightStand = false;      // 이 상담 견적서에 빛(스탠드: 이케아 가격 + 구매·설치 대행비)을 넣을지 (131번)
 
 let currentMainTrack = 'curation';
@@ -457,7 +458,7 @@ const MOOD_GUIDE = {
 };
 const MOOD_HINTS = {
     soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 정돈된 느낌', balanced_neutral: '은은하고 편안한 느낌',
-    textured_linen: '결이 살아 있는 자연스러운 느낌', deep_private: '빛과 시선을 감싸는 아늑한 느낌', airy_bright: '가볍고 화사한 느낌'
+    textured_linen: '짜임이 보이는 자연스러운 느낌', deep_private: '빛과 시선을 감싸는 아늑한 느낌', airy_bright: '가볍고 화사한 느낌'
 };
 
 // 엑셀에 한글로 적어도(웜/쿨/…, 포근한/깔끔한/…) 코드로 바꿔 읽음
@@ -712,7 +713,7 @@ function calculateFabricMatchScore(fabric, room, category) {
 }
 
 // 추천 이유 한 줄 (짧은 말) (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
-const MATERIAL_REASON = { linen: '린넨 특유의 자연스러운 결', linenlook: '린넨 느낌에 구김이 적은 린넨룩' };      // 견적서·원단 이유 (94번)
+const MATERIAL_REASON = { linen: '린넨 특유의 자연스러운 질감', linenlook: '린넨 느낌에 구김이 적은 린넨룩' };      // 견적서·원단 이유 (94번)
 function recommendReason(fabric, room, category, maxParts, onlySaid) {
     // onlySaid(원단을 고른 이유 카드, 24번): 손님이 답한 조건(바깥 시선·빛 가림·강한 햇빛)과 원단이 맞는 점만, 있으면 하나만 돌려줌
     if (!isManualTagged(fabric)) return '';
@@ -730,8 +731,8 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     else if (category === '속지' && room.lightLevel === 'low' && (room.privacy === 'high' || room.privacy === 'some') && fabric.density === 'heavy') lightSay = '해가 덜 드는 창이라, 촘촘한 원단으로 골랐어요';
     else if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') { parts.push('강한 햇빛을 거르는 비침'); said.push('강한 햇빛을 거르는 비침'); }
     if (category === '속지' && room.sheerFeel && fabric.texture) {
-        const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 결'
-            : room.sheerFeel === 'textured' && fabric.texture === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '자연스럽게 살아 있는 결')
+        const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 질감'
+            : room.sheerFeel === 'textured' && fabric.texture === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '짜임이 보이는 자연스러운 질감')
             : room.sheerFeel === 'cozy' && fabric.texture === 'cozy' ? '도톰하고 보송한 느낌' : '';
         if (msg) parts.unshift(msg);   // 고객이 고른 취향 → 앞쪽 (사생활 문장 다음)
     }
@@ -746,8 +747,8 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     if (category === '겉지' && room.drapeFeel && room.drapeFeel !== 'any') {
         const wantTx = feelWant(room.drapeFeel), fit = drapeFeelFit(fabric, room.drapeFeel);      // 122번: 고른 사진에 가까운(0.8 이상) 원단만 결을 말함
         const ok = fit != null && fit >= 0.8;
-        const msg = !ok ? '' : wantTx === 'smooth' ? '깔끔하고 매끈한 결'
-            : wantTx === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '자연스럽게 살아 있는 결')
+        const msg = !ok ? '' : wantTx === 'smooth' ? '깔끔하고 매끈한 질감'
+            : wantTx === 'natural' ? (MATERIAL_REASON[materialOf(fabric)] || '짜임이 보이는 자연스러운 질감')
             : wantTx === 'cozy' ? '도톰하고 보송한 느낌' : '';
         if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
@@ -1423,14 +1424,14 @@ const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog'
 // 포인트 기법 (120번): 손님 화면 답은 용어 그대로, 순한 것부터. 이유 문장은 용어 + 풀이
 const POINT_TECH_TERM = { tint: '톤인톤', analog: '유사색', sat: '채도 대비', split: '분열보색', comp: '보색', opp: '반대 온도', warm: '웜 포인트', cool: '쿨 포인트' };
 const POINT_TECH_SAY = {
-    tint: '톤인톤 · 집과 같은 차분함은 지키고 색만 살짝 바꾼 색',
-    analog: '유사색 · 집 색 바로 옆이라 어울리면서도 새로워 보이는 색',
+    tint: '톤인톤 · 공간과 같은 차분함은 지키고 색만 살짝 바꾼 색',
+    analog: '유사색 · 공간 색 바로 옆이라 어울리면서도 새로워 보이는 색',
     sat: '채도 대비 · 같은 계열을 더 또렷하게 써서 중심을 잡는 색',
-    split: '분열보색 · 집 색 맞은편의 바로 옆이라 생기는 살리고 부딪힘은 줄인 색',
-    comp: '보색 · 집 색의 맞은편이라 가장 또렷하게 눈길을 모으는 색',
-    opp: '반대 온도 · 집과 반대 온도로 공간의 온도를 살짝 바꾸는 색',
-    warm: '웜 포인트 · 흰색·회색 집에 온기를 더하는 따뜻한 색',
-    cool: '쿨 포인트 · 흰색·회색 집에 맑은 기운을 더하는 차가운 색'
+    split: '분열보색 · 공간 색 맞은편의 바로 옆이라 생기는 살리고 부딪힘은 줄인 색',
+    comp: '보색 · 공간 색의 맞은편이라 가장 또렷하게 눈길을 모으는 색',
+    opp: '반대 온도 · 공간과 반대 온도로 공간의 온도를 살짝 바꾸는 색',
+    warm: '웜 포인트 · 흰색·회색 공간에 온기를 더하는 따뜻한 색',
+    cool: '쿨 포인트 · 흰색·회색 공간에 맑은 기운을 더하는 차가운 색'
 };
 // 이 공간에서 고를 수 있는 기법 (후보 원단이 있는 것만). category: '겉지' | '블라인드'
 function pointTechOptions(mc, category) {
@@ -1440,6 +1441,32 @@ function pointTechOptions(mc, category) {
     const side = category === '블라인드' ? 'blind' : 'drape';
     const order = r.gray ? ['tint', 'warm', 'cool', 'sat'] : (r.house === 'neutral' ? ['tint', 'opp'] : ['tint', 'analog', 'sat', 'split', 'comp']);
     return order.filter(k => { const row = r.rows.find(x => x.key === k); return row && (row[side] || []).length; }).map(k => ({ key: k, term: POINT_TECH_TERM[k] }));
+}
+// 포인트 방식 설명 (146번): 손님 화면용 보편적인 기법 풀이 (견적서 이유 문장 POINT_TECH_SAY와 따로)
+const POINT_TECH_DESC = {
+    tint: '밝기와 선명함은 비슷하게 두고 색만 바꾸는 방식입니다. 차분함을 지키면서 은은한 변화를 줍니다.',
+    analog: '색상환에서 바로 옆에 있는 색을 쓰는 방식입니다. 잘 어울리면서도 새로운 느낌을 줍니다.',
+    sat: '같은 계열의 색을 더 또렷하게 쓰는 방식입니다. 튀지 않으면서 중심을 잡아 줍니다.',
+    split: '맞은편 색(보색)의 바로 옆 색을 쓰는 방식입니다. 보색의 생기는 살리고 부딪힘은 줄입니다.',
+    comp: '색상환에서 맞은편에 있는 색을 쓰는 방식입니다. 가장 또렷하게 눈길을 모읍니다.',
+    opp: '따뜻한 색에는 차가운 색을, 차가운 색에는 따뜻한 색을 더하는 방식입니다. 온도감에 변화를 줍니다.',
+    warm: '흰색·회색처럼 색이 적은 바탕에 따뜻한 색을 더하는 방식입니다. 온기를 줍니다.',
+    cool: '흰색·회색처럼 색이 적은 바탕에 차가운 색을 더하는 방식입니다. 맑고 산뜻한 기운을 줍니다.'
+};
+// 포인트 방식 설명 화면 (146번): 그 방식으로 고를 수 있는 원단 색 몇 개(색이 서로 겹치지 않게)와 쉬운 풀이
+function pointTechPreview(mc, category, key, n) {
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    const row = r && r.rows.find(x => x.key === key);
+    const side = category === '블라인드' ? 'blind' : 'drape';
+    const toHex = c => (window.RoomColor && window.RoomColor.labToHex) ? window.RoomColor.labToHex(c.L, c.a, c.b) : null;
+    const picks = [];
+    ((row && row[side]) || []).slice().sort((x, y) => y.L - x.L).forEach(c => {
+        if (picks.length >= (n || 4)) return;
+        if (picks.some(p => Math.hypot(p.L - c.L, p.a - c.a, p.b - c.b) < 8)) return;
+        picks.push(c);
+    });
+    return { term: POINT_TECH_TERM[key] || '', say: POINT_TECH_DESC[key] || '', hexes: picks.map(toHex).filter(Boolean) };
 }
 const HARMONY_RANGE = 20;       // 색 잇기 점수가 0이 되는 거리(LINK_RANGE)와 같음
 // 포인트 자리 (120번): 공간마다 정함. 그 공간의 겉지 또는 블라인드(공간 하나에는 둘 중 하나만 들어감). 'value'(무게감)는 겉지만
