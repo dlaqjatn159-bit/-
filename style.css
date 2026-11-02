@@ -3019,6 +3019,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 
 /* 144번: 태블릿 양옆 빈 공간 — 틀을 표지 폭(화면의 86%, 최대 1140px)에 맞춰 넓힘. 글 문단은 한 줄 45자 안팎 그대로 */
 .fin-ed-doc.jg-doc { max-width: calc(min(86vw, 1140px) + 7rem); }
+.fin-ed-doc.jg-doc { padding-bottom: 0; }      /* 149번: 맺음(빛을 다시 담습니다 · Re.dam)에서 화면이 끝나게 — 아래 빈 여백 뺌 */
 @media (min-width: 721px) { .fin-ed-bar { padding-left: max(2.6rem, calc((100vw - min(86vw, 1140px)) / 2)); padding-right: max(2.6rem, calc((100vw - min(86vw, 1140px)) / 2)); } }      /* 위 띠의 ← 와 목차 끝을 본문 가장자리에 맞춤 */
 .jg-lead-quote, .jg-map-say, .jg-sr-comment, .jg-fab-desc, .jg-fab-note, .jg-map-read p { max-width: 46em; }
 .jg-sr-comment.is-heard { max-width: 34em; }
