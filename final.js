@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261203';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261204';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -315,7 +315,7 @@
                 h += '<div class="jg-map-rooms" role="group" aria-label="공간">' + sp.map((s, i) => `<button type="button" class="font-serif-kr" data-map-room="${i}">${esc(s.name)}</button>`).join('') + '</div>';
                 h += '<p class="jg-map-say" id="finMapSay"></p>';
             } else if (roomLines.length) h += '<div class="jg-map-read">' + roomLines.map(r => `<div><p>${esc(r.text)}</p></div>`).join('') + '</div>';
-            if (brief.length) h += `<p class="jg-lead-quote font-serif-kr">${esc(brief.join(' '))}</p>`;
+            if (brief.length) h += `<div class="jg-lead-line"><p class="jg-lead-quote font-serif-kr">${esc(brief.join(' '))}</p></div>`;      // 148번: 선은 본문 폭 끝까지, 글만 46em
             h += '</section>';
         }
 
@@ -429,11 +429,7 @@
 
         // [맺음] 132번: 견적서 아래 시를 떼어 어두운 바탕 한 장으로 — 금액이 마지막 인상이 되지 않게
         h += '<footer class="fin-ed-closing"><div class="fin-closing-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="fin-closing-mark font-serif-kr">Re<i>.</i>dam</div></footer>';
-        h += '<div class="fin-ed-foot font-serif-kr">';
-        // 133번(재검토 A4): "견적서 저장"·"← 공간 추가·수정"은 늘 보이는 위 띠에 한 번씩만 → 아래에는 위에 없는 것만
-        // 144번: 손님에게는 저장 이미지(JPG)를 보냄 → 인쇄는 손님 화면에서 빼고 직원 화면 견적 칸에만 둠
-        h += '<div class="fin-ed-foot-main"><button type="button" class="dos-act" onclick="window.concierge.copyQuoteText()">카톡 글 복사</button></div>';
-        h += '</div>';
+        // 148번: 맺음 아래 "카톡 글 복사" 줄과 그 위 선을 뺌 (저장 이미지가 메인)
         h += '</article>';
 
         box.innerHTML = h;

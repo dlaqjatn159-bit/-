@@ -1570,7 +1570,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .jg-map-rooms button.is-on::before { animation: none; } }
 .jg-map-say { margin: 12px 0 0; min-height: 1.8em; font-size: 17px; line-height: 1.8; color: #6f5f4f; word-break: keep-all; }
 .fin-ed-map { cursor: pointer; }
-.jg-lead-quote { margin: 2.5rem 0 0; padding-top: 1.6rem; border-top: 0.5px solid #e6dfd5; font-size: 17px; font-weight: 400; line-height: 1.8; color: #2b221a; word-break: keep-all; }
+.jg-lead-line { margin: 2.5rem 0 0; padding-top: 1.6rem; border-top: 0.5px solid #e6dfd5; }      /* 148번: 선은 끝까지 */
+.jg-lead-quote { margin: 0; font-size: 17px; font-weight: 400; line-height: 1.8; color: #2b221a; word-break: keep-all; }
 
 /* 3. 공간별 쇼룸 시트: 왼쪽(공간 이름 · 값 한 줄 · 겹친 견본) + 오른쪽(창가 색 띠 · 들은 말 · 본 것 · 고른 것 · 원단 줄) (76번 → 132번) */
 .jg-showroom { padding: 4.2rem 0; border-top: 0.5px solid #d5cbbd; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 3rem; align-items: start; }
@@ -1602,7 +1603,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .jg-night-note { margin-top: 1.1rem; }
 
 /* 4. 마지막 섹션: 호텔 인보이스 견적서 (0.5px 초세선, 76번) */
-.jg-invoice-sec { margin-top: 6.5rem; padding-top: 4.5rem; border-top: 0.5px solid rgba(35, 28, 22, 0.55); }
+.jg-invoice-sec { margin-top: 6.5rem; }      /* 148번: 견적서 위 선 뺌 — 다른 구획처럼 간격만으로 나눔 */
 .fin-est-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: 1rem; border-bottom: 0.5px solid rgba(35, 28, 22, 0.55); font-size: 22px; color: #231c16; }
 .fin-est-date { font-family: Pretendard, sans-serif; font-size: 15px; color: #6f5f4f; }
 .fin-est-table { border-top: 0; }
