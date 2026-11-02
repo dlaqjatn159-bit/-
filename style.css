@@ -3005,8 +3005,27 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .bookmark-stage .bookmark-card.is-picked .fab-hname::before { animation: none; } }
 .bookmark-canvas.has-pick .bookmark-card:not(.is-picked) .fab-hname, .bookmark-stage .bookmark-card.was-picked .fab-hname { color: var(--band-sub); }
 /* 143번: 최종 제안 큰 구획(표지 · 공간의 색과 빛 · 공간 제안 · 견적서 · 이 집의 밤) 사이가 좁아 보여 넓힘 (약 96px → 160px, 좁은 화면 112px) */
-.jg-cover-sec { margin-bottom: 10rem; }
-.jg-overview { padding-bottom: 10rem; }
-.jg-invoice-sec { margin-top: 10rem; }
-.fin-night { margin-top: 10rem; }
+/* 144번: 160px도 가까워 보여 화면 높이의 1/3로 (태블릿 가로 약 260px, 160~288px 사이). 한 구획의 꼬리와 다음 제목이 한 화면에 덜 겹치게 */
+:root { --fin-sec-gap: clamp(10rem, 33dvh, 18rem); }
+.jg-cover-sec { margin-bottom: var(--fin-sec-gap); }
+.jg-overview { padding-bottom: var(--fin-sec-gap); }
+.jg-invoice-sec { margin-top: var(--fin-sec-gap); }
+.fin-night { margin-top: var(--fin-sec-gap); }
 @media (max-width: 720px) { .jg-cover-sec { margin-bottom: 7rem; } .jg-overview { padding-bottom: 7rem; } .jg-invoice-sec { margin-top: 7rem; } .fin-night { margin-top: 7rem; } }
+
+/* 144번: 태블릿 양옆 빈 공간 — 틀을 표지 폭(화면의 86%, 최대 1140px)에 맞춰 넓힘. 글 문단은 한 줄 45자 안팎 그대로 */
+.fin-ed-doc.jg-doc { max-width: calc(min(86vw, 1140px) + 7rem); }
+@media (min-width: 721px) { .fin-ed-bar { padding-left: max(2.6rem, calc((100vw - min(86vw, 1140px)) / 2)); padding-right: max(2.6rem, calc((100vw - min(86vw, 1140px)) / 2)); } }      /* 위 띠의 ← 와 목차 끝을 본문 가장자리에 맞춤 */
+.jg-lead-quote, .jg-map-say, .jg-sr-comment, .jg-fab-desc, .jg-fab-note, .jg-map-read p { max-width: 46em; }
+.jg-sr-comment.is-heard { max-width: 34em; }
+.jg-showroom { grid-template-columns: 260px minmax(0, 1fr); }
+@media (max-width: 720px) { .jg-showroom { grid-template-columns: 1fr; } }
+.fin-ed-map { max-width: 1080px; margin: 0 auto; }      /* 지도는 1.2배까지만 커짐 (이름표 글자가 너무 커지지 않게) */
+/* 이 집의 밤 · 맺음 장의 어두운 띠는 화면 끝까지, 안의 글은 본문 가장자리에 맞춤 */
+.fin-night, .fin-ed-closing { margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); padding-left: calc(50vw - 50%); padding-right: calc(50vw - 50%); }
+
+/* 144번: 목차가 지금 보는 구획을 따라감 — 짙은 글자 + 이름 앞 흙빛 점(글자는 움직이지 않음). 표지에서는 표시 없음 */
+.fin-ed-nav button[data-sec] { position: relative; }
+.fin-ed-nav button.is-here { color: var(--ink); }
+.fin-ed-nav button.is-here::before { content: ""; position: absolute; left: -0.62em; top: 50%; width: 0.35em; height: 0.35em; margin-top: -0.175em; border-radius: 50%; background: var(--earth); animation: jgMapDot 0.2s ease both; }
+@media (prefers-reduced-motion: reduce) { .fin-ed-nav button.is-here::before { animation: none; } }

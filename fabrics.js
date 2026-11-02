@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261191';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabrics.js — 직원 화면 › 원단: 원단 분류(톤·분위기) 편집·원단 색상 관리·되돌리기/중복 정리 버튼·원단 사진 확인·기기 사진 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================

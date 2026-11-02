@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261191';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1998,7 +1998,7 @@ function ticketKakaoText(data) {
         const t = String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         if (t.length) out.push('', `[${k}]`, ...t);
     });
-    out.push('', '자세한 제안서는 PDF·이미지로 함께 보내 드립니다.');
+    out.push('', '자세한 제안서는 이미지로 함께 보내 드립니다.');      // 144번: 손님에게는 저장 이미지(JPG)를 보냄
     return out.join('\n');
 }
 async function copyTicketText() {

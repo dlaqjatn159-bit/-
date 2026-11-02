@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261190';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261191';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -248,6 +248,26 @@
         });
     }
 
+    // 144번: 위아래로 넘길 때 목차가 지금 보는 구획을 따라감 (화면 위에서 1/3 선을 지난 마지막 구획). 표지에서는 표시 없음, 맨 아래면 마지막 구획
+    function bindFinalNavSpy(box) {
+        const stage = box.closest('.fin-stage');
+        const btns = Array.from(box.querySelectorAll('.fin-ed-nav button[data-sec]'));
+        if (!stage || !btns.length) return;
+        if (stage.__navSpy) stage.removeEventListener('scroll', stage.__navSpy);      // 다시 그릴 때 예전 것을 떼어 냄
+        let queued = false;
+        const update = () => {
+            queued = false;
+            const line = stage.getBoundingClientRect().top + stage.clientHeight / 3;
+            let cur = -1;
+            btns.forEach((b, i) => { const sec = document.getElementById(b.dataset.sec); if (sec && sec.getBoundingClientRect().top <= line) cur = i; });
+            if (cur >= 0 && stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 4) cur = btns.length - 1;
+            btns.forEach((b, i) => { const on = i === cur; if (b.classList.contains('is-here') !== on) b.classList.toggle('is-here', on); if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+        };
+        stage.__navSpy = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
+        stage.addEventListener('scroll', stage.__navSpy, { passive: true });
+        update();
+    }
+
     function renderFinalEditorial() {
         const box = document.getElementById('finEditorial');
         if (!box || typeof ticketData !== 'function') return;
@@ -262,11 +282,11 @@
         let h = '<div class="fin-ed-bar">';
         h += '<button type="button" class="fin-ed-back" onclick="window.concierge.goToSpaceCanvas()">← 공간 추가·수정</button>';
         h += '<nav class="fin-ed-nav" aria-label="제안서 목차">';
-        if (showHouse) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecHouse\')">공간의 색과 빛</button>';
-        if (configuredRooms.length) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">공간 제안</button>';
-        h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
+        if (showHouse) h += '<button type="button" data-sec="finSecHouse" onclick="window.concierge.scrollFinalSec(\'finSecHouse\')">공간의 색과 빛</button>';
+        if (configuredRooms.length) h += '<button type="button" data-sec="finSecWhy" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">공간 제안</button>';
+        h += '<button type="button" data-sec="finSecEst" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
         const night = (typeof houseNightOf === 'function') ? houseNightOf(data) : null;      // 131번
-        if (night) h += '<button type="button" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">이 집의 밤</button>';
+        if (night) h += '<button type="button" data-sec="finSecNight" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">이 집의 밤</button>';
         h += '<button type="button" class="is-save" onclick="window.concierge.saveQuote()">견적서 저장</button>';
         h += '</nav></div>';
 
@@ -401,12 +421,14 @@
         // [맺음] 132번: 견적서 아래 시를 떼어 어두운 바탕 한 장으로 — 금액이 마지막 인상이 되지 않게
         h += '<footer class="fin-ed-closing"><div class="fin-closing-poem font-serif-kr">빛을,<br>다시 담습니다</div><div class="fin-closing-mark font-serif-kr">Re<i>.</i>dam</div></footer>';
         h += '<div class="fin-ed-foot font-serif-kr">';
-        // 133번(재검토 A4): "견적서 저장"·"← 공간 추가·수정"은 늘 보이는 위 띠에 한 번씩만 → 아래에는 위에 없는 두 가지만
-        h += '<div class="fin-ed-foot-main"><button type="button" class="dos-act" onclick="window.concierge.copyQuoteText()">카톡 글 복사</button><button type="button" class="dos-act" onclick="window.concierge.printQuote()">인쇄</button></div>';
+        // 133번(재검토 A4): "견적서 저장"·"← 공간 추가·수정"은 늘 보이는 위 띠에 한 번씩만 → 아래에는 위에 없는 것만
+        // 144번: 손님에게는 저장 이미지(JPG)를 보냄 → 인쇄는 손님 화면에서 빼고 직원 화면 견적 칸에만 둠
+        h += '<div class="fin-ed-foot-main"><button type="button" class="dos-act" onclick="window.concierge.copyQuoteText()">카톡 글 복사</button></div>';
         h += '</div>';
         h += '</article>';
 
         box.innerHTML = h;
+        bindFinalNavSpy(box);      // 144번
         if (showHouse && typeof drawHouseMap === 'function') {
             const cv = document.getElementById('finEdMapCanvas');
             if (cv) {
