@@ -90,7 +90,7 @@
 
             <!-- 왼쪽 사이드바 (좁은 화면에서는 화면 아래 탭바로 바뀜) -->
             <aside class="staff-side">
-                <div class="staff-brand font-serif-kr">Re<i class="logo-dot">.</i>dam</div>
+                <div class="staff-brand" data-redam-logo>Re.dam</div>
                 <div class="staff-cust"><b id="sideCustName">이름 없는 상담</b>지금 상담 중</div>
                 <nav class="staff-nav" aria-label="직원 메뉴">
                     <button type="button" data-view="survey" onclick="showStaffView('survey')" aria-current="page"><i class="fa-regular fa-clipboard"></i>상담</button>
@@ -114,7 +114,7 @@
             <main class="staff-main">
                 <!-- 좁은 화면(아래 탭바)에서만 보이는 위 띠: 사이드바 아래 버튼을 여기서 누름 -->
                 <div class="staff-topbar">
-                    <span class="font-serif-kr">Re<i class="logo-dot">.</i>dam</span>
+                    <span data-redam-logo>Re.dam</span>
                     <span class="staff-topbar-acts">
                         <button type="button" onclick="startNewConsultation()">새 상담</button>
                         <button type="button" onclick="endConsultation()">상담 끝내기</button>
@@ -716,7 +716,7 @@
         <main id="v2Viewport"></main>
 
         <!-- 모든 고객 화면에 항상 있는 브랜드 표시. 2초 누르고 있으면 직원 PIN 창이 열립니다. -->
-        <div id="brandMark" data-staff-hold>Re<i class="logo-dot">.</i>dam</div>
+        <div id="brandMark" data-staff-hold data-redam-logo>Re.dam</div>
 
         <!-- v2 전용 가상 키패드 시트 -->
         <div id="v2VirtualKeypadSheet" class="keypad-sheet">
@@ -815,24 +815,25 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="pricing.js?v=20261205"></script>
-    <script src="costing.js?v=20261205"></script>
-    <script src="data.js?v=20261205"></script>
-    <script src="calculator.js?v=20261205"></script>
-    <script src="concierge.js?v=20261205"></script>
-    <script src="intro.js?v=20261205"></script>
-    <script src="fabric-pick.js?v=20261205"></script>
-    <script src="space.js?v=20261205"></script>
-    <script src="final.js?v=20261205"></script>
-    <script src="app.js?v=20261205"></script>
-    <script src="more.js?v=20261205"></script>
-    <script src="survey.js?v=20261205"></script>
-    <script src="ticket.js?v=20261205"></script>
-    <script src="color-dict.js?v=20261205"></script>
-    <script src="fabrics.js?v=20261205"></script>
-    <script src="finder.js?v=20261205"></script>
-    <script src="settings.js?v=20261205"></script>
-    <script src="room-color.js?v=20261205"></script>
+    <script src="logo.js?v=20261206"></script> <!-- 150번: 새 글씨 로고 -->
+    <script src="pricing.js?v=20261206"></script>
+    <script src="costing.js?v=20261206"></script>
+    <script src="data.js?v=20261206"></script>
+    <script src="calculator.js?v=20261206"></script>
+    <script src="concierge.js?v=20261206"></script>
+    <script src="intro.js?v=20261206"></script>
+    <script src="fabric-pick.js?v=20261206"></script>
+    <script src="space.js?v=20261206"></script>
+    <script src="final.js?v=20261206"></script>
+    <script src="app.js?v=20261206"></script>
+    <script src="more.js?v=20261206"></script>
+    <script src="survey.js?v=20261206"></script>
+    <script src="ticket.js?v=20261206"></script>
+    <script src="color-dict.js?v=20261206"></script>
+    <script src="fabrics.js?v=20261206"></script>
+    <script src="finder.js?v=20261206"></script>
+    <script src="settings.js?v=20261206"></script>
+    <script src="room-color.js?v=20261206"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

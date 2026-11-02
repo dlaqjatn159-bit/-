@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261205';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -143,7 +143,7 @@
 
         let h = `<div class="dos-stage"><div class="dos-sheet${isAllMode ? ' is-all-mode' : ' is-single-mode'}">`;
         h += '<div class="dos-left">';
-        h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>Re<i class="logo-dot">.</i>dam</h1></div>'; // 42번: 빛과 공간 제거
+        h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>' + redamLogoSVG() + '</h1></div>'; // 42번: 빛과 공간 제거
         // 134번: 상담 중 조각보 — 재고 고를 때마다 채워지고, 다 찬 것이 그대로 최종 제안 표지
         if (list.length && typeof cz.jogakboMiniHtml === 'function') h += `<div class="dos-jogak">${cz.jogakboMiniHtml()}</div>`;
         // 133번(재검토 A3): 로고 아래 "○○ 고객님의 공간" 이름표는 뺌 — 레이아웃이 설명하게

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261205';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -902,7 +902,7 @@
             case "0-Welcome": {
                 const esc = v => String(v || '').replace(/"/g, '&quot;');
                 html += '<div class="ambient-stage ask-stage wel-stage">';
-                html += '<h1 class="wel-brand font-serif-kr" data-staff-hold>Re<i class="logo-dot">.</i>dam</h1>';
+                html += '<h1 class="wel-brand font-serif-kr" data-staff-hold>' + redamLogoSVG() + '</h1>';
                 html += '<p class="wel-sub font-serif-kr">빛을,<br>다시 담습니다</p>';
                 html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명" oninput="window.concierge.setClientName(this.value)">`;
                 html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처" oninput="window.concierge.setClientPhone(this)">`;

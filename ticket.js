@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261205';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -296,11 +296,8 @@ function drawTicket(ctx, data, W, slim) {
 
     // 머리글 + 표 머리 (페이지마다 같은 모양 — 볼드 없이 400 명조로 단정하게, 39번)
     function hdr() {
-        // 로고: 명조 보통 굵기, 점만 흙빛 (세 조각으로 나눠 그림)
-        setFont(400, PAPER_F1, SERIF); spacing('1.7px');
-        const wRe = ctx.measureText('Re').width, wDot = ctx.measureText('Re.').width;
-        text('Re', CX, 112, 'left', DARK); text('.', CX + wRe, 112, 'left', '#8a4a22'); text('dam', CX + wDot, 112, 'left', DARK);
-        spacing('0px');
+        // 로고: 새 글씨 로고(150번), 점만 흙빛
+        drawRedamLogo(ctx, CX, 112, PAPER_F1, DARK, '#8a4a22', 'left');
         setFont(400, PAPER_F2, SERIF);
         if (canSpace) { spacing('5px'); text('견적서', RX + 5, 108, 'right', DARK); spacing('0px'); }
         else text('견적서', RX, 108, 'right', DARK);
@@ -796,10 +793,7 @@ function drawWhy(ctx, data, W, compact, title) {
     // 머리글: 견적서(drawTicket hdr)와 같은 자리·같은 모양. 오른쪽 제목만 "원단을 고른 이유" (우리 집 색 쪽은 title로 바꿔 씀, 37번)
     //  74번: 고객 이름·날짜 줄은 뺌 — 견적서 쪽에만 있음(견적서만 따로 보내도 그 쪽에 다 있게)
     function hdr() {
-        setFont(400, PAPER_F1, SERIF); spacing('1.7px');
-        const wRe = ctx.measureText('Re').width, wDot = ctx.measureText('Re.').width;
-        text('Re', CX, 112, 'left', DARK); text('.', CX + wRe, 112, 'left', '#8a4a22'); text('dam', CX + wDot, 112, 'left', DARK);
-        spacing('0px');
+        drawRedamLogo(ctx, CX, 112, PAPER_F1, DARK, '#8a4a22', 'left');   // 150번: 새 글씨 로고
         setFont(400, PAPER_F2, SERIF);
         if (canSpace) { spacing('5px'); text(title || '공간 제안', RX + 5, 108, 'right', DARK); spacing('0px'); }
         else text(title || '공간 제안', RX, 108, 'right', DARK);
@@ -1623,17 +1617,9 @@ function buildShowroomCanvas(data, pr, pageNo, total) {
     t.pageLabel(pageNo, total, H);
     return canvas;
 }
-// 로고 "Re.dam"을 오른쪽 끝(rx)에 맞춰 그림: 명조 보통 굵기, 점만 따로 색, 자간 3.5% (78번)
+// 로고 "Re.dam"을 오른쪽 끝(rx)에 맞춰 그림: 점만 따로 색 (78번 → 150번 새 글씨 로고)
 function paperLogo(ctx, rx, y, size, ink, dot) {
-    ctx.font = `400 ${size}px ${PAPER_SERIF}`;
-    if ('letterSpacing' in ctx) ctx.letterSpacing = (size * 0.035).toFixed(1) + 'px';
-    const wDam = ctx.measureText('dam').width, wDot = ctx.measureText('.').width;
-    ctx.textAlign = 'right';
-    ctx.fillStyle = ink; ctx.fillText('dam', rx, y);
-    ctx.fillStyle = dot; ctx.fillText('.', rx - wDam, y);
-    ctx.fillStyle = ink; ctx.fillText('Re', rx - wDam - wDot, y);
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-    ctx.textAlign = 'left';
+    drawRedamLogo(ctx, rx, y, size, ink, dot, 'right');
 }
 // ==============================================================
 // 〈이 집의 밤〉 (131번, 시안 131_최종제안_흐름_시안_v2.html 5장): 견적서 다음, 맺음 앞. 조명을 사지 않는 손님에게도 나감

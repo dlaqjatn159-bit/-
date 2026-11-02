@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261205';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // finder.js — 직원 화면 › 원단 › 찾기: 원단 색 카드·거름망·정렬·비슷한 색·후보 모아 보기·고객에게 보여주기·색 지도·넣을 칸 고르기 (130-2에서 app.js에서 떼어 냄)
 
 
@@ -433,7 +433,7 @@ function openFinderShow(custom) {
         img.src = fabricPhotoUrls(e.fabricId, e.color)[0];
         const bg = card.querySelector('.bookmark-bg');
         if (bg) bg.after(img);
-        if (i === picks.length - 1) card.insertAdjacentHTML('beforeend', '<div class="card-brand">Re<i class="logo-dot">.</i>dam</div>');
+        if (i === picks.length - 1) card.insertAdjacentHTML('beforeend', '<div class="card-brand">' + redamLogoSVG() + '</div>');
     });
     finderShowMarks();
     closeFinderShowAsk();

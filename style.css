@@ -1013,6 +1013,9 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 
 /* 로고 Re.dam: 명조 보통 굵기, 색은 점에만 (밝은 바탕 흙빛 / 어두운 바탕·사진 위는 밝은 흙빛). 그러데이션·굵게·늘이기 금지 */
 .logo-dot { font-style: normal; color: #8a4a22; margin-inline-start: -0.03em; margin-inline-end: -0.035em; }   /* 82번: 점 둘레 간격을 새 로고와 맞춤 */
+/* 150번: 새 글씨 로고(인라인 SVG, logo.js) — 글자 크기에 맞춰 놓이고 밑선이 글줄과 맞음. 글씨는 글자색, 점은 .logo-dot 색 */
+.redam-logo { display: inline-block; height: 0.798em; width: auto; aspect-ratio: 3283 / 798; vertical-align: -0.014em; overflow: visible; }
+.redam-logo .logo-dot { fill: currentColor; }
 .card-brand .logo-dot, #trackCurationSection:has(.bookmark-stage:not(.is-empty)) #brandMark .logo-dot { color: #d19a72; }
 
 /* 항상 보이는 브랜드 표시 (직원 모드 진입용 숨은 버튼 겸용) */
@@ -1211,7 +1214,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 /* ===== 로고 모션: 시작 화면의 "시작하기"를 누르면 화면을 통째로 덮고, 끝나면 첫 화면으로 이어짐 (concierge.js playIntro). 아무 데나 누르면 건너뜀 ===== */
 .logo-intro { position: fixed; inset: 0; z-index: 9500; background: var(--brand-bg); cursor: pointer; touch-action: none; user-select: none; }
 .logo-intro svg { display: block; width: 100%; height: 100%; }
-.logo-intro path { fill: var(--brand-dark); }
+.logo-intro .intro-word { fill: #2b221a; }   /* 150번: 확정4 모션의 글씨 (마스크 속 R은 검정 그대로) */
 
 /* 치수 미세 조절 버튼 (±10, ±5, ±1) - 밑줄 없는 단정한 텍스트 (42번) */
 .nudge-row { display: flex; justify-content: center; flex-wrap: wrap; }
@@ -1528,7 +1531,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .jg-cover-poem { font-size: 40px; font-weight: 400; line-height: 1.35; color: #2b221a; }
 .jg-cover-cap { margin: 14px 0 0; text-align: right; font-size: 15px; color: #6f5f4f; }      /* 142번(B-5) */
 .fin-ed-logo { font-size: 22px; font-weight: 400; line-height: 1; letter-spacing: 0.035em; color: #231c16; cursor: pointer; }
-.fin-ed-logo i, .fin-closing-mark i { font-style: normal; color: #8a4a22; }
+.fin-ed-logo i, .fin-closing-mark i, .fin-ed-logo .logo-dot { font-style: normal; color: #8a4a22; }
 .jg-canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; }
 .jg-canvas { width: 100%; aspect-ratio: 16 / 10; max-height: calc(100dvh - 300px); position: relative; background: #fffdf9; }
 /* 134번: 조각보 칸 — 16×10 종이를 무작위로 나눈 칸(%)에 색을 칠함. 표지·중심 화면 같이 씀 */
@@ -1635,7 +1638,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-ed-closing { margin: 6rem -3.5rem 0; padding: 80px 3.5rem 56px; background: #2b221a; color: #efe6da; display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; }
 .fin-closing-poem { font-size: 40px; font-weight: 400; line-height: 1.45; color: #efe6da; }
 .fin-closing-mark { font-size: 40px; font-weight: 400; line-height: 1; letter-spacing: 0.035em; color: #efe6da; }
-.fin-closing-mark i { color: #d19a72; }
+.fin-closing-mark i, .fin-closing-mark .logo-dot { color: #d19a72; }
 /* 131번: 이 집의 밤 — 견적서 다음 어두운 장, 바로 아래 맺음과 한 덩어리 (시안 131_최종제안_흐름_시안_v2.html 5장) */
 .fin-night { margin: 6rem -3.5rem 0; padding: 72px 3.5rem 56px; background: #2b221a; color: #efe6da; }
 .fin-night + .fin-ed-closing { margin-top: 0; border-top: 0.5px solid rgba(239, 230, 218, 0.12); }

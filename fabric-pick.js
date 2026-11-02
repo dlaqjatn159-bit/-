@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261205';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -90,7 +90,7 @@
         }
         h += `</div><p class="fab-diff">${fabricDiffLine(f.id)}</p></div>`;
         // 마지막 칸에만 Re.dam 표시 (오른쪽 아래). 2초 누르고 있으면 직원 화면
-        if (isLast) h += '<div class="card-brand" data-staff-hold onclick="event.stopPropagation()">Re<i class="logo-dot">.</i>dam</div>';
+        if (isLast) h += '<div class="card-brand" data-staff-hold onclick="event.stopPropagation()">' + redamLogoSVG() + '</div>';
         h += '</div>';
         return h;
     }
