@@ -1575,7 +1575,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 /* 3. 공간별 쇼룸 시트: 왼쪽(공간 이름 · 값 한 줄 · 겹친 견본) + 오른쪽(창가 색 띠 · 들은 말 · 본 것 · 고른 것 · 원단 줄) (76번 → 132번) */
 .jg-showroom { padding: 4.2rem 0; border-top: 0.5px solid #d5cbbd; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 3rem; align-items: start; }
 .jg-sr-left { display: flex; flex-direction: column; }
-.jg-sr-name { margin: 0; font-size: 40px; font-weight: 400; color: #231c16; line-height: 1.3; }
+.jg-sr-name { margin: 0; font-size: 28px;      /* 148번: 사다리에 28 더함 — 구획 제목 40 아래 공간 이름 */
+ font-weight: 400; color: #231c16; line-height: 1.3; }
 .jg-sr-meta { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 15px; color: #6f5f4f; }
 .jg-sr-sw { margin-top: 2.5rem; }
 .jg-sr-right { display: flex; flex-direction: column; min-width: 0; }
@@ -1619,6 +1620,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-est-pr { font-size: 17px; font-weight: 400; color: #231c16; text-align: right; font-variant-numeric: tabular-nums; }
 .fin-est-foot { padding-top: 1.25rem; }
 .fin-est-sums { padding-bottom: 0.8rem; border-bottom: 0.5px solid rgba(35, 28, 22, 0.55); }
+.fin-est-sums:not(:empty) { padding-top: 0.8rem; border-top: 0.5px solid #e6dfd5; }      /* 148번: 품목과 시공 및 설치비 사이 얇은 선 */
 .fin-est-install { display: flex; justify-content: space-between; align-items: baseline; padding: 0.4rem 0; font-size: 15px; color: #6f5f4f; }
 .fin-est-install span:last-child { font-size: 17px; color: #231c16; } /* 132번: 시공비는 글자, 부가세 줄 */
 .fin-est-total-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2rem 0 2.4rem; border-bottom: 0.5px solid #e6dfd5; }

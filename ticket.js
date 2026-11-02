@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261203';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -71,8 +71,7 @@ const PLAIN_BLIND_WORDS = { combi: '콤비 블라인드', roll: '롤스크린', 
 // 견적서 원단 이름 (136번): 책자 이름 뒤에 앞장(공간 제안)에서 쓴 "색 이름 · 재질"을 괄호로 — 두 장의 원단이 같은 것임을 알아보게
 function ticketEstName(c, calc) {
     const book = ticketBookName(c);
-    const plain = String(ticketPlainName(c, calc) || '').split(' · ').filter(w => w && !book.includes(w)).join(' · ');      // 책자 이름에 이미 있는 말은 괄호에서 뺌
-    return plain ? `${book} (${plain})` : book;
+    return book;      // 147번: 괄호(색 이름 · 재질)는 뺌 — 책자 이름 + 색 번호만 (사장님 11-02)
 }
 function ticketPlainName(c, calc) {
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
@@ -610,10 +609,10 @@ function whyItemCands(F, R, facts) {
     if (kind === 'blind') return list;
     // C. 원단 색 ↔ 벽·바닥 (밝기 이야기 1 + 기운 이야기 1). 한 톤 밝게/진하게를 누른 원단은 C를 쓰지 않음 (K는 ③ 칸에서 말함, 83번)
     if (!F.it.toneStep && c) {
-        if (kind === 'sheer' && c.L >= 88) add('C', 'C8', '밝은 흰색이라, 쳐 두면 햇빛을 받아 커튼 전체가 환하게 보입니다.', '흰빛이 밝아, 쳐 두어도 낮에 창 쪽이 어둡지 않습니다.');
+        if (kind === 'sheer' && c.L >= 88) add('C', 'C8', '밝은 흰색이라, 닫아 두면 햇빛을 받아 커튼 전체가 환하게 보입니다.', '흰빛이 밝아, 닫아 두어도 낮에 창 쪽이 어둡지 않습니다.');
         else if (R.wall) {
             const dL = c.L - R.wall.L;
-            if (whyDE(c, R.wall) < 6) add('C', 'C1', '커튼을 쳐도 공간이 넓어 보입니다.', '커튼이 눈에 띄지 않습니다.');
+            if (whyDE(c, R.wall) < 6) add('C', 'C1', '커튼을 닫아도 공간이 넓어 보입니다.', '커튼이 눈에 띄지 않습니다.');
             else if (dL > 15) add('C', 'C3', '창 쪽이 가장 환해 보입니다.', '창이 넓어 보입니다.');
             else if (dL >= 6) add('C', 'C2', '창 쪽이 환해 보입니다.', '공간이 가벼워 보입니다.');
             else if (dL < -15) add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '공간이 또렷하게 나뉘어 보입니다.');
@@ -631,8 +630,8 @@ function whyItemCands(F, R, facts) {
     const D = [
         [R.E && R.bedroom && lifeFull, 'D1', '이른 아침 햇빛을 가려, 잠이 덜 깹니다.'],
         [R.W && lifeFull, 'D5', '낮게 드는 오후 햇빛의 눈부심과 열기가 줄어듭니다.'],
-        [R.E && kind === 'sheer', 'D2', '아침에는 속지만 쳐도 방이 밝습니다.'],
-        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '한낮의 강한 햇빛도 속지를 쳐 두면 눈부시지 않게 들어옵니다.'],
+        [R.E && kind === 'sheer', 'D2', '아침에는 속지만 닫아도 방이 밝습니다.'],
+        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '한낮의 강한 햇빛도 속지를 닫아 두면 눈부시지 않게 들어옵니다.'],
         [R.W && warm && c.C >= 6, 'D3', '오후에는 빛이 노래져, 이 색이 조금 더 따뜻해 보입니다.'],
         [R.W && c && c.C < 4, 'D4', '색 기운이 적어, 오후의 노란 빛에도 색이 크게 달라 보이지 않습니다.'],
         [nOnly && warm, 'D7', '푸르스름한 북쪽 빛에도, 따뜻한 기운이 있어 차가워 보이지 않습니다.'],
@@ -651,16 +650,16 @@ function whyItemCands(F, R, facts) {
     const sh = kind === 'drape' && c && facts.find(x => x.kind === 'sheer' && x.lab);
     if (sh) {
         const s = sh.lab;
-        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속지와 같은 계열에 한 톤 진한 색이라, 겹쳐 쳐도 어색하지 않습니다.');
+        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속지와 같은 계열에 한 톤 진한 색이라, 겹쳐 닫아도 어색하지 않습니다.');
         else if (s.C < 3 && s.L >= 88 && c.C >= 4) add('P', 'P2', `낮에는 흰 속지로 밝게, 밤에는 ${F.it.colorDesc ? F.it.colorDesc + ' ' : ''}겉지로 차분하게 쓰실 수 있습니다.`);
-        else if (whyDE(s, c) < 5) add('P', 'P3', '속지와 색이 거의 같아, 겹쳐 쳐도 깔끔합니다.');
+        else if (whyDE(s, c) < 5) add('P', 'P3', '속지와 색이 거의 같아, 겹쳐 닫아도 깔끔합니다.');
     }
     return list;
 }
 // 작은 안내(한 원단에 1개, 36번 · 83번): 반대쪽 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5)·햇빛에 옅어 보임(F10, 63번)
 function whyItemNote(F, R, cands) {
     if (R.opp) {
-        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '반대쪽 창으로 빛이 들어 방 안이 바깥보다 밝은 낮에는, 밖에서 안이 조금 비쳐 보일 수 있습니다. 신경 쓰이시면 겉지를 조금 쳐 두시면 됩니다.';
+        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '반대쪽 창으로 빛이 들어 방 안이 바깥보다 밝은 낮에는, 밖에서 안이 조금 비쳐 보일 수 있습니다. 신경 쓰이시면 겉지를 조금 닫아 두시면 됩니다.';
         if (F.kind === 'drape' && R.block === 'dark') return '반대쪽 창에서도 빛이 들어, 그쪽도 가려야 방이 완전히 어두워집니다.';
     }
     if (R.room && R.room.night) return '';      // 속지만 밤 안내가 있는 공간은 안내가 이미 있음 (한 원단에 1개)
@@ -1193,7 +1192,7 @@ function houseBrief(sp) {
 //  이름표는 명조 17 이름 + 고딕 15 색 이름(muted), 조각·다른 이름표와 겹치지 않는 자리로. 900×520 좌표, ctx는 미리 옮기고 늘려 둠
 const HOUSE_MAP_W = 900, HOUSE_MAP_H = 520;
 const HOUSE_LINE_NEAR = 7;       // 원단이 벽–바닥 선에서 이 안(밝기·따뜻함 칸 거리)이면 "선 가까이"
-const HOUSE_MAP_LEAD = '선은 공간마다 벽에서 바닥까지입니다. 커튼이 선 가까이 있으면 공간의 색을 잇고, 선에서 멀어지면 무게나 포인트가 됩니다.';
+const HOUSE_MAP_LEAD = '선은 공간마다 벽 색과 바닥 색을 이어, 두 색의 관계를 보여 줍니다. 커튼이 선 가까이 있으면 벽과 바닥을 자연스럽게 잇고, 선에서 멀어지면 무게나 포인트가 됩니다.';      // 148번
 //  o.sel (141번): 고른 공간 번호 — 그 공간만 조각·선이 진하고 이름표(품목 + 색 이름), 나머지는 흐리게(18%) 자리만. 누를 자리 [{x1,y1,x2,y2,room}]를 돌려줌
 //  o: { W, H, nf, cf } — 저장 이미지는 지도를 줄이지 않고 종이 글자(75번 F4)로 그림. 없으면 화면 크기(900×520 · 17 · 15)
 function drawHouseMap(ctx, sp, bg, o) {
@@ -1326,20 +1325,20 @@ function houseRoomLines(sp) {
         const sayOf = x => {
             const { f, t, d, dL, db } = x, who = f.k + houseJosa(f.k, '은', '는');
             if (d <= HOUSE_LINE_NEAR) {
-                if (t <= 0.25) return `${who} 벽 바로 곁의 색이라, 쳐 두면 창 쪽이 벽과 하나로 보입니다.`;
-                if (t >= 0.75) return `${who} 바닥 가까운 색이라, 쳐 두면 창 쪽이 바닥과 이어져 보입니다.`;
-                return `${who} 벽과 바닥 사이의 색이라, 쳐도 공간이 한 덩어리로 보입니다.`;
+                if (t <= 0.25) return `${who} 벽 바로 곁의 색이라, 닫아 두면 창 쪽이 벽과 하나로 보입니다.`;
+                if (t >= 0.75) return `${who} 바닥 가까운 색이라, 닫아 두면 창 쪽이 바닥과 이어져 보입니다.`;
+                return `${who} 벽과 바닥 사이의 색이라, 닫아도 공간이 한 덩어리로 보입니다.`;
             }
             if (Math.abs(dL) >= Math.abs(db)) {
                 if (dL < 0) return f.lab.L < fl.L ? `${who} 선에서 한참 아래, 바닥보다 짙은 색이라 공간에 무게를 잡아 줍니다.` : `${who} 선보다 짙은 쪽이라, 공간에 무게를 더합니다.`;
-                return f.lab.L > w.L ? `${who} 벽보다 밝은 색이라, 쳐 두면 창 쪽이 환하게 보입니다.` : `${who} 선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.`;
+                return f.lab.L > w.L ? `${who} 벽보다 밝은 색이라, 닫아 두면 창 쪽이 환하게 보입니다.` : `${who} 선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.`;
             }
             return `${who} 벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽으로 벗어난 색이라, 창 쪽의 포인트가 됩니다.`;
         };
         let text;
         if (pos.length === 2 && pos.every(x => x.d <= HOUSE_LINE_NEAR)) {
             const a = pos[0].f.k, b = pos[1].f.k;
-            text = `${a}${houseJosa(a, '과', '와')} ${b} 모두 벽과 바닥을 잇는 선 가까이 있습니다. 쳐도 공간이 한 덩어리로 보입니다.`;
+            text = `${a}${houseJosa(a, '과', '와')} ${b} 모두 벽과 바닥을 잇는 선 가까이 있습니다. 닫아도 공간이 한 덩어리로 보입니다.`;
         } else text = pos.map(sayOf).join(' ');
         out.push({ name: s.name, text });
     });
@@ -1646,29 +1645,29 @@ function paperLogo(ctx, rx, y, size, ink, dot) {
 const NIGHT_WARM_B = 8, NIGHT_COOL_B = 3;      // 벽 60% · 바닥 40%로 섞은 따뜻함(Lab b*)이 8 이상이면 따뜻한 바탕, 3 아래면 차가운 바탕 (처음 값)
 const NIGHT_SAY = {
     dusk: {
-        north: '커튼은 열어 둡니다. 해가 직접 들지 않는 창이라, 이때부터 스탠드를 켜 두시면 낮과 밤의 차이가 줄어듭니다.',
+        north: '커튼은 열어 둡니다. 해가 직접 들지 않는 창이라, 이때부터 스탠드나 라인조명을 켜 두시면 낮과 밤의 차이가 줄어듭니다.',
         floor: f => `커튼은 열어 둡니다. ${f} 바닥에 남은 햇빛이 공간의 온기를 먼저 보여 줍니다.`,
         wall: w => `커튼은 열어 둡니다. 해가 지는 동안 ${w} 벽이 천천히 가라앉으며 공간의 차분한 색을 먼저 보여 줍니다.`,
         plain: '커튼은 열어 둡니다. 남은 햇빛이 공간의 색을 먼저 보여 줍니다.'
     },
     evening: {
-        drape: '메인 조명을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 겉지 주름의 윗부분부터 질감을 드러냅니다.',
-        sheer: '메인 조명을 끄고 커튼 옆 스탠드만 켭니다. 천장으로 올린 빛이 속지에 부드럽게 번져 창 쪽이 은은하게 밝아집니다.',
-        blind: '메인 조명을 끄고 창 옆 스탠드만 켭니다. 천장으로 올린 빛이 공간을 낮게 감싸 줍니다.'
+        drape: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 커튼 가까이에서 퍼진 빛이 겉지 주름의 질감을 드러냅니다.',      // 147번: 라인조명도 함께
+        sheer: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 은은한 빛이 속지에 부드럽게 번져 창 쪽이 밝아집니다.',
+        blind: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 낮게 퍼진 빛이 공간을 감싸 줍니다.'
     },
     sleep: {
-        double: '겉지까지 칩니다. 속지만 쳐 두면 밖에서 실루엣이 보입니다. 빛은 그대로 두셔도 좋습니다.',
-        sheer: '속지만 있는 창은 밤에 안의 그림자가 비칠 수 있습니다. 잠들기 전에는 스탠드를 창에서 먼 쪽으로 옮기시거나 꺼 두시면 좋습니다.',
-        drape: '겉지를 칩니다. 빛은 그대로 두셔도 좋습니다.',
+        double: '겉지까지 닫습니다. 속지만 닫아 두면 밖에서 실루엣이 보입니다. 빛은 그대로 두셔도 좋습니다.',
+        sheer: '속지만 있는 창은 밤에 안의 그림자가 비칠 수 있습니다. 잠들기 전에는 창 가까운 조명을 꺼 두시면 좋습니다.',
+        drape: '겉지를 닫습니다. 빛은 그대로 두셔도 좋습니다.',
         blind: '블라인드를 내립니다. 빛은 그대로 두셔도 좋습니다.'
     }
 };
 // 136번: 제품 이름(브랜드) 대신 종류로만 적음. 색온도·연색성은 손님이 읽을 수 있게 풀이를 함께
 const NIGHT_LAMP = { name: '상향식 플로어스탠드', socket: '일반 전구 소켓(E26)', cri: '연색성 90 이상',
-    buy: '"상향식 플로어스탠드"로 찾으시고, 전구는 위 색온도와 연색성으로 고르시면 됩니다', entrust: '시공날 맞는 전구를 끼워 함께 놓아 드립니다',
+    buy: '"상향식 플로어스탠드"로 찾으시고, 전구는 위 색온도와 연색성으로 고르시면 됩니다', entrust: '시공 당일, 색온도와 연색성에 맞는 전구를 끼운 스탠드를 가져와 커튼 옆 알맞은 자리에 놓아 드립니다',      // 148번
     line: '커튼박스 안이나 천장 가장자리에 숨겨 달아, 끊김 없는 빛으로 커튼 전체를 고르게 비춥니다. 길이를 재어 따로 견적을 드립니다.',      // 146번
-    kSay: '빛의 색을 숫자로 적은 것입니다. 낮을수록 노랗고 따뜻하게, 높을수록 희고 푸르게 보입니다.',
-    criSay: '빛 아래에서 색이 본래 색에 얼마나 가깝게 보이는지입니다. 90 이상이면 커튼과 벽이 낮에 본 색과 가깝게 보입니다.' };
+    kSay: '빛의 색을 숫자로 나타낸 것입니다. 낮을수록 노랗고 따뜻하게, 높을수록 희고 푸르게 보입니다.',
+    criSay: '빛 아래에서 색이 자연광 아래와 얼마나 같게 보이는지를 나타낸 것입니다. 100에 가까울수록 자연광에 가깝습니다. 90 이상이면 커튼과 벽이 낮에 본 색과 거의 같게 보입니다.' };      // 148번: 100 = 자연광 기준
 // 빛 아래 색 (그림용 어림): 지금의 방등 = 흔한 주광색 LED(푸르고 납작하게) · 권하는 빛 = 그 색온도의 빛 색을 절반만 섞음
 const NIGHT_CEIL = { tint: [0.93, 0.96, 1], sat: 0.75, gain: 0.9 };
 function nightKelvinRgb(K) {      // 색온도 → 빛 색 (0~1, 흑체 어림식)
@@ -1801,7 +1800,6 @@ function buildNightCanvas(data, pr, N) {
     if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
     text('공간의 밤', CX, headY, MUTE, fT);      // 146번: '이 집' 대신 '공간'
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-    text(N.k + 'K', RX, headY, KC, fK, 'right');
     [N.before, N.after].forEach((cells, i) => {
         const x0 = CX + i * (QW + GAP), G = 3;
         cells.forEach(c => { ctx.fillStyle = c.hex; ctx.fillRect(x0 + c.x / 16 * QW + G / 2, qY + c.y / 10 * QH + G / 2, c.w / 16 * QW - G, c.h / 10 * QH - G); });

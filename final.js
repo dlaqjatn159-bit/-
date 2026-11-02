@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261200';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261203';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -322,6 +322,7 @@
         // [본문] 공간별 완결형 쇼룸 시트 (좌측 26% 공간 스펙 + 우측 74% 창가 입면 색띠·진단·겹침 스와치·원단 설명, 76번)
         if (configuredRooms.length) {
             h += '<section class="jg-showrooms" id="finSecWhy">';
+            h += '<div class="jg-sec-head"><h2 class="jg-sec-ttl font-serif-kr">공간 제안</h2></div>';      // 148번: 구획 제목(40) 아래 공간 이름(28)
             showroomRowsOf(data).forEach(row => {
                 const { rm, metaLine, st, paraParts, sets, back, front, night } = row;
                 // 132번: 비어 있던 왼쪽 칸(공간 이름 아래)에 원단 견본 — 겉지 뒤, 속지 앞으로 겹침
@@ -411,7 +412,7 @@
         if (night) {
             const cv = cells => '<div class="jg-cv">' + cells.map(c => `<span class="jg-c" style="left:calc(${c.x / 16 * 100}% + 1.5px);top:calc(${c.y / 10 * 100}% + 1.5px);width:calc(${c.w / 16 * 100}% - 3px);height:calc(${c.h / 10 * 100}% - 3px);background:${c.hex}"></span>`).join('') + '</div>';
             h += '<section class="fin-night" id="finSecNight">';
-            h += `<div class="fin-night-top"><h2 class="fin-night-ttl font-serif-kr">공간의 밤</h2><span class="fin-night-k font-serif-kr">${esc(night.k)}K</span></div>`;
+            h += `<div class="fin-night-top"><h2 class="fin-night-ttl font-serif-kr">공간의 밤</h2></div>`;
             h += '<div class="fin-night-pair">' + [night.before, night.after].map((cells, i) => `<figure><div class="fin-night-q">${cv(cells)}</div><figcaption>${esc(night.caps[i])}</figcaption></figure>`).join('') + '</div>';
             h += '<div class="fin-night-times">' + night.times.map(t => `<div><h3 class="font-serif-kr">${esc(t.t)}</h3><p class="font-serif-kr">${esc(t.p)}</p></div>`).join('') + '</div>';
             const spec = night.lamp.spec.map(x => x === night.lamp.kTxt ? `<em>${esc(x)}</em>` : esc(x)).join(' · ');
