@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261191';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -465,7 +465,11 @@ function planTicket(data, s, slim) {
         last = pages[pages.length - 1];
     }
     const fitsOnePage = pages.length === 1 && last.y + F.h <= PAGE_H;
-    return { s, W, PAGE_H, BOTTOM, F, pages, fitsOnePage };
+    // 145번: 견적서 기본 공간 = 공간 3개(각 겉지·속지 두 줄)만큼. 품목이 적어도 합계는 이 높이 아래에
+    const fakeIt = k => ({ kind: k, kindKey: k === '속지' ? 'sheer' : 'drape', bookName: '블랑 1번', size: '2,400 × 2,300', price: 0 });
+    const fakeH = T.layoutRoom({ name: '공간', total: 0, items: [fakeIt('겉지'), fakeIt('속지')] }).cardH;
+    const minY = T.START_Y + 3 * (fakeH + GAP);
+    return { s, W, PAGE_H, BOTTOM, F, pages, fitsOnePage, minY };
 }
 // ==============================================================
 // 〈원단을 고른 이유〉 카드 (작업목록 24번 → 35번): 제안서 맨 앞장. 가격 없음. 견적서와 한 쌍(머리글·글꼴·선·쪽 표시 같음)
@@ -1863,7 +1867,8 @@ function buildTicketCanvases(opts, preparedData) {
 
     const ticketPages = pages.map((p, pi) => {
         const isLast = pi === pages.length - 1;
-        const H = Math.ceil(p.y + (isLast ? F.h : BOTTOM));   // 아주 긴 방 하나일 때만 늘어남 (화면 좌표)
+        const Hc = Math.ceil(p.y + (isLast ? F.h : BOTTOM));   // 아주 긴 방 하나일 때만 늘어남 (화면 좌표)
+        const H = isLast ? Math.max(Hc, Math.ceil(plan.minY + F.h)) : Hc;      // 145번: 품목이 적어도 공간 3개만큼 — 합계·안내는 아래쪽에 붙고 가운데는 빈 칸
         const canvas = document.createElement('canvas');
         canvas.width = TICKET_W * pr; canvas.height = Math.round(H * s * pr);
         const ctx = canvas.getContext('2d');

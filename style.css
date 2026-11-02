@@ -1605,6 +1605,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-est-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: 1rem; border-bottom: 0.5px solid rgba(35, 28, 22, 0.55); font-size: 22px; color: #231c16; }
 .fin-est-date { font-family: Pretendard, sans-serif; font-size: 15px; color: #6f5f4f; }
 .fin-est-table { border-top: 0; }
+.fin-est-space.is-blank { visibility: hidden; }      /* 145번: 공간이 3개보다 적으면 빈 칸으로 기본 공간 채움 */
 .fin-est-space { padding: 1.6rem 0; border-bottom: 0.5px solid #e6dfd5; }
 .fin-est-hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.9rem; }
 .fin-est-rname { font-size: 22px; font-weight: 400; color: #231c16; }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261191';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261193';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -385,6 +385,9 @@
             });
             h += '</div>';
         });
+        // 145번: 견적서 기본 공간 = 공간 3개(각 겉지·속지 두 줄). 모자라면 보이지 않는 빈 묶음으로 자리만 채움
+        const blankLine = '<div class="fin-est-line"><div class="fin-est-chip"></div><span class="fin-est-k">겉지</span><span class="fin-est-nm font-serif-kr">-</span><span class="fin-est-sz">-</span><span class="fin-est-pr">-</span></div>';
+        for (let i = estRooms.length; i < 3; i++) h += `<div class="fin-est-space is-blank" aria-hidden="true"><div class="fin-est-hd"><span class="fin-est-rname font-serif-kr">-</span></div>${blankLine}${blankLine}</div>`;
         h += '</div>';
         h += '<div class="fin-est-foot">';
         // 132번: 손님 화면에서는 입력 칸 대신 글자 "30,000원"(고치는 것은 직원 화면 견적 칸) + 부가세 줄(일반 판매가 "포함" / 세금계산서 10% 금액)
