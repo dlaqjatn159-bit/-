@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261207';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261208';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -429,10 +429,9 @@
         }
         return ed;
     }
-    // ---- 119번: 가로 진행 — 단계마다 집 전체를 마침 ----
-    //  ① 공간 만들기(중심 화면에서 크기·창 방향·색까지) → ② 공간마다 빛 가림·바깥 시선 → ③ 집 전체 구성 한 화면
-    //  → ④ 취향 집에 한 번(느낌 + 들어가는 것만 겉지 결·속지 결·블라인드 종류) → ⑤ 원단을 공간 차례로 (공간 하나 마치면 중심 화면)
-    //  중간에 공간이 늘면 그 공간만 ②~④를 짧게 거쳐 원래 차례로 돌아옴(이미 답한 것은 다시 묻지 않음)
+    // ---- 152번: 공간별 진행 — 공간 하나를 처음부터 끝까지 묻고, 마치면 중심 화면 ----
+    //  (못 잰 공간만 바닥·벽 카드) → 빛 가림 → 바깥 시선 → 구성 → 느낌 → 겉지 질감 → 속지 질감 → 블라인드 종류 → 원단 → 마무리 → 중심 화면
+    //  다음 공간은 중심 화면에서 공간 칸을 누르거나 아래 버튼으로 (하다 만 공간 → 누른 공간 → 목록 첫 공간)
     const COMP_KINDS = { double: ['sheer', 'drape'], sheer_only: ['sheer'], drape_only: ['drape'], blind_only: ['blind'] };
     function todoRooms() { return state.roomsCart.filter(r => !r.isConfigured); }
     function askedRoom(r) { return !!(r && r.lightBlock && r.privacy); }
@@ -455,12 +454,12 @@
     function flowPeek() {
         const todo = todoRooms();
         if (!todo.length) return null;
-        const ask = todo.find(r => !askedRoom(r));
-        if (ask) return { kind: 'ask', room: ask };
-        const noComp = todo.find(r => !r.compOk || !r.planComp);      // 138번: 집 전체 구성 화면 없앰 → 공간마다 차례로 구성 사진 화면
-        if (noComp) return { kind: 'comp', room: noComp };
-        // 123번: 커튼 느낌 · 겉지 결 · 속지 결 · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
-        const r = todo[0];
+        // 152번: 공간 하나를 먼저 정함 — 하다 만 공간 → 중심 화면에서 누른 공간 → 목록 첫 공간
+        const begun = x => !!(x.lightBlock || x.privacy || x.compOk || x.ownTaste);
+        const r = todo.find(begun) || todo.find(x => x.id === state.activeSpaceId) || todo[0];
+        if (!askedRoom(r)) return { kind: 'ask', room: r };
+        if (!r.compOk || !r.planComp) return { kind: 'comp', room: r };      // 138번: 공간마다 구성 사진 화면
+        // 123번: 커튼 느낌 · 겉지 질감 · 속지 질감 · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
         if (!(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };
         if (planHas(r, 'drape') && !(r.ownTaste && r.ownTex)) return { kind: 'tex', room: r };
         if (planHas(r, 'sheer') && !r.sheerFeel) return { kind: 'sheer', room: r };
@@ -558,6 +557,13 @@
     const LINK_WHY = { wall: '커튼이 벽에 자연스럽게 어우러져 공간이 넓어 보입니다.', bridge: '벽과 바닥을 조화롭게 감싸 주어 공간이 차분하게 하나로 보입니다.', floor: '바닥과 같은 계열의 색이라 따뜻하고 안정감 있습니다.' }; // 41번 · 83번
     // 글 질문 화면 ("제안합니다" 화면과 같은 분위기): 큰 질문 + 글자 선택지. 사진이 필요 없는 질문에 사용
     // 화면 규칙표 (73번): 선택지는 이름만(설명은 사장님이 말로), "잘 모르겠어요"·"지금은 못 재요" 같은 조용한 보조 행동(quiet)은 아래 작게. 공간 이름은 왼쪽 위 뒤로 가기에
+    // 152번: 공간이 둘 이상인 상담 흐름에서 질문 첫머리 공간 이름 — "안방은" / "거실은"(받침으로 은·는). 아니면 빈 글
+    function roomTopic(ed) {
+        const nm = String((ed && ed.name) || '');
+        if (!(ed && ed.flow && state.roomsCart.length > 1 && nm)) return '';
+        const code = nm.charCodeAt(nm.length - 1) - 0xAC00;
+        return nm + (code >= 0 && code < 11172 && code % 28 ? '은' : '는');
+    }
     function askStage(question, sub, opts, o) {
         o = o || {};
         let h = '<div class="ambient-stage ask-stage">' + progHtml();
@@ -578,17 +584,14 @@
     // ---- 화면 규칙표 (73번): 진행 선 · 뒤로 가기 · 사진 화면 앞 안내 장면 ----
     // 진행 선: 화면 맨 위 가는 선(흙빛이 차오름). 공간 추가(종류 → 크기 → 색)와 공간 상담(질문들 → 원단 → 마무리)을 따로 셈
     const ADD_STEPS = ["1.5-Room-Type", "1.6-Add-Size", "1.7-Add-Same", "1.8-Add-Dir"];
-    // 119번: 집 전체 흐름은 단계(질문 · 구성 · 취향 · 원단) 기준. 질문·원단은 공간 차례만큼 차오름
-    const FLOW_PHASE = { "2-Base-Floor": 0, "2-Base-Wall": 0, "2-Base-Block": 0, "2-Base-Privacy": 0, "3-Config-Style": 1,
-        "0.5-House-Taste": 2, "0.6-House-Tex": 2, "2-Base-SheerFeel": 2, "2-Base-BlindKind": 2, "3.5-Bridge": 3, "4-Fabric-Queue": 3, "6-Finish": 3 };
+    // 152번: 공간별 진행 — 진행 선 = (마친 공간 + 이 공간에서 간 만큼) ÷ 공간 수. 숫자는 한 공간 안에서 간 만큼(0~1)
+    const FLOW_PHASE = { "2-Base-Floor": 0.05, "2-Base-Wall": 0.1, "2-Base-Block": 0.15, "2-Base-Privacy": 0.25, "3-Config-Style": 0.35,
+        "0.5-House-Taste": 0.45, "0.6-House-Tex": 0.5, "2-Base-SheerFeel": 0.55, "2-Base-BlindKind": 0.6, "3.5-Bridge": 0.65, "4-Fabric-Queue": 0.75, "6-Finish": 0.9 };
     function flowProg() {
         const ed = state.editingRoom, ph = FLOW_PHASE[state.step];
         if (ph == null || (ed && !ed.flow)) return null;
-        const phase = state.tasteFor === 'room' ? 1 : ph, list = state.roomsCart, n = Math.max(1, list.length);
-        let frac = 0.5;
-        if (phase === 0) { const i = Math.max(0, todoRooms().findIndex(r => r.id === state.editingRoomId)); frac = (i + (state.step === "2-Base-Privacy" ? 0.7 : 0.3)) / Math.max(1, todoRooms().length); }
-        if (phase === 3) frac = (list.filter(r => r.isConfigured).length + (state.step === "6-Finish" ? 0.8 : 0.4)) / n;
-        return (phase + frac) / 4;
+        const list = state.roomsCart, n = Math.max(1, list.length);
+        return (list.filter(r => r.isConfigured).length + ph) / n;
     }
     function progHtml() {
         const fp = flowProg();
@@ -1043,7 +1046,7 @@
             // [Step 2-1: 바닥재 진단]
             case "2-Base-Floor":
                 html += '<div class="bookmark-stage">';
-                html += stepHead('커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');
+                html += stepHead(roomTopic(state.editingRoom) ? `${state.editingRoom.name}의 바닥 톤을 골라 주세요` : '커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');      // 152번
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard(FLOOR_NAMES.warm, "", "", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
                 html += renderBookmarkCard(FLOOR_NAMES.cool, "", "", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
@@ -1055,7 +1058,7 @@
             // [Step 2-2: 벽지 진단]
             case "2-Base-Wall":
                 html += '<div class="bookmark-stage">';
-                html += stepHead(state.editingRoom && state.editingRoom.editOnly ? '벽 톤을 골라 주세요' : '벽 톤도 골라 주세요');
+                html += stepHead(state.editingRoom && state.editingRoom.editOnly ? '벽 톤을 골라 주세요' : (roomTopic(state.editingRoom) ? `${state.editingRoom.name}의 벽 톤도 골라 주세요` : '벽 톤도 골라 주세요'));      // 152번
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard(WALL_NAMES.warm, "", "", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
                 html += renderBookmarkCard(WALL_NAMES.cool, "", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
@@ -1072,7 +1075,7 @@
                 // 133번(재검토 A3): 벽·바닥을 다 잰 공간은 이 줄을 뺌(사장님이 말로 하는 정보, 고칠 때는 중심 화면 "수정하기"). 못 잰 공간만 "카드로 고르기"를 남김
                 const chip = (ed.askCards || (wall && floor)) ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
                     + `<button type="button" onclick="window.concierge.fixRoomColors()">카드로 고르기</button></div>`;
-                html += askStage('빛은 어느 정도 가리실까요?', '', [
+                html += askStage(roomTopic(ed) ? `${roomTopic(ed)} 빛을 어느 정도 가리실까요?` : '빛은 어느 정도 가리실까요?', '', [      // 152번: 안방은 빛을…
                     { label: '들어와도 괜찮아요', on: "window.concierge.selectLightBlock('light')", was: was('lightBlock', 'light') },
                     { label: '적당히 가려 주세요', on: "window.concierge.selectLightBlock('soft')", was: was('lightBlock', 'soft') },
                     { label: '완전히 어둡게요', on: "window.concierge.selectLightBlock('dark')", was: was('lightBlock', 'dark') }
@@ -1082,7 +1085,7 @@
 
             // [바깥 시선: 모든 공간에서 (117번)]
             case "2-Base-Privacy":
-                html += askStage('밖에서 보이는 시선은 어느 정도 가리실까요?', '', [
+                html += askStage(roomTopic(state.editingRoom) ? `${roomTopic(state.editingRoom)} 밖에서 보이는 시선을 어느 정도 가리실까요?` : '밖에서 보이는 시선은 어느 정도 가리실까요?', '', [      // 152번
                     { label: '괜찮아요', on: "window.concierge.selectPrivacy('open')", was: was('privacy', 'open') },
                     { label: '조금 신경 쓰여요', on: "window.concierge.selectPrivacy('some')", was: was('privacy', 'some') },
                     { label: '많이 신경 쓰여요', on: "window.concierge.selectPrivacy('high')", was: was('privacy', 'high') }
@@ -1121,8 +1124,7 @@
             case "3-Config-Style": {
                 const ed = state.editingRoom;
                 html += '<div class="bookmark-stage">';
-                const nm = String(ed.name || ''), code = nm.charCodeAt(nm.length - 1) - 0xAC00;
-                html += stepHead(ed.flow && state.roomsCart.length > 1 && nm ? `${nm}${code >= 0 && code < 11172 && code % 28 ? '은' : '는'} 어떤 구성을 원하실까요?` : '어떤 구성을 원하실까요?');      // 안방은 / 거실은
+                html += stepHead(roomTopic(ed) ? `${roomTopic(ed)} 어떤 구성을 원하실까요?` : '어떤 구성을 원하실까요?');      // 안방은 / 거실은 (152번: roomTopic)
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 [['double', 'comp_double', SOLID_TEXTURES.l1], ['sheer_only', 'comp_sheer', SOLID_TEXTURES.l2], ['drape_only', 'comp_drape', SOLID_TEXTURES.l3], ['blind_only', 'comp_blind', SOLID_TEXTURES.oak]].forEach(([k, ph, fb]) => {
                     html += renderBookmarkCard(COMP_NAMES[k], "", "", compBg(ph, fb), function() { window.concierge.chooseWindowComposition(k); },
@@ -1893,7 +1895,7 @@
         },
         selectPrivacy: function(level) {
             state.editingRoom.privacy = level;
-            if (state.editingRoom.flow) { saveDraft(state.editingRoom); flowNext(); return; }      // 119번: 다음 공간 질문 → 집 전체 구성
+            if (state.editingRoom.flow) { saveDraft(state.editingRoom); flowNext(); return; }      // 152번: 같은 공간 구성으로
             goToStep("3-Config-Style");        // 빛 가림·바깥 시선을 근거로 구성 추천
         },
         selectSheerFeel: function(feel) {

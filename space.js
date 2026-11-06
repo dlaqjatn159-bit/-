@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261207';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261208';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -325,7 +325,7 @@
         // 아래 버튼: 남은 공간이 있으면 "상담 시작 / 다음 공간 상담하기", 모두 끝났으면 "최종 제안 보기". 가로 대화면에서는 왼쪽 기둥 하단에 고정 (40-1)
         const next = list.find(r => !r.isConfigured);
         h += '<div class="dos-acts"><div class="dos-main font-serif-kr">';
-        // 119번: 공간을 다 만든 뒤 "상담 시작" → 공간마다 질문 → 집 전체 구성 → 취향 → 원단(공간 하나 마치면 여기로, 다음 공간 원단 고르기)
+        // 152번: 공간 하나를 질문 → 구성 → 취향 → 원단 → 마무리까지 하고 여기로. 다음 공간은 공간 칸을 누르거나 이 버튼으로
         if (next) h += `<button type="button" class="dos-act is-main" onclick="window.concierge.flowNext()">${flowNow && flowNow.kind === 'fabric' ? `${esc(flowNow.room.name)} 원단 고르기` : (started ? '이어서 상담하기' : '질문 시작하기')} →</button>`;      // 133번(재검토 A5): 첫 화면 "상담 시작"과 이름이 겹쳐 다음에 나올 것(질문)을 말함
         if (doneN) h += `<button type="button" class="dos-act${next ? '' : ' is-main'}" onclick="window.concierge.goToCheckout()">최종 제안 보기${next ? '' : ' →'}</button>`;
         if (list.length) h += '<button type="button" class="dos-act dos-act-add" onclick="window.concierge.startNewRoomSelection()">+ 공간 추가</button>';      // 133번(재검토 A4): 빈 화면엔 오른쪽 하나만
