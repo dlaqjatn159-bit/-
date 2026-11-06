@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261208';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261208';
+const REDAM_BUILD = '20261209';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -386,9 +386,10 @@ function startNewConsultationConfirmed() {
 }
 
 // ==============================================================
-// 2. 직원 PIN (로고 2초 누르고 있기 → PIN 입력)
+// 2. 직원 PIN (153번: 두 손가락 1초 · S펜으로 로고 톡 · PC는 마우스로 로고 1초 → PIN 입력)
 // ==============================================================
-const STAFF_HOLD_MS = 2000;
+const STAFF_HOLD_MS = 1000;          // PC 마우스로 로고를 누르고 있는 시간 (153번: 2초 → 1초)
+const STAFF_TWO_FINGER_MS = 1000;    // 두 손가락을 대고 가만히 있는 시간 (153번)
 const RedamAuth = (function() {
     let taps = 0, tapTimer = null;
     let mode = 'verify';        // 'verify' | 'setup' | 'change' | 'unlock'(잠금 화면) | 'gate'(찾기만 열린 상태에서 다른 메뉴로 갈 때)
@@ -429,23 +430,25 @@ const RedamAuth = (function() {
     function closeModal() { mode = 'verify'; gateNext = null; el('pinModal').classList.add('hidden'); el('pinModal').classList.remove('is-lock'); el('pinInput').value = ''; el('pinInput2').value = ''; }
 
     return {
-        // 로고(data-staff-hold)를 2초 동안 누르고 있으면 PIN 창을 연다 (10-16 사장님: 5번 탭 대신). 손가락이 움직이거나 일찍 떼면 취소
-        //  누르고 있다가 PIN 창이 열린 뒤 손을 떼도 그 아래 카드가 눌리지 않게 바로 다음 click 한 번은 막음
+        // 153번: 로고(data-staff-hold) 문 — S펜은 톡(눌렀다 떼면 바로), 마우스는 1초 누르고 있기. 손가락은 여기서 안 받음(아래 두 손가락 1초)
+        //  처음 누른 펜·마우스(pointerId)만 보고, 그것이 12px 넘게 움직이면 취소 (펜 옆 손바닥이 닿아도 끊기지 않게)
         holdStart: function(ev) {
             if (appMode === 'staff' || (ev.button !== undefined && ev.button > 0)) return;
-            const x0 = ev.clientX, y0 = ev.clientY, self = this;
+            if (ev.pointerType === 'touch') return;
+            const pen = (ev.pointerType === 'pen');
+            const id = ev.pointerId, x0 = ev.clientX, y0 = ev.clientY, self = this;
             clearTimeout(tapTimer);
-            const stop = () => { clearTimeout(tapTimer); document.removeEventListener('pointerup', stop, true); document.removeEventListener('pointercancel', stop, true); document.removeEventListener('pointermove', move, true); };
-            const move = e => { if (Math.hypot(e.clientX - x0, e.clientY - y0) > 12) stop(); };
-            document.addEventListener('pointerup', stop, true);
-            document.addEventListener('pointercancel', stop, true);
+            const stop = () => { clearTimeout(tapTimer); document.removeEventListener('pointerup', up, true); document.removeEventListener('pointercancel', cancel, true); document.removeEventListener('pointermove', move, true); };
+            const up = e => { if (e.pointerId !== id) return; stop(); if (pen) self.openFromHold(); };
+            const cancel = e => { if (e.pointerId === id) stop(); };
+            const move = e => { if (e.pointerId === id && Math.hypot(e.clientX - x0, e.clientY - y0) > 12) stop(); };
+            document.addEventListener('pointerup', up, true);
+            document.addEventListener('pointercancel', cancel, true);
             document.addEventListener('pointermove', move, true);
-            tapTimer = setTimeout(() => {
-                stop();
-                taps = Date.now();      // 이 뒤 잠깐 동안의 click은 막음
-                self.requestStaff();
-            }, STAFF_HOLD_MS);
+            if (!pen) tapTimer = setTimeout(() => { stop(); self.openFromHold(); }, STAFF_HOLD_MS);
         },
+        // 누르기·두 손가락으로 PIN 창을 열 때: 창이 열린 뒤 손·펜을 떼도 그 아래 카드가 눌리지 않게 바로 다음 click 한 번은 막음
+        openFromHold: function() { taps = Date.now(); this.requestStaff(); },
         swallowClick: function(ev) { if (taps && Date.now() - taps < 1500) { taps = 0; ev.preventDefault(); ev.stopPropagation(); } },
         requestStaff: function() { openModal(loadStored() ? 'verify' : 'setup'); },
         changePin: function() { openModal('change'); },
@@ -486,10 +489,41 @@ const RedamAuth = (function() {
     };
 })();
 window.RedamAuth = RedamAuth;
-// 고객 화면 로고(data-staff-hold)를 누르기 시작하면 2초 재기. 길게 눌러도 탭의 글자 고르기·메뉴가 뜨지 않게 (style.css [data-staff-hold])
+// 고객 화면 로고(data-staff-hold)를 펜·마우스로 누르기 시작하면 재기(153번). 길게 눌러도 탭의 글자 고르기·메뉴가 뜨지 않게 (style.css [data-staff-hold])
 document.addEventListener('pointerdown', ev => { if (ev.target.closest && ev.target.closest('[data-staff-hold]')) RedamAuth.holdStart(ev); }, true);
 document.addEventListener('click', ev => RedamAuth.swallowClick(ev), true);
 document.addEventListener('contextmenu', ev => { if (ev.target.closest && ev.target.closest('[data-staff-hold]')) ev.preventDefault(); });
+
+// 153번: 고객 화면 어디서나 두 손가락을 대고 1초 가만히 있으면 PIN 창 (PIN 창이 닫혀 있을 때만)
+//  pointer 이벤트는 브라우저가 화면 끌기·확대를 가져가는 순간 끊기므로 touch 이벤트로 잼. passive라 화면 움직임은 막지 않음
+//  손가락 정확히 2개(같이 닿거나 두 번째가 0.3초 안), 각자 처음 자리에서 20px 안. 움직이거나, 3개째가 닿거나, 하나라도 떼면 취소
+(function() {
+    let firstAt = 0, timer = null, starts = null;
+    const opt = { passive: true, capture: true };
+    const pinOpen = () => { const m = document.getElementById('pinModal'); return !!(m && !m.classList.contains('hidden')); };
+    const cancel = () => { clearTimeout(timer); timer = null; starts = null; };
+    document.addEventListener('touchstart', e => {
+        const n = e.touches.length;
+        if (n === 1) { cancel(); firstAt = Date.now(); return; }
+        const together = (e.changedTouches.length === 2) || (Date.now() - firstAt <= 300);
+        if (n !== 2 || timer || !together || appMode === 'staff' || pinOpen()) { cancel(); return; }
+        starts = {};
+        for (const t of e.touches) starts[t.identifier] = { x: t.clientX, y: t.clientY };
+        timer = setTimeout(() => {
+            timer = null; starts = null;
+            if (appMode !== 'staff' && !pinOpen()) RedamAuth.openFromHold();
+        }, STAFF_TWO_FINGER_MS);
+    }, opt);
+    document.addEventListener('touchmove', e => {
+        if (!starts) return;
+        for (const t of e.touches) {
+            const s = starts[t.identifier];
+            if (!s || Math.hypot(t.clientX - s.x, t.clientY - s.y) > 20) { cancel(); return; }
+        }
+    }, opt);
+    document.addEventListener('touchend', cancel, opt);
+    document.addEventListener('touchcancel', cancel, opt);
+})();
 
 // 자동 잠금: 일정 시간 손대지 않으면 고객 화면으로 나가지 않고, 하던 화면 위에 잠금 화면(PIN)을 덮음. PIN을 넣으면 그 자리에서 이어서 씀
 //  - 잠금 시간은 기기마다 따로 (5분 / 15분 / 30분 / 끄기, 처음 값 15분). 이 브라우저에만 저장하고 비공개 팩에는 넣지 않음

@@ -963,7 +963,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .staff-set h2 { font-size: 1rem; font-weight: 500; color: var(--brand-dark); }
 .staff-set p { font-size: 0.78rem; line-height: 1.55; color: var(--brand-muted); }
 .staff-field { display: grid; gap: 0.25rem; }
-/* 직원 화면 열기: 로고를 2초 누르고 있기 — 길게 눌러도 글자 고르기·탭 메뉴가 뜨지 않게 */
+/* 직원 화면 열기(153번): 로고를 S펜으로 톡 · PC는 마우스로 1초 (손가락은 화면 아무 데나 두 손가락 1초) — 길게 눌러도 글자 고르기·탭 메뉴가 뜨지 않게 */
 [data-staff-hold] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
 /* 설정 › 가공·부자재 단가 (29번): 줄마다 이름 · 판매가 · 원가 · 남는 돈 */
 .opt-price { display: grid; gap: 0.9rem; }
@@ -1920,7 +1920,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
     animation: slowPulse 6s ease-in-out infinite alternate;
     display: none;
 }
-/* 구석의 Re.dam 표시는 안 보이게 (2초 누르면 직원 화면 여는 자리는 그대로) */
+/* 구석의 Re.dam 표시는 안 보이게 (S펜·마우스로 직원 화면 여는 자리는 그대로) */
 #brandMark, #brandMark .logo-dot, .card-brand, .card-brand .logo-dot { color: transparent !important; }
 
 /* 부품 ① 뒤로 가기: 늘 왼쪽 위 한 곳. 질문 화면은 "← 공간 이름"(작게 14), 사진 화면은 종이색 작은 네모 "←" */

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261208';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -293,7 +293,7 @@
         h += '<article class="fin-ed-doc jg-doc">';
 
         // [표지] 16:10 조각보(79번) + 아래에 "빛을, / 다시 담습니다"(명조) · 로고 (132번) — 142번: 소개 문구 빼고 그림 아래 오른쪽 한 줄
-        //  로고는 길게 누르면 직원 화면 PIN 창(data-staff-hold)이라 자리만 아래로 옮김
+        //  로고는 S펜으로 톡(PC는 마우스로 1초) 누르면 직원 화면 PIN 창(data-staff-hold)이라 자리만 아래로 옮김
         h += '<section class="jg-cover-sec">';
         h += `<div class="jg-canvas-wrap"><div class="jg-canvas">${buildJogakboHtml(data)}</div></div>`;
         if (typeof coverCaptionOf === 'function') h += `<p class="jg-cover-cap">${esc(coverCaptionOf(data))}</p>`;      // 142번(B-5)
