@@ -2076,6 +2076,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .msr-space-ref b { font-weight: 400; color: var(--ink); }
 .msr-edit { justify-content: flex-start; padding-top: 96px; overflow-y: auto; }
 .msr-edit .msr-grid { flex: none; }
+.msr-edit input.ed-name { flex: none; width: 12em; max-width: 100%; margin: 0 0 28px; padding: 0 0.2rem 6px; border: none !important; border-bottom: 1px solid var(--ink) !important; border-radius: 0; background: none !important; box-shadow: none !important; outline: none; font-family: var(--serif); font-size: var(--t-title); font-weight: 400; color: var(--ink); text-align: center; }      /* 151번: 공간 이름 — 누르는 것은 짙은 갈색 밑줄 1px (133번), 크기 30 */
 .ed-btn { margin-left: auto; background: none; cursor: pointer; padding: 4px 2px; border: 0; font-family: var(--sans); font-size: var(--t-small); font-weight: 400; color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .ed-comp-k { font-family: var(--sans); font-size: var(--t-small); font-weight: 400; color: var(--muted); }
 .ed-acts { display: flex; align-items: flex-end; gap: 40px; margin-top: 40px; }

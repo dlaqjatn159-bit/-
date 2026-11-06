@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261207';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,

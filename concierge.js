@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261207';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -947,11 +947,13 @@
                 break;
             }
 
-            // [Step 1.5: 7종 공간 선택]
+            // [Step 1.5: 9종 공간 선택] (151번)
             case "1.5-Room-Type":
                 html += askStage('어느 공간의 창인가요?', '', [
                     { label: '거실', on: "window.concierge.chooseRoomType('거실')" },
-                    { label: '방', on: "window.concierge.chooseRoomType('방')" },
+                    { label: '안방', on: "window.concierge.chooseRoomType('안방')" },      // 151번: '방'을 셋으로
+                    { label: '작은방', on: "window.concierge.chooseRoomType('작은방')" },
+                    { label: '아이방', on: "window.concierge.chooseRoomType('아이방')" },
                     { label: '서재', on: "window.concierge.chooseRoomType('서재')" },
                     { label: '주방', on: "window.concierge.chooseRoomType('주방')" },
                     { label: '알파룸', on: "window.concierge.chooseRoomType('알파룸')" },
@@ -1439,8 +1441,10 @@
         // ---- 공간 추가: 공간 종류 → 크기 → 색 (사실은 먼저 채우고, 취향은 공간 안에서 고객이 고름) ----
         // 다 마칠 때까지는 공간 목록에 넣지 않음 (중간에 뒤로 나가면 아무것도 남지 않음)
         chooseRoomType: function(selectedName) {
-            const sameTypeCount = state.roomsCart.filter(r => r.name.startsWith(selectedName)).length;
-            const displayName = sameTypeCount === 0 ? selectedName : `${selectedName} ${sameTypeCount + 1}`;
+            // 151번: 이름을 고친 공간이 있어도 겹치지 않게, 안 쓰인 가장 작은 번호 (안방 → 안방 2 → 안방 3)
+            const usedNames = new Set(state.roomsCart.map(r => r.name));
+            let displayName = selectedName, nameNo = 2;
+            while (usedNames.has(displayName)) displayName = `${selectedName} ${nameNo++}`;
             state.editingRoomId = null;
             state.editingRoom = {
                 name: displayName, roomType: selectedName, addDraft: true,
@@ -1607,6 +1611,11 @@
             };
             goToStep("1-Space-Edit");
         },
+        // 수정하기 맨 위 공간 이름 (151번): 치는 동안은 따로 들고 있다가 "저장"에서 들어감. 다시 그리지 않음(글자 치는 중 칸이 닫히지 않게)
+        editRoomName: function(v) {
+            if (state.editingRoom && state.editingRoom.editOnly) state.editingRoom.nameDraft = String(v == null ? '' : v);
+        },
+        editNameFocus: function() { hideKeypadDirectly(); },      // 크기 숫자판이 열려 있으면 닫음
         // 원단 화면에서 못 잰 벽·바닥 재기 (92번): 다 재면 원단 추천으로. "지금은 못 재요"면 카드로 넘기지 않고 같은 안내에 머묾
         measureForFabric: function(part) {
             const ed = state.editingRoom;
@@ -1687,6 +1696,17 @@
             r.cardParts = ed.cardParts || null;
             r.colorSrc = ed.colorSrc || null;
             r.windowDir = windowDirOf(ed.windowDir);
+            // 공간 이름 (151번): 비우면 원래 이름, 다른 공간과 같으면 뒤에 번호. 커튼 이름표("거실 겉지")의 앞부분도 같이 바꿔 견적서까지 새 이름으로
+            const wantName = String(ed.nameDraft == null ? r.name : ed.nameDraft).trim().slice(0, 12);
+            if (wantName && wantName !== r.name) {
+                const otherNames = new Set(state.roomsCart.filter(x => x.id !== r.id).map(x => x.name));
+                let newName = wantName, nameNo = 2;
+                while (otherNames.has(newName)) newName = `${wantName} ${nameNo++}`;
+                const oldName = r.name;
+                if (!r.roomType) r.roomType = roomTypeOf(r);      // 옛 공간: 이름으로 알던 종류(침실·구성 추천)를 먼저 남김
+                r.name = newName;
+                (r.curtains || []).forEach(c => { if (c.label && c.label.startsWith(oldName)) c.label = newName + c.label.slice(oldName.length); });
+            }
             // 첫 공간(집 기본 색을 잰 공간)을 다시 쟀으면 집 기본 색도 따라감
             if (state.house && state.house.roomId === r.id && r.measuredColor && r.measuredColor.wall && r.measuredColor.floor) state.house = houseOf(r.measuredColor, r.id);
             // 상담을 마친 공간: 커튼 크기도 같이 바꾸고 금액을 다시 셈 (고른 원단·옵션은 그대로)

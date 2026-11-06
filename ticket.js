@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261206';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261207';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -521,7 +521,7 @@ function whyRoomCtx(room) {
         room, ans: room.ans, dir, dirText: windowDirText(dir),
         E: dir.includes('E'), W: dir.includes('W'), S: dir.includes('S'), N: dir.includes('N'),
         wall, floor, bridge, floorName: floor ? matNameOf('floor', mc.floor) : '', wallName: wall ? matNameOf('wall', mc.wall) : '', floorWood: matWoodLike('floor', mc.floor),      // 벽은 색 사전 이름 (88번), 재료에 따라 나무 이름 (113번)
-        bedroom: /^(방|안방|아이방)/.test(String(raw.roomType || raw.name || '')),
+        bedroom: /^(방|안방|작은방|아이방)/.test(String(raw.roomType || raw.name || '')),      // 151번: 작은방 더함
         light: room.ans.light, privacy: room.ans.privacy, block: room.ans.block, feel: raw.sheerFeel || null,
         opp: room.opp || ''
     };
