@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261215';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -469,7 +469,7 @@
     const TECH_CFG_WORD = [   // 칸 이름 쉬운 말로 (100번)
         ['grayC', '이보다 흐리면 회색'], ['sameDE', '동일색 · 이보다 가까우면 같은 색'], ['toneHue', '같은 계열로 볼 색 폭'], ['toneDL', '톤온톤 · 최소 밝기 차'],
         ['analogHue', '유사색 · 색 폭 끝'], ['satDC', '채도 대비 · 더 짙어야 할 만큼'], ['valueDL', '명도 대비 · 벽과 최소 밝기 차'], ['tintCMax', '톤인톤 · 이보다 흐린 색만'],
-        ['tintDL', '톤인톤 · 이어주는 색과 밝기 차 최대'], ['minShow', '선택지로 보일 최소 개수']
+        ['tintDL', '톤인톤 · 이어주는 색과 밝기 차 최대'], ['minShow', '선택지로 보일 최소 개수'], ['pointC', '포인트 · 이보다 흐리면 뺌'], ['pointCDark', '포인트 · 짙은 색(밝기 45 미만)은 이보다 흐리면 뺌']      // 160번
     ];
     let techOpen = '';      // 펼친 칸 (공간 번호|기법|겉지·속지)
     function techSpaces() {

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261215';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1252,7 +1252,8 @@ function rankColorsFor(fabric, room, category) {
     const colors = planned.length ? planned : (withLab.length ? withLab : all);
     const ranked = colors.map(c => {
         const view = Object.assign({}, fabric, { tone: c.tone || fabric.tone, light: typeof c.light === 'number' ? c.light : fabric.light, chroma: (typeof c.a === 'number' && typeof c.b === 'number') ? Math.hypot(c.a, c.b) : null, manual: Object.assign({}, fabric.manual, { tone: !!c.tone || !!(fabric.manual && fabric.manual.tone) }) });
-        const link = (room && room.linkDir ? roomLinkBonus(c, room) : roomSoftBonus(c, room));      // 고객이 고른 색 잇기 방향 (20번) / 안 골랐으면 잰 색값으로 작게 (91번). 블라인드도 같음 (92번)
+        const pop = colorPlanMode(room, category) === 'point' && room.colorAccent !== 'value';      // 160번: 포인트 자리(무게감 빼고)는 집 색 가까움 대신 또렷함
+        const link = pop ? pointPopBonus(c) : (room && room.linkDir ? roomLinkBonus(c, room) : roomSoftBonus(c, room));      // 고객이 고른 색 잇기 방향 (20번) / 안 골랐으면 잰 색값으로 작게 (91번). 블라인드도 같음 (92번)
         return { name: c.name, tone: c.tone || null, score: calculateFabricMatchScore(view, room, category) + link + lightFixBonus(c, room) + (c.tone ? 0.5 : 0) };      // 빛 보정 (105번)
     });
     ranked.sort((a, b) => (b.score - a.score) || colorSort(a, b));
@@ -1283,7 +1284,9 @@ const COLOR_TECH_DEF = {
     valueDL: 30,    // 명도 대비: 벽과 밝기 차이 이 값 이상
     tintCMax: 12,   // 톤인톤: 흐린 색(채도 무채색 기준 ~ 이 값) · 계열은 다름
     tintDL: 12,     // 톤인톤: 이어주는 색과 밝기 차이 이 값 이하
-    minShow: 3      // 선택지로 보일 최소 개수 (이보다 적으면 "적음")
+    minShow: 3,     // 선택지로 보일 최소 개수 (이보다 적으면 "적음")
+    pointC: 10,     // 포인트 후보 최소 채도 (160번): 이보다 흐리면 포인트로 안 봄
+    pointCDark: 8   // 짙은 색(밝기 45 미만)의 포인트 최소 채도 (160번): 네이비처럼 짙으면 채도가 낮아도 색으로 보임
 };
 const COLOR_TECH_ROWS = [
     ['same', '동일색'], ['tone', '톤온톤'], ['analog', '유사색'], ['sat', '채도 대비'], ['value', '명도 대비'], ['opp', '반대 온도'],
@@ -1298,6 +1301,12 @@ function techColorClass(c, T) {
         if (p) return { cls: TECH_FAM_CLASS[p.fam] || 'color', fam: p.fam };
     }
     return { cls: Math.hypot(c.a, c.b) < (T ? T.grayC : COLOR_TECH_DEF.grayC) ? 'achro' : 'color', fam: null };
+}
+// 포인트로 보일 만큼 또렷한 색인지 (160번): 색 사전 계열이 색(화이트·그레이·쿨 그레이·그레이지·로즈 뉴트럴이 아님) + 채도 pointC 이상, 짙은 색(밝기 45 미만)은 pointCDark 이상
+function pointVivid(c, T) {
+    if (!c || typeof c.L !== 'number' || typeof c.a !== 'number' || typeof c.b !== 'number') return false;
+    T = T || colorTechCfg();
+    return techColorClass(c, T).cls === 'color' && Math.hypot(c.a, c.b) >= (c.L < 45 ? T.pointCDark : T.pointC);
 }
 function colorTechCfg() {
     let s = null;
@@ -1356,7 +1365,7 @@ function colorTechCounts(mc, cfg) {
     const keys = gray ? ['same', 'tone', 'value', 'warm', 'cool']
         : (house === 'neutral' ? ['same', 'tone', 'value', 'opp', 'tint'] : ['same', 'tone', 'analog', 'sat', 'value', 'tint', 'split', 'comp']);
     function test(c) {
-        const C = chroma(c), h = hue(c), k = techColorClass(c, T), achro = k.cls === 'achro', dh = dHue(h, refH), hit = {};
+        const C = chroma(c), h = hue(c), k = techColorClass(c, T), achro = k.cls === 'achro', dh = dHue(h, refH), hit = {}, vv = pointVivid(c, T);      // vv: 포인트로 보일 만큼 또렷함 (160번)
         hit.same = anchors.some(a => dE(a, c) < T.sameDE);
         hit.value = Math.abs(c.L - wall.L) >= T.valueDL;      // 밝은 쪽·짙은 쪽 모두 (차이의 크기)
         if (house === 'neutral') {
@@ -1366,19 +1375,19 @@ function colorTechCounts(mc, cfg) {
             hit.tint = k.cls === 'color' && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
         } else if (gray) {
             hit.tone = !hit.same && achro && Math.abs(c.L - ref.L) >= T.toneDL;      // 화이트·그레이 계열만 (101번)
-            hit.sat = C >= T.satDC;
+            hit.sat = vv && C >= T.satDC;      // 160번
             hit.tint = !achro && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
-            hit.warm = !achro && h >= 20 && h < 110;
-            hit.cool = !achro && h >= 160 && h < 300;
+            hit.warm = vv && h >= 20 && h < 110;      // 160번: 쿨 그레이·그레이지는 포인트 아님
+            hit.cool = vv && h >= 160 && h < 300;
         } else {
             const fam = k.cls === 'color' && dh <= T.toneHue;
             hit.tone = !hit.same && Math.abs(c.L - ref.L) >= T.toneDL && (fam ? Math.abs(C - refC) < T.satDC : achro);
-            hit.analog = !achro && dh > T.toneHue && dh <= T.analogHue;
+            hit.analog = vv && dh > T.toneHue && dh <= T.analogHue;      // 160번
             hit.sat = fam && C - refC >= T.satDC;
             hit.tint = k.cls === 'color' && dh > T.toneHue && C <= T.tintCMax && Math.abs(c.L - bridge.L) <= T.tintDL;
-            hit.triad = !achro && dh >= 105 && dh < 135;
-            hit.split = !achro && dh >= 135 && dh < 165;
-            hit.comp = !achro && dh >= 165;
+            hit.triad = vv && dh >= 105 && dh < 135;
+            hit.split = vv && dh >= 135 && dh < 165;
+            hit.comp = vv && dh >= 165;      // 160번: 라이트 블루 그레이 같은 회색이 보색으로 들어가던 것
         }
         return hit;
     }
@@ -1461,7 +1470,7 @@ function pointTechPreview(mc, category, key, n) {
     const side = category === '블라인드' ? 'blind' : 'drape';
     const toHex = c => (window.RoomColor && window.RoomColor.labToHex) ? window.RoomColor.labToHex(c.L, c.a, c.b) : null;
     const picks = [];
-    ((row && row[side]) || []).slice().sort((x, y) => y.L - x.L).forEach(c => {
+    ((row && row[side]) || []).slice().sort((x, y) => Math.hypot(y.a, y.b) - Math.hypot(x.a, x.b)).forEach(c => {      // 160번: 또렷한 순 (밝은 순이면 옅은 색이 앞에 옴)
         if (picks.length >= (n || 4)) return;
         if (picks.some(p => Math.hypot(p.L - c.L, p.a - c.a, p.b - c.b) < 8)) return;
         picks.push(c);
@@ -1515,6 +1524,24 @@ function colorPlanCount(room, plan, category) {
     let pool = [];
     try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool(category) : []; } catch (e) {}
     return pool.filter(f => colorPlanMode(r, category) && colorPlanFits(f, r, category)).length;
+}
+// 이 공간의 포인트 자리(겉지·블라인드)에 포인트 색이 들어갔는지 (160번, 최종 제안 문장용)
+//  room: 상담 공간(취향은 여기서 입힘) · fabs: [{ k: '겉지'|'블라인드'|'커튼'|'속지', fabricId, colorName }]
+//  포인트 공간이 아니거나(무게감 포함) 벽·바닥을 안 쟀거나 포인트 자리가 없으면 null / { held: true } / { held: false, empty: 이 집에 맞는 포인트 색이 책자에 하나도 없음 }
+function pointHeldOf(room, fabs) {
+    const r = (typeof roomWithSurveyTaste === 'function') ? roomWithSurveyTaste(room) : room;
+    const mc = r && r.measuredColor;
+    if (!r || r.colorStrength !== 'point' || r.colorAccent === 'value' || !mc || !mc.wall || !mc.floor) return null;
+    const catOf = k => (k === '블라인드' ? '블라인드' : (k === '겉지' || k === '커튼' ? '겉지' : ''));
+    const spots = (fabs || []).filter(f => f && f.fabricId && catOf(f.k) && pointSideOf(r, catOf(f.k)));
+    if (!spots.length) return null;
+    const held = spots.some(f => {
+        const fab = FABRIC_DB.find(x => x.id === f.fabricId), c = fab && fabricColorOf(fab.id, f.colorName);
+        return !!(fab && c && colorPlanAllows(fab, c, r, catOf(f.k)));
+    });
+    if (held) return { held: true };
+    const empty = spots.every(f => colorPointSet(mc, r.colorAccent, catOf(f.k) === '블라인드' ? 'blind' : 'drape').size === 0);
+    return { held: false, empty };
 }
 
 // ==============================================================
@@ -1700,6 +1727,12 @@ function roomSoftBonus(c, room) {
     // 밝기(L)는 빼고 색감(a·b)만 비교 (91번 보완, 10-26 결정: 밝기는 90번 분위기·집 분위기가 정함. 색 있는 속지도 집 색감에 맞으면 올라오게). 속지·겉지 같음
     const d = Math.hypot(c.a - target.a, c.b - target.b);
     return SOFT_WEIGHT * Math.max(0, 1 - d / SOFT_RANGE);
+}
+// 포인트 자리 가산점 (160번): 색이 또렷할수록(채도 POINT_POP_RANGE에서 가득) 최대 +POINT_POP_WEIGHT. 집 색 가까움 점수(roomLinkBonus·roomSoftBonus) 대신 씀
+const POINT_POP_WEIGHT = 1.5, POINT_POP_RANGE = 30;
+function pointPopBonus(c) {
+    if (!c || typeof c.a !== 'number' || typeof c.b !== 'number') return 0;
+    return POINT_POP_WEIGHT * Math.min(1, Math.hypot(c.a, c.b) / POINT_POP_RANGE);
 }
 // 빛 보정 (105번, 10-26 결정): 창 방향은 취향이 아니라 사실 → 모든 갈래에 조용히 적용. 북향(북·북동·북서)만 따뜻한 색을 조금 앞으로
 //  - 남·동 그대로, 서향은 오후 빛이 이미 따뜻해 그대로. 이유 문장에는 안 드러냄(창 방향은 "골랐습니다"의 근거가 아님), 방 그림에도 반영 안 함

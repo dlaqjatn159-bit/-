@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261215';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1221,7 +1221,11 @@
 
                 const anyColors = showcaseList.some(e => e.best.ranked.length > 1);
                 html += '<div class="bookmark-stage">';
-                html += stepHead('마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
+                // 160번: 포인트 자리인데 또렷한 색 후보가 하나도 없으면 사실대로 (무게감은 빼고). 155번 위 띠에 이 줄이 나옴
+                const effPt = roomWithTaste(state.editingRoom);
+                const noPoint = targetCategory !== '속지' && typeof colorPlanMode === 'function' && colorPlanMode(effPt, targetCategory) === 'point'
+                    && effPt.colorAccent !== 'value' && !showcaseList.some(e => e.fit);
+                html += stepHead(noPoint ? '이 공간에 맞는 또렷한 색이 아직 없어, 차분한 색 중에서 골라 주세요' : '마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
                 // 창 그림(104번)은 원단 카드마다 하나씩 (137번, fabric-pick.js fabricCardHtml)
                 html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
                 state.fabPanelCount = showcaseList.length;      // 마지막 칸에 Re.dam 표시를 넣기 위해

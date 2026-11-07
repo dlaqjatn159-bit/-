@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261215';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1096,12 +1096,25 @@ function houseMoodLines(sp) {
     const ht = (typeof houseTaste === 'object' && houseTaste) || {};
     const drapeOf = s => s.fabs.some(f => f.k === '겉지');
     const houseWord = houseMoodWord(ht.pres, ht.tex, sp.some(drapeOf));
+    // 160번: 포인트 공간인데 포인트 색이 안 들어간 공간 — "고르신 느낌에 맞춰"라 하지 않고 사실대로 한 줄
+    const held = sp.map(s => ({ s, h: typeof pointHeldOf === 'function' ? pointHeldOf(s.raw, s.fabs) : null })).filter(x => x.h);
+    const miss = held.filter(x => !x.h.held);
+    const missNames = new Set(miss.map(x => x.s.name));
+    const missLines = [];
+    [true, false].forEach(empty => {
+        const names = miss.filter(x => !!x.h.empty === empty).map(x => x.s.name);
+        if (!names.length) return;
+        const who = sp.length === 1 ? '이번에는' : names.join('·') + houseJosa(names.join('·'), '은', '는');
+        missLines.push(empty ? `${sp.length === 1 ? '' : who + ' '}벽·바닥 색과 맞는 또렷한 색 원단이 지금 책자에 없어, ${sp.length === 1 ? '이번에는 ' : ''}차분한 색으로 골랐습니다.`
+            : `${who} 또렷한 포인트 색 대신 차분한 색으로 골랐습니다.`);
+    });
     const out = [];
-    if (houseWord) out.push(`${houseWord} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
+    const houseMissed = ht.pres === 'point' && held.length > 0 && miss.length === held.length;      // 포인트 공간이 모두 포인트 색 없이 끝남
+    if (houseWord && !houseMissed) out.push(`${houseWord} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
     const groups = [];
     sp.forEach(s => {
         const r = s.raw || {};
-        if (!r.ownTaste) return;
+        if (!r.ownTaste || missNames.has(s.name)) return;
         const w = houseMoodWord(r.ownPres || ht.pres, r.ownTex || ht.tex, drapeOf(s));
         if (!w || w === houseWord) return;
         const g = groups.find(x => x.w === w);
@@ -1110,13 +1123,13 @@ function houseMoodLines(sp) {
     // 123번: 취향을 공간마다 물으면 집 취향 말이 없음 → 모든 공간이 같은 말이면 집 한 문장, 다르면 공간끼리 묶어 한 문장씩
     if (!houseWord && groups.length === 1 && groups[0].names.length === sp.length) {
         out.push(`${groups[0].w} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
-        return out;
+        return out.concat(missLines);
     }
     groups.forEach(g => {
         const names = g.names.join('·');
         out.push(`${names}${houseJosa(names, '은', '는')} ${g.w} 느낌으로 ${houseWord ? '따로 ' : ''}맞췄습니다.`);
     });
-    return out;
+    return out.concat(missLines);
 }
 // 총평 (37-4): ① 흐름(한 문장) → ② 속지(속지 공간 2곳 이상일 때) → ③ 가구(집 전체 가구 중 가장 진한·밝은 것, 없으면 첫 가구, 진단 말투 65번·66번) · 최대 3문장
 //  118번: 맨 앞에 분위기 문장(취향 답이 있을 때만)을 더함 — 제안서에 한 번만
@@ -1329,6 +1342,7 @@ function houseRoomLines(sp) {
                 if (dL < 0) return f.lab.L < fl.L ? `${who} 선에서 한참 아래, 바닥보다 짙은 색이라 공간에 무게를 잡아 줍니다.` : `${who} 선보다 짙은 쪽이라, 공간에 무게를 더합니다.`;
                 return f.lab.L > w.L ? `${who} 벽보다 밝은 색이라, 닫아 두면 창 쪽이 환하게 보입니다.` : `${who} 선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.`;
             }
+            if (typeof pointVivid === 'function' && !pointVivid(f.lab)) return `${who} 벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽이지만 색 기운이 적어, 공간을 ${db > 0 ? '포근하게' : '차분하게'} 받쳐 줍니다.`;      // 160번: 회색을 포인트라 하지 않음
             return `${who} 벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽으로 벗어난 색이라, 창 쪽의 포인트가 됩니다.`;
         };
         let text;
