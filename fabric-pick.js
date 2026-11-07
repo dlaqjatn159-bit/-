@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261236';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261237';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -125,9 +125,10 @@
             const pick = (state.colorPick && state.colorPick[f.id]) || f.__pick || '';
             return [diffTexWord(f), diffLightWord(f), diffColorWord(f, pick)];
         });
+        const darkAsk = !!(state.editingRoom && state.editingRoom.lightBlock === 'dark' && (state.pendingItemQueue[state.currentItemIndex] || {}).presetType === 'drape');      // 181번
         const out = {};
         (state.fabDiffSet || []).forEach((f, i) => {
-            const vals = [0, 1, 2].filter(d => new Set(list.map(v => v[d])).size > 1).slice(0, 2);
+            const vals = [0, 1, 2].filter(d => (darkAsk && d === 1) || new Set(list.map(v => v[d])).size > 1).slice(0, 2);      // 181번: 완전히 어둡게요 겉지는 빛 낱말을 늘
             const use = vals.length ? vals : [2];
             out[f.id] = use.map(d => list[i][d]).filter(Boolean).join(', ');
         });
@@ -224,6 +225,7 @@
         const ranked = blindKindPool(getLiveCategoryPool(targetCategory), roomEffective, targetCategory).map(f => ({ f: f, fit: fits(f), best: bestColorFor(f, roomEffective, targetCategory) }));      // 173번: 고른 블라인드 종류만
         ranked.sort((a, b) => ((b.fit ? 1 : 0) - (a.fit ? 1 : 0)) || (b.best.score - a.best.score)
             || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
+        if (typeof darkFirst === 'function') ranked.splice(0, ranked.length, ...darkFirst(ranked, roomEffective, targetCategory));      // 181번: 완전히 어둡게요 → 완전 암막 먼저
         let showcaseList = (typeof pickShowcase === 'function') ? pickShowcase(ranked, 3, typeof colorPlanMode === 'function' && colorPlanMode(roomEffective, targetCategory) === 'point') : ranked.slice(0, 3);      // 120번: 포인트 자리는 색 계열을 나눠
         // 167번: 둘째 줄을 만들 때 같은 겹이 첫 줄에 있으면 그 원단·색을 첫 장에 (복사 아님 — 다른 장을 골라도 됨)
         const pin = state.editingRoom && state.editingRoom.altPins && state.editingRoom.altPins[queueItem.presetType];

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261236';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261237';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -842,6 +842,13 @@ function recommendComposition(room) {
 function showcaseHue(e) {
     const c = e && e.best && e.best.color ? getFabricColors(e.f.id).find(x => x.name === e.best.color) : null;
     return c && typeof c.a === 'number' && typeof c.b === 'number' ? hueGroupOf(c.a, c.b) : null;
+}
+// 181번: "완전히 어둡게요" 겉지 → 완전 암막만(3개 이상일 때), 모자라면 완전 암막을 맨 앞에. ranked: [{ f, … }] 점수 순으로 줄 세운 목록
+function darkFirst(ranked, room, category) {
+    if (category !== '겉지' || !room || room.lightBlock !== 'dark' || !Array.isArray(ranked)) return ranked;
+    const full = ranked.filter(e => blackoutLevel(e.f) === 'full');
+    if (full.length >= 3) return full;
+    return full.concat(ranked.filter(e => blackoutLevel(e.f) !== 'full'));
 }
 function pickShowcase(ranked, n, spread) {
     const out = [], rest = ranked.slice();
