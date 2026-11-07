@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261225';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261226';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -201,7 +201,7 @@
         sheer: { smooth: '매끈한 속지', textured: '짜임이 보이는 속지', cozy: '도톰한 속지' },
         tex: { smooth: '매끈한 겉지', texture: '짜임이 보이는 겉지', fluffy: '보송한 겉지' }
     };
-    function answerSay(r) {
+    function answerSay(r, keys) {      // 170번: keys를 주면 그 칸만 (두 줄 공간은 이름 아래 빛·시선, 줄마다 느낌·결)
         const has = k => r.isConfigured ? (r.curtains || []).some(c => c.presetType === k) : planHas(r, k);
         return [
             ['lightBlock', r.lightBlock],
@@ -209,7 +209,7 @@
             ['pres', r.ownTaste ? r.ownPres : null],
             ['sheer', has('sheer') ? r.sheerFeel : null],
             ['tex', has('drape') && r.ownTaste ? r.ownTex : null]
-        ].filter(([k, v]) => v && ANSWER_SAY[k][v]).map(([k, v]) => ({ key: k, text: ANSWER_SAY[k][v] }));
+        ].filter(([k, v]) => v && ANSWER_SAY[k][v] && (!keys || keys.includes(k))).map(([k, v]) => ({ key: k, text: ANSWER_SAY[k][v] }));
     }
     // ---- 중심 화면(1-Space): 왼쪽 여백 기둥(집 전체 호흡·공간 목차·액션) + 오른쪽 '한 공간씩 크게 보기' 작업대 (+ 전체 한눈에 전환, 77번) ----
     function spaceHtml(currentCust) {
@@ -311,7 +311,7 @@
             h += `<section class="dos-room${isAllMode ? '' : ' is-hero'}">`;
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
                 + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured && !r.altLine ? `<button type="button" class="dos-redit" onclick="window.concierge.addAltLine(${r.id})">+ 다른 구성 더하기</button>` : ''}<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></div>`;      // 151번: 상담 전 공간에도
-            const says = answerSay(r);      // 166번: 손님 답 한 줄 — 낱말마다 그 질문으로 고치기
+            const says = answerSay(r, r.altLine ? ['lightBlock', 'privacy'] : null);      // 166번: 손님 답 한 줄 — 낱말마다 그 질문으로 고치기 · 170번: 두 줄 공간은 공간 답(빛·시선)만
             if (says.length) h += `<div class="dos-rsay font-serif-kr">${says.map(s => `<button type="button" onclick="window.concierge.fixAnswer(${r.id}, '${s.key}')">${esc(s.text)}</button>`).join('<i aria-hidden="true">·</i>')}</div>`;
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
@@ -408,14 +408,21 @@
                 const sizeOf = o => { const s = roomSize(o); return s ? `${s.w} × ${s.h}cm` : ''; };
                 const sizeDiff = !building && sizeOf(r) !== sizeOf(r.altLine);      // 두 줄 크기가 다를 때만 줄마다 작게 (같으면 머리 줄 하나)
                 const rows = [{ o: r, cur: true }, { o: r.altLine, cur: false }].sort((a, b) => (a.o.lineNo || 1) - (b.o.lineNo || 1));
+                const lineSay = (o, cur) => {      // 170번: 줄마다 그 줄의 느낌·결 — 본체 줄은 눌러서 고치고, 다른 줄은 글만
+                    const v = cur ? r : Object.assign({}, r, o);      // 예전 둘째 줄(취향 칸 없음)은 본체 값 (168번 putLine과 같게)
+                    const says = answerSay(v, ['pres', 'sheer', 'tex']);
+                    if (!says.length) return '';
+                    return `<div class="dos-rsay dos-lsay font-serif-kr">${says.map(s => cur ? `<button type="button" onclick="window.concierge.fixAnswer(${r.id}, '${s.key}')">${esc(s.text)}</button>` : `<span>${esc(s.text)}</span>`).join('<i aria-hidden="true">·</i>')}</div>`;
+                };
                 h += '<div class="dos-lines2">';
                 rows.forEach(({ o, cur }) => {
                     const no = o.lineNo || 1;
                     if (cur && building) {      // 만드는 중: 빗금 칩만 (누르면 이어서 만들기, 구석 [빼기]는 만들던 줄 빼기)
-                        h += `<div class="dos-items-wrap is-building"><div class="dos-item"><div class="dos-item-main"><button type="button" class="dos-sw" style="background:${HATCH}" onclick="window.concierge.flowNext()" aria-label="이어서 상담하기"></button><div class="dos-txt"><button type="button" class="dos-redit dos-drop" onclick="window.concierge.dropLine(${r.id}, ${no})">빼기</button></div></div></div></div>`;
+                        h += `<div class="dos-items-wrap is-building">${lineSay(r, true)}<div class="dos-item"><div class="dos-item-main"><button type="button" class="dos-sw" style="background:${HATCH}" onclick="window.concierge.flowNext()" aria-label="이어서 상담하기"></button><div class="dos-txt"><button type="button" class="dos-redit dos-drop" onclick="window.concierge.dropLine(${r.id}, ${no})">빼기</button></div></div></div></div>`;
                         return;
                     }
                     h += `<div class="dos-items-wrap${cur ? (pending ? ' is-cur' : ' is-cur is-on') : (building ? ' is-alt is-still' : (pending ? ' is-alt' : ' is-alt is-dim'))}">`;
+                    h += lineSay(o, cur);      // 170번
                     (o.curtains || []).forEach((c, i) => { h += itemHtml(r, c, i, cur ? 'cur' : (building ? 'still' : 'alt'), no); });
                     if (sizeDiff) h += `<small class="dos-line-size">${esc(sizeOf(o))}</small>`;
                     h += '</div>';

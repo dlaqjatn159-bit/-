@@ -1230,6 +1230,11 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-rsay { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.55rem; margin: 0.1rem 0 0.6rem; font-size: 15px; }
 .dos-rsay button { padding: 8px 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .dos-rsay i { font-style: normal; color: var(--muted); }
+/* 170번: 두 줄 공간 — 줄마다 그 줄의 느낌·결 (칸 맨 위 한 줄, 다른 줄은 누르지 않는 글) */
+.dos-lsay { grid-column: 1 / -1; margin: 0 0 0.2rem; }
+.dos-room.is-hero .dos-lsay { margin-bottom: -1.6rem; }
+.dos-lsay span { padding: 8px 0; color: var(--ink); }
+.dos-lsay + .dos-item { border-top: 0; padding-top: 0.2rem; }
 /* 168번: 두 줄 공간 — 줄마다 품목 칸 한 줄(줄 번호 순서 그대로). 고른 줄 = 왼쪽 흙빛 세로선 2px, 다른 줄 = 흐리게(칩과 이름만, 버튼 자리는 남겨 두 줄 높이가 같게) */
 .dos-lines2 { display: flex; flex-direction: column; gap: 2rem; margin-top: 1rem; }
 .dos-room.is-hero .dos-lines2 { margin-top: 2.4rem; border-top: 0.5px solid var(--line); padding-top: 2.2rem; }
