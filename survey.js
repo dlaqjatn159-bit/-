@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261229';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261230';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -408,8 +408,17 @@ function saveSurveySizeModal() {
     if (!room) { closeSurveySizeModal(); return; }
     const inW = document.getElementById('surveySizeWidth');
     const inH = document.getElementById('surveySizeHeight');
-    const w = Math.max(10, parseInt((inW || {}).value, 10) || 300);
-    const h = Math.max(10, parseInt((inH || {}).value, 10) || 230);
+    // 174번: 0·빈칸은 기본값(300·230)으로 바꾸지 않음 — 저장하지 않고 그 칸을 빨간 칸으로 남김(잰 값처럼 보이지 않게)
+    const rawW = parseInt((inW || {}).value, 10), rawH = parseInt((inH || {}).value, 10);
+    const emptyEl = !(rawW > 0) ? inW : (!(rawH > 0) ? inH : null);
+    if (emptyEl) {
+        [inW, inH].forEach(el => { if (el) sizeInputMark(el); });
+        showToast('가로·세로를 0보다 큰 숫자로 넣어 주세요. 비운 칸은 저장하지 않았습니다.', 'error');
+        emptyEl.focus();
+        return;
+    }
+    const w = Math.max(10, rawW);
+    const h = Math.max(10, rawH);
     // 163번: 50~800cm 밖이면 한 번 묻기(3600·36 같은 잘못 넣기)
     if ((sizeOutOfRange(w) || sizeOutOfRange(h)) && !confirm(`${w} × ${h} cm — ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖입니다. 이대로 저장할까요?`)) return;
     // 공간 크기를 따라가던 줄(예전 크기와 같은 줄)만 새 크기로. 창이 여럿이라 크기가 다른 줄은 그대로 (115번 고침)
