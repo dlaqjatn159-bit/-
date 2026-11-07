@@ -1242,6 +1242,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-room.is-hero .dos-lines2 > .dos-items-wrap { margin-top: 0; border-top: 0; padding-top: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dos-lines2 > .dos-items-wrap::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--earth); opacity: 0; transition: opacity 0.2s ease; }
 .dos-lines2 > .is-on::before { opacity: 1; }
+.dos-lines2 > .is-cur:not(.is-on)::before, .dos-lines2 > .is-alt:not(.is-dim):not(.is-still)::before { opacity: 0.3; }      /* 171번: 고르기 전 — 두 줄 모두 옅은 세로선 (눌러서 고른다는 신호) */
 .dos-lines2 > .is-dim { opacity: 0.4; }
 .dos-lines2 > .is-alt:not(.is-still) .dos-item { cursor: pointer; }
 .dos-lines2 > .is-alt .dos-item-sub, .dos-lines2 > .is-alt .dos-drop, .dos-lines2 > .is-alt .dos-fopts { visibility: hidden; }
