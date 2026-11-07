@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261214';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261215';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -179,6 +179,13 @@ async function loadTicketPhotos(data) {
 const SEAM_NOTE = '원단 폭이 좁은 제품은 폭을 이어 제작하므로, 커튼에 세로 이음선이 있습니다. 제작 과정상 자연스러운 것이며 불량이 아닙니다.';
 const LIGHT_LEAK_NOTE = '완전 암막 원단도 커튼 옆과 위로는 빛이 새어 들어올 수 있습니다. 원단 자체의 문제가 아니라 설치 구조상 생기는 현상입니다.';
 const HOTEL_FIT_NOTE = '호텔핏은 원단을 한 폭 더 넣어 주름을 깊고 풍성하게 만드는 리담의 마감입니다.';      // 136번
+// 리담의 약속 (159번, 11-08 사장님 결정): 견적서 그림·최종 제안 견적·카톡 글에 늘 나옴(설정 칸 아님). 글을 바꾸려면 번호를 새로
+const TICKET_PROMISE = [
+    '실물 견본을 창가에서 함께 확인한 뒤 주문합니다.',
+    '계약금 50%를 받은 뒤 제작에 들어갑니다.',
+    '제작은 보통 4~6일 걸립니다.',
+    '크기를 잘못 쟀거나 시공에 하자가 있으면 리담이 다시 만들어 시공합니다.'
+];
 function autoQuoteNotes(roomList) {
     let seam = false, leak = false, hotel = false;
     (roomList || []).forEach(r => (r.curtains || []).forEach(c => {
@@ -248,6 +255,7 @@ function ticketDataBase() {
         vatLabel: globalVatOption === 'business' ? '부가세 (10%)' : '부가세',
         note: [loadTicketNote(), ...autoQuoteNotes(rooms)].filter(Boolean).join('\n'),      // 직원이 적은 안내 + 해당 품목 안내 (87번)
         pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'),
+        promise: TICKET_PROMISE.join('\n'),      // 159번: 리담의 약속 (한 줄에 하나)
         photos: {}
     };
 }
@@ -373,6 +381,7 @@ function drawTicket(ctx, data, W, slim) {
     function layoutFooter() {
         setFont(400, PAPER_F4, SANS);
         const rows = [
+            { label: '리담의 약속', lines: paras(data.promise, INFO_W) },      // 159번: 합계 바로 아래 첫 줄
             { label: '안내', lines: paras(data.note, INFO_W) },
             { label: '결제 조건', lines: paras(data.pay, INFO_W) },
             { label: '맞춤 제작 안내', lines: paras(data.custom, INFO_W) }
@@ -1977,7 +1986,7 @@ async function saveTicketImage() {
 }
 
 // 카톡 글 복사 (62번 → 143번): 견적서 위주로 짧게. 원단을 고른 이유·이 집의 밤·맞춤 제작·공급자는 PDF·이미지로 따로 보내므로 뺌
-//  순서: 제목 → 공간별 품목 → 빛 → 시공비·부가세·합계 → 결제 조건·안내. 견적서 원단 이름은 "블랑 1번" (75번)
+//  순서: 제목 → 공간별 품목 → 빛 → 시공비·부가세·합계 → 리담의 약속·결제 조건·안내. 견적서 원단 이름은 "블랑 1번" (75번)
 function ticketKakaoText(data) {
     data = data || ticketData();
     const out = [], won = n => `${Number(n || 0).toLocaleString()}원`;
@@ -2000,7 +2009,7 @@ function ticketKakaoText(data) {
     if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
     if (data.vatText) out.push(`${data.vatLabel || '부가세'} ${data.vatText}`);      // 132번
     out.push(`합계 금액 (시공비 포함) ${data.total}원`);
-    [['결제 조건', data.pay], ['안내', data.note]].forEach(([k, v]) => {
+    [['리담의 약속', data.promise], ['결제 조건', data.pay], ['안내', data.note]].forEach(([k, v]) => {      // 159번
         const t = String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         if (t.length) out.push('', `[${k}]`, ...t);
     });
