@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261217';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -202,6 +202,13 @@ function ticketData() {
     calculateAll();
     const d = ticketDataBase();
     d.light = ticketLightOf(d);      // 131번: 견적서 빛 묶음 (넣지 않으면 null)
+    // 161번: 실물 견본 품목(우드·색 못 잰 블라인드 등, 금액 0)이 있으면 합계가 그 품목을 뺀 금액임을 밝힘 — 저장 그림·최종 제안 화면·카톡 글이 같이 씀
+    const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.name.replace(' (실물 상담)', '')))];
+    d.totalLabel = sampleNames.length ? '합계 금액 (시공비 포함 · 실물 견본 품목 제외)' : '합계 금액 (시공비 포함)';
+    if (sampleNames.length) {
+        const nm = sampleNames.join('·');
+        d.note = [d.note, `${nm}${houseJosa(nm, '은', '는')} 상담 때 실물 견본으로 고른 뒤 금액을 알려 드립니다.`].filter(Boolean).join('\n');
+    }
     return d;
 }
 function ticketDataBase() {
@@ -409,7 +416,7 @@ function drawTicket(ctx, data, W, slim) {
         }
         hline(CX, RX, y, DARK, 1);
         y += 96;
-        setFont(400, PAPER_F4, SANS); label('합계 금액 (시공비 포함)', CX, y - 6, 'left', 3);
+        setFont(400, PAPER_F4, SANS); label(data.totalLabel || '합계 금액 (시공비 포함)', CX, y - 6, 'left', 3);      // 161번
         setFont(400, PAPER_F3, SERIF);
         const wonW = ctx.measureText('원').width;
         text('원', RX, y, 'right', DARK);
@@ -2022,7 +2029,7 @@ function ticketKakaoText(data) {
     out.push('');
     if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
     if (data.vatText) out.push(`${data.vatLabel || '부가세'} ${data.vatText}`);      // 132번
-    out.push(`합계 금액 (시공비 포함) ${data.total}원`);
+    out.push(`${data.totalLabel || '합계 금액 (시공비 포함)'} ${data.total}원`);      // 161번
     [['리담의 약속', data.promise], ['결제 조건', data.pay], ['안내', data.note]].forEach(([k, v]) => {      // 159번
         const t = String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         if (t.length) out.push('', `[${k}]`, ...t);

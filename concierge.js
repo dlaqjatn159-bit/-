@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261217';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -327,12 +327,24 @@
         goToStep("1-Space", false);
     }
 
+    // 161번: "고르고 있습니다"(3.5-Bridge) → 원단 화면. 뒤로 가기 목록의 그 줄에 seek 표시 → ← 때 건너뜀(저절로 다시 원단 화면으로 오는 고리 막기)
+    //  포인트 방식을 묻는 칸은 ←로 방식 질문이 나와야 하므로 표시하지 않음
+    function seekToQueue() {
+        const techAsk = pointTechsFor(state.pendingItemQueue[state.currentItemIndex]).length > 1;
+        state.seeking = false;
+        state.seekNow = false;
+        goToStep("4-Fabric-Queue");
+        const h = stepHistory[stepHistory.length - 1];
+        if (h && h.step === "3.5-Bridge" && !techAsk) h.seek = true;
+    }
+
     function prevStep() {
         if (state.pointPreview) { state.pointPreview = null; render(); return; }      // 146번: 포인트 설명에서 ← 는 방식 목록으로
         if (state.step === "7-Final-Dossier" && finalPageNow() > 0) { setFinalPage(finalPageNow() - 1); return; }      // 견적서 쪽에서 ← 는 먼저 앞 쪽으로
         hideKeypadDirectly();
         if (stepHistory.length > 0) {
-            const prev = stepHistory.pop();
+            let prev = stepHistory.pop();
+            if (prev.seek && stepHistory.length) prev = stepHistory.pop();      // 161번: "고르고 있습니다"는 건너뛰고 그 앞 화면으로
             state.currentItemIndex = prev.idx || 0;
             if ('room' in prev) {      // 119번: 그 화면을 보던 공간으로 되돌림
                 state.editingRoom = prev.room; state.editingRoomId = prev.roomId;
@@ -1208,8 +1220,10 @@
                 if (!roomHasLab(state.editingRoom)) {
                     const mc0 = (state.editingRoom && state.editingRoom.measuredColor) || {};
                     const need = ['wall', 'floor'].filter(p => !(mc0[p] && typeof mc0[p].L === 'number'));
+                    const blindNow = (state.pendingItemQueue[state.currentItemIndex] || {}).presetType === 'blind';      // 161번: 블라인드는 실물 견본으로 견적까지
                     html += askStage('벽·바닥 색을 재야 원단을 추천할 수 있습니다', '', need.map(p => (
-                        { label: p === 'wall' ? '벽 색 재기' : '바닥 색 재기', on: `window.concierge.measureForFabric('${p}')` })));
+                        { label: p === 'wall' ? '벽 색 재기' : '바닥 색 재기', on: `window.concierge.measureForFabric('${p}')` }))
+                        .concat(blindNow ? [{ label: '지금은 못 재요 · 실물 견본으로', quiet: true, on: 'window.concierge.proceedSampleBlind(true)' }] : []));
                     break;
                 }
                 const { queueItem, targetCategory, showcaseList } = fabricShowcase();
@@ -1310,7 +1324,7 @@
             const cur = state.pendingItemQueue[state.currentItemIndex] || {};
             const label = cur.presetType === 'sheer' ? '속지' : (cur.presetType === 'drape' ? '겉지' : '블라인드');
             state.seeking = true;
-            const open = () => { state.seeking = false; state.seekNow = false; goToStep("4-Fabric-Queue"); };
+            const open = () => seekToQueue();      // 161번
             try { playFabricSeek(seekStage, label, state.currentItemIndex > 0, open, () => { state.seeking = false; }); }
             catch (e) { open(); }      // 문제가 생겨도 원단 화면은 열림
         } else state.seeking = false;
@@ -1989,13 +2003,12 @@
             const st = document.getElementById('fabSeekStage');
             if (state.seeking || !st || !st.classList.contains('is-done')) return;
             st.classList.remove('is-done');      // 두 번 눌러도 한 번만
-            state.seekNow = false;
-            goToStep("4-Fabric-Queue");
+            seekToQueue();      // 161번
         },
         // 목록에 없는 블라인드 종류(우드·알루미늄 등, 38-2): 실물 샘플 안내 후 바로 공간에 담음
-        proceedSampleBlind: function() {
+        proceedSampleBlind: function(fromGate) {      // fromGate (161번): 색을 못 재 막힌 원단 화면에서 옴
             const item = state.pendingItemQueue[state.currentItemIndex];
-            const bw = (state.editingRoom && state.editingRoom.blindWant) || 'wood';
+            const bw = (state.editingRoom && state.editingRoom.blindWant) || (fromGate ? 'any' : 'wood');      // 161번: 종류를 안 골랐으면 그냥 블라인드
             if (item) {
                 item.fabricId = '_sample_' + bw;
                 item.colorName = '';

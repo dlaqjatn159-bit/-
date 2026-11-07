@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261217';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -147,7 +147,10 @@
         // 134번: 상담 중 조각보 — 재고 고를 때마다 채워지고, 다 찬 것이 그대로 최종 제안 표지
         if (list.length && typeof cz.jogakboMiniHtml === 'function') h += `<div class="dos-jogak">${cz.jogakboMiniHtml()}</div>`;
         // 133번(재검토 A3): 로고 아래 "○○ 고객님의 공간" 이름표는 뺌 — 레이아웃이 설명하게
-        h += doneN ? '<h2 class="dos-lead font-serif-kr">공간마다 알맞은<br>원단을 찾았습니다</h2>' // 42번: 사족 설명 제거
+        // 161번: 담은 품목이 모두 실물 견본(우드·색 못 잰 블라인드)이면 "찾았습니다"라 하지 않음
+        const allSample = doneN && list.filter(r => r.isConfigured).every(r => (r.curtains || []).length && r.curtains.every(c => typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId)));
+        h += allSample ? '<h2 class="dos-lead font-serif-kr">상담 때 실물 견본으로<br>함께 고르겠습니다</h2>'
+           : doneN ? '<h2 class="dos-lead font-serif-kr">공간마다 알맞은<br>원단을 찾았습니다</h2>' // 42번: 사족 설명 제거
                    : '<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴보겠습니다</h2>';
         // 맨 위 공간 전체 색 띠: 칸을 누르면 그 공간으로 이동 (77번)
         const strip = list.length ? list.map(r => {

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261216';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261217';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -417,7 +417,11 @@ const BLIND_LIGHT_LABELS = { full: '암막', none: '일반', see: '투시' };
 // 우드·알루미늄 등 아직 단가표에 없는 블라인드를 골랐을 때의 실물 상담용 임시 품목 (38-2)
 const SAMPLE_BLIND_ITEMS = {
     _sample_wood: { id: '_sample_wood', book: '실물 샘플', name: '우드 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'warm', blindKind: 'wood', sampleOnly: true },
-    _sample_alu: { id: '_sample_alu', book: '실물 샘플', name: '알루미늄 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'cool', blindKind: 'alu', sampleOnly: true }
+    _sample_alu: { id: '_sample_alu', book: '실물 샘플', name: '알루미늄 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'cool', blindKind: 'alu', sampleOnly: true },
+    // 161번: 벽·바닥 색을 못 재 추천을 못 한 블라인드(92번은 그대로) → 상담 때 실물 견본으로. any = 종류를 안 고름(사진만 콤비)
+    _sample_combi: { id: '_sample_combi', book: '실물 샘플', name: '콤비 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'neutral', blindKind: 'combi', sampleOnly: true },
+    _sample_roll: { id: '_sample_roll', book: '실물 샘플', name: '롤 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'neutral', blindKind: 'roll', sampleOnly: true },
+    _sample_any: { id: '_sample_any', book: '실물 샘플', name: '블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'neutral', blindKind: 'combi', sampleOnly: true }
 };
 function sampleBlindFabric(id) { return SAMPLE_BLIND_ITEMS[id] || null; }
 // 비고 칸: "TRIPLE & COMBI" → 콤비, "ROLL TYPE" → 롤, "PRINTED FABRIC BLINDS" → 프린트, "WOOD" → 우드, "ALU" → 알루미늄 (38-2)
