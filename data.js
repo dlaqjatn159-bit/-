@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261234';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261235';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -582,12 +582,13 @@ const OUTER_FEEL_BY_BOOK = {
     '디올': { grain: 3, soft: 2 }, '루피': { grain: 5, soft: 2 }, '넥스': { grain: 4, soft: 2 },   // 규칙적인 결
     '코지': { grain: 5, soft: 1 }                                                           // 까끌한 결
 };
-// 원단의 결·부드러움 (원단 칸 f.grain·f.soft가 있으면 그것, 없으면 책자 이름으로). 모르면 null
+// 원단의 결·부드러움 (원단 칸 f.grain·f.soft가 있으면 그것, 없으면 책자 이름 → 원단 이름으로). 모르면 null
 function outerFeelOf(f) {
     if (!f) return null;
     if (typeof f.grain === 'number' && typeof f.soft === 'number') return { grain: f.grain, soft: f.soft };
     const book = String(f.book || '');
-    const key = Object.keys(OUTER_FEEL_BY_BOOK).find(k => book.includes(k));
+    const name = String(f.name || '');
+    const key = Object.keys(OUTER_FEEL_BY_BOOK).find(k => book.includes(k)) || Object.keys(OUTER_FEEL_BY_BOOK).find(k => name.includes(k));      // 179번: 표는 원단 이름(보브·풀달…)이라 책자 이름(코아·데미안·로아)으로는 못 찾았음 → 원단 이름으로도
     return key ? OUTER_FEEL_BY_BOOK[key] : null;
 }
 // 손님 사진마다 목표 자리(결·부드러움 범위)와 축 무게, 거리 R에서 0점
