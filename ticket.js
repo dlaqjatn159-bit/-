@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261238';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261239';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -543,6 +543,7 @@ function whyRoomCtx(room) {
         wall, floor, bridge, floorName: floor ? matNameOf('floor', mc.floor) : '', wallName: wall ? matNameOf('wall', mc.wall) : '', floorWood: matWoodLike('floor', mc.floor),      // 벽은 색 사전 이름 (88번), 재료에 따라 나무 이름 (113번)
         bedroom: /^(방|안방|작은방|아이방)/.test(String(raw.roomType || raw.name || '')),      // 151번: 작은방 더함
         light: room.ans.light, privacy: room.ans.privacy, block: room.ans.block, feel: raw.sheerFeel || null,
+        pres: raw.ownPres || ((typeof houseTaste === 'object' && houseTaste) || {}).pres || null,      // 183번: 커튼 느낌 답(calm·weight·point) — 공간 답이 먼저, 없으면 집 답
         opp: room.opp || ''
     };
 }
@@ -637,7 +638,7 @@ function whyItemCands(F, R, facts) {
             if (whyDE(c, R.wall) < 6) add('C', 'C1', '커튼을 닫아도 공간이 넓어 보입니다.', '커튼이 눈에 띄지 않습니다.');
             else if (dL > 15) add('C', 'C3', '창 쪽이 가장 환해 보입니다.', '창이 넓어 보입니다.');
             else if (dL >= 6) add('C', 'C2', '창 쪽이 환해 보입니다.', '공간이 가벼워 보입니다.');
-            else if (dL < -15) add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '공간이 또렷하게 나뉘어 보입니다.');
+            else if (dL < -15 && R.pres !== 'calm') add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '공간이 또렷하게 나뉘어 보입니다.');      // 183번: "조용히 스며들게요"면 아래 C4로
             else if (dL <= -6) add('C', 'C4', '창 쪽이 차분해 보입니다.', '공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
@@ -1357,6 +1358,7 @@ function houseRoomLines(sp) {
                 return `${who} 벽과 바닥 사이의 색이라, 닫아도 공간이 한 덩어리로 보입니다.`;
             }
             if (Math.abs(dL) >= Math.abs(db)) {
+                if (dL < 0 && typeof pointVivid === 'function' && pointVivid(f.lab)) return `${who} 짙고 색 기운이 또렷한 색이라, 창 쪽의 포인트가 됩니다.`;      // 183번: 와인처럼 또렷한 짙은 색은 무게가 아니라 포인트 (차콜과 같은 말이 되지 않게)
                 if (dL < 0) return f.lab.L < fl.L ? `${who} 선에서 한참 아래, 바닥보다 짙은 색이라 공간에 무게를 잡아 줍니다.` : `${who} 선보다 짙은 쪽이라, 공간에 무게를 더합니다.`;
                 return f.lab.L > w.L ? `${who} 벽보다 밝은 색이라, 닫아 두면 창 쪽이 환하게 보입니다.` : `${who} 선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.`;
             }
