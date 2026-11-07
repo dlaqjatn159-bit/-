@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261228';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261229';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -116,6 +116,7 @@ function bestForCurtain(room, c, dirOverride) {
         pool = FABRIC_DB.filter(f => !isCustomerHidden(f) && (f.categoryType === targetCategory || (targetCategory === '블라인드' && f.calcType === 'hebe')));
         if (!pool.length) pool = FABRIC_DB.filter(f => f.categoryType === targetCategory || (targetCategory === '블라인드' && f.calcType === 'hebe'));
     }
+    if (typeof blindKindPool === 'function') pool = blindKindPool(pool, r, targetCategory);      // 173번: 고른 블라인드 종류만
     if (!pool || !pool.length) return null;
     const fits = f => (typeof colorPlanFits === 'function') ? colorPlanFits(f, r, targetCategory) : true;
     const ranked = pool.map(f => ({ f, fit: fits(f), best: bestColorFor(f, r, targetCategory) }));

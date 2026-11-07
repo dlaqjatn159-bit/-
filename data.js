@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261228';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261229';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -714,6 +714,14 @@ function calculateFabricMatchScore(fabric, room, category) {
 
     if (fabric.categoryType === category) score += 2;
     return score;
+}
+
+// 173번: 고른 블라인드 종류(콤비·롤)의 원단만 — 프린트는 두 종류 어디에나(38-2 점수 규칙과 같게). 그 종류가 하나도 없으면 거르지 않음
+function blindKindPool(pool, room, category) {
+    const want = room && room.blindWant;
+    if (category !== '블라인드' || (want !== 'combi' && want !== 'roll') || !Array.isArray(pool)) return pool;
+    const out = pool.filter(f => { const k = blindKind(f); return k === want || k === 'print'; });
+    return out.length ? out : pool;
 }
 
 // 추천 이유 한 줄 (짧은 말) (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261228';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261229';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -58,6 +58,8 @@ function ticketBookName(c) {
     // 132번: 영문 줄임말 + 번호만인 이름(포아 "POA19")은 책자 이름 + 번호로 — "디올 23번"과 같은 모양 ("포아 19번")
     const code = /^[A-Za-z]+\s*(\d+)$/.exec(n), book = String(f.book || '').trim();
     if (code && book && /[가-힣]/.test(book)) return `${book} ${code[1]}번`;
+    const bk = typeof blindKind === 'function' ? blindKind(f) : null;      // 173번: 콤비·롤 원단은 이름 앞에 종류 — 이름이 같은 롤 린넨·콤비 린넨이 견적서·공간 화면에서 구분되게
+    if ((bk === 'combi' || bk === 'roll') && !/콤비|롤/.test(n)) n = (bk === 'combi' ? '콤비 ' : '롤 ') + n;
     const k = normalizeColorName(c.colorName);
     if (!k) return n;
     if (!/^\d+$/.test(k)) return `${n} ${k}`;

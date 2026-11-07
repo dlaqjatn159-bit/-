@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261228';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261229';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -221,7 +221,7 @@
         const roomEffective = roomWithTaste(state.editingRoom);
         // 원단마다 "공간에 가장 어울리는 색"까지 계산해 순위를 매김. 점수가 같으면 사장님이 직접 분류한 원단을 먼저
         const fits = f => (typeof colorPlanFits === 'function') ? colorPlanFits(f, roomEffective, targetCategory) : true;      // 98번: 고른 갈래 원단 먼저, 모자라면 기존 추천으로 채움
-        const ranked = getLiveCategoryPool(targetCategory).map(f => ({ f: f, fit: fits(f), best: bestColorFor(f, roomEffective, targetCategory) }));
+        const ranked = blindKindPool(getLiveCategoryPool(targetCategory), roomEffective, targetCategory).map(f => ({ f: f, fit: fits(f), best: bestColorFor(f, roomEffective, targetCategory) }));      // 173번: 고른 블라인드 종류만
         ranked.sort((a, b) => ((b.fit ? 1 : 0) - (a.fit ? 1 : 0)) || (b.best.score - a.best.score)
             || ((isManualTagged(b.f) ? 1 : 0) - (isManualTagged(a.f) ? 1 : 0)));
         let showcaseList = (typeof pickShowcase === 'function') ? pickShowcase(ranked, 3, typeof colorPlanMode === 'function' && colorPlanMode(roomEffective, targetCategory) === 'point') : ranked.slice(0, 3);      // 120번: 포인트 자리는 색 계열을 나눠
