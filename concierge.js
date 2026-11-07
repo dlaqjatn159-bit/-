@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261233';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261234';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -470,7 +470,7 @@
         if (!todo.length) return null;
         // 152번: 공간 하나를 먼저 정함 — 하다 만 공간 → 중심 화면에서 누른 공간 → 목록 첫 공간
         const begun = x => !!(x.lightBlock || x.privacy || x.compOk || x.ownTaste);
-        const r = todo.find(x => x.altBuilding) || todo.find(begun) || todo.find(x => x.id === state.activeSpaceId) || todo[0];      // 167번: 만들던 둘째 줄 먼저
+        const r = todo.find(x => x.altBuilding) || todo.find(begun) || todo.find(x => x.id === state.pickedSpaceId) || todo[0];      // 167번: 만들던 둘째 줄 먼저 · 178번: 누른 공간은 손님이 직접 누른 것만(새로 만든 공간 아님)
         if (!askedRoom(r)) return { kind: 'ask', room: r };
         if (!r.compOk || !r.planComp) return { kind: 'comp', room: r };      // 138번: 공간마다 구성 사진 화면
         // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
@@ -1699,6 +1699,7 @@
         // ---- 중심 화면: 공간 목차 선택 · 한 공간 크게 보기 ↔ 전체 한눈에 전환 (77번) ----
         selectSpaceRoom: function(roomId) {
             state.activeSpaceId = roomId;
+            state.pickedSpaceId = roomId;      // 178번: 손님이 직접 누른 공간 — 길잡이(이어서 상담하기)가 이 공간부터
             state.spaceViewAll = false;
             render();
         },
@@ -2404,6 +2405,7 @@
         // 새 상담 시작: 고객 입력 내용을 모두 비움
         resetAll: function() {
             state.roomsCart = [];
+            state.pickedSpaceId = null;      // 178번
             state.house = null;
             state.editingRoomId = null;
             state.editingRoom = null;
