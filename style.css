@@ -1230,17 +1230,24 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-rsay { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.55rem; margin: 0.1rem 0 0.6rem; font-size: 15px; }
 .dos-rsay button { padding: 8px 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .dos-rsay i { font-style: normal; color: var(--muted); }
-/* 167번: 둘째 줄 후보 — 공간 이름 아래 두 줄. 고르면 다른 줄은 흐리게(지우지 않음), 고른 줄은 흙빛 점(글자 0.35배, 글자는 안 움직임) */
-.dos-lines { display: flex; flex-direction: column; gap: 0.1rem; margin: 0 0 0.8rem 14px; }
-.dos-line { display: flex; align-items: center; gap: 1.2rem; transition: opacity 0.2s ease; }
-.dos-line.is-dim { opacity: 0.4; }
-.dos-line-pick { position: relative; display: inline-flex; align-items: baseline; gap: 0.7rem; padding: 10px 0; border: 0; background: none; cursor: pointer; font-size: 17px; color: var(--ink); text-align: left; }
-span.dos-line-pick { cursor: default; }
-.dos-line-pick small { font-family: var(--sans); font-size: var(--t-small); color: var(--muted); }
-.dos-line-sw { display: inline-flex; gap: 2px; align-self: center; }
-.dos-line-sw i { width: 14px; height: 20px; outline: 0.5px solid rgba(43, 34, 26, 0.18); }
-.dos-line.is-on .dos-line-pick::before { content: ''; position: absolute; left: -14px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--earth); }
-@media (prefers-reduced-motion: reduce) { .dos-line { transition: none; } }
+/* 168번: 두 줄 공간 — 줄마다 품목 칸 한 줄(줄 번호 순서 그대로). 고른 줄 = 왼쪽 흙빛 세로선 2px, 다른 줄 = 흐리게(칩과 이름만, 버튼 자리는 남겨 두 줄 높이가 같게) */
+.dos-lines2 { display: flex; flex-direction: column; gap: 2rem; margin-top: 1rem; }
+.dos-room.is-hero .dos-lines2 { margin-top: 2.4rem; border-top: 0.5px solid var(--line); padding-top: 2.2rem; }
+.dos-lines2 > .dos-items-wrap { position: relative; margin-top: 0; padding-left: 16px; transition: opacity 0.2s ease; }
+.dos-room.is-hero .dos-lines2 > .dos-items-wrap { margin-top: 0; border-top: 0; padding-top: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dos-lines2 > .dos-items-wrap::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--earth); opacity: 0; transition: opacity 0.2s ease; }
+.dos-lines2 > .is-on::before { opacity: 1; }
+.dos-lines2 > .is-dim { opacity: 0.4; }
+.dos-lines2 > .is-alt:not(.is-still) .dos-item { cursor: pointer; }
+.dos-lines2 > .is-alt .dos-item-sub, .dos-lines2 > .is-alt .dos-drop, .dos-lines2 > .is-alt .dos-fopts { visibility: hidden; }
+button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.dos-line-size { grid-column: 1 / -1; font-family: var(--sans); font-size: 15px; color: var(--muted); }
+.dos-room.is-hero .dos-line-size { margin-top: -1.6rem; }
+@media (prefers-reduced-motion: reduce) { .dos-lines2 > .dos-items-wrap, .dos-lines2 > .dos-items-wrap::before { transition: none; } }
+/* 168번: 품목 칸 [빼기]는 칸 오른쪽 위 구석 (고치는 버튼과 떼어 잘못 누르지 않게) */
+.dos-txt { position: relative; }
+.dos-txt > .dos-drop { position: absolute; top: 0; right: 0; }
+.dos-txt > .dos-drop + * { padding-right: 3.4rem; }
 .survey-alt { margin: 0.1rem 0 0.7rem; font-size: 0.85rem; color: #6f5f4f; }      /* 167번: 직원 상담란 안 고른 후보 */
 /* 공간 이름 옆 작은 "수정하기", 아직인 공간은 주황 "상담하기", 공간들 아래 "+ 공간 추가" */
 .dos-racts { margin-left: 0.65rem; white-space: nowrap; }

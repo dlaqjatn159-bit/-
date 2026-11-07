@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261223';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261224';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -204,7 +204,7 @@
             roomType: r.roomType || null,
             lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
             diagnosed: !!r.diagnosed,
-            altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending,      // 167번: 둘째 줄 후보 (직원 화면을 다녀와도 남게)
+            altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번: 둘째 줄 후보 (직원 화면을 다녀와도 남게) · 168번: 만드는 중 표시도
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
             width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
             curtains: r.curtains.map((c, cIdx) => {
@@ -542,9 +542,11 @@
     // ---- 167번: 둘째 줄 후보 — 고른 줄 = 공간 본체 그대로, 다른 줄은 r.altLine 한 칸 (견적서·발주서·직원 견적란은 본체만 봄) ----
     //  r.lineNo: 본체가 몇째 줄인지(없으면 1) · r.altBuilding: 둘째 줄 만드는 중 · r.pickPending: 두 줄 다 만들고 아직 안 고름
     const LINE_KEYS = ['width', 'height', 'spaceWidth', 'spaceHeight', 'sizeMode', 'curtains', 'subtotal', 'planComp', 'planPicked', 'compOk', 'isConfigured', 'pointTech'];
+    const LINE_TASTE = ['ownTaste', 'ownPres', 'ownTex', 'sheerFeel', 'blindWant'];      // 168번: 줄의 취향(느낌·겉지 결·속지 결·블라인드 종류) — 줄마다. 빛·시선·창 방향은 공간 것
     function takeLine(r) {
         const o = {};
         LINE_KEYS.forEach(k => { o[k] = r[k] === undefined ? null : r[k]; });
+        LINE_TASTE.forEach(k => { o[k] = r[k] === undefined ? null : r[k]; });      // 168번
         o.curtains = (r.curtains || []).map(c => Object.assign({}, c));
         o.lineNo = r.lineNo || 1;
         return o;
@@ -552,6 +554,7 @@
     function putLine(r, o) {
         if (!o) return;
         LINE_KEYS.forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
+        LINE_TASTE.forEach(k => { if (o[k] !== undefined) r[k] = o[k]; });      // 168번: 예전에 저장한 둘째 줄(이 칸이 없음)은 지금 값 그대로 = 첫 줄 값
         r.curtains = (o.curtains || []).map(c => Object.assign({}, c));
         r.curtains.forEach(c => { c.calc = calculateV1ItemPrice(c); });      // 저장본엔 금액 계산이 없으니 다시 셈
         r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
@@ -570,7 +573,7 @@
         ((o && o.curtains) || []).forEach(c => { if (c.fabricId) p[c.presetType] = { fabricId: c.fabricId, colorName: c.colorName || '' }; });
         return p;
     }
-    // [+ 다른 구성 더하기]: 첫 줄을 옆 칸으로, 본체를 구성 전으로 비우고 구성 화면부터 (답한 질문은 다시 안 물음)
+    // [+ 다른 구성 더하기]: 첫 줄을 옆 칸으로, 본체를 구성 전으로 비우고 구성 화면부터 (빛·시선은 다시 안 묻고, 느낌·결·블라인드 종류는 다시 물음 — 168번)
     function addAltLine(roomId) {
         const r = state.roomsCart.find(x => x.id === roomId);
         if (!r || !r.isConfigured || r.altLine || r.altBuilding) return;
@@ -578,6 +581,7 @@
         r.lineNo = 2;
         r.curtains = []; r.subtotal = 0; r.isConfigured = false;
         r.compOk = false; r.planComp = null; r.planPicked = false; r.pointTech = null;
+        r.ownTaste = false; r.ownPres = null; r.ownTex = null; r.sheerFeel = null; r.blindWant = null;      // 168번: 비우면 길잡이가 구성 → 느낌 → 결 → 원단 순서로 다시 물음
         r.altBuilding = true; r.pickPending = true;
         state.activeSpaceId = r.id;
         syncToV1MasterRooms();
