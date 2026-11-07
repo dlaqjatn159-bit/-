@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261218';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261219';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -147,6 +147,37 @@ function blockIfNoFabric() {
     if (!n) return false;
     showToast(`원단 없는 품목이 ${n}개 있어서 내보낼 수 없어요. 원단을 다시 골라 주세요.`, 'error');
     return true;
+}
+
+// 163번: 실측 크기 범위 — 50~800cm 밖이면 잘못 넣었을 수 있음(3600·36·0 등). 막지 않고 빨간 테두리·알림만
+const SIZE_MIN_CM = 50, SIZE_MAX_CM = 800;
+function sizeOutOfRange(v) { const n = Number(v); return !(n >= SIZE_MIN_CM && n <= SIZE_MAX_CM); }
+// 견적란 크기 칸 모양: 범위 밖 = 빨간 테두리(size-out), 안 잰 처음 값 = 흐리게(size-unset)
+function sizeClass(c, key) { return sizeOutOfRange(c[key]) ? ' size-out' : (c.sizeUnset ? ' size-unset' : ''); }
+function sizeInputMark(el) { el.classList.remove('size-unset'); el.classList.toggle('size-out', sizeOutOfRange(el.value)); }
+function sizeWarnToast(v, what) { if (sizeOutOfRange(v)) showToast(`${what} ${Number(v) || 0}cm — ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖입니다. 맞게 재셨는지 확인해 주세요.`, 'error'); }
+// 163번: 견적서를 내보내기 전 빈칸·크기 확인 (withSupplier: 공급자 줄이 있는 견적서 그림·인쇄만 true)
+function quoteGaps(withSupplier) {
+    const out = [];
+    if (!loadTicketText('pay')) out.push('결제 조건이 비어 있어 그 줄이 빠집니다');
+    if (withSupplier && !loadTicketText('supplier')) out.push('공급자 정보가 비어 있어 그 줄이 빠집니다');
+    let unset = 0, outN = 0;
+    rooms.forEach(r => r.curtains.forEach(c => { if (c.sizeUnset) unset++; else if (sizeOutOfRange(c.width) || sizeOutOfRange(c.height)) outN++; }));
+    if (unset) out.push(`크기를 넣지 않은 줄이 ${unset}개 있습니다(처음 값 그대로)`);
+    if (outN) out.push(`크기가 ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖인 줄이 ${outN}개 있습니다`);
+    return out;
+}
+// 직원 화면에서만 확인 창(손님 화면엔 띄우지 않음). 같은 내용으로 한 번 [확인]하면 다시 묻지 않음
+let __gapsOkKey = '';
+function confirmQuoteGaps(ask) {
+    if (typeof appMode === 'undefined' || appMode !== 'staff') return true;
+    const g = quoteGaps(true);
+    if (!g.length) return true;
+    const key = g.join('|');
+    if (key === __gapsOkKey) return true;
+    const ok = confirm(`확인해 주세요.\n\n• ${g.join('\n• ')}\n\n결제 조건·공급자 정보는 설정 › 견적서 고정 문구에서 적습니다.\n${ask}`);
+    if (ok) __gapsOkKey = key;
+    return ok;
 }
 
 // 서류·CSV 합계: 품목 금액을 더해 판매가·부가세·최종금액 (127번 Pricing.totals, 130-1번에서 두 곳을 하나로)

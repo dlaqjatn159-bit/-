@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261218';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261219';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1988,6 +1988,7 @@ function joinTicketCanvases(canvases) {
 let __saveBusy = false;
 async function saveTicketImage() {
     if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
+    if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 견적서를 저장할까요?')) return;      // 163번: 직원 화면에서만 묻기
     if (__saveBusy) return;          // 연타해도 여러 번 저장되지 않게
     __saveBusy = true;
     showToast("견적서 만드는 중...", "info");
@@ -2049,7 +2050,9 @@ async function copyTicketText() {
     try { ok = document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(ta);
     if (!ok) { try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(txt); ok = true; } } catch (e) {} }
-    showToast(ok ? "카톡 글을 복사했어요. 카카오톡 대화창에 붙여 넣어 주세요." : "복사하지 못했습니다.", ok ? "success" : "error");
+    // 163번: 직원 화면에서는 복사한 뒤 빈칸·크기 문제를 알림(창을 먼저 띄우면 복사가 막힐 수 있어 뒤에). 공급자는 카톡 글에 없어 빼고 봄
+    const gaps = (ok && typeof quoteGaps === 'function' && typeof appMode !== 'undefined' && appMode === 'staff') ? quoteGaps(false) : [];
+    showToast(ok ? (gaps.length ? `카톡 글을 복사했어요. 다만 ${gaps.join(' · ')}.` : "카톡 글을 복사했어요. 카카오톡 대화창에 붙여 넣어 주세요.") : "복사하지 못했습니다.", (ok && !gaps.length) ? "success" : "error");
 }
 
 async function preparePrintSheet() {
@@ -2119,6 +2122,7 @@ function removePrintFrame() {
 }
 async function printTicket() {
     if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
+    if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 인쇄할까요?')) return;      // 163번: 직원 화면에서만 묻기
     let canvases;
     try { ({ canvases } = await makeTicketBlobs()); }
     catch (err) { console.error(err); showToast("견적서 인쇄 준비 중 오류가 발생했습니다.", "error"); return; }

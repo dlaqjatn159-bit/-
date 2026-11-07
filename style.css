@@ -3056,3 +3056,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 /* 146번: 밤 장 조명 카드 두 자리 (스탠드 · 라인조명) */
 .fin-night-cards { display: flex; flex-direction: column; gap: 28px; }
 .fin-night-say { margin: 6px 0 0; color: #c4b6a3; font-size: 14px; line-height: 1.6; }
+
+/* 163번: 견적란·상담란 크기 칸 — 50~800cm 밖은 빨간 테두리, 안 잰 처음 값은 흐리게 */
+.size-out { border-color: #be123c !important; background: #fff1f2 !important; color: #be123c !important; }
+.size-unset { color: var(--brand-muted) !important; font-weight: 400 !important; border-style: dashed !important; }
+.survey-room h2 .size-btn.is-unset { color: var(--brand-muted); font-weight: 400; border-style: dashed; }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261218';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261219';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261218';
+const REDAM_BUILD = '20261219';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -214,12 +214,14 @@ function exitStaffMode(toastMsg, goToProposal) {
 
 // 직원 화면에서 만든 견적을 고객에게 그대로 보여주기
 function presentToCustomer() {
+    if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 고객에게 보여 줄까요?')) return;      // 163번: 손님에게 건네기 전, 직원 화면에서
     exitStaffMode(null, true);
 }
 
 // 직원 화면 메뉴(왼쪽 사이드바 · 좁은 화면은 아래 탭바): 상담 / 서류 / 상담 기록 / 원단 / 설정. 내용은 모두 그려 두고 보이는 묶음만 바꿈
 function showStaffView(view) {
     if (view !== 'fabric' && finderGate(() => showStaffView(view))) return;
+    toggleMarginSection(false);      // 163번: 메뉴를 옮기면 원가·순이익은 다시 가림
     document.querySelectorAll('.staff-nav button').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     document.querySelectorAll('.staff-view').forEach(s => s.classList.toggle('on', s.id === 'view-' + view));
     if (view !== 'fabric') hideDbPrices();
@@ -548,6 +550,9 @@ function renderLockSetting() {
 function markActivity() { lastActivity = Date.now(); }
 function idleTick() {
     if (appMode !== 'staff' || staffLocked) return;
+    // 163번: 원가·순이익을 연 채 1분 동안 손대지 않으면 가림(손님에게 화면을 돌려 보여 줄 때). 자동 잠금을 꺼 둔 기기에서도
+    const marginBox = document.getElementById('marginCollapsibleContent');
+    if (marginBox && !marginBox.classList.contains('hidden') && Date.now() - lastActivity > 60000) toggleMarginSection(false);
     const warn = document.getElementById('lockWarn');
     const limit = loadLockMin() * 60 * 1000, left = limit - (Date.now() - lastActivity);
     if (!limit || left > LOCK_WARN_MS) { if (warn) warn.classList.add('hidden'); return; }
@@ -967,7 +972,7 @@ function addRoom() {
         wallTone: "cool",
         mood: "soft_warm",
         curtains: [
-            { id: curtainIdCounter++, label: "속지", presetType: "sheer", width: 200, height: 200, pleat: "2.0", pleatType: "나비주름", bookFilter: "ALL", fabricId: defFab, installType: "rail", floorGap: 0, hwName: "기본 레일", hwPrice: hwPriceOf('rail'), shapeFee: 0, leadBand: true, hotelFit: false, rates: optionRatesNow('rail') }
+            { id: curtainIdCounter++, label: "속지", presetType: "sheer", width: 200, height: 200, sizeUnset: true, pleat: "2.0", pleatType: "나비주름", bookFilter: "ALL", fabricId: defFab, installType: "rail", floorGap: 0, hwName: "기본 레일", hwPrice: hwPriceOf('rail'), shapeFee: 0, leadBand: true, hotelFit: false, rates: optionRatesNow('rail') }
         ]
     };
     rooms.push(newRoom);
@@ -1050,6 +1055,7 @@ function addCurtainToRoom(roomId, presetType = "") {
         presetType: appliedPreset,
         width: refW,
         height: refH,
+        sizeUnset: room.curtains[0] ? !!room.curtains[0].sizeUnset : true,      // 163번: 첫 줄이 안 잰 값이면 이 줄도
         pleat: pleat,
         pleatType: pleatType,
         bookFilter: "ALL",
@@ -1123,7 +1129,14 @@ function updateCurtainData(roomId, curtainId, key, val) {
     }
 
     const prevFabricId = c.fabricId;
+    const prevVal = c[key];      // 163번
     c[key] = val;
+    if (key === 'width' || key === 'height') {
+        delete c.sizeUnset;      // 163번: 손으로 넣은 크기 = 잰 값
+        // 163번: 공간 크기를 따라가던 줄(고치기 전 가로·세로가 공간 크기와 같던 줄)을 고치면 공간 크기도 같이 — 견적서·공간 머리에 옛 크기가 남지 않게. 크기가 다른 줄은 그대로(115번)
+        const other = key === 'width' ? 'height' : 'width';
+        if (room[key] != null && room[key] !== '' && Number(prevVal) === Number(room[key]) && Number(c[other]) === Number(room[other])) room[key] = val;
+    }
 
     if (key === 'bookFilter') {
         if (val !== 'ALL') {
@@ -1311,14 +1324,14 @@ function renderRooms() {
                     <div class="grid grid-cols-3 gap-1.5 sm:gap-2 items-end">
                         <div class="min-w-0 flex flex-col justify-end">
                             <label class="block text-[10px] font-bold text-slate-500 mb-1 truncate">실측 가로 (cm)</label>
-                            <input type="number" value="${c.width}" oninput="updateCurtainData(${room.id}, ${c.id}, 'width', parseFloat(this.value)||0)" class="w-full h-8 px-2 py-1 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none focus:ring-1 focus:ring-amber-500 min-w-0 box-border">
+                            <input type="number" value="${c.width}" oninput="updateCurtainData(${room.id}, ${c.id}, 'width', parseFloat(this.value)||0); sizeInputMark(this)" onchange="sizeWarnToast(this.value, '가로')" class="w-full h-8 px-2 py-1 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none focus:ring-1 focus:ring-amber-500 min-w-0 box-border${sizeClass(c, 'width')}">
                         </div>
                         <div class="min-w-0 flex flex-col justify-end">
                             <div class="flex justify-between items-center mb-1 gap-0.5">
                                 <label class="block text-[10px] font-bold text-slate-500 truncate">세로(cm)</label>
                                 ${!isBlind ? `<span class="staff-chip">제작:${actualCurtainHeight}</span>` : ''}
                             </div>
-                            <input type="number" value="${c.height}" oninput="updateCurtainData(${room.id}, ${c.id}, 'height', parseFloat(this.value)||0)" class="w-full h-8 px-2 py-1 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none focus:ring-1 focus:ring-amber-500 min-w-0 box-border">
+                            <input type="number" value="${c.height}" oninput="updateCurtainData(${room.id}, ${c.id}, 'height', parseFloat(this.value)||0); sizeInputMark(this)" onchange="sizeWarnToast(this.value, '세로')" class="w-full h-8 px-2 py-1 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none focus:ring-1 focus:ring-amber-500 min-w-0 box-border${sizeClass(c, 'height')}">
                         </div>
                         <div class="min-w-0 flex flex-col justify-end">
                             ${isBlind ? `

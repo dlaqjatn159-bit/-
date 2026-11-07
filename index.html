@@ -815,25 +815,25 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="logo.js?v=20261218"></script> <!-- 150번: 새 글씨 로고 -->
-    <script src="pricing.js?v=20261218"></script>
-    <script src="costing.js?v=20261218"></script>
-    <script src="data.js?v=20261218"></script>
-    <script src="calculator.js?v=20261218"></script>
-    <script src="concierge.js?v=20261218"></script>
-    <script src="intro.js?v=20261218"></script>
-    <script src="fabric-pick.js?v=20261218"></script>
-    <script src="space.js?v=20261218"></script>
-    <script src="final.js?v=20261218"></script>
-    <script src="app.js?v=20261218"></script>
-    <script src="more.js?v=20261218"></script>
-    <script src="survey.js?v=20261218"></script>
-    <script src="ticket.js?v=20261218"></script>
-    <script src="color-dict.js?v=20261218"></script>
-    <script src="fabrics.js?v=20261218"></script>
-    <script src="finder.js?v=20261218"></script>
-    <script src="settings.js?v=20261218"></script>
-    <script src="room-color.js?v=20261218"></script>
+    <script src="logo.js?v=20261219"></script> <!-- 150번: 새 글씨 로고 -->
+    <script src="pricing.js?v=20261219"></script>
+    <script src="costing.js?v=20261219"></script>
+    <script src="data.js?v=20261219"></script>
+    <script src="calculator.js?v=20261219"></script>
+    <script src="concierge.js?v=20261219"></script>
+    <script src="intro.js?v=20261219"></script>
+    <script src="fabric-pick.js?v=20261219"></script>
+    <script src="space.js?v=20261219"></script>
+    <script src="final.js?v=20261219"></script>
+    <script src="app.js?v=20261219"></script>
+    <script src="more.js?v=20261219"></script>
+    <script src="survey.js?v=20261219"></script>
+    <script src="ticket.js?v=20261219"></script>
+    <script src="color-dict.js?v=20261219"></script>
+    <script src="fabrics.js?v=20261219"></script>
+    <script src="finder.js?v=20261219"></script>
+    <script src="settings.js?v=20261219"></script>
+    <script src="room-color.js?v=20261219"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
@@ -846,11 +846,11 @@
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">가로 너비 (cm)</label>
-                    <input type="number" id="surveySizeWidth" class="w-full px-3 py-2 border rounded-xl text-base font-bold text-indigo-950 bg-white outline-none focus:ring-2 focus:ring-amber-500" placeholder="300">
+                    <input type="number" id="surveySizeWidth" oninput="sizeInputMark(this)" class="w-full px-3 py-2 border rounded-xl text-base font-bold text-indigo-950 bg-white outline-none focus:ring-2 focus:ring-amber-500" placeholder="300">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">세로 높이 (cm)</label>
-                    <input type="number" id="surveySizeHeight" class="w-full px-3 py-2 border rounded-xl text-base font-bold text-indigo-950 bg-white outline-none focus:ring-2 focus:ring-amber-500" placeholder="230">
+                    <input type="number" id="surveySizeHeight" oninput="sizeInputMark(this)" class="w-full px-3 py-2 border rounded-xl text-base font-bold text-indigo-950 bg-white outline-none focus:ring-2 focus:ring-amber-500" placeholder="230">
                 </div>
             </div>
             <div class="flex justify-end gap-2">
