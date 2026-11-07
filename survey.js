@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261222';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261223';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -495,6 +495,11 @@ function renderSurvey() {
         const h = room.height || (room.curtains[0] && room.curtains[0].height) || 230;
 
         const sizeUnsetRoom = !room.width && room.curtains.length > 0 && room.curtains.every(c => c.sizeUnset);      // 163번: 아직 안 잰 공간
+        // 167번: 손님이 고르지 않은 둘째 줄 후보 (견적란·견적서엔 안 나옴)
+        const czc = window.conciergeCore || {}, alt = room.altLine;
+        const altNames = alt ? (alt.curtains || []).map(c => (typeof ticketBookName === 'function') ? ticketBookName(c) : (c.label || '')).filter(Boolean).join(' · ') : '';
+        const altComp = alt && czc.COMP_NAMES && czc.roomComp ? (czc.COMP_NAMES[czc.roomComp(alt)] || '') : '';
+        const altHtml = alt ? `<p class="survey-alt">다른 후보: ${esc([altComp, altNames].filter(Boolean).join(' · '))} (${room.pickPending ? '고르기 전' : '안 고름'})</p>` : '';
         // 벽·바닥·가구 색 묶음 (벽 바닥 하나로 묶기)
         const hasWall = mc.wall && mc.wall.hex;
         const hasFloor = mc.floor && mc.floor.hex;
@@ -564,7 +569,7 @@ function renderSurvey() {
                     </div>
                 </h2>
 
-                <div class="survey-row"><div class="k">벽·바닥</div>
+                ${altHtml}<div class="survey-row"><div class="k">벽·바닥</div>
                     <div class="survey-sw">${colorBundleHtml}</div>
                 </div>
 

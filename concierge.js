@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261222';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261223';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -204,6 +204,7 @@
             roomType: r.roomType || null,
             lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
             diagnosed: !!r.diagnosed,
+            altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending,      // 167번: 둘째 줄 후보 (직원 화면을 다녀와도 남게)
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
             width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
             curtains: r.curtains.map((c, cIdx) => {
@@ -468,7 +469,7 @@
         if (!todo.length) return null;
         // 152번: 공간 하나를 먼저 정함 — 하다 만 공간 → 중심 화면에서 누른 공간 → 목록 첫 공간
         const begun = x => !!(x.lightBlock || x.privacy || x.compOk || x.ownTaste);
-        const r = todo.find(begun) || todo.find(x => x.id === state.activeSpaceId) || todo[0];
+        const r = todo.find(x => x.altBuilding) || todo.find(begun) || todo.find(x => x.id === state.activeSpaceId) || todo[0];      // 167번: 만들던 둘째 줄 먼저
         if (!askedRoom(r)) return { kind: 'ask', room: r };
         if (!r.compOk || !r.planComp) return { kind: 'comp', room: r };      // 138번: 공간마다 구성 사진 화면
         // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
@@ -519,6 +520,7 @@
         const ed = loadEditing(room);
         ed.flow = true;
         setCompItems(ed, room.planComp || 'double');
+        if (room.altBuilding) { ed.sizeKnown = false; ed.altPins = linePins(room.altLine); }      // 167번: 둘째 줄은 크기 화면(첫 줄 크기가 들어 있음)을 꼭 지남 · 같은 겹이면 첫 줄 원단을 첫 장에
         const hs = houseTasteNow().sheer;      // 123번: 공간 답이 먼저, 없으면 예전 집 답
         ed.sheerFeel = planHas(room, 'sheer') ? (room.sheerFeel || { smooth: 'smooth', texture: 'textured', thick: 'cozy', unknown: 'any' }[hs] || null) : null;
         flowGo("3.5-Bridge", ed, room.id, () => { state.pendingItemQueue = ed.items; state.currentItemIndex = 0; });
@@ -536,6 +538,50 @@
         const t = ed && ed.flow && state.roomsCart.find(r => r.id === state.editingRoomId);
         if (!t) return;
         t.ownTaste = !!ed.ownTaste; t.ownPres = ed.ownPres || null; t.ownTex = ed.ownTex || null;
+    }
+    // ---- 167번: 둘째 줄 후보 — 고른 줄 = 공간 본체 그대로, 다른 줄은 r.altLine 한 칸 (견적서·발주서·직원 견적란은 본체만 봄) ----
+    //  r.lineNo: 본체가 몇째 줄인지(없으면 1) · r.altBuilding: 둘째 줄 만드는 중 · r.pickPending: 두 줄 다 만들고 아직 안 고름
+    const LINE_KEYS = ['width', 'height', 'spaceWidth', 'spaceHeight', 'sizeMode', 'curtains', 'subtotal', 'planComp', 'planPicked', 'compOk', 'isConfigured', 'pointTech'];
+    function takeLine(r) {
+        const o = {};
+        LINE_KEYS.forEach(k => { o[k] = r[k] === undefined ? null : r[k]; });
+        o.curtains = (r.curtains || []).map(c => Object.assign({}, c));
+        o.lineNo = r.lineNo || 1;
+        return o;
+    }
+    function putLine(r, o) {
+        if (!o) return;
+        LINE_KEYS.forEach(k => { r[k] = o[k] === undefined ? null : o[k]; });
+        r.curtains = (o.curtains || []).map(c => Object.assign({}, c));
+        r.curtains.forEach(c => { c.calc = calculateV1ItemPrice(c); });      // 저장본엔 금액 계산이 없으니 다시 셈
+        r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
+        r.isConfigured = !!(o.isConfigured && r.curtains.length);
+        r.lineNo = o.lineNo || 1;
+    }
+    function swapLine(r) {
+        if (!r || !r.altLine) return;
+        const cur = takeLine(r);
+        putLine(r, r.altLine);
+        r.altLine = cur;
+    }
+    // 첫 줄에서 고른 원단(겹마다) — 둘째 줄 원단 화면 첫 장에
+    function linePins(o) {
+        const p = {};
+        ((o && o.curtains) || []).forEach(c => { if (c.fabricId) p[c.presetType] = { fabricId: c.fabricId, colorName: c.colorName || '' }; });
+        return p;
+    }
+    // [+ 다른 구성 더하기]: 첫 줄을 옆 칸으로, 본체를 구성 전으로 비우고 구성 화면부터 (답한 질문은 다시 안 물음)
+    function addAltLine(roomId) {
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !r.isConfigured || r.altLine || r.altBuilding) return;
+        r.altLine = takeLine(r);
+        r.lineNo = 2;
+        r.curtains = []; r.subtotal = 0; r.isConfigured = false;
+        r.compOk = false; r.planComp = null; r.planPicked = false; r.pointTech = null;
+        r.altBuilding = true; r.pickPending = true;
+        state.activeSpaceId = r.id;
+        syncToV1MasterRooms();
+        flowNext();
     }
     // 166번: 공간 칸 답 한 줄의 낱말을 누름 → 그 질문 한 장만 열고, 답하면 공간 화면으로 (원단은 그대로)
     //  key: 'lightBlock' 빛 가림 · 'privacy' 시선 · 'pres' 느낌 · 'sheer' 속지 질감 · 'tex' 겉지 질감
@@ -1436,7 +1482,7 @@
     function playIntro(then) { return cz.playIntro(then); }
 
     // 130-4: 나뉜 파일이 쓰는 이 파일의 상태·함수
-    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab });
+    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, takeLine, putLine, swapLine, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab });
 
     window.concierge = {
         // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
@@ -2014,6 +2060,7 @@
         },
         flowNext: function() { flowNext(); },
         fixAnswer: function(roomId, key) { fixAnswer(roomId, key); },      // 166번
+        addAltLine: function(roomId) { addAltLine(roomId); },      // 167번
         // 기법 고르기 (120번): 고른 기법(빈칸 = 맡김)으로 원단 3장. 뒤로 가면 이 화면으로 돌아와 다른 기법을 고를 수 있음
         previewPointTech: function(k) {      // 146번: 포인트 방식 설명 보기 / 목록으로 돌아가기
             state.pointPreview = k || null;
@@ -2217,6 +2264,7 @@
                 }
 
                 roomTarget.isConfigured = true;
+                roomTarget.altBuilding = false;      // 167번: 둘째 줄 다 만듦 (고르기는 공간 화면에서 — pickPending 그대로)
                 roomTarget.floorTone = state.editingRoom.floorTone;
                 roomTarget.wallTone = state.editingRoom.wallTone;
                 roomTarget.lightLevel = state.editingRoom.lightLevel;
@@ -2250,6 +2298,13 @@
             goToStep("1-Space");
         },
         goToCheckout: function() {
+            const waitRoom = state.roomsCart.find(r => r.pickPending || r.altBuilding);      // 167번: 두 구성 중 아직 안 고른 공간 → 그 공간을 크게 보여 주고 멈춤
+            if (waitRoom) {
+                state.activeSpaceId = waitRoom.id; state.spaceViewAll = false;
+                if (state.step === "1-Space") render(); else goToStep("1-Space");
+                spaceToast(`${waitRoom.name}: 두 구성 중 하나를 골라 주세요`);
+                return;
+            }
             syncToV1MasterRooms();
             goToStep("7-Final-Dossier");
         },
@@ -2316,6 +2371,7 @@
                     roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
                     measuredColor: r.measuredColor || null,
                     planComp: r.planComp || null, planPicked: !!r.planPicked, compOk: !!r.compOk,      // 119번
+                    altLine: r.altLine || null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번
                     width: Number(r.width) || null, height: Number(r.height) || null,
                     spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null,
                     colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
@@ -2366,6 +2422,7 @@
                 roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
                 measuredColor: r.measuredColor || null,
                 planComp: r.planComp || null, planPicked: !!r.planPicked, compOk: !!r.compOk,      // 119번: 집 전체 구성에서 정한 것 (상담 전 공간)
+                altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번
                 width: r.width || null, height: r.height || null,
                 spaceWidth: r.spaceWidth || null, spaceHeight: r.spaceHeight || null, sizeMode: r.sizeMode || null,
                 colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),

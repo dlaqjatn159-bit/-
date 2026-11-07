@@ -1,9 +1,9 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261222';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261223';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
     const cz = window.conciergeCore;      // concierge.js와 잇는 다리 (130-4)
-    const { state, getLiveDb, calculateV1ItemPrice, syncToV1MasterRooms, askedRoom, planHas, flowPeek, fabricFillStyle, HATCH, hexCode, roomPart, roomSize, roomComp, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, render, colorFillOf, splitNameColor } = cz;
+    const { state, getLiveDb, calculateV1ItemPrice, syncToV1MasterRooms, askedRoom, planHas, takeLine, putLine, swapLine, COMP_NAMES, flowPeek, fabricFillStyle, HATCH, hexCode, roomPart, roomSize, roomComp, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, render, colorFillOf, splitNameColor } = cz;
 
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
     // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
@@ -141,6 +141,7 @@
     function dropCurtain(roomId, idx) {
         const r = state.roomsCart.find(x => x.id === roomId), c = r && r.isConfigured && r.curtains[idx];
         if (!c) return;
+        if (r.altLine && r.curtains.length === 1) { dropLine(roomId, r.lineNo || 1); return; }      // 167번: 두 줄인 공간에서 마지막 품목 = 그 줄 빼기
         const before = r.curtains.slice();
         r.curtains = r.curtains.filter((x, i) => i !== idx);
         if (!r.curtains.length) {
@@ -154,6 +155,58 @@
         syncToV1MasterRooms();
         render();
         spaceToast(`${r.name} ${kindOf(c)}를 뺐습니다`, () => restoreCurtains(roomId, before));
+    }
+    // 167번: 줄 이름 — 구성 이름 (만드는 중이면 빈 글)
+    function lineName(o) { return (o && COMP_NAMES[roomComp(o)]) || ''; }
+    // 167번: 줄 되돌리기 — 빼기 전 모양으로. 중심 화면에 있을 때만
+    function restoreLines(roomId, snap) {
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !snap || state.step !== "1-Space") return;
+        putLine(r, snap.line);
+        r.altLine = snap.alt; r.altBuilding = snap.b; r.pickPending = snap.p;
+        syncToV1MasterRooms();
+        render();
+    }
+    // 167번: 줄 [빼기] — 묻지 않고 빼고 알림에 되돌리기. 남은 줄이 그 공간의 한 줄이 됨
+    function dropLine(roomId, lineNo) {
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !r.altLine) return;
+        const snap = { line: takeLine(r), alt: JSON.parse(JSON.stringify(r.altLine)), b: !!r.altBuilding, p: !!r.pickPending };
+        const isCur = lineNo === (r.lineNo || 1);
+        const gone = isCur ? snap.line : snap.alt;
+        if (isCur) putLine(r, r.altLine);
+        r.altLine = null; r.altBuilding = false; r.pickPending = false; r.lineNo = 1;
+        state.activeSpaceId = r.id;
+        syncToV1MasterRooms();
+        render();
+        const nm = lineName(gone);
+        spaceToast(`${r.name}: ${nm ? nm + ' ' : ''}후보를 뺐습니다`, () => restoreLines(roomId, snap));
+    }
+    // 167번: 줄을 누르면 고른 줄 (다른 줄은 흐리게, 지우지 않음). 만드는 중엔 못 고름
+    function selectLine(roomId, lineNo) {
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !r.altLine || r.altBuilding) return;
+        if (lineNo !== (r.lineNo || 1)) swapLine(r);
+        r.pickPending = false;
+        state.justFilledRoomId = r.id;      // 색 칸이 차오르는 움직임으로 바뀐 것을 보여 줌
+        syncToV1MasterRooms();
+        render();
+    }
+    // 167번: 공간 이름 아래 두 줄 (금액 없음): [색 조각] 구성 이름 크기 · 빼기
+    function linesHtml(r, esc) {
+        const rows = [{ o: r, front: true }, { o: r.altLine, front: false }].sort((a, b) => (a.o.lineNo || 1) - (b.o.lineNo || 1));
+        return '<div class="dos-lines">' + rows.map(({ o, front }) => {
+            const no = o.lineNo || 1, building = front && r.altBuilding;
+            const sw = building ? `<i style="background:${HATCH}"></i>` : (o.curtains || []).map(c => `<i style="background:${colorFillOf(c.fabricId, c.colorName)}"></i>`).join('');
+            const nm = building ? '구성 고르는 중' : lineName(o);
+            const size = o.width && o.height ? `${o.width} × ${o.height}cm` : '';
+            const on = front && !r.pickPending && !r.altBuilding, dim = !front && !r.pickPending && !r.altBuilding;
+            const inner = `<span class="dos-line-sw">${sw}</span><span class="dos-line-nm">${esc(nm)}</span>${size ? `<small>${esc(size)}</small>` : ''}`;
+            const pick = r.altBuilding ? `<span class="dos-line-pick font-serif-kr">${inner}</span>`
+                : `<button type="button" class="dos-line-pick font-serif-kr" onclick="window.concierge.selectLine(${r.id}, ${no})">${inner}</button>`;
+            const drop = (!r.altBuilding || building) ? `<button type="button" class="dos-redit" onclick="window.concierge.dropLine(${r.id}, ${no})">빼기</button>` : '';
+            return `<div class="dos-line${on ? ' is-on' : ''}${dim ? ' is-dim' : ''}">${pick}${drop}</div>`;
+        }).join('') + '</div>';
     }
     // 166번: 손님이 누른 답을 명사형으로 (창 방향·크기는 머리 줄에 있음, "잘 모르겠어요"는 뺌). 낱말마다 누르면 그 질문으로
     const ANSWER_SAY = {
@@ -242,9 +295,10 @@
             const boxH = isAllMode ? 54 : 84, floorH = isAllMode ? 11 : 16, aboveH = boxH - floorH;
             h += `<section class="dos-room${isAllMode ? '' : ' is-hero'}">`;
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
-                + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></div>`;      // 151번: 상담 전 공간에도
+                + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured && !r.altLine ? `<button type="button" class="dos-redit" onclick="window.concierge.addAltLine(${r.id})">+ 다른 구성 더하기</button>` : ''}<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></div>`;      // 151번: 상담 전 공간에도
             const says = answerSay(r);      // 166번: 손님 답 한 줄 — 낱말마다 그 질문으로 고치기
             if (says.length) h += `<div class="dos-rsay font-serif-kr">${says.map(s => `<button type="button" onclick="window.concierge.fixAnswer(${r.id}, '${s.key}')">${esc(s.text)}</button>`).join('<i aria-hidden="true">·</i>')}</div>`;
+            if (r.altLine) h += linesHtml(r, esc);      // 167번: 둘째 줄 후보
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f, cls) => `<div class="${(dark(bg) ? 'is-dark ' : '') + (cls || '')}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;
@@ -452,6 +506,8 @@
     Object.assign(window.concierge, {
         swapCurtain: function(roomId, idx, fabricId, color, why) { swapCurtain(roomId, idx, fabricId, color, false, why); },
         dropCurtain: function(roomId, idx) { dropCurtain(roomId, idx); },      // 165번
+        dropLine: function(roomId, lineNo) { dropLine(roomId, lineNo); },      // 167번
+        selectLine: function(roomId, lineNo) { selectLine(roomId, lineNo); },      // 167번
         // 한 톤 밝게(step +1) / 진하게(−1): 3단계 사다리 [-1, 0, +1] (49번, 1안)
         toneSwap: function(roomId, idx, key, step) {
             if (!spaceEntries || !spaceEntries.length) {

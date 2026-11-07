@@ -1230,6 +1230,18 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-rsay { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.55rem; margin: 0.1rem 0 0.6rem; font-size: 15px; }
 .dos-rsay button { padding: 8px 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .dos-rsay i { font-style: normal; color: var(--muted); }
+/* 167번: 둘째 줄 후보 — 공간 이름 아래 두 줄. 고르면 다른 줄은 흐리게(지우지 않음), 고른 줄은 흙빛 점(글자 0.35배, 글자는 안 움직임) */
+.dos-lines { display: flex; flex-direction: column; gap: 0.1rem; margin: 0 0 0.8rem 14px; }
+.dos-line { display: flex; align-items: center; gap: 1.2rem; transition: opacity 0.2s ease; }
+.dos-line.is-dim { opacity: 0.4; }
+.dos-line-pick { position: relative; display: inline-flex; align-items: baseline; gap: 0.7rem; padding: 10px 0; border: 0; background: none; cursor: pointer; font-size: 17px; color: var(--ink); text-align: left; }
+span.dos-line-pick { cursor: default; }
+.dos-line-pick small { font-family: var(--sans); font-size: var(--t-small); color: var(--muted); }
+.dos-line-sw { display: inline-flex; gap: 2px; align-self: center; }
+.dos-line-sw i { width: 14px; height: 20px; outline: 0.5px solid rgba(43, 34, 26, 0.18); }
+.dos-line.is-on .dos-line-pick::before { content: ''; position: absolute; left: -14px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--earth); }
+@media (prefers-reduced-motion: reduce) { .dos-line { transition: none; } }
+.survey-alt { margin: 0.1rem 0 0.7rem; font-size: 0.85rem; color: #6f5f4f; }      /* 167번: 직원 상담란 안 고른 후보 */
 /* 공간 이름 옆 작은 "수정하기", 아직인 공간은 주황 "상담하기", 공간들 아래 "+ 공간 추가" */
 .dos-racts { margin-left: 0.65rem; white-space: nowrap; }
 .dos-racts button { background: none; border: none; cursor: pointer; padding: 0.35rem 0.25rem; font-family: Pretendard, sans-serif; font-size: 0.8rem; font-weight: 400; color: #6f5f4f; }
