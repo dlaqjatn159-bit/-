@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261232';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261233';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1300,10 +1300,9 @@
                 if (!roomHasLab(state.editingRoom)) {
                     const mc0 = (state.editingRoom && state.editingRoom.measuredColor) || {};
                     const need = ['wall', 'floor'].filter(p => !(mc0[p] && typeof mc0[p].L === 'number'));
-                    const blindNow = (state.pendingItemQueue[state.currentItemIndex] || {}).presetType === 'blind';      // 161번: 블라인드는 실물 견본으로 견적까지
                     html += askStage('벽·바닥 색을 재야 원단을 추천할 수 있습니다', '', need.map(p => (
                         { label: p === 'wall' ? '벽 색 재기' : '바닥 색 재기', on: `window.concierge.measureForFabric('${p}')` }))
-                        .concat(blindNow ? [{ label: '지금은 못 재요 · 실물 견본으로', quiet: true, on: 'window.concierge.proceedSampleBlind(true)' }] : []));
+                        .concat([{ label: '지금은 못 재요 · 실물 견본으로', quiet: true, on: 'window.concierge.proceedSampleBlind(true)' }]));      // 161번 · 177번: 블라인드도 커튼도 실물 견본으로 견적까지
                     break;
                 }
                 const { queueItem, targetCategory, showcaseList } = fabricShowcase();
@@ -2090,7 +2089,8 @@
         // 목록에 없는 블라인드 종류(우드·알루미늄 등, 38-2): 실물 샘플 안내 후 바로 공간에 담음
         proceedSampleBlind: function(fromGate) {      // fromGate (161번): 색을 못 재 막힌 원단 화면에서 옴
             const item = state.pendingItemQueue[state.currentItemIndex];
-            const bw = (state.editingRoom && state.editingRoom.blindWant) || (fromGate ? 'any' : 'wood');      // 161번: 종류를 안 골랐으면 그냥 블라인드
+            const pt = item && item.presetType;
+            const bw = (pt === 'sheer' || pt === 'drape') ? pt : ((state.editingRoom && state.editingRoom.blindWant) || (fromGate ? 'any' : 'wood'));      // 161번: 종류를 안 골랐으면 그냥 블라인드 · 177번: 속지·겉지는 그 종류 견본
             if (item) {
                 item.fabricId = '_sample_' + bw;
                 item.colorName = '';

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261232';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261233';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -42,6 +42,11 @@
     function priceItem(c, fab) {
         if (!fab) {      // 원단을 못 찾은 품목: 다른 원단 값으로 셈하지 않고 금액 0 + 표시 (126번)
             return { noFabric: true, fabName: '', fabBook: '', calcType: '', numWidths: 0, totalYards: 0, appliedHebe: 0, qtyText: '원단 없음',
+                curtainSubtotal: 0, numJa: 0, leadBandCost: 0, actualCurtainHeight: Number(c && c.height) || 0,
+                installDesc: (c && c.hwName) || '레일', floorGapVal: parseFloat(c && c.floorGap) || 0, isSeamless: false, q: {} };
+        }
+        if (fab.sampleOnly && fab.calcType !== 'hebe') {      // 177번: 커튼 실물 견본 품목 — 원단을 고르기 전이라 원단·가공·레일 모두 0 (합계에서 빠지고 견적서엔 "실물 견본 품목 제외")
+            return { noFabric: false, fabName: fab.name, fabBook: fab.book, calcType: fab.calcType, numWidths: 0, totalYards: 0, appliedHebe: 0, qtyText: '실물 견본',
                 curtainSubtotal: 0, numJa: 0, leadBandCost: 0, actualCurtainHeight: Number(c && c.height) || 0,
                 installDesc: (c && c.hwName) || '레일', floorGapVal: parseFloat(c && c.floorGap) || 0, isSeamless: false, q: {} };
         }
