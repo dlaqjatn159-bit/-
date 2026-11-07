@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261213';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261214';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -210,9 +210,9 @@ function ticketDataBase() {
             const items = r.curtains.map(c => {
                 const calc = c.calc || {};
                 const opts = [];
-                if (c.shapeFee > 0) opts.push('형상기억');
+                if (c.shapeFee > 0) opts.push('형상기억 포함');      // 158번
                 if (c.leadBand) opts.push('리드밴드');
-                if (c.hotelFit) opts.push('호텔핏');
+                if (c.hotelFit) opts.push('호텔핏(기본보다 한 폭 더)');      // 158번
                 const sampleOnly = !!(typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId));
                 return {
                     label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)

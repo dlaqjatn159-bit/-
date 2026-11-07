@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261213';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261214';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -808,6 +808,12 @@
 
     // ---- 마무리 옵션 줄 (139번, 디자인점검 B-3 시안 B안): 형상기억·호텔핏은 줄마다 빼기/넣기, 밑단은 시접/리드밴드 중 하나 ----
     // 옵션 미리보기 창(그림)은 과장이 있어 없앰 (139번)
+    let shapeTimer = null;      // 158번: 형상기억 줄 누르고 있기 타이머
+    function toggleShapeFee() {      // 158번: 사장님이 형상기억 넣기/빼기
+        if (!state.editingRoom) return;
+        state.editingRoom.shapeFee = !state.editingRoom.shapeFee;
+        refreshFinishOpts('[data-k="shapeFee"]');
+    }
     function finishOptsHtml(room) {
         const hasSheer = room.items.some(i => i.presetType === 'sheer');
         const hasDrape = room.items.some(i => i.presetType === 'drape');
@@ -819,7 +825,11 @@
                 + `<p class="fo-say">${say}</p></div>`;
         };
         if (hasDrape) {
-            h += row('shapeFee', '형상기억 가공', '주름을 열로 잡아 두어 더 가지런하게 떨어집니다');
+            // 158번: 형상기억은 손님 화면에 버튼 없이 "포함"만. 사장님이 이 줄을 S펜으로 톡 · 손가락이나 마우스로 1초 누르면 넣기/빼기 (shapeHold)
+            const sOn = !!room.shapeFee;
+            h += `<div class="fo-row fo-staff${sOn ? ' on' : ''}" data-k="shapeFee" onpointerdown="window.concierge.shapeHold(event)" ontouchstart="window.concierge.shapeHold(event)" oncontextmenu="return false">`
+                + `<span class="fo-nm font-serif-kr">형상기억 가공</span><span class="fo-state">${sOn ? '포함' : '넣지 않음'}</span>`
+                + '<p class="fo-say">주름을 열로 잡아 두어 더 가지런하게 떨어집니다</p></div>';
             h += row('hotelFit', '호텔핏', '원단을 한 폭 더 넣어 주름이 깊고 풍성해집니다');
         }
         if (hasSheer) {
@@ -842,6 +852,11 @@
             const nm = row.querySelector('.fo-nm').textContent;
             btn.textContent = on ? '빼기' : '넣기';
             btn.setAttribute('aria-label', `${nm} ${on ? '빼기' : '넣기'}`);
+        });
+        box.querySelectorAll('.fo-staff').forEach(row => {      // 158번: 버튼 없는 형상기억 줄
+            const on = !!room[row.getAttribute('data-k')];
+            row.classList.toggle('on', on);
+            row.querySelector('.fo-state').textContent = on ? '포함' : '넣지 않음';
         });
         box.querySelectorAll('.fo-pick button').forEach(btn => {
             const on = (btn.getAttribute('data-hem') === '1') === !!room.leadBand;
@@ -2064,6 +2079,36 @@
             if (!state.editingRoom || (key !== 'shapeFee' && key !== 'hotelFit')) return;
             state.editingRoom[key] = !state.editingRoom[key];
             refreshFinishOpts(`[data-k="${key}"]`);
+        },
+        // 158번: 형상기억 줄 — S펜은 톡(눌렀다 떼면 바로), 마우스는 1초 누르고 있기, 손가락은 하나로 1초 가만히
+        //  처음 누른 것만 보고 12px 넘게 움직이거나, 일찍 떼거나, 손가락이 둘 이상이면 취소 (두 손가락은 153번 직원 문)
+        shapeHold: function(ev) {
+            if (!state.editingRoom) return;
+            const HOLD_MS = 1000;
+            clearTimeout(shapeTimer);
+            if (ev.type === 'touchstart') {
+                if (ev.touches.length !== 1 || ev.touches[0].touchType === 'stylus') return;      // S펜도 touch 이벤트를 같이 보내므로 펜은 아래 pointer 쪽에서만
+                const x0 = ev.touches[0].clientX, y0 = ev.touches[0].clientY, opt = { passive: true, capture: true };
+                const stop = () => { clearTimeout(shapeTimer); ['touchmove', 'touchend', 'touchcancel', 'touchstart'].forEach(n => document.removeEventListener(n, n === 'touchmove' ? move : (n === 'touchstart' ? more : stop), true)); };
+                const move = e => { const t = e.touches[0]; if (!t || Math.hypot(t.clientX - x0, t.clientY - y0) > 12) stop(); };
+                const more = e => { if (e.touches.length > 1) stop(); };
+                document.addEventListener('touchmove', move, opt);
+                document.addEventListener('touchend', stop, opt);
+                document.addEventListener('touchcancel', stop, opt);
+                document.addEventListener('touchstart', more, opt);
+                shapeTimer = setTimeout(() => { stop(); toggleShapeFee(); }, HOLD_MS);
+                return;
+            }
+            if (ev.pointerType === 'touch' || (ev.button !== undefined && ev.button > 0)) return;      // 손가락은 위 touchstart에서
+            const pen = (ev.pointerType === 'pen'), id = ev.pointerId, x0 = ev.clientX, y0 = ev.clientY;
+            const stop = () => { clearTimeout(shapeTimer); document.removeEventListener('pointerup', up, true); document.removeEventListener('pointercancel', cancel, true); document.removeEventListener('pointermove', move, true); };
+            const up = e => { if (e.pointerId !== id) return; stop(); if (pen) toggleShapeFee(); };
+            const cancel = e => { if (e.pointerId === id) stop(); };
+            const move = e => { if (e.pointerId === id && Math.hypot(e.clientX - x0, e.clientY - y0) > 12) stop(); };
+            document.addEventListener('pointerup', up, true);
+            document.addEventListener('pointercancel', cancel, true);
+            document.addEventListener('pointermove', move, true);
+            if (!pen) shapeTimer = setTimeout(() => { stop(); toggleShapeFee(); }, HOLD_MS);
         },
         setHem: function(lead) {
             if (!state.editingRoom) return;
