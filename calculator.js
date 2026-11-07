@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261212';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261213';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -234,12 +234,10 @@ function generateDoc(type) {
                    `      • 원단/방식: [${calc.fabBook}] ${fabDisplayName} (${methodDesc}, ${c.pleat === 'panel' ? '판넬' : c.pleat + '배'})\n` +
                    `      • 가공옵션: ${optionsStr}\n` +
                    `      • 산출수량: ${calc.qtyText}\n` +
-                   `      • 부자재: ${calc.calcType === "hebe" ? "미적용" : (c.hwName + " (" + calc.numJa + "자)")}\n` +
-                   `      • 판매금액: ${(calc.curtainSubtotal||0).toLocaleString()}원`;
+                   `      • 부자재: ${calc.calcType === "hebe" ? "미적용" : (c.hwName + " (" + calc.numJa + "자)")}`;      // 157번: 공장 발주서엔 금액을 적지 않음
         }).join('\n');
 
-        const roomSum = r.curtains.reduce((acc, curr) => acc + (curr.calc ? curr.calc.curtainSubtotal : 0), 0);
-        return `[${i+1}. ${r.name}] (총 ${r.curtains.length}개)\n${curtainLines}\n▶ ${r.name} 소계: ${roomSum.toLocaleString()}원`;
+        return `[${i+1}. ${r.name}] (총 ${r.curtains.length}개)\n${curtainLines}`;      // 157번: 공간 소계 줄 뺌 (발주서에 금액 없음)
     }).join('\n\n');
 
     setTimeout(() => {
