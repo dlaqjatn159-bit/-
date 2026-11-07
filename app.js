@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261219';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261220';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261219';
+const REDAM_BUILD = '20261220';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -65,7 +65,7 @@ window.onload = function() {
 // 크롬은 사람이 화면을 누르지 않은 채 넣은 표시를 뒤로 버튼이 건너뛰게 함(탭에서 뒤로가 안 먹던 이유, 10-15)
 // → 표시는 화면을 누를 때(click) 채워 넣고, 뒤로 한 번에 하나씩 씀. 표시가 바닥나도 다음에 누르면 다시 채워짐
 const BACK_EXIT_MS = 2000;
-const BACK_GUARDS = 3;          // 한 번 누른 뒤 화면을 다시 안 눌러도 앱 안에서 처리되는 뒤로 횟수
+const BACK_GUARDS = 10;         // 한 번 누른 뒤 화면을 다시 안 눌러도 앱 안에서 처리되는 뒤로 횟수 (164번: 3이면 연달아 3번에 앱이 닫혀 10으로)
 let backExitTimer = 0;
 let backLeaving = false;
 function backGuardLevel() { const s = history.state; return (s && s.redam === 'guard') ? (s.n || 1) : 0; }
@@ -1136,6 +1136,9 @@ function updateCurtainData(roomId, curtainId, key, val) {
         // 163번: 공간 크기를 따라가던 줄(고치기 전 가로·세로가 공간 크기와 같던 줄)을 고치면 공간 크기도 같이 — 견적서·공간 머리에 옛 크기가 남지 않게. 크기가 다른 줄은 그대로(115번)
         const other = key === 'width' ? 'height' : 'width';
         if (room[key] != null && room[key] !== '' && Number(prevVal) === Number(room[key]) && Number(c[other]) === Number(room[other])) room[key] = val;
+        // 164번: 견적란 공간 머리 "○ × ○ cm"를 다시 그리지 않아도 바로 맞춤 (머리를 그릴 때와 같은 셈)
+        const sizeLbl = document.getElementById('roomSizeLbl-' + room.id);
+        if (sizeLbl) sizeLbl.textContent = `${room.width || (room.curtains[0] && room.curtains[0].width) || 340} × ${room.height || (room.curtains[0] && room.curtains[0].height) || 235}`;
     }
 
     if (key === 'bookFilter') {
@@ -1454,7 +1457,7 @@ function renderRooms() {
             <div class="staff-room-head">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                     <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="staff-room-name font-serif-kr outline-none border rounded px-1.5 py-0.5 min-w-0">
-                    <span class="text-xs text-stone-500 whitespace-nowrap hidden sm:inline">${rW} × ${rH} cm${cfgSummary ? ' · ' + escText(cfgSummary) : ''}</span>
+                    <span class="text-xs text-stone-500 whitespace-nowrap hidden sm:inline"><span id="roomSizeLbl-${room.id}">${rW} × ${rH}</span> cm${cfgSummary ? ' · ' + escText(cfgSummary) : ''}</span>
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
                     <button onclick="addCurtainToRoom(${room.id})" class="staff-btn whitespace-nowrap flex items-center gap-1">

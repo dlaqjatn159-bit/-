@@ -2459,7 +2459,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .room-mini-box.is-more { position: static; width: 100%; max-width: 220px; margin: 0 0 1rem; box-shadow: none; outline: 1px solid #e5dcd0; }
 
 /* 137번: 원단 카드마다 작은 창 그림 — 오른쪽 위, 가운데 질문 판 아래 */
-.room-mini-box.card-mini { top: 4.8rem; right: 0.9rem; width: 120px; z-index: 6; }
+.room-mini-box.card-mini { top: calc(100px + 0.9rem); right: 0.9rem; width: 120px; z-index: 6; }      /* 164번: 155번 질문 띠(높이 100px) 아래로 */
 
 /* ===== 106번: 치수·사진 화면의 종이색 면을 빼고, 사진 불러오기 칸만 테두리 선. 1~4 단계 줄은 선·면 없이 ===== */
 .msr-stage .measure-box.msr-box, .msr-stage .measure-box.msr-box + .msr-box { background: none; border: 0; }
@@ -3058,6 +3058,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .fin-night-say { margin: 6px 0 0; color: #c4b6a3; font-size: 14px; line-height: 1.6; }
 
 /* 163번: 견적란·상담란 크기 칸 — 50~800cm 밖은 빨간 테두리, 안 잰 처음 값은 흐리게 */
-.size-out { border-color: #be123c !important; background: #fff1f2 !important; color: #be123c !important; }
-.size-unset { color: var(--brand-muted) !important; font-weight: 400 !important; border-style: dashed !important; }
+/* 164번: 입력칸 공통 색 규칙(input[type="number"] …!important)보다 구체적이어야 보임 */
+.size-out, input[type="number"].size-out, input[type="text"].size-out { border-color: #be123c !important; background: #fff1f2 !important; color: #be123c !important; }
+.size-unset, input[type="number"].size-unset, input[type="text"].size-unset { color: var(--brand-muted) !important; font-weight: 400 !important; border-style: dashed !important; }
 .survey-room h2 .size-btn.is-unset { color: var(--brand-muted); font-weight: 400; border-style: dashed; }
