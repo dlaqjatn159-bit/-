@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261211';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261212';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -474,12 +474,11 @@ function planTicket(data, s, slim) {
 //  문장은 정해 둔 한 줄이 아니라 재료(손님 말 F · 공간 S · 색 C · 창 방향 D · 맞은편 창 O · 재질 T · 속지/겉지 짝 P · 그대로 K)를 계산해 섞음
 //  기준: Claude outputs/기준문서/11_이유_문장표.md (숫자 기준은 모두 처음 값)
 // ==============================================================
-const WHY_SAY = {      // 손님 말 인용 (83번): concierge.js HEARD("이렇게 들었습니다" 화면)와 같은 말
-    light: { high: '햇빛이 많이 들어요', mid: '햇빛이 은은하게 들어요', low: '햇빛이 적게 들어요' },
-    block: { light: '빛은 들어와도 좋아요', soft: '눈부심만 줄이고 싶어요', dark: '빛을 거의 막고 싶어요' },
-    privacy: { open: '밖의 시선은 신경 쓰이지 않아요', some: '낮엔 적당히 가려지면 좋아요', high: '밖에서 잘 안 보였으면 해요' },
-    feel: { smooth: '매끈한 느낌이 좋아요', textured: '짜임이 보이는 느낌이 좋아요', cozy: '도톰한 느낌이 좋아요' }
+const WHY_SAY = {      // 손님 말 인용 (156번): 고객 화면 답 버튼 글자 그대로 (concierge.js 2-Base-Block · 2-Base-Privacy). 햇빛 양·속지 느낌은 인용하지 않음
+    block: { light: '들어와도 괜찮아요', soft: '적당히 가려 주세요', dark: '완전히 어둡게요' },
+    privacy: { open: '괜찮아요', some: '조금 신경 쓰여요', high: '많이 신경 쓰여요' }
 };
+const WHY_SAY_TOPIC = { privacy: '바깥 시선은', block: '빛은' };      // 무엇에 대한 답인지는 따옴표 밖에 (156번)
 const whyQuote = (k, ans) => '“' + WHY_SAY[k][ans[k]] + '”';
 function whyJosa(name) {      // "거실과" / "안방과" / "방 2와" 처럼 받침에 따라
     const ch = String(name).slice(-1), code = ch.charCodeAt(0);
@@ -674,12 +673,10 @@ function whyHeardOf(R, all) {
     const ids = all.map(x => x.id);
     const has = list => list.some(id => ids.includes(id));
     const q = [];
-    if (has(['F1', 'F2', 'F3', 'F8']) && WHY_SAY.privacy[R.privacy]) q.push(WHY_SAY.privacy[R.privacy]);
-    if ((has(['F4', 'F5', 'F6', 'F7']) || ids.some(id => String(id).startsWith('FB:'))) && WHY_SAY.block[R.block]) q.push(WHY_SAY.block[R.block]);
-    if (has(['F8', 'F9']) && WHY_SAY.light[R.light]) q.push(WHY_SAY.light[R.light]);
-    if (has(['T4']) && WHY_SAY.feel[R.feel]) q.push(WHY_SAY.feel[R.feel]);
+    if (has(['F1', 'F2', 'F3', 'F8']) && WHY_SAY.privacy[R.privacy]) q.push(WHY_SAY_TOPIC.privacy + ' “' + WHY_SAY.privacy[R.privacy] + '”');
+    if ((has(['F4', 'F5', 'F6', 'F7']) || ids.some(id => String(id).startsWith('FB:'))) && WHY_SAY.block[R.block]) q.push(WHY_SAY_TOPIC.block + ' “' + WHY_SAY.block[R.block] + '”');
     const pick = q.slice(0, 2);
-    return pick.length ? pick.map(t => '“' + t + '”').join(', ') + '라고 말씀하셨습니다.' : '';
+    return pick.length ? pick.join(', ') + '라고 말씀하셨습니다.' : '';
 }
 // ③ 고른 것 문장 (83번, 문장표 4장)
 function whyChoseOf(facts, candsList, R, heard) {
@@ -828,11 +825,7 @@ function drawWhy(ctx, data, W, compact, title) {
     // 공간 한 묶음: 가는 윗선(첫 공간은 머리글 선과 겹침) · 왼쪽 공간 이름(400 명조 24px, 우리 집 색과 같은 왼쪽 기둥 폭) · 오른쪽(QX)에 손님 말·벽/바닥·원단·이유를 가지런히 정렬 (39번)
     const R_SIZE = PAPER_F2;
     function layoutRoom(R) {
-        const keys = [];
-        R.sets.forEach(s => (s.it.kindKey === 'sheer' ? ['privacy', 'light'] : ['block', 'light']).forEach(k => { if (R.ans[k] && WHY_SAY[k][R.ans[k]] && !keys.includes(k)) keys.push(k); }));
-        keys.sort((a, b) => ['light', 'privacy', 'block'].indexOf(a) - ['light', 'privacy', 'block'].indexOf(b));
-        const quotes = keys.map(k => whyQuote(k, R.ans));
-        if (R.dirText) quotes.push(`“${R.dirText}향이에요”`); // 41번
+        const quotes = R.heard ? [R.heard.replace(/라고 말씀하셨습니다\.$/, '')] : [];      // 156번: 최종 제안 ① 들은 말과 같은 인용. 창 방향은 따옴표에 넣지 않음
         setFont(400, R_SIZE, SERIF);
         const nameW = Math.max(148, Math.ceil(ctx.measureText(R.name).width) + 28);
         const QX = CX + nameW, QW = RX - QX;
@@ -851,14 +844,14 @@ function drawWhy(ctx, data, W, compact, title) {
         if (qLines.length) {
             const lastW = ctx.measureText(qLines[qLines.length - 1]).width;
             setFont(400, PAPER_F4, SANS);
-            saidInline = lastW + 12 + ctx.measureText('말씀하셨습니다').width <= QW;
+            saidInline = lastW + 2 + ctx.measureText('라고 말씀하셨습니다.').width <= QW;
         }
         const qn = qLines.length + (qLines.length && !saidInline ? 1 : 0);
         let base = qn ? 44 + (qn - 1) * Q_LH : 0;      // 지금까지 쓴 마지막 줄의 글자 아랫선 (공간 윗선 기준)
         // 잰 벽·바닥 색 한 줄 (32번) + 창 방향: 들어가는 만큼 한 줄에, 넘치면 다음 줄. 앞 공간과 같은 색이면 한 줄 글로 (S4)
         setFont(400, C_SIZE, SANS);
         const parts = R.sameAs ? [] : (R.colors || []).slice();
-        if (parts.length && R.dirText) parts.push({ k: '창', name: R.dirText + '쪽', hex: '' });
+        if (R.dirText) parts.push({ k: '창', name: R.dirText + '쪽', hex: '' });      // 156번: 벽·바닥을 못 잰 공간에서도 "창 남쪽"
         const cRows = []; let cRowW = 0;
         parts.forEach(c => {
             const w = (c.hex ? C_SW + 10 : 0) + ctx.measureText(`${c.k} ${c.name} ${c.hex}`).width + 20;      // 대략 폭 (그릴 때 글꼴별로 다시 잼)
@@ -907,8 +900,8 @@ function drawWhy(ctx, data, W, compact, title) {
             const lastY = y + 44 + (L.qLines.length - 1) * Q_LH;
             const lastW = ctx.measureText(L.qLines[L.qLines.length - 1]).width;
             setFont(400, PAPER_F4, SANS);
-            if (L.saidInline) text('말씀하셨습니다', L.QX + lastW + 12, lastY, 'left', SOFT);
-            else text('말씀하셨습니다', L.QX, lastY + Q_LH, 'left', SOFT);
+            if (L.saidInline) text('라고 말씀하셨습니다.', L.QX + lastW + 2, lastY, 'left', SOFT);
+            else text('라고 말씀하셨습니다.', L.QX, lastY + Q_LH, 'left', SOFT);
         }
         L.cRows.forEach((row, i) => { let x = L.QX; row.forEach(c => { x = drawColorPart(c, x, y + L.cY + i * C_LH); }); });
         if (L.R.sameAs) { setFont(400, C_SIZE, SANS); text(`벽과 바닥은 ${L.R.sameAs}${whyJosa(L.R.sameAs)} 같습니다.`, L.QX, y + L.sameY, 'left', MUTED); }
