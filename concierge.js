@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261227';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261228';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -149,6 +149,7 @@
         let pool = (typeof isCustomerHidden === 'function') ? all.filter(f => !isCustomerHidden(f)) : all;
         // 56번 합치기 전 삼보텍스·콤비처럼 같은 블라인드가 둘이면 대표 하나만 (58번). 견적은 고른 원단 그대로
         if (typeof fabricTwinDedupe === 'function') pool = fabricTwinDedupe(pool);
+        pool = pool.filter(f => Number(f.price) > 0);      // 172번: 판매가가 빈(0원) 원단은 손님 추천에서 뺌 — 견적서에 0원으로 나가지 않게. 직원 화면에서 손으로는 고를 수 있고 경고가 뜸
 
         if (categoryType === "블라인드") {
             const blindPool = pool.filter(f => f.categoryType === "블라인드" || f.calcType === "hebe" || (f.name && (f.name.includes("블라인드") || f.name.includes("콤비") || f.name.includes("우드"))));

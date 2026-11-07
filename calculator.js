@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261227';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261228';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -17,6 +17,7 @@ function calculateAll() {
     const grp = { curtain: { sell: 0, buy: 0, miss: false, want: 0, noCurve: false }, blind: { sell: 0, buy: 0, miss: false, want: 0, noCurve: false } };      // want: 곡선대로라면 나올 판매가 합 (109번)
 
     let noFabCount = 0;      // 원단을 못 찾은 품목 수 (126번)
+    let zeroPriceCount = 0;      // 172번: 판매가가 빈(0원) 원단을 쓴 품목 수
     const summaryListContainer = document.getElementById('summaryRoomList');
     if (summaryListContainer) summaryListContainer.innerHTML = '';
 
@@ -27,6 +28,7 @@ function calculateAll() {
             const fab = Pricing.pickFabric(FABRIC_DB, c.fabricId);
             const p = Pricing.priceItem(c, fab);
             if (p.noFabric) noFabCount++;
+            if (fab && !fab.sampleOnly && !(Number(fab.price) > 0)) zeroPriceCount++;      // 172번 (실물 견본 품목은 0원이 정상이라 세지 않음)
             const cost = (staff && fab) ? Costing.costItem(c, fab, p) : null;
 
             c.calc = {
@@ -97,6 +99,12 @@ function calculateAll() {
         noFabEl.hidden = noFabCount === 0;
         noFabEl.textContent = noFabCount ? `원단 없는 품목 ${noFabCount}개 — 금액에서 빠져 있어요. 원단을 다시 골라 주세요.` : '';
     }
+    // 172번: 판매가가 빈 원단을 쓴 품목이 있으면 경고 (견적서에 0원으로 나감)
+    const zeroEl = document.getElementById('summaryZeroPrice');
+    if (zeroEl) {
+        zeroEl.hidden = zeroPriceCount === 0;
+        zeroEl.textContent = zeroPriceCount ? `판매가가 비어 있는 원단 ${zeroPriceCount}개 — 견적서에 0원으로 나갑니다. 판매가를 넣거나 다른 원단을 골라 주세요.` : '';
+    }
 
     // 131번: 빛(스탠드) 줄 — 이케아 가격 + 대행비를 품목 합에 더함. 켰는데 금액이 없으면 직원 화면에 알림
     const light = (typeof lightStandOf === 'function') ? lightStandOf() : { on: false, asked: false, total: 0, price: 0 };
@@ -165,6 +173,8 @@ function quoteGaps(withSupplier) {
     rooms.forEach(r => r.curtains.forEach(c => { if (c.sizeUnset) unset++; else if (sizeOutOfRange(c.width) || sizeOutOfRange(c.height)) outN++; }));
     if (unset) out.push(`크기를 넣지 않은 줄이 ${unset}개 있습니다(처음 값 그대로)`);
     if (outN) out.push(`크기가 ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖인 줄이 ${outN}개 있습니다`);
+    const zero = rooms.reduce((n, r) => n + r.curtains.filter(c => { const f = Pricing.pickFabric(FABRIC_DB, c.fabricId); return f && !f.sampleOnly && !(Number(f.price) > 0); }).length, 0);      // 172번
+    if (zero) out.push(`판매가가 비어 있는 원단을 쓴 줄이 ${zero}개 있습니다(견적서에 0원)`);
     return out;
 }
 // 직원 화면에서만 확인 창(손님 화면엔 띄우지 않음). 같은 내용으로 한 번 [확인]하면 다시 묻지 않음
