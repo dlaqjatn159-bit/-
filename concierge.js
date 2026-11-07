@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261217';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261218';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -471,10 +471,10 @@
         const r = todo.find(begun) || todo.find(x => x.id === state.activeSpaceId) || todo[0];
         if (!askedRoom(r)) return { kind: 'ask', room: r };
         if (!r.compOk || !r.planComp) return { kind: 'comp', room: r };      // 138번: 공간마다 구성 사진 화면
-        // 123번: 커튼 느낌 · 겉지 질감 · 속지 질감 · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
+        // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
         if (!(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };
+        if (planHas(r, 'sheer') && !r.sheerFeel) return { kind: 'sheer', room: r };      // 162번: 속지 결 먼저 (원단도 속지 → 겉지 순)
         if (planHas(r, 'drape') && !(r.ownTaste && r.ownTex)) return { kind: 'tex', room: r };
-        if (planHas(r, 'sheer') && !r.sheerFeel) return { kind: 'sheer', room: r };
         if (planHas(r, 'blind') && !r.blindWant) return { kind: 'blind', room: r };
         return { kind: 'fabric', room: r };
     }
@@ -499,7 +499,7 @@
         }
         if (nx.kind === 'comp') { openCompFor(nx.room); return; }
         if (nx.kind === 'fabric') { startFabric(nx.room); return; }
-        if (nx.room) {      // 123번: 그 공간의 취향 화면 (느낌 · 겉지 결 · 속지 결 · 블라인드 종류)
+        if (nx.room) {      // 123번: 그 공간의 취향 화면 (느낌 · 속지 결 · 겉지 결 · 블라인드 종류 — 162번 순서)
             const ed = loadEditing(nx.room);
             ed.flow = true;
             const ROOM_STEP = { pres: "0.5-House-Taste", tex: "0.6-House-Tex", sheer: "2-Base-SheerFeel", blind: "2-Base-BlindKind" };
@@ -598,7 +598,7 @@
     const ADD_STEPS = ["1.5-Room-Type", "1.6-Add-Size", "1.7-Add-Same", "1.8-Add-Dir"];
     // 152번: 공간별 진행 — 진행 선 = (마친 공간 + 이 공간에서 간 만큼) ÷ 공간 수. 숫자는 한 공간 안에서 간 만큼(0~1)
     const FLOW_PHASE = { "2-Base-Floor": 0.05, "2-Base-Wall": 0.1, "2-Base-Block": 0.15, "2-Base-Privacy": 0.25, "3-Config-Style": 0.35,
-        "0.5-House-Taste": 0.45, "0.6-House-Tex": 0.5, "2-Base-SheerFeel": 0.55, "2-Base-BlindKind": 0.6, "3.5-Bridge": 0.65, "4-Fabric-Queue": 0.75, "6-Finish": 0.9 };
+        "0.5-House-Taste": 0.45, "2-Base-SheerFeel": 0.5, "0.6-House-Tex": 0.55, "2-Base-BlindKind": 0.6, "3.5-Bridge": 0.65, "4-Fabric-Queue": 0.75, "6-Finish": 0.9 };
     function flowProg() {
         const ed = state.editingRoom, ph = FLOW_PHASE[state.step];
         if (ph == null || (ed && !ed.flow)) return null;
