@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261210';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261211';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -803,7 +803,7 @@
     // 사진 화면의 질문: 사진 위 어두운 알약 대신 앞의 안내 장면에서 보여 줌 (73번). 사진 위에는 진행 선만
     function stepHead(question) {
         photoQuestion = question;
-        return progHtml();
+        return progHtml() + (question ? '<p class="photo-q font-serif-kr">' + question + '</p>' : '');      // 155번: 사진 화면에도 질문 한 줄을 남김
     }
 
     // ---- 마무리 옵션 줄 (139번, 디자인점검 B-3 시안 B안): 형상기억·호텔핏은 줄마다 빼기/넣기, 밑단은 시접/리드밴드 중 하나 ----

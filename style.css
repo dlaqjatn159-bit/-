@@ -2304,6 +2304,9 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 }
 .bookmark-stage .step-skip:active { background: var(--paper); color: var(--ink); }
 .bookmark-stage .step-skip.was-picked { color: var(--muted); }
+/* 155번: 사진 화면 위 질문 띠 — 가로 전체 종이색 면, 명조 24px. 뒤로 가기(왼쪽)·잘 모르겠어요(오른쪽)와 같은 높이 */
+.bookmark-stage > .photo-q { position: absolute; top: 0; left: 0; right: 0; z-index: 39; box-sizing: border-box; min-height: 100px; margin: 0; padding: 14px 210px; display: flex; align-items: center; justify-content: center; text-align: center; font-family: var(--serif); font-size: 24px; font-weight: 400; line-height: 1.35; color: var(--band-ink); background: rgba(251, 249, 245, 0.85); pointer-events: none; }
+@media (max-width: 1000px) { .bookmark-stage > .photo-q { padding: 14px 150px; } }      /* 세로 모드: 양옆 여백만 줄임 */
 /* 사진 화면 앞 안내 장면 (concierge.js playPhotoIntro). 시간은 concierge.js PHOTO_INTRO 한 곳에서 --pi-* 로 넣음 */
 .photo-intro { position: absolute; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; padding: 3rem; background: var(--paper); text-align: center; cursor: pointer; transition: opacity var(--pi-focus, 0.65s) ease; }
 .photo-intro.out { opacity: 0; pointer-events: none; }
