@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261231';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261232';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -381,7 +381,7 @@
                 h += `<span class="fin-est-k">${esc(it.kind)}</span>`;
                 h += `<span class="fin-est-nm font-serif-kr">${esc(it.bookName || it.name)}${it.meta ? `<small>${esc(it.meta)}</small>` : ''}</span>`;
                 h += `<span class="fin-est-sz">${esc(it.size || '')}</span>`;
-                h += `<span class="fin-est-pr font-serif-kr">${it.sampleOnly ? '' : `${it.price.toLocaleString()}원`}</span>`;
+                h += `<span class="fin-est-pr font-serif-kr">${it.sampleOnly ? (it.sampleBlind ? '견본 확인 후' : '') : `${it.price.toLocaleString()}원`}</span>`;      // 176번
                 h += '</div>';
             });
             h += '</div>';

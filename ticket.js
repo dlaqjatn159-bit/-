@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261231';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261232';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -234,7 +234,7 @@ function ticketDataBase() {
                     label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
                     name: ticketPlainName(c, calc), tone: ticketToneWord(r, c),      // 이유 장·우리 집 색: 색 이름 · 재질 + 벽·바닥과 톤 관계 (61번)
                     bookName: ticketEstName(c, calc),      // 견적서(그림·세로 화면·카톡 글): 책자 원단 이름 + 색 번호 + (앞장 이름), 예) 블랑 1번 (오프화이트 · 생활암막) (75번 · 136번)
-                    fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly: sampleOnly || !!calc.noFabric,      // 원단 없는 품목은 금액을 숨김 (126번)
+                    fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly: sampleOnly || !!calc.noFabric, sampleBlind: sampleOnly,      // 원단 없는 품목은 금액을 숨김 (126번) · 176번: sampleBlind = 실물 견본 품목(금액 칸에 "견본 확인 후")
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || ''),
@@ -372,6 +372,7 @@ function drawTicket(ctx, data, W, slim) {
             b.lines.forEach((ln, li) => text(ln, nx, by + NAME_Y + li * NAME_LH, 'left', DARK));
             let ty = by + NAME_Y + (b.lines.length - 1) * NAME_LH;
             if (!b.it.sampleOnly) { setFont(400, PAPER_F3, SERIF); text(won(b.it.price), px + iw, by + NAME_Y, 'right', DARK); }
+            else if (b.it.sampleBlind) { setFont(400, PAPER_F4, SANS); text('견본 확인 후', px + iw, by + NAME_Y, 'right', MUTED); }      // 176번
             setFont(400, PAPER_F4, SANS);
             if (b.metaInline) text(b.it.meta, nx + b.lastW + 14, ty, 'left', MUTED);
             b.metaLines.forEach(ln => { ty += 32; text(ln, nx, ty, 'left', MUTED); });
@@ -397,7 +398,7 @@ function drawTicket(ctx, data, W, slim) {
         ].filter(r => r.lines.length);
         const sup = paras(data.supplier, INFO_W);
         const rowH = n => n * INFO_LH + INFO_GAP;
-        const h = (data.install > 0 ? 76 : 0) + (data.vatText ? (data.install > 0 ? 52 : 76) : 0) + 96 + 54 + rows.reduce((a, r) => a + rowH(r.lines.length), 0)
+        const h = (data.install > 0 ? 76 : 0) + (data.vatText ? (data.install > 0 ? 52 : 76) : 0) + 96 + 54 + (/실물 견본/.test(data.totalLabel || '') ? 40 : 0) + rows.reduce((a, r) => a + rowH(r.lines.length), 0)
             + (sup.length ? 30 + rowH(sup.length) : 0) + 56;
         return { rows, sup, h };
     }
@@ -417,8 +418,10 @@ function drawTicket(ctx, data, W, slim) {
             y += first ? 76 : 52;
         }
         hline(CX, RX, y, DARK, 1);
+        const longLbl = /실물 견본/.test(data.totalLabel || '');      // 176번: 긴 이름표(실물 견본 품목 제외)는 합계 숫자 위 줄로 — 숫자에 깔리지 않게
+        if (longLbl) { setFont(400, PAPER_F4, SANS); label(data.totalLabel, CX, y + 44, 'left', 3); y += 40; }
         y += 96;
-        setFont(400, PAPER_F4, SANS); label(data.totalLabel || '합계 금액 (시공비 포함)', CX, y - 6, 'left', 3);      // 161번
+        if (!longLbl) { setFont(400, PAPER_F4, SANS); label(data.totalLabel || '합계 금액 (시공비 포함)', CX, y - 6, 'left', 3); }      // 161번
         setFont(400, PAPER_F3, SERIF);
         const wonW = ctx.measureText('원').width;
         text('원', RX, y, 'right', DARK);
@@ -2021,7 +2024,7 @@ function ticketKakaoText(data) {
         out.push('', `■ ${room.name}${room.sampleOnly ? '' : ' ' + won(room.total)}`);
         room.items.forEach(it => {
             out.push(`· ${it.kind} · ${it.bookName || it.name}`);
-            const sub = [it.size, it.meta, it.sampleOnly ? '' : won(it.price)].filter(Boolean).join(' · ');
+            const sub = [it.size, it.meta, it.sampleOnly ? (it.sampleBlind ? '견본 확인 후' : '') : won(it.price)].filter(Boolean).join(' · ');      // 176번
             if (sub) out.push(`  ${sub}`);
         });
     });
