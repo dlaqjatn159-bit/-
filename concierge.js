@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261224';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261225';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -2384,7 +2384,13 @@
                     subtotal: sub
                 };
             });
-            state.roomsCart = mapped.concat(inProgress);
+            const merged = mapped.concat(inProgress);
+            if (!replace) {      // 169번: 직원 화면을 다녀와도 공간 순서 그대로 (둘째 줄 만드는 중인 공간이 맨 뒤로 가지 않게)
+                const oldNames = state.roomsCart.map(r => r.name);
+                const at = r => { const i = oldNames.indexOf(r.name); return i < 0 ? oldNames.length : i; };
+                merged.sort((a, b) => at(a) - at(b));
+            }
+            state.roomsCart = merged;
             state.installFee = installFee;
             if (state.step === "0-Welcome" || state.step === "1-Space" || state.step === "7-Final-Dossier") render();
         },

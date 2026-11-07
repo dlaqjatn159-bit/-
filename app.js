@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261224';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261225';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261224';
+const REDAM_BUILD = '20261225';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -1521,6 +1521,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 measuredColor: r.measuredColor || null,
+                altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 둘째 줄 후보 (169번: 직원 화면을 다녀와도 남게)
                 width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";
