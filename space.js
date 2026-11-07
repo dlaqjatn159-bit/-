@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261237';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261238';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -56,7 +56,7 @@
     function shortFabName(fabricId, color) {
         const f = getLiveDb().find(x => x.id === fabricId);
         if (!f) return '';
-        const label = (color && typeof colorLabelOf === 'function') ? colorLabelOf(fabricId, color) : '';
+        const label = (color && typeof custColorName === 'function') ? custColorName(fabricId, color) : '';      // 182번
         const single = typeof getFabricColors === 'function' && getFabricColors(fabricId).length < 2;      // 색이 하나뿐이면 "1번"은 안 붙임 (10-17)
         const p = splitNameColor(f, label || (color ? (/^\d+$/.test(String(color)) ? (single ? '' : `${color}번`) : String(color)) : ''));
         return [p.name, p.colorTag].filter(Boolean).join(' ');
@@ -238,7 +238,7 @@
             const toneBtn = (e, word, step) => `<button type="button"${e && live ? ` onclick="window.concierge.toneSwap(${r.id}, ${i}, '${e.key.replace(/'/g, "\\'")}', ${step})"` : ' disabled'}><i style="background:${e ? e.hex : '#eee8df'}"></i><span>${word}</span></button>`;
             const isBlindDupe = c.presetType === 'blind' && (c.calc?.fabName || c.label || '').includes('블라인드');
             const baseFabName = (typeof ticketBookName === 'function') ? ticketBookName(c) : ((c.calc && c.calc.fabName) || c.label || '원단');
-            const colLbl = (c.fabricId && c.colorName && typeof colorLabelOf === 'function') ? colorLabelOf(c.fabricId, c.colorName) : '';
+            const colLbl = (c.fabricId && c.colorName && typeof custColorName === 'function') ? custColorName(c.fabricId, c.colorName) : '';      // 182번
             const showColLbl = colLbl && !baseFabName.endsWith(colLbl);
             const fc = live ? fillCls(r, i) : '', swStyle = fabricFillStyle(c.fabricId, c.colorName);
             let s = mode === 'alt' ? `<div class="dos-item" role="button" onclick="window.concierge.selectLine(${r.id}, ${no})">` : '<div class="dos-item">';

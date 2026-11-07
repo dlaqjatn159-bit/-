@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261237';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261238';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -238,7 +238,7 @@ function ticketDataBase() {
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || ''),
-                    kindKey: c.presetType || '', colorDesc: (c.fabricId && c.colorName && typeof colorLabelOf === 'function') ? colorLabelOf(c.fabricId, c.colorName) : '',
+                    kindKey: c.presetType || '', colorDesc: custColorName(c.fabricId, c.colorName),      // 182번
                     keep: ticketKeepWord(r, c),      // 원단을 고른 이유 카드용
                     pickDir: c.pickDir || null, toneStep: Number(c.toneStep) || 0      // 칸마다의 잇는 방향 · 한 톤 바꿈 (28번)
                 };
@@ -560,6 +560,11 @@ const WHY_F_FRAG = { F1: '낮에도 안이 비치지 않는', F2: '형태만 흐
 function proNameOf(c) {
     const p = (c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number') ? proColorName(c.L, c.a, c.b) : null;
     return p ? p.ko : '';
+}
+// 182번: 손님 화면 원단 색 이름은 어디서나 하나 — 잰 색이 있으면 색 사전 이름(88번), 없으면 사장님이 붙인 색 이름. 원단 카드·공간 화면·제안서가 같이 씀
+function custColorName(fabricId, colorName) {
+    if (!fabricId || !colorName) return '';
+    return proNameOf(whyFabricColor(fabricId, colorName)) || (typeof colorLabelOf === 'function' ? colorLabelOf(fabricId, colorName) : '') || '';
 }
 // 잰 벽·바닥의 이름 (113번): 나무 이름은 나무 재료일 때만(바닥: 원목·마루·장판 / 벽: 무늬목·목재). 타일·석재·카펫 바닥, 그 밖의 벽은 색 사전 이름
 function matWoodLike(part, c) { const k = c && c.mat && c.mat.k; return part === 'floor' ? !(k === 'tile' || k === 'carpet') : k === 'wood'; }

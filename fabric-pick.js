@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261237';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261238';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -50,7 +50,7 @@
     }
     // 색 표시: 색 이름이 있으면 이름(화이트), 없으면 "3번". 색이 하나뿐이고 이름도 없으면 표시 안 함
     function colorTagOf(f, pick, n) {
-        const label = (pick && typeof colorLabelOf === 'function') ? colorLabelOf(f.id, pick) : '';
+        const label = (pick && typeof custColorName === 'function') ? custColorName(f.id, pick) : '';      // 182번: 색 사전 이름 하나로
         if (label) return label;
         if (!pick || n < 2) return '';
         return /^\d+$/.test(String(pick)) ? `${pick}번` : String(pick);
