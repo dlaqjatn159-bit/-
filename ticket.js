@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261235';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261236';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -640,11 +640,12 @@ function whyItemCands(F, R, facts) {
             else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', `색 기운이 거의 없어, ${R.floorWood === false ? '바닥' : '바닥 나무'}색과 부딪히지 않습니다.`, '한쪽으로 치우친 색이 아니라, 바닥 색과 함께 두어도 차분합니다.');
         }
     }
-    // D. 창 방향이 만드는 결과 (방위 이름은 ② 칸에만). 하나만. D7~D9는 북쪽만 든 창에서만 (83번: 북서·북동은 동·서 문장)
+    // D. 창 방향이 만드는 결과 (방위 이름은 ② 칸에만). 하나만. D7~D9는 북쪽만 든 창에서만 (83번: 북서·북동은 동·서 문장) · D0(180번)은 북쪽이 든 창 모두
     const lifeFull = kind === 'drape' && ['life', 'full'].includes(blackoutLevel(f));
     const warm = !!(c && c.fam && WHY_WARM_FAM.includes(c.fam));
     const nOnly = R.N && !R.E && !R.W;
     const D = [
+        [R.N && kind === 'drape' && typeof isCoolGray === 'function' && isCoolGray(c), 'D0', '북쪽 빛은 푸른 기운이 있어, 이 색은 낮에 조금 더 푸르고 짙게 보입니다. 창가에서 견본을 대 보고 정하겠습니다.'],      // 180번: 북쪽이 든 창(북동·북서 포함) + 찬 회색 — D 가운데 가장 먼저
         [R.E && R.bedroom && lifeFull, 'D1', '이른 아침 햇빛을 가려, 잠이 덜 깹니다.'],
         [R.W && lifeFull, 'D5', '낮게 드는 오후 햇빛의 눈부심과 열기가 줄어듭니다.'],
         [R.E && kind === 'sheer', 'D2', '아침에는 속지만 닫아도 공간이 밝습니다.'],

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261235';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261236';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1750,17 +1750,27 @@ function pointPopBonus(c) {
     if (!c || typeof c.a !== 'number' || typeof c.b !== 'number') return 0;
     return POINT_POP_WEIGHT * Math.min(1, Math.hypot(c.a, c.b) / POINT_POP_RANGE);
 }
-// 빛 보정 (105번, 10-26 결정): 창 방향은 취향이 아니라 사실 → 모든 갈래에 조용히 적용. 북향(북·북동·북서)만 따뜻한 색을 조금 앞으로
+// 빛 보정 (105번, 10-26 결정): 창 방향은 취향이 아니라 사실 → 모든 갈래에 조용히 적용. 북향(북·북동·북서)만 따뜻한 색을 조금 앞으로 · 찬 회색은 조금 뒤로(180번)
 //  - 남·동 그대로, 서향은 오후 빛이 이미 따뜻해 그대로. 이유 문장에는 안 드러냄(창 방향은 "골랐습니다"의 근거가 아님), 방 그림에도 반영 안 함
 //  - 약하게: 이어주는 색(+1.5)보다 작게. 시험 칸에서 켜고 끄며 비교(window.LIGHT_FIX_ON)
 const LIGHT_FIX_WEIGHT = 1;
 if (typeof window !== 'undefined' && window.LIGHT_FIX_ON === undefined) window.LIGHT_FIX_ON = true;
+// 180번: 찬 회색 — 색 사전(88번) 계열이 쿨 그레이, 또는 블루·그린 계열인데 색 기운이 적은(채도 12 미만) 색. 북쪽 빛에서 더 푸르고 짙게 보임
+//  c: 원단 색(light·a·b) 또는 잰 색(L·a·b)
+function isCoolGray(c) {
+    const L = c && (typeof c.L === 'number' ? c.L : c.light);
+    if (!c || typeof L !== 'number' || typeof c.a !== 'number' || typeof c.b !== 'number' || typeof proColorName !== 'function') return false;
+    const p = proColorName(L, c.a, c.b);
+    if (!p) return false;
+    return p.fam === 'cool' || ((p.fam === 'blue' || p.fam === 'green') && Math.hypot(c.a, c.b) < 12);
+}
 function lightFixBonus(c, room) {
     if (typeof window !== 'undefined' && window.LIGHT_FIX_ON === false) return 0;
     if (!c || !room || !windowDirOf(room.windowDir).includes('N')) return 0;
     // 따뜻한 색: 사장님이 정한 톤이 웜이면, 톤이 없으면 잰 색값이 노랑·빨강 쪽(b ≥ 6)이면
     const warm = c.tone ? c.tone === 'warm' : (typeof c.b === 'number' && c.b >= 6 && (c.a || 0) > -3);
-    return warm ? LIGHT_FIX_WEIGHT : 0;
+    if (warm) return LIGHT_FIX_WEIGHT;
+    return isCoolGray(c) ? -LIGHT_FIX_WEIGHT : 0;      // 180번: 북쪽이 든 창에서 찬 회색은 조금 뒤로
 }
 function colorDistanceWord(d) { return d < 3 ? '거의 같음' : (d < 6 ? '아주 비슷' : (d < 10 ? '비슷' : '조금 다름')); }
 
