@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261210';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -344,7 +344,7 @@
         const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
         const row = (k, part) => {
             const p = roomPart(ed, part);
-            return `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 안 쟀어요'}</span>${hexCode(p)}`
+            return `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 재지 않았습니다'}</span>${hexCode(p)}`
                 + `<button type="button" class="ed-btn" onclick="window.concierge.editRoomColor('${part}')">${p ? '다시 재기' : '재기'}</button></div>`;
         };
         const house = houseColor();
@@ -355,7 +355,7 @@
             `<button type="button" class="msr-mode-btn font-serif-kr ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
             '</div>';
         if (isPart && ((ed.spaceWidth || ed.width) > 0 || (ed.spaceHeight || ed.height) > 0)) {
-            h += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${ed.spaceWidth || ed.width || 0} × ${ed.spaceHeight || ed.height || 0}cm</b></p>`;
+            h += `<p class="msr-space-ref font-serif-kr">공간 전체 크기: <b>${ed.spaceWidth || ed.width || 0} × ${ed.spaceHeight || ed.height || 0}cm</b></p>`;
         }
         h += '<div class="msr-grid">' +
             msrBoxHtml('width', '가로', curW) +

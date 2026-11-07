@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261210';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // more.js — 고객 화면 중심 화면 › 더 보기(20번 4단계 · 72번): 카드 ↔ 색 지도, 조건·순서·잇는 방향, 후보 1~4, 후보 비교하기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -189,7 +189,7 @@ function spaceMoreCardsHtml(d) {
             + (isCur ? '<span class="finder-cur">지금</span>' : (no ? `<span class="more-no">${no}</span>` : ''))
             + `</div><div class="more-fbody"><b class="font-serif-kr">${moreEsc(n.name)}</b><span>${moreEsc(n.color)}${photo ? '' : ' · 샘플북'}</span></div></article>`;
     };
-    const empty = shown ? '' : '<p class="more-empty">조건에 맞는 색이 없어요</p>';
+    const empty = shown ? '' : '<p class="more-empty">조건에 맞는 색이 없습니다</p>';
     return `<div class="finder-grid more-grid">${list.map(card).join('')}</div>${empty}`;
 }
 // 색 지도 (고객용): 위 밝은 색 · 아래 진한 색 · 왼쪽 차가운 색 · 오른쪽 따뜻한 색 (숫자 없음, 72번 말). 같은 종류 원단만, 겹친 점은 살짝 띄움
@@ -198,7 +198,7 @@ function spaceMoreCardsHtml(d) {
 function spaceMoreMapHtml(d) {
     const room = d.slot.room, mc = room.measuredColor, measured = !!(mc && mc.wall && mc.floor);
     const pool = d.all.filter(e => e.L != null && e.b != null && e.hex);
-    if (!pool.length) return '<p class="more-empty">색 값이 들어온 원단이 아직 없어요</p>';
+    if (!pool.length) return '<p class="more-empty">색 값이 들어온 원단이 아직 없습니다</p>';
     const fs = 14 * (spaceMore.mapK || 1);
     const W = MORE_MAP_W, H = MORE_MAP_H, P = { l: fs * 5.6 + 14, r: fs * 5.6 + 14, t: fs * 2 + 12, b: fs * 2 + 16 };
     const fur = (mc && Array.isArray(mc.furniture) ? mc.furniture : []).filter(f => typeof f.L === 'number' && typeof f.b === 'number');      // 가구 색 (37번)
@@ -255,14 +255,14 @@ function spaceMoreSheetHtml(d) {
     const e = d.all.find(x => x.key === spaceMore.sheet);
     if (!e) return '';
     const cur = d.cur, n = finderShowName(e), isCur = e.key === d.curKey, st = spaceMore.stars.includes(e.key), photo = photoFor(e.fabricId, e.color);
-    let word = '지금 고른 색이에요.';
+    let word = '지금 고른 색입니다.';
     if (!isCur && cur && cur.L != null && e.L != null && cur.b != null && e.b != null) {
         const lw = e.L > cur.L + 1 ? '밝고' : (e.L < cur.L - 1 ? '진하고' : '비슷한 밝기에');
-        const bw = e.b > cur.b + 1.5 ? '조금 더 따뜻해요' : (e.b < cur.b - 1.5 ? '조금 더 차가워요' : '색감이 비슷해요');      // 지도 축 말과 같게 (72번)
+        const bw = e.b > cur.b + 1.5 ? '조금 더 따뜻합니다' : (e.b < cur.b - 1.5 ? '조금 더 차갑습니다' : '색감이 비슷합니다');      // 지도 축 말과 같게 (72번)
         word = `지금 색보다 ${lw} ${bw}.`;
     } else if (!isCur) word = '';
     return `<div class="more-sheet"><div class="more-sheet-ph" style="${photo ? `background-image:url('${photo}');` : ''}background-color:${e.hex || 'var(--brand-panel)'}"></div>`
-        + `<div class="more-sheet-tx"><b class="font-serif-kr">${moreEsc(n.name)}</b><span>${moreEsc(n.color)}</span><small>${word}${photo ? '' : ' 샘플북으로 직접 보여 드릴게요.'}</small>`
+        + `<div class="more-sheet-tx"><b class="font-serif-kr">${moreEsc(n.name)}</b><span>${moreEsc(n.color)}</span><small>${word}${photo ? '' : ' 샘플북으로 직접 보여 드리겠습니다.'}</small>`
         + `<div class="more-sheet-bt">${isCur ? '' : `<button type="button" class="more-go font-serif-kr" data-mstar="${moreEsc(e.key)}">${st ? '후보에서 빼기' : '후보에 담기'}</button>`}`
         + `<button type="button" class="more-sub" data-mfocus="${moreEsc(e.key)}">카드로 보기</button><button type="button" class="more-sub" data-msheet-close>닫기</button></div></div></div>`;
 }
@@ -281,7 +281,7 @@ function spaceMoreClick(ev) {
     if ((b = by('[data-mstar]'))) {
         const k = b.dataset.mstar, st = spaceMore.stars;
         if (st.includes(k)) spaceMore.stars = st.filter(x => x !== k);
-        else if (st.length >= MORE_STAR_MAX) { showMoreNote('후보는 4개까지예요'); return; }
+        else if (st.length >= MORE_STAR_MAX) { showMoreNote('후보는 4개까지 담을 수 있습니다'); return; }
         else st.push(k);
         if (b.closest('.more-sheet')) spaceMore.sheet = null;      // 점 판에서 담기·빼기를 누르면 판이 닫힘 (10-15 사장님)
         renderSpaceMore(); return;

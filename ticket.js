@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261210';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -627,7 +627,7 @@ function whyItemCands(F, R, facts) {
     const D = [
         [R.E && R.bedroom && lifeFull, 'D1', '이른 아침 햇빛을 가려, 잠이 덜 깹니다.'],
         [R.W && lifeFull, 'D5', '낮게 드는 오후 햇빛의 눈부심과 열기가 줄어듭니다.'],
-        [R.E && kind === 'sheer', 'D2', '아침에는 속지만 닫아도 방이 밝습니다.'],
+        [R.E && kind === 'sheer', 'D2', '아침에는 속지만 닫아도 공간이 밝습니다.'],
         [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '한낮의 강한 햇빛도 속지를 닫아 두면 눈부시지 않게 들어옵니다.'],
         [R.W && warm && c.C >= 6, 'D3', '오후에는 빛이 노래져, 이 색이 조금 더 따뜻해 보입니다.'],
         [R.W && c && c.C < 4, 'D4', '색 기운이 적어, 오후의 노란 빛에도 색이 크게 달라 보이지 않습니다.'],
@@ -656,8 +656,8 @@ function whyItemCands(F, R, facts) {
 // 작은 안내(한 원단에 1개, 36번 · 83번): 반대쪽 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5)·햇빛에 옅어 보임(F10, 63번)
 function whyItemNote(F, R, cands) {
     if (R.opp) {
-        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '반대쪽 창으로 빛이 들어 방 안이 바깥보다 밝은 낮에는, 밖에서 안이 조금 비쳐 보일 수 있습니다. 신경 쓰이시면 겉지를 조금 닫아 두시면 됩니다.';
-        if (F.kind === 'drape' && R.block === 'dark') return '반대쪽 창에서도 빛이 들어, 그쪽도 가려야 방이 완전히 어두워집니다.';
+        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '반대쪽 창으로 빛이 들어 공간 안이 바깥보다 밝은 낮에는, 밖에서 안이 조금 비쳐 보일 수 있습니다. 신경 쓰이시면 겉지를 조금 닫아 두시면 됩니다.';
+        if (F.kind === 'drape' && R.block === 'dark') return '반대쪽 창에서도 빛이 들어, 그쪽도 가려야 공간이 완전히 어두워집니다.';
     }
     if (R.room && R.room.night) return '';      // 속지만 밤 안내가 있는 공간은 안내가 이미 있음 (한 원단에 1개)
     const ids = (cands || []).map(x => x.id);

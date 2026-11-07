@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261210';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -907,7 +907,7 @@
                 html += '<div class="ambient-stage ask-stage wel-stage">';
                 html += '<h1 class="wel-brand font-serif-kr" data-staff-hold>' + redamLogoSVG() + '</h1>';
                 html += '<p class="wel-sub font-serif-kr">빛을,<br>다시 담습니다</p>';
-                html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="고객명 / 현장명" oninput="window.concierge.setClientName(this.value)">`;
+                html += `<input type="text" id="cName_ui" class="wel-input font-serif-kr" value="${esc((document.getElementById('custName') || {}).value)}" placeholder="성함" oninput="window.concierge.setClientName(this.value)">`;
                 html += `<input type="tel" id="cPhone_ui" class="wel-input font-serif-kr" inputmode="numeric" autocomplete="off" value="${esc((document.getElementById('custPhone') || {}).value)}" placeholder="연락처" oninput="window.concierge.setClientPhone(this)">`;
                 html += `<button type="button" class="txt-cta wel-go font-serif-kr" onclick="window.concierge.beginConsult()">${state.roomsCart.length ? '상담 이어가기' : '상담 시작'}</button>`;
                 html += '</div>';
@@ -980,7 +980,7 @@
                     `<button type="button" class="msr-mode-btn font-serif-kr ${isPart ? 'is-active' : ''}" onclick="window.concierge.setSizeMode('part')">부분</button>` +
                     '</div>';
                 if (isPart && ((d.spaceWidth || d.width) > 0 || (d.spaceHeight || d.height) > 0)) {
-                    html += `<p class="msr-space-ref font-serif-kr">공간 전체 치수: <b>${d.spaceWidth || d.width || 0} × ${d.spaceHeight || d.height || 0}cm</b></p>`;
+                    html += `<p class="msr-space-ref font-serif-kr">공간 전체 크기: <b>${d.spaceWidth || d.width || 0} × ${d.spaceHeight || d.height || 0}cm</b></p>`;
                 }
                 html += '<div class="msr-grid">' +
                     msrBoxHtml('width', '가로', curW) +
@@ -994,7 +994,7 @@
             // [공간 추가 ③ 색, 두 번째 공간부터] 이 집의 기본 색과 같은지. 다른 부분만 다시 잼
             case "1.7-Add-Same": {
                 const hc = houseColor();
-                const wf = (k, c, part) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? measuredName(part, c) : '아직 안 쟀어요'}</span>${hexCode(c && { hex: c.hex, src: 'measured' })}</div>`;
+                const wf = (k, c, part) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? measuredName(part, c) : '아직 재지 않았습니다'}</span>${hexCode(c && { hex: c.hex, src: 'measured' })}</div>`;
                 const extra = (hc ? `<div class="ask-house"><span class="ask-house-k">기본 벽·바닥 색</span>${wf('벽', hc.wall, 'wall')}${wf('바닥', hc.floor, 'floor')}</div>` : '') + dirPickerHtml();      // 창 방향은 공간마다 (이어받지 않음)
                 // 146번: 처음 잰 공간 하나가 아니라 앞서 담은 공간 중에서 고름 ("○○과 같아요", 최근 공간부터 4곳)
                 const refs = state.roomsCart.filter(r => r.measuredColor && (r.measuredColor.wall || r.measuredColor.floor)).slice().reverse().slice(0, 4);
@@ -1036,7 +1036,7 @@
                 const sp = src && { floor: roomPart(src, 'floor'), wall: roomPart(src, 'wall') };
                 const srcDesc = src ? [sp.floor ? `바닥 ${sp.floor.name}` : (FLOOR_NAMES[src.floorTone] && `바닥 ${FLOOR_NAMES[src.floorTone]}`),
                     sp.wall ? `벽 ${sp.wall.name}` : (WALL_NAMES[src.wallTone] && `벽 ${WALL_NAMES[src.wallTone]}`)].filter(Boolean).join(' / ') : '';
-                html += askStage(src ? `${withGwa(src.name)} 바닥·벽이 같은가요?` : '바닥·벽을 골라 주세요', srcDesc, [
+                html += askStage(src ? `${withGwa(src.name)} 바닥·벽이 같으신가요?` : '바닥·벽을 골라 주세요', srcDesc, [
                     { label: '네, 같아요', on: 'window.concierge.copyBaseFromPrev(true)' },
                     { label: '아니요, 새로 고를게요', on: 'window.concierge.copyBaseFromPrev(false)' }
                 ]);
@@ -1046,7 +1046,7 @@
             // [Step 2-1: 바닥재 진단]
             case "2-Base-Floor":
                 html += '<div class="bookmark-stage">';
-                html += stepHead(roomTopic(state.editingRoom) ? `${state.editingRoom.name}의 바닥 톤을 골라 주세요` : '커튼 색을 맞추기 위해, 바닥 톤을 골라 주세요');      // 152번
+                html += stepHead(roomTopic(state.editingRoom) ? `${state.editingRoom.name}의 바닥과 가장 비슷한 색을 골라 주세요` : '커튼 색을 맞추기 위해, 바닥과 가장 비슷한 색을 골라 주세요');      // 152번
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard(FLOOR_NAMES.warm, "", "", SOLID_TEXTURES.oak, function() { window.concierge.selectFloorTone('warm'); }, 'vdesc' + was('floorTone', 'warm'));
                 html += renderBookmarkCard(FLOOR_NAMES.cool, "", "", SOLID_TEXTURES.tile, function() { window.concierge.selectFloorTone('cool'); }, 'vdesc' + was('floorTone', 'cool'));
@@ -1058,7 +1058,7 @@
             // [Step 2-2: 벽지 진단]
             case "2-Base-Wall":
                 html += '<div class="bookmark-stage">';
-                html += stepHead(state.editingRoom && state.editingRoom.editOnly ? '벽 톤을 골라 주세요' : (roomTopic(state.editingRoom) ? `${state.editingRoom.name}의 벽 톤도 골라 주세요` : '벽 톤도 골라 주세요'));      // 152번
+                html += stepHead(state.editingRoom && state.editingRoom.editOnly ? '벽과 가장 비슷한 색을 골라 주세요' : (roomTopic(state.editingRoom) ? `${state.editingRoom.name}의 벽과 가장 비슷한 색도 골라 주세요` : '벽과 가장 비슷한 색도 골라 주세요'));      // 152번
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 html += renderBookmarkCard(WALL_NAMES.warm, "", "", SOLID_TEXTURES.cream, function() { window.concierge.selectWallTone('warm'); }, 'vdesc' + was('wallTone', 'warm'));
                 html += renderBookmarkCard(WALL_NAMES.cool, "", "", SOLID_TEXTURES.coolWhite, function() { window.concierge.selectWallTone('cool'); }, 'vdesc' + was('wallTone', 'cool'));
@@ -1071,7 +1071,7 @@
             case "2-Base-Block": {
                 // 공간에 들어와 처음 묻는 질문 (117번): 위에 이 공간의 벽·바닥 확인 칩 (예전 빛 질문 자리에서 옮김 — 다르면 바닥·벽 카드로 고침)
                 const ed = state.editingRoom, wall = roomPart(ed, 'wall'), floor = roomPart(ed, 'floor');
-                const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 안 쟀어요'}</b></span>`;
+                const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 재지 않았습니다'}</b></span>`;
                 // 133번(재검토 A3): 벽·바닥을 다 잰 공간은 이 줄을 뺌(사장님이 말로 하는 정보, 고칠 때는 중심 화면 "수정하기"). 못 잰 공간만 "카드로 고르기"를 남김
                 const chip = (ed.askCards || (wall && floor)) ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
                     + `<button type="button" onclick="window.concierge.fixRoomColors()">카드로 고르기</button></div>`;

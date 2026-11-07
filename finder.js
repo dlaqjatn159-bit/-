@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261210';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // finder.js — 직원 화면 › 원단 › 찾기: 원단 색 카드·거름망·정렬·비슷한 색·후보 모아 보기·고객에게 보여주기·색 지도·넣을 칸 고르기 (130-2에서 app.js에서 떼어 냄)
 
 
@@ -482,7 +482,7 @@ function finderShowSlots(e) {
         ? '<p class="finder-show-ask-q font-serif-kr">어느 칸에 담을까요?</p><div class="finder-show-ask-acts is-slots">'
             + slots.map(s => `<button type="button" class="font-serif-kr" data-ask-slot="${s.r.id}:${s.c.id}">${finderShowEsc(s.r.name)} · ${finderShowEsc(s.c.label)}</button>`).join('')
             + '</div><div class="finder-show-ask-acts"><button type="button" class="font-serif-kr" data-ask="no">다시 고를게요</button></div>'
-        : `<p class="finder-show-ask-q font-serif-kr">담을 ${FINDER_KIND_WORDS[e.cat]} 칸이 아직 없어요</p><div class="finder-show-ask-acts"><button type="button" class="font-serif-kr" data-ask="no">닫기</button></div>`;
+        : `<p class="finder-show-ask-q font-serif-kr">담을 ${FINDER_KIND_WORDS[e.cat]} 칸이 아직 없습니다</p><div class="finder-show-ask-acts"><button type="button" class="font-serif-kr" data-ask="no">닫기</button></div>`;
 }
 function finderShowAskClick(ev) {
     const btn = ev.target.closest('button');

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261209';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261210';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -87,7 +87,7 @@
     }
 
     // 잰 색의 자세한 이름 (32번): 고객 화면에서 잰 색은 카드 이름(크림·아이보리 등 4가지) 대신 이걸 씀. 카드로 고른 색만 카드 이름
-    //  { name: '라이트 베이지', note: '밝고 노란 기운이 은은해요' }. 원단 색 이름 규칙처럼 쉬운 계열 이름 + 라이트/딥
+    //  { name: '라이트 베이지', note: '밝고 노란 기운이 은은합니다' }. 원단 색 이름 규칙처럼 쉬운 계열 이름 + 라이트/딥
     function colorName(kind, c) {
         if (!c || c.L == null) return null;
         // 재료 (113번): 바닥도 타일·석재·카펫이면 나무 이름을 쓰지 않고, 벽도 무늬목·목재면 나무 이름을 씀
@@ -121,8 +121,8 @@
         }
         const light = L >= 88 ? '아주 밝고' : L >= 75 ? '밝고' : L >= 55 ? '중간 밝기에' : L >= 38 ? '조금 어둡고' : '어둡고';
         const famWord = { pink: '분홍', red: '붉은', yellow: '노란', olive: '초록', mint: '푸른 초록', blue: '푸른', lavender: '보랏' }[fam];
-        const note = fam === 'none' ? `${light} 색 기운이 거의 없어요`
-            : `${light} ${famWord} 기운이 ${C < 6 ? '살짝 돌아요' : C < 13 ? '은은해요' : '또렷해요'}`;
+        const note = fam === 'none' ? `${light} 색 기운이 거의 없습니다`
+            : `${light} ${famWord} 기운이 ${C < 6 ? '조금 있습니다' : C < 13 ? '은은합니다' : '또렷합니다'}`;
         return { name, note };
     }
 
@@ -324,7 +324,7 @@
             }
         });
         if (list.length < FUR_MAX) h += `<button type="button" class="fur-add" onclick="${call}'add')">+ 가구 추가</button>`;
-        else h += `<small class="fur-hint">가구는 ${FUR_MAX}개까지예요.</small>`;
+        else h += `<small class="fur-hint">가구는 ${FUR_MAX}개까지 담을 수 있습니다.</small>`;
         return h + '</div>';
     }
     // 가구 목록 고치기 (66번): list는 바꾸지 않고 새 목록을 돌려줌. 'add'는 찍기 화면을 띄우고 done(새 목록)으로 돌려줌
