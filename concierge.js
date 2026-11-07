@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261220';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261221';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1780,22 +1780,22 @@
 
             // 1. 축소: 이중 커튼 → 속지만
             if (curComp === 'double' && targetType === 'sheer_only') {
-                if (!confirm(`'${r.name}'의 겉지를 빼고 속지만 남길까요?`)) return;
+                const before = r.curtains.slice();      // 165번: 묻지 않고 빼고, 알림에 되돌리기
                 r.curtains = r.curtains.filter(c => c.presetType === 'sheer');
                 r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
                 syncToV1MasterRooms();
-                spaceToast(`${r.name}: 겉지를 빼고 속지만 남겼습니다`);
+                spaceToast(`${r.name}: 겉지를 빼고 속지만 남겼습니다`, () => cz.restoreCurtains(r.id, before));      // 165번
                 render();
                 return;
             }
 
             // 2. 축소: 이중 커튼 → 겉지만
             if (curComp === 'double' && targetType === 'drape_only') {
-                if (!confirm(`'${r.name}'의 속지를 빼고 겉지만 남길까요?`)) return;
+                const before = r.curtains.slice();      // 165번: 묻지 않고 빼고, 알림에 되돌리기
                 r.curtains = r.curtains.filter(c => c.presetType === 'drape');
                 r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
                 syncToV1MasterRooms();
-                spaceToast(`${r.name}: 속지를 빼고 겉지만 남겼습니다`);
+                spaceToast(`${r.name}: 속지를 빼고 겉지만 남겼습니다`, () => cz.restoreCurtains(r.id, before));      // 165번
                 render();
                 return;
             }
@@ -1832,8 +1832,7 @@
 
             // 5. 교체: 블라인드로 변경
             if (targetType === 'blind_only') {
-                if (r.curtains.length && !confirm(`'${r.name}'의 기존 커튼을 블라인드로 바꿀까요?\n(새 블라인드 종류를 선택하게 됩니다)`)) return;
-                r.curtains = [];
+                // 165번: 묻지 않음 · 옛 품목은 새 원단을 다 고른 뒤(마무리)에 바뀜 — 중간에 ←로 나가면 그대로
                 state.editingRoom = Object.assign({}, r, {
                     sizeKnown: true,
                     editOnly: false,
@@ -1848,8 +1847,7 @@
 
             // 6. 교체: 블라인드에서 커튼으로 변경
             if (curComp === 'blind_only') {
-                if (r.curtains.length && !confirm(`'${r.name}'의 블라인드를 커튼으로 바꿀까요?\n(새 커튼 원단을 선택하게 됩니다)`)) return;
-                r.curtains = [];
+                // 165번: 묻지 않음 · 옛 품목은 새 원단을 다 고른 뒤(마무리)에 바뀜 — 중간에 ←로 나가면 그대로
                 if (targetType === 'double') {
                     state.editingRoom = Object.assign({}, r, {
                         sizeKnown: true,
@@ -1889,8 +1887,7 @@
 
             // 7. 교체: 속지만 ↔ 겉지만 상호 교체
             if (curComp === 'sheer_only' && targetType === 'drape_only') {
-                if (r.curtains.length && !confirm(`'${r.name}'의 기존 속지를 정리하고 겉지로 바꿀까요?\n(새 겉지 원단을 선택하게 됩니다)`)) return;
-                r.curtains = [];
+                // 165번: 묻지 않음 · 옛 품목은 새 원단을 다 고른 뒤(마무리)에 바뀜 — 중간에 ←로 나가면 그대로
                 state.editingRoom = Object.assign({}, r, {
                     sizeKnown: true,
                     editOnly: false,
@@ -1904,8 +1901,7 @@
             }
 
             if (curComp === 'drape_only' && targetType === 'sheer_only') {
-                if (r.curtains.length && !confirm(`'${r.name}'의 기존 겉지를 정리하고 속지로 바꿀까요?\n(새 속지 원단을 선택하게 됩니다)`)) return;
-                r.curtains = [];
+                // 165번: 묻지 않음 · 옛 품목은 새 원단을 다 고른 뒤(마무리)에 바뀜 — 중간에 ←로 나가면 그대로
                 state.editingRoom = Object.assign({}, r, {
                     sizeKnown: true,
                     editOnly: false,

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261220';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261221';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -124,6 +124,36 @@
         t.classList.add('on');
         clearTimeout(spaceToastTimer);
         spaceToastTimer = setTimeout(() => t.classList.remove('on'), undo ? 3500 : 1800);
+    }
+    // 165번: 되돌리기 — 빼기 전 품목 목록으로. 중심 화면·수정하기에 있을 때만 (다른 화면으로 넘어갔으면 아무것도 안 함)
+    function restoreCurtains(roomId, before) {
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !Array.isArray(before) || (state.step !== "1-Space" && state.step !== "1-Space-Edit")) return;
+        r.curtains = before.slice();
+        r.isConfigured = r.curtains.length > 0;
+        if (r.isConfigured) r.compOk = true;
+        r.subtotal = r.curtains.reduce((s, x) => s + ((x.calc && x.calc.curtainSubtotal) || 0), 0);
+        syncToV1MasterRooms();
+        render();
+    }
+    // 165번: 중심 화면 품목 [빼기] — 묻지 않고 바로 빼고 알림에 되돌리기.
+    //  마지막 하나를 빼면 상담 전 공간으로: 빛·시선·느낌 답은 그대로, "이어서 상담하기"가 구성 화면부터 (지난 구성은 회색으로)
+    function dropCurtain(roomId, idx) {
+        const r = state.roomsCart.find(x => x.id === roomId), c = r && r.isConfigured && r.curtains[idx];
+        if (!c) return;
+        const before = r.curtains.slice();
+        r.curtains = r.curtains.filter((x, i) => i !== idx);
+        if (!r.curtains.length) {
+            r.isConfigured = false;
+            r.planComp = roomComp({ curtains: before });
+            r.planPicked = true;
+            r.compOk = false;
+        }
+        r.subtotal = r.curtains.reduce((s, x) => s + ((x.calc && x.calc.curtainSubtotal) || 0), 0);
+        state.activeSpaceId = r.id;
+        syncToV1MasterRooms();
+        render();
+        spaceToast(`${r.name} ${kindOf(c)}를 뺐습니다`, () => restoreCurtains(roomId, before));
     }
     // ---- 중심 화면(1-Space): 왼쪽 여백 기둥(집 전체 호흡·공간 목차·액션) + 오른쪽 '한 공간씩 크게 보기' 작업대 (+ 전체 한눈에 전환, 77번) ----
     function spaceHtml(currentCust) {
@@ -305,12 +335,11 @@
                 h += `<div class="dos-sw${fillCls(r, i)}" style="${fabricFillStyle(c.fabricId, c.colorName)}"></div>`;
                 h += `<div class="dos-txt">${isBlindDupe ? '' : `<div class="dos-kind">${kindOf(c)}</div>`}`;
                 h += `<div class="dos-fab font-serif-kr"><span class="dos-fname">${esc(baseFabName)}</span>${showColLbl ? `<span class="dos-fcolor">${esc(colLbl)}</span>` : ''}${opts.length ? `<em class="dos-fopts">· ${opts.join(' · ')}</em>` : ''}</div>`;
-                h += '<div class="dos-item-sub">';
+                h += '<div class="dos-item-sub"><span class="dos-item-l">';
                 if (c.presetType !== 'blind') {
                     h += `<button type="button" class="dos-more" onclick="openSpaceMore(${r.id}, ${i})">더 보기</button>`;
-                } else {
-                    h += '<span></span>';
                 }
+                h += `<button type="button" class="dos-redit dos-drop" onclick="window.concierge.dropCurtain(${r.id}, ${i})">빼기</button></span>`;      // 165번: 묻지 않고 빼고 알림에 되돌리기
                 if (tones) {
                     h += `<div class="dos-tone">${toneBtn(tones.lighter, '한 톤 밝게', 1)}${toneBtn(tones.darker, '한 톤 진하게', -1)}</div>`;
                 }
@@ -399,9 +428,10 @@
         return h;
     }
 
-    Object.assign(cz, { shortFabName, swapCurtain, spaceToast, spaceHtml, spaceEditHtml });      // concierge.js가 부름
+    Object.assign(cz, { shortFabName, swapCurtain, spaceToast, spaceHtml, spaceEditHtml, restoreCurtains });      // concierge.js가 부름 (165번: restoreCurtains)
     Object.assign(window.concierge, {
         swapCurtain: function(roomId, idx, fabricId, color, why) { swapCurtain(roomId, idx, fabricId, color, false, why); },
+        dropCurtain: function(roomId, idx) { dropCurtain(roomId, idx); },      // 165번
         // 한 톤 밝게(step +1) / 진하게(−1): 3단계 사다리 [-1, 0, +1] (49번, 1안)
         toneSwap: function(roomId, idx, key, step) {
             if (!spaceEntries || !spaceEntries.length) {

@@ -2196,6 +2196,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .dos-fcolor { font-family: var(--serif); font-size: 15px; font-weight: 400; color: var(--muted); }
 .dos-fab em.dos-fopts { font-family: var(--sans); font-size: 15px; font-weight: 400; color: var(--muted); margin-left: 0.1rem; letter-spacing: 0; }
 .dos-item-sub { padding-left: 0; margin-top: 0.65rem; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+.dos-item-l { display: inline-flex; align-items: center; gap: 1.4rem; }      /* 165번: 더 보기 · 빼기 (빼기는 조용한 보조 행동 .dos-redit 모양) */
 .dos-more { transition: color 0.15s ease; display: inline-block; background: none; border: none; cursor: pointer; font-family: var(--sans); font-size: 15px; font-weight: 400; color: var(--ink); padding: 2px 0; }
 .dos-tone { flex: none; display: flex; align-items: center; gap: 0.85rem; margin-left: auto; }
 .dos-tone button, .dos-tone button:hover:not([disabled]) { padding: 2px 0; border: 0; background: none; gap: 0.35rem; }
