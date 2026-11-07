@@ -1,9 +1,9 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261221';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261222';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
     const cz = window.conciergeCore;      // concierge.js와 잇는 다리 (130-4)
-    const { state, getLiveDb, calculateV1ItemPrice, syncToV1MasterRooms, askedRoom, flowPeek, fabricFillStyle, HATCH, hexCode, roomPart, roomSize, roomComp, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, render, colorFillOf, splitNameColor } = cz;
+    const { state, getLiveDb, calculateV1ItemPrice, syncToV1MasterRooms, askedRoom, planHas, flowPeek, fabricFillStyle, HATCH, hexCode, roomPart, roomSize, roomComp, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, render, colorFillOf, splitNameColor } = cz;
 
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
     // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
@@ -155,6 +155,24 @@
         render();
         spaceToast(`${r.name} ${kindOf(c)}를 뺐습니다`, () => restoreCurtains(roomId, before));
     }
+    // 166번: 손님이 누른 답을 명사형으로 (창 방향·크기는 머리 줄에 있음, "잘 모르겠어요"는 뺌). 낱말마다 누르면 그 질문으로
+    const ANSWER_SAY = {
+        lightBlock: { light: '빛 들어와도 괜찮음', soft: '빛 적당히 가림', dark: '빛 완전히 가림' },
+        privacy: { open: '시선 괜찮음', some: '시선 조금 가림', high: '시선 많이 가림' },
+        pres: { calm: '조용히 스며들게', weight: '차분한 무게감', point: '포인트 있게' },
+        sheer: { smooth: '매끈한 속지', textured: '짜임이 보이는 속지', cozy: '도톰한 속지' },
+        tex: { smooth: '매끈한 겉지', texture: '짜임이 보이는 겉지', fluffy: '보송한 겉지' }
+    };
+    function answerSay(r) {
+        const has = k => r.isConfigured ? (r.curtains || []).some(c => c.presetType === k) : planHas(r, k);
+        return [
+            ['lightBlock', r.lightBlock],
+            ['privacy', r.privacy],
+            ['pres', r.ownTaste ? r.ownPres : null],
+            ['sheer', has('sheer') ? r.sheerFeel : null],
+            ['tex', has('drape') && r.ownTaste ? r.ownTex : null]
+        ].filter(([k, v]) => v && ANSWER_SAY[k][v]).map(([k, v]) => ({ key: k, text: ANSWER_SAY[k][v] }));
+    }
     // ---- 중심 화면(1-Space): 왼쪽 여백 기둥(집 전체 호흡·공간 목차·액션) + 오른쪽 '한 공간씩 크게 보기' 작업대 (+ 전체 한눈에 전환, 77번) ----
     function spaceHtml(currentCust) {
         spaceEntries = (typeof finderEntries === 'function') ? finderEntries() : [];
@@ -225,6 +243,8 @@
             h += `<section class="dos-room${isAllMode ? '' : ' is-hero'}">`;
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
                 + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></div>`;      // 151번: 상담 전 공간에도
+            const says = answerSay(r);      // 166번: 손님 답 한 줄 — 낱말마다 그 질문으로 고치기
+            if (says.length) h += `<div class="dos-rsay font-serif-kr">${says.map(s => `<button type="button" onclick="window.concierge.fixAnswer(${r.id}, '${s.key}')">${esc(s.text)}</button>`).join('<i aria-hidden="true">·</i>')}</div>`;
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
             const dark = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 120; };
             const seg = (k, bg, f, cls) => `<div class="${(dark(bg) ? 'is-dark ' : '') + (cls || '')}" style="flex:${f};background:${bg || '#e5dcd0'}"><span>${esc(k)}</span></div>`;

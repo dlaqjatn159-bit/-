@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261221';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261222';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -537,6 +537,34 @@
         if (!t) return;
         t.ownTaste = !!ed.ownTaste; t.ownPres = ed.ownPres || null; t.ownTex = ed.ownTex || null;
     }
+    // 166번: 공간 칸 답 한 줄의 낱말을 누름 → 그 질문 한 장만 열고, 답하면 공간 화면으로 (원단은 그대로)
+    //  key: 'lightBlock' 빛 가림 · 'privacy' 시선 · 'pres' 느낌 · 'sheer' 속지 질감 · 'tex' 겉지 질감
+    function fixAnswer(roomId, key) {
+        const STEP = { lightBlock: "2-Base-Block", privacy: "2-Base-Privacy", pres: "0.5-House-Taste", sheer: "2-Base-SheerFeel", tex: "0.6-House-Tex" };
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !STEP[key]) return;
+        const ed = loadEditing(r);
+        ed.flow = true;      // 공간 이름 붙은 질문 제목·그 공간 답 표시를 그대로 씀
+        ed.fixOne = key;
+        ed.prev = Object.assign({}, ed.prev, { lightBlock: r.lightBlock || null, privacy: r.privacy || null });      // 지금 답을 회색으로
+        flowGo(STEP[key], ed, r.id, () => { if (key === 'pres' || key === 'tex') state.tasteFor = 'room'; });
+    }
+    // 166번: 고친 답 하나만 공간에 적고 공간 화면으로
+    function fixDone(key, val) {
+        const t = state.roomsCart.find(r => r.id === state.editingRoomId);
+        if (t) {
+            if (key === 'pres' || key === 'tex') {
+                t.ownTaste = true;
+                t[key === 'pres' ? 'ownPres' : 'ownTex'] = val;
+            } else {
+                t[key === 'sheer' ? 'sheerFeel' : key] = val;
+            }
+            if (t.isConfigured) syncToV1MasterRooms();
+        }
+        state.editingRoom = null;
+        state.tasteFor = null;
+        backToSpace();
+    }
     // 뒤로 가기 목록에서 그 화면까지 걷어 내고 돌아감 (그때의 공간으로)
     function backTo(step) {
         while (stepHistory.length && stepHistory[stepHistory.length - 1].step !== step) stepHistory.pop();
@@ -606,6 +634,7 @@
         return (list.filter(r => r.isConfigured).length + ph) / n;
     }
     function progHtml() {
+        if (state.editingRoom && state.editingRoom.fixOne) return '';      // 166번: 답 하나 고치기는 진행이 아님
         const fp = flowProg();
         if (fp != null) return `<div class="r-prog"><i style="width:${Math.round(fp * 100)}%"></i></div>`;
         let steps = ADD_STEPS, at = steps.indexOf(state.step);
@@ -1100,7 +1129,7 @@
                 const ed = state.editingRoom, wall = roomPart(ed, 'wall'), floor = roomPart(ed, 'floor');
                 const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 재지 않았습니다'}</b></span>`;
                 // 133번(재검토 A3): 벽·바닥을 다 잰 공간은 이 줄을 뺌(사장님이 말로 하는 정보, 고칠 때는 중심 화면 "수정하기"). 못 잰 공간만 "카드로 고르기"를 남김
-                const chip = (ed.askCards || (wall && floor)) ? '' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
+                const chip = (ed.askCards || ed.fixOne || (wall && floor)) ?'' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
                     + `<button type="button" onclick="window.concierge.fixRoomColors()">카드로 고르기</button></div>`;
                 html += askStage(roomTopic(ed) ? `${roomTopic(ed)} 빛을 어느 정도 가리실까요?` : '빛은 어느 정도 가리실까요?', '', [      // 152번: 안방은 빛을…
                     { label: '들어와도 괜찮아요', on: "window.concierge.selectLightBlock('light')", was: was('lightBlock', 'light') },
@@ -1407,7 +1436,7 @@
     function playIntro(then) { return cz.playIntro(then); }
 
     // 130-4: 나뉜 파일이 쓰는 이 파일의 상태·함수
-    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab });
+    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab });
 
     window.concierge = {
         // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
@@ -1443,6 +1472,7 @@
         },
         // 취향 화면 답: 느낌 → 결 → (집이면) 공간으로 / (이 공간만이면) 구성 제안으로 돌아감 (117번)
         pickTaste: function(key, val) {
+            if (state.editingRoom && state.editingRoom.fixOne) { fixDone(key, val); return; }      // 166번 (key: 'pres' | 'tex')
             const ed = state.editingRoom, forRoom = tasteRoom();
             if (forRoom) {
                 const ht = ed.flow ? {} : houseTasteNow();      // 123번: 공간마다 묻는 길은 집 취향을 이어받지 않음
@@ -1919,15 +1949,18 @@
             goToStep("2-Base-Block");          // 모든 공간: 빛 가림 → 바깥 시선 → 구성
         },
         selectLightBlock: function(level) {
+            if (state.editingRoom && state.editingRoom.fixOne) { fixDone('lightBlock', level); return; }      // 166번
             state.editingRoom.lightBlock = level;
             goToStep("2-Base-Privacy");
         },
         selectPrivacy: function(level) {
+            if (state.editingRoom && state.editingRoom.fixOne) { fixDone('privacy', level); return; }      // 166번
             state.editingRoom.privacy = level;
             if (state.editingRoom.flow) { saveDraft(state.editingRoom); flowNext(); return; }      // 152번: 같은 공간 구성으로
             goToStep("3-Config-Style");        // 빛 가림·바깥 시선을 근거로 구성 추천
         },
         selectSheerFeel: function(feel) {
+            if (state.editingRoom && state.editingRoom.fixOne) { fixDone('sheer', feel); return; }      // 166번
             // 117번: 속지 결은 우리 집 취향에 한 번 저장 (상담란과 같은 칸)
             if (state.editingRoom && state.editingRoom.flow) {      // 123번: 이 공간에만 담고 다음으로
                 state.editingRoom.sheerFeel = feel;
@@ -1980,6 +2013,7 @@
             goToStep(stepAfterComp(ed));
         },
         flowNext: function() { flowNext(); },
+        fixAnswer: function(roomId, key) { fixAnswer(roomId, key); },      // 166번
         // 기법 고르기 (120번): 고른 기법(빈칸 = 맡김)으로 원단 3장. 뒤로 가면 이 화면으로 돌아와 다른 기법을 고를 수 있음
         previewPointTech: function(k) {      // 146번: 포인트 방식 설명 보기 / 목록으로 돌아가기
             state.pointPreview = k || null;
