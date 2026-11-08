@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261244';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261245';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1516,7 +1516,10 @@ const SEAT_CFG = {
     gapL: 3,                // 자리 색끼리 밝기 차이: 밝게는 사이보다 3 이상 밝게, 진하게는 3 이상 진하게(반경이 겹쳐 거꾸로 서는 것 막음)
     minN: 3,                // 자리 두께: 원단 3종 이상이어야 자리(스며들게·무게감, 속지 첫 장). 포인트는 1종도 자리
     wR: 9,                  // 무게감 자리 반경
-    pointCMax: 45, pointPeak: 30,   // 색 있는 집 포인트: 채도 45 넘으면 뺌, 대표 색은 채도 30에 가까운 색(산 모양)
+    pointCMax: 45,          // 색 있는 집 포인트: 채도 45 넘으면 뺌
+    pointDE: [15, 30, 50],  // 포인트 세기 = 벽과의 색 차(193번): 은근히 15~30 · 또렷이 30~50 · 과감히 50~. 15 아래는 스며들게 몫이라 뺌
+    pointMid: [22, 40, 60], // 세기마다 띠 가운데: 원단 수가 같은 이름끼리는 여기에 가까운 쪽이 얼굴, 자리 안 순서도 이 기준
+    grayCMin: 12,           // 무채색·중성 집 포인트 후보: 채도 12 이상(아래는 grayCMax 40 이하)
     grayCMax: 40            // 무채색·중성 집 포인트: 채도 40 넘으면 뺌
 };
 // 겉지 빛 가림 맞음 정도: calculateFabricMatchScore의 빛 차단 표와 같은 숫자 (3 이상 맞음 · 0~2 괜찮음 · 음수 맨 뒤)
@@ -1616,60 +1619,62 @@ function seatWeight(mc, cols, room) {
         return seatOut(key, label, 'depth', got, room);
     });
 }
-// 포인트: 세기 셋(은근히·또렷이·과감히). 색 있는 집 = 기법 묶음, 무채색·중성 집 = 숨은 기운 표
+// 포인트: 세기 셋(은근히·또렷이·과감히). 세기의 자 = 벽과의 색 차(193번, 밝기 가중 없음 — 벽 옆 커튼의 밝기 차를 눈이 그대로 봄)
+//  후보: 색 있는 집 = 기법 표(톤인톤·유사색·채도 대비·분열보색·보색)의 겉지 색(채도 45 이하), 무채색·중성 집 = 또렷한 색(pointVivid) 중 채도 12~40
+//  기법 이름은 색마다 그대로 붙음(이유 한 줄·사장님 쪽 이름표). 얼굴 = 그 띠에서 원단이 가장 많은 이름, 같으면 띠 가운데에 가까운 이름
+function seatWallDE(w, c) { return Math.sqrt(Math.pow(c.L - w.L, 2) + Math.pow(c.a - w.a, 2) + Math.pow(c.b - w.b, 2)); }
 function seatPoint(mc, cols, room) {
     let r = null;
     try { r = colorTechCounts(mc); } catch (e) { r = null; }
     if (!r) return [null, null, null];
-    const groups = { soft: [], clear: [], bold: [] };
+    const w = mc.wall;
     const hue = c => (Math.atan2(c.b, c.a) * 180 / Math.PI + 360) % 360;
     const hd = (x, y) => { const d = Math.abs(x - y) % 360; return d > 180 ? 360 - d : d; };
+    let pool = [];
     if (r.house === 'color') {
-        const GROUP = { tint: 'soft', analog: 'soft', sat: 'clear', split: 'clear', comp: 'bold' };
+        const KEYS = ['tint', 'analog', 'sat', 'split', 'comp'];
         const byKey = {};
         cols.forEach(c => { byKey[c.id + '__' + c.color] = c; });      // 거른 뒤 남은 색만
         r.rows.forEach(row => {
-            const g = GROUP[row.key];
-            if (!g) return;
+            if (!KEYS.includes(row.key)) return;
             row.drape.forEach(x => {
                 const c = byKey[x.id + '__' + x.color];
-                if (c && Math.hypot(c.a, c.b) <= SEAT_CFG.pointCMax) groups[g].push(Object.assign({}, c, { tech: row.key }));
+                if (c && Math.hypot(c.a, c.b) <= SEAT_CFG.pointCMax) pool.push(Object.assign({}, c, { tech: row.key }));
             });
         });
     } else {
-        const w = mc.wall, fl = mc.floor, br = seatBridge(mc);
-        const v = Math.hypot(w.a, w.b) >= 2 ? w : fl;      // 숨은 기운: 벽이 먼저, 벽이 거의 무채색이면 바닥
+        const fl = mc.floor, v = Math.hypot(w.a, w.b) >= 2 ? w : fl;      // 숨은 기운: 벽이 먼저, 벽이 거의 무채색이면 바닥
         let tone = v.b < 0 ? 'cool' : (Math.hypot(v.a, v.b) >= 1.5 ? 'warm' : 'neutral');
         if (windowDirOf(room && room.windowDir).includes('N')) tone = tone === 'warm' ? 'neutral' : 'cool';      // 북쪽 창: 차가운 쪽으로 한 칸
-        const up = tone === 'cool' ? 250 : 95, opp = tone === 'neutral' ? up : (up + 180) % 360;
-        const term = { soft: tone === 'cool' ? 'cool' : (tone === 'warm' ? 'warm' : 'tint'), clear: 'opp', bold: 'value' };
+        const up = tone === 'cool' ? 250 : 95, T = colorTechCfg();
         cols.forEach(c => {
-            const C = Math.hypot(c.a, c.b), h = hue(c);
-            if (C > SEAT_CFG.grayCMax) return;
-            let g = null;
-            if (C >= 8 && C <= 20 && Math.abs(c.L - br.L) <= 15 && (tone === 'neutral' || hd(h, up) <= 70)) g = 'soft';      // 같은 기운 흐린 색
-            else if (C >= 16 && C <= 40 && c.L >= 45 && c.L <= 80 && hd(h, opp) <= 70) g = 'clear';      // 반대 기운 차분한 색
-            else if (c.L <= 42 && C >= 8) g = 'bold';      // 밝기 대비(짙은 색)
-            if (g) groups[g].push(Object.assign({}, c, { tech: term[g] }));
+            const C = Math.hypot(c.a, c.b);
+            if (C < SEAT_CFG.grayCMin || C > SEAT_CFG.grayCMax || !pointVivid(c, T)) return;
+            // 기법 이름은 세기와 떼어 색 자체로(193번): 짙은 색(밝기 42 이하) = 밝기 대비, 숨은 기운 쪽(±70°) = 웜·쿨(중립이면 톤인톤), 그 밖 = 반대 기운
+            const tech = c.L <= 42 ? 'value' : (tone === 'neutral' ? 'tint' : (hd(hue(c), up) <= 70 ? tone : 'opp'));
+            pool.push(Object.assign({}, c, { tech }));
         });
     }
-    const used = new Set();
-    return [['soft', '은근히'], ['clear', '또렷이'], ['bold', '과감히']].map(([key, label]) => {
-        const seen = new Set(), list = groups[key].filter(c => { const k = c.id + '__' + c.color; if (seen.has(k)) return false; seen.add(k); return true; });
+    const seen = new Set();
+    pool = pool.filter(c => { const k = c.id + '__' + c.color; if (seen.has(k)) return false; seen.add(k); return true; })
+        .map(c => Object.assign(c, { e: seatWallDE(w, c) }));
+    const B = SEAT_CFG.pointDE, MID = SEAT_CFG.pointMid, used = new Set();
+    return [['soft', '은근히'], ['clear', '또렷이'], ['bold', '과감히']].map(([key, label], i) => {
+        const lo = B[i], hi = i + 1 < B.length ? B[i + 1] : Infinity, mid = MID[i];
         const byName = {};
-        list.forEach(c => {
-            const n = seatName(c) || '?', o = byName[n] = byName[n] || { name: n, ids: new Set(), C: 0, items: [] };
-            o.ids.add(c.id); o.C = Math.max(o.C, Math.hypot(c.a, c.b)); o.items.push(c);
+        pool.filter(c => c.e >= lo && c.e < hi).forEach(c => {
+            const n = seatName(c) || '?', o = byName[n] = byName[n] || { name: n, ids: new Set(), sum: 0, items: [] };
+            o.ids.add(c.id); o.sum += c.e; o.items.push(c);
         });
-        const PEAK = SEAT_CFG.pointPeak;
-        const names = Object.keys(byName).map(k => byName[k]).sort((x, y) => Math.abs(x.C - PEAK) - Math.abs(y.C - PEAK) || y.ids.size - x.ids.size);
-        const top = names.find(o => !used.has(o.name));      // 앞 세기에서 쓴 이름은 대표로 안 씀
+        const off = o => Math.abs(o.sum / o.items.length - mid);      // 이름의 평균 색 차가 띠 가운데에서 얼마나 먼가
+        const names = Object.keys(byName).map(k => byName[k]).sort((x, y) => y.ids.size - x.ids.size || off(x) - off(y));
+        const top = names.find(o => !used.has(o.name));      // 앞 세기에서 쓴 이름은 얼굴로 안 씀
         if (!top) return null;
         used.add(top.name);
-        // 원단마다 한 번: 대표 이름 색 먼저, 그다음 다른 이름(같은 세기의 다른 기법 색 — 열림에서 씀)
+        // 원단마다 한 번: 얼굴 이름 색 먼저, 그다음 다른 이름(위 차례). 이름 안에서는 띠 가운데에 가까운 색부터 — 열림에서 넘기는 순서
         const items = [], fids = new Set();
         [top].concat(names.filter(o => o !== top)).forEach(o => o.items
-            .slice().sort((x, y) => Math.abs(Math.hypot(x.a, x.b) - PEAK) - Math.abs(Math.hypot(y.a, y.b) - PEAK))
+            .slice().sort((x, y) => Math.abs(x.e - mid) - Math.abs(y.e - mid))
             .forEach(c => { if (!fids.has(c.id)) { fids.add(c.id); items.push(Object.assign({}, c, { d: items.length })); } }));
         return seatOut(key, label, 'strength', { name: top.name, n: items.length, items, rep: items[0] }, room);
     });
