@@ -22,6 +22,19 @@
     
     --page-transition-duration: 0.45s;
     --page-transition-ease: cubic-bezier(0.2, 0.9, 0.3, 1);
+
+    /* 4막 색 한 장·띠 (187번): 189번 새 화면에서 씀. 지금은 쓰는 곳 없음(화면 안 바뀜) */
+    --t-hero: 72px;          /* 색 한 장의 색 이름 하나에만. 한 화면에 하나 */
+    --t-strip-name: 44px;    /* 열림·고른 뒤 띠의 원단 이름("넥스 4": 이름과 번호 같은 크기) */
+    --t-name: 22px;          /* 세 색 이름, 띠 안 색 이름 */
+    --t-why: 18px;           /* 색 한 장의 이유 한 줄 */
+    /* 문 글자 30은 --t-title, 뒤로·다음·사실 한 줄 16은 --t-base 를 그대로 씀 */
+    --strip-w: 360px;        /* 왼쪽 세로 띠 폭(밝음 = 고르는 중). 고른 뒤 오른쪽으로 건너가 어두워짐 */
+    --strip-move: 0.85s;     /* 띠가 건너가며 어두워지는 시간(이동·색 모두 --page-transition-ease) */
+    --wall-frame-w: 88px;    /* 포인트 색 한 장에만: 양옆에 남는 잰 벽 색 폭 */
+    --floor-frame-h: 56px;   /* 포인트 색 한 장에만: 아래에 남는 잰 바닥 색 높이 */
+    --dot-ring-dark: 1.5px;  /* 어두운 띠 위 흙빛 점 둘레(색은 --on-band). 흙빛만으로는 안 보임 */
+    /* 정해진 띠 색(Lab 밝기 24)은 CSS로 못 셈 → room-color.js RoomColor.doneBandHex */
 }
 
 html {

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261239';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261240';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -75,6 +75,20 @@
         });
         return '#' + out.map(x => x.toString(16).padStart(2, '0')).join('');
     }
+    // 정해진 띠(고른 뒤) 색 (187번): 같은 기운 그대로 Lab 밝기 24, 색 기운(a·b)은 1.1배. 189번 새 화면에서 씀(지금은 부르는 곳 없음)
+    //  c: '#rrggbb' 또는 { a, b }가 있는 색(원단 색 칸 { light, a, b, hex }도 됨). 모르면 null
+    const DONE_BAND_L = 24, DONE_BAND_AB = 1.1;
+    function doneBandHex(c) {
+        let lab = c;
+        if (typeof c === 'string') {
+            if (!/^#?[0-9a-f]{6}$/i.test(c)) return null;
+            const n = parseInt(c.replace('#', ''), 16);
+            lab = rgbToLab(n >> 16 & 255, n >> 8 & 255, n & 255);
+        }
+        if (!lab || typeof lab.a !== 'number' || typeof lab.b !== 'number') return null;
+        return labToHex(DONE_BAND_L, lab.a * DONE_BAND_AB, lab.b * DONE_BAND_AB);
+    }
+
     // 밝기 3단계 + 톤 (원단 색 분류와 같은 규칙: 딥 = L<40, 웜 = b≥4.6 또는 a≥3, 쿨 = b≤−2 또는 a≤−2)
     function classifyLab(c) {
         let tone = 'neutral', toneWord = '뉴트럴';
@@ -882,6 +896,7 @@
         removeWall: removeWallPhoto,
         _loadImage: (src, which) => loadImage(src, which || 0),      // 미리보기 시험용
         _state: () => st && compute(),
-        rgbToLab, labToHex, classifyLab, bridgeOf, colorName
+        rgbToLab, labToHex, classifyLab, bridgeOf, colorName,
+        doneBandHex      // 187번: 정해진 띠 색(189번에서 씀)
     };
 })();
