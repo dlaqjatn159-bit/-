@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261241';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261242';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -342,6 +342,7 @@
 
     function prevStep() {
         if (state.pointPreview) { state.pointPreview = null; render(); return; }      // 146번: 포인트 설명에서 ← 는 방식 목록으로
+        if (cz.colorPick && cz.colorPick.back()) return;      // 189번: 원단 열림에서 ← 는 한 장으로
         if (state.step === "7-Final-Dossier" && finalPageNow() > 0) { setFinalPage(finalPageNow() - 1); return; }      // 견적서 쪽에서 ← 는 먼저 앞 쪽으로
         hideKeypadDirectly();
         if (stepHistory.length > 0) {
@@ -1258,6 +1259,8 @@
                     html += '</div>';
                     break;
                 }
+                // 189번: 속지·겉지는 새 화면(빛 한 장·색 한 장 → 열림 → 고름, color-pick.js). "고르고 있습니다"·포인트 방식 고르기를 거치지 않음. 블라인드·벽 바닥 색을 못 잰 겉지는 아래 옛 화면 그대로
+                if (cz.colorPick && cz.colorPick.wants(curItem)) { html += cz.colorPick.html(); break; }
                 const typeLabel = curItem.presetType === 'sheer' ? '속지' : (curItem.presetType === 'drape' ? '겉지' : '블라인드');
                 // 120번: 포인트 공간의 겉지·블라인드는 "골랐습니다" 대신 기법부터 고름 (용어 그대로, 후보 있는 것만, 하나뿐이면 묻지 않음)
                 const techs = pointTechsFor(curItem);
@@ -1357,12 +1360,13 @@
             // [마무리(옵션)] 원단을 고른 뒤: 크기는 공간 추가 때 적었으므로 옵션만 (실측 화면의 옵션 글자 모양 그대로) → "○○ 마치기" → 중심 화면
             case "6-Finish": {
                 const curRoom = state.editingRoom;
-                html += '<div class="msr-stage msr-finish">' + progHtml();
+                const band = cz.colorPick ? cz.colorPick.finishHtml(curRoom) : '';      // 189번 A안: 정해진 속지·겉지 띠가 오른쪽에 남고, "○○ 마치기 →"는 띠 안에
+                html += '<div class="msr-stage msr-finish' + (band ? ' cp-has-band' : '') + '">' + progHtml();
                 // 옵션은 처음부터 들어가 있음 → "이렇게 마무리" + 줄마다 빼기/넣기, 밑단은 시접/리드밴드 (139번)
                 html += '<h2 class="msr-title font-serif-kr">이렇게 마무리해 드립니다</h2>';
                 html += finishOptsHtml(curRoom);
-                html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name} 마치기</button>`;
-                html += '</div>';
+                if (!band) html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name} 마치기</button>`;
+                html += '</div>' + band;
                 break;
             }
 
@@ -1392,6 +1396,7 @@
         // 뒤로 가기 · 사진 화면 (73번): 사진 띠 이름은 모두 같은 크기 → 가장 긴 이름이 들어가도록 띠 높이만 맞춤. 앞으로 왔으면 안내 장면부터
         const photo = PHOTO_STEPS.includes(state.step);
         syncBack(photo);
+        if (cz.colorPick) cz.colorPick.after();      // 189번: 새 원단 화면의 사진·밀기·띠 움직임·뒤로 글자색
         if (photo) {
             // 138번: 띠 높이는 120px 하나(가로쓰기라 글자 길이로 늘리지 않음)
             if (introWant && photoQuestion) playPhotoIntro(photoQuestion);
