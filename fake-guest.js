@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261246';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fake-guest.js']='20261247';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 가짜 손님 시험 칸 (89번): 직원 화면 › 시험
 //  [추천 점검] 사진 단계를 건너뛰고 벽·바닥 색값과 답을 바로 넣은 "가짜 손님"(벽 × 바닥, 처음엔 8 × 7 = 56명)으로 앱 추천을 돌려 봄.
@@ -476,7 +476,7 @@
         const out = [];
         let live = [];
         try { live = (typeof collectConsultation === 'function') ? collectConsultation().rooms : []; } catch (e) {}
-        live.forEach(r => { const mc = r.measuredColor; if (mc && mc.wall && mc.floor) out.push({ name: r.name || '공간', mc, live: true, width: Number(r.spaceWidth || r.width) || 0 }); });
+        live.forEach(r => { const mc = r.measuredColor; if (mc && mc.wall && mc.floor) out.push({ name: r.name || '공간', mc, live: true, room: r, width: Number(r.spaceWidth || r.width) || 0 }); });
         TECH_SAMPLES.forEach(([n, wi, fi]) => {
             const w = WALLS0[wi], f = FLOORS0[fi];
             out.push({ name: n, mc: { wall: w, floor: f, bridge: RC().bridgeOf(w, f) }, sub: w.n + ' · ' + f.n });
@@ -504,14 +504,66 @@
         return `<section class="fg-tech"><h2>${esc(sp.name)}${sp.live ? ' <small>(지금 상담)</small>' : ''}</h2>
             <div class="fg-tsw">${sw(w, '벽')}${sw(f, '바닥')}${sw(b, '이어주는 색')}${(sp.mc.furniture || []).length ? ' <small>가구 ' + sp.mc.furniture.length + '</small>' : ''}${r.gray ? ' <b class="fg-tgray">무채색 집 → 웜 쪽·쿨 쪽</b>' : (r.house === 'neutral' ? ` <b class="fg-tgray">뉴트럴 집(${r.neutralDir === 'cool' ? '쿨' : '웜'}) → 반대 온도</b>` : '')}</div>
             <table class="fg-ttable"><thead><tr><th>기법</th><th>겉지</th><th>속지</th></tr></thead><tbody>${rows}</tbody></table>
-            <p class="fg-tnote">속지 따로 (102번): 화이트 ${r.sheerWhite.length}색 <small>(어느 집에나 바탕)</small> · 색 있는 씨스루 ${r.sheerSee.length}색 <small>(많이 비침 — 기법 표에 넣음, 잰 값 눈 확인)</small></p>${openList}</section>`;
+            <p class="fg-tnote">속지 따로 (102번): 화이트 ${r.sheerWhite.length}색 <small>(어느 집에나 바탕)</small> · 색 있는 씨스루 ${r.sheerSee.length}색 <small>(많이 비침 — 기법 표에 넣음, 잰 값 눈 확인)</small></p>${pointWantLine(sp)}${openList}</section>`;
+    }
+    // 포인트 원하는 자리 (195번): 세기마다 와야 할 계열 → 지금 얼굴과 비틂 거리. 구색 신호일 뿐 추천 아님
+    const PW_KEYS = [['soft', '은근히'], ['clear', '또렷이'], ['bold', '과감히']];
+    function pwFamName(k) {
+        if (k === 'gray') return '회색';
+        const f = (typeof POINT_FAMILY !== 'undefined' ? POINT_FAMILY : []).find(x => x[0] === k);
+        return f ? f[1] : '';
+    }
+    function pointWantLine(sp) {
+        if (typeof pointWantRecord !== 'function') return '';
+        const p = (sp.room && sp.room.pointWant) || pointWantRecord(sp.room || { measuredColor: sp.mc });
+        if (!p) return '';
+        const sw = c => c ? `<i class="fg-sw" style="background:${labHex({ L: c[0], a: c[1], b: c[2] })}"></i>` : '';
+        const one = ([k, label]) => {
+            const s = p[k] || {};
+            if (!s.want) return `${label} <small>원하는 자리 없음</small>`;
+            const face = s.face ? `${sw(s.f)}${esc(s.face)} <small>(${esc(pwFamName(s.fam))})</small> <b>${s.d}</b>` : '<span class="fg-t0">빈 자리</span>';
+            return `${label} ${sw(s.t)}${esc(pwFamName(s.want))} → ${face}`;
+        };
+        return `<p class="fg-tgap">포인트 원하는 자리 → 지금 얼굴 · 비틂: ${PW_KEYS.map(one).join(' · ')}</p>`;
+    }
+    // 상담 기록의 포인트 구색 신호 (195번): 계열마다 몇 자리에서 와야 했고, 몇 번 그 계열로 섰나, 평균 비틂. 모자란 계열부터
+    function pointWantSummary() {
+        if (typeof POINT_FAMILY === 'undefined') return '';
+        let hist = [];
+        try { hist = typeof loadHistory === 'function' ? loadHistory() : []; } catch (e) {}
+        const row = {}; let n = 0;
+        POINT_FAMILY.forEach(f => { row[f[0]] = { want: 0, same: 0, empty: 0, sum: 0, cnt: 0, house: {} }; });
+        hist.forEach(h => ((h.snapshot && h.snapshot.rooms) || h.rooms || []).forEach(r => {
+            const p = r.pointWant;
+            if (!p || p.v !== 1) return;
+            n++;
+            const hn = (p.wall || '?') + ' · ' + (p.floor || '?');
+            PW_KEYS.forEach(([k]) => {
+                const s = p[k], o = s && s.want && row[s.want];
+                if (!o) return;
+                o.want++; o.house[hn] = (o.house[hn] || 0) + 1;
+                if (!s.face) { o.empty++; return; }
+                if (s.fam === s.want) o.same++;
+                o.sum += s.d; o.cnt++;
+            });
+        }));
+        if (!n) return '<p class="fg-tgap">포인트 구색 신호: 아직 없음 (이번 버전부터 상담을 남길 때 공간마다 조용히 기록합니다)</p>';
+        const lack = o => o.want - o.same;
+        const body = POINT_FAMILY.map(f => [f, row[f[0]]]).filter(([, o]) => o.want).sort((x, y) => lack(y[1]) - lack(x[1]))
+            .map(([f, o]) => {
+                const top = Object.entries(o.house).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${esc(k)} ${v}`).join(', ');
+                return `<tr><th>${esc(f[1])}</th><td>${o.want}</td><td>${o.same}</td><td>${o.empty}</td><td>${o.cnt ? Math.round(o.sum / o.cnt) : '-'}</td><td>${top}</td></tr>`;
+            }).join('');
+        return `<section class="fg-tech"><h2>포인트 구색 신호 <small>상담 기록 ${n}공간</small></h2>
+            <table class="fg-ttable"><thead><tr><th>와야 할 계열</th><th>원한 자리</th><th>그 계열로 섬</th><th>빈 자리</th><th>평균 비틂</th><th>많이 나온 집</th></tr></thead><tbody>${body}</tbody></table>
+            <p class="fg-tnote">원한 자리 = 세기 셋(은근히·또렷이·과감히) 중 그 계열이 와야 했던 수. 그 계열로 섬 = 실제 얼굴이 같은 계열이었던 수. 비틂 = 와야 할 색과 실제 얼굴의 색 차(15 아래 가까움 · 30 넘으면 다른 색). 원한 자리에 비해 그 계열로 선 수가 적은 계열이 위 — 원단 들일 순서의 신호일 뿐 추천이 아닙니다.</p></section>`;
     }
     // 상담 기록에 남은 빈 칸 모음: 몇 공간에서 그 기법 후보가 0이었나
     function techGapSummary() {
         let hist = [];
         try { hist = typeof loadHistory === 'function' ? loadHistory() : []; } catch (e) {}
         const cnt = {}; let n = 0;
-        hist.forEach(h => (h.rooms || []).forEach(r => {
+        hist.forEach(h => ((h.snapshot && h.snapshot.rooms) || h.rooms || []).forEach(r => {      // 상담 기록은 snapshot 안에 공간 (195번)
             if (!r.techGaps) return;
             n++;
             ['drape', 'sheer'].forEach(s => (r.techGaps[s] || []).forEach(t => { const k = t + ' · ' + (s === 'drape' ? '겉지' : '속지'); cnt[k] = (cnt[k] || 0) + 1; }));
@@ -529,7 +581,7 @@
         box.innerHTML = (hasColors ? '' : '<div class="fg-warn">이 창에는 원단 색 값이 없어서 결과가 비어 보일 수 있습니다. 사장님 미리보기(8765)나 탭에서 열어 주세요.</div>') +
             `<div class="fg-tcfg">${cfgHtml}<button type="button" id="fgTechReset">처음 값으로</button></div>
             <p class="fg-tnote">숫자 = 그 기법에 맞는 원단 색 수 (원단 종류 수). <span class="fg-t0">없음</span> · <span class="fg-tlow">최소 개수보다 적음</span>. 칸을 누르면 원단이 보입니다. 집 셋(무채색·뉴트럴·색 있는)은 벽·바닥·이어주는 색의 색 사전 계열로 나눔. 색 방향은 그중 채도가 가장 높은 색 기준. '이보다 흐리면 회색'은 색 사전 값이 없을 때만 씀.</p>
-            ${techGapSummary()}
+            ${techGapSummary()}${pointWantSummary()}
             <div class="fg-tgrid">${techSpaces().map((sp, i) => techTable(sp, i, T)).join('')}</div>`;
     }
     function onTechClick(ev) {

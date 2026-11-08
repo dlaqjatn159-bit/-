@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261246';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261247';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1741,6 +1741,76 @@ function seatSheer(room) {
     let at = cards.findIndex(c => c.key === firstKey);
     if (at < 0) at = 0;
     return { cards, gaps: all.filter(c => !c.n).map(c => c.label), at };
+}
+// ==============================================================
+// 포인트 원하는 자리 (195번): 구색이 다 있다면 세기마다 와야 할 계열과 그 목표 색. 손님 화면·추천 점수에는 안 씀(구색 신호만)
+//  계열 = 색상각 방향 하나(가운데 색). 밝기·채도는 세기의 자(벽과의 색 차 띠 가운데)가 고름 → 은근히는 흐리고 밝은 판, 과감히는 짙고 맑은 판
+//  숫자는 첫 판(노트상세 포인트_구색_비틀기인가_1109 3번 표의 가운데) — 견본 대 보며 다듬음
+// ==============================================================
+const POINT_FAMILY = [      // key, 이름, 가운데 색(밝기 · 채도 · 색상각)
+    ['mustard', '머스타드·오커', 67, 32, 90], ['camel', '카멜·테라코타', 52, 27, 45], ['wine', '와인·버건디', 35, 27, 18],
+    ['sage', '세이지·올리브', 62, 16, 125], ['teal', '틸·딥 그린', 42, 20, 180], ['navy', '네이비', 33, 11, 270],
+    ['dblue', '더스티 블루', 60, 17, 250], ['rose', '더스티 로즈', 65, 16, 355]
+];
+const POINT_WANT_CFG = { darkL: 50, tMax: 1.6 };      // 가운데 밝기 50 아래 = 짙은 계열(과감히 몫) · 가운데 색 너머로는 1.6배까지만
+// 계열 하나의 목표 색: 벽 밝기·무채색에서 가운데 색 쪽으로 곧게 가다가 벽과의 색 차가 m이 되는 곳(색상각은 계열 그대로)
+function pointWantColor(w, fam, m) {
+    const [, , Lc, Cc, h] = fam, rad = h * Math.PI / 180, T = colorTechCfg();
+    const at = t => { const C = Cc * t; return { L: w.L + (Lc - w.L) * t, a: C * Math.cos(rad), b: C * Math.sin(rad), C }; };
+    let lo = 0, hi = POINT_WANT_CFG.tMax;
+    if (seatWallDE(w, at(hi)) < m) return null;      // 끝까지 가도 그 세기만큼 안 멀어짐
+    for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (seatWallDE(w, at(mid)) < m) lo = mid; else hi = mid; }
+    const p = at(hi);
+    if (p.L < 15 || p.L > 97 || p.C > SEAT_CFG.pointCMax || p.C < (p.L < 45 ? T.pointCDark : T.pointC)) return null;      // 포인트로 안 보이는 색(너무 흐림·너무 셈)
+    return { L: p.L, a: p.a, b: p.b };
+}
+// 집의 색 방향(색상각): 색 있는 집 = 기준색(colorTechCounts ref), 무채색·중성 집 = 포인트 숨은 기운(seatPoint와 같은 식: 웜·중립 95° · 쿨 250°)
+function pointHouseHue(mc, room, r) {
+    const hue = c => (Math.atan2(c.b, c.a) * 180 / Math.PI + 360) % 360;
+    if (r.house === 'color') return hue(r.ref);
+    const w = mc.wall, v = Math.hypot(w.a, w.b) >= 2 ? w : mc.floor;
+    let tone = v.b < 0 ? 'cool' : (Math.hypot(v.a, v.b) >= 1.5 ? 'warm' : 'neutral');
+    if (windowDirOf(room && room.windowDir).includes('N')) tone = tone === 'warm' ? 'neutral' : 'cool';
+    return tone === 'cool' ? 250 : 95;
+}
+// 얼굴 색이 실제로 어느 계열인가(색상각이 가장 가까운 계열). 채도 8 아래는 '회색'
+function pointFamilyOf(c) {
+    if (!c || Math.hypot(c.a, c.b) < 8) return 'gray';
+    const h = (Math.atan2(c.b, c.a) * 180 / Math.PI + 360) % 360, hd = x => { const d = Math.abs(x - h) % 360; return d > 180 ? 360 - d : d; };
+    return POINT_FAMILY.slice().sort((x, y) => hd(x[4]) - hd(y[4]))[0][0];
+}
+// 공간 하나의 기록. room: measuredColor 벽·바닥 필요 → { v, house, wall, floor, feel, hue, soft, clear, bold } · 못 하면 null
+//  세기마다 { want: 계열 key | null, t: [L,a,b] | null, face: 얼굴 이름 | null, fam: 얼굴 계열, f: [L,a,b] | null, d: 비틂 거리 | null }
+//  고르는 차례: 은근히 = 집 방향에 가장 가까운 계열 · 또렷이 = 밝은·중간 계열 중 맞은편에 가장 먼 것 · 과감히 = 짙은 계열 중 맞은편에 가장 먼 것. 앞 세기에서 쓴 계열은 빼고, 목표 색이 포인트가 못 되면 다음 계열
+function pointWantRecord(room) {
+    const mc = room && room.measuredColor;
+    if (!mc || !seatLabOk(mc.wall) || !seatLabOk(mc.floor)) return null;
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    if (!r) return null;
+    let seat = null;
+    try { seat = seatDrape(room, 'point'); } catch (e) { seat = null; }
+    const faces = {};
+    ((seat && seat.seats) || []).forEach(s => { faces[s.key] = s; });
+    const H = pointHouseHue(mc, room, r), w = mc.wall;
+    const hd = x => { const d = Math.abs(x - H) % 360; return d > 180 ? 360 - d : d; };
+    const r1 = x => Math.round(x * 10) / 10, arr = c => c ? [r1(c.L), r1(c.a), r1(c.b)] : null;
+    const near = POINT_FAMILY.slice().sort((x, y) => hd(x[4]) - hd(y[4]));
+    const far = list => list.slice().sort((x, y) => hd(y[4]) - hd(x[4]));
+    const ORDER = {
+        soft: near,
+        clear: far(POINT_FAMILY.filter(f => f[2] >= POINT_WANT_CFG.darkL)),
+        bold: far(POINT_FAMILY.filter(f => f[2] < POINT_WANT_CFG.darkL))
+    };
+    const used = new Set(), out = { v: 1, house: r.house, wall: seatName(w), floor: seatName(mc.floor), feel: (room.ownTaste && room.ownPres) || ((typeof getHouseTaste === 'function' && getHouseTaste()) || {}).pres || null, hue: Math.round(H) };
+    ['soft', 'clear', 'bold'].forEach((key, i) => {
+        let want = null, t = null;
+        ORDER[key].some(f => { if (used.has(f[0])) return false; const c = pointWantColor(w, f, SEAT_CFG.pointMid[i]); if (!c) return false; want = f[0]; t = c; return true; });
+        if (want) used.add(want);
+        const fc = faces[key] || null, fl = fc && seatLabOk(fc) ? { L: fc.L, a: fc.a, b: fc.b } : null;
+        out[key] = { want, t: arr(t), face: fc ? fc.name : null, fam: fl ? pointFamilyOf(fl) : null, f: arr(fl), d: (t && fl) ? Math.round(seatWallDE(t, fl)) : null };
+    });
+    return out;
 }
 const HARMONY_RANGE = 20;       // 색 잇기 점수가 0이 되는 거리(LINK_RANGE)와 같음
 // 포인트 자리 (120번): 공간마다 정함. 그 공간의 겉지 또는 블라인드(공간 하나에는 둘 중 하나만 들어감). 'value'(무게감)는 겉지만
