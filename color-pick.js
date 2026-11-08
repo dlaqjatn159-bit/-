@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261242';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261243';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -50,6 +50,13 @@
     };
     const HONEST_SCENE = '창밖은 예시 사진입니다.';
     const PHOTO_MISSING = '사진을 찍기 전이라 잰 색으로 보여 드립니다.';
+    // "왜 이 셋인가요" 지도의 글 (190번). 둘째 문장의 뒤는 최종 제안 "공간의 색과 빛"(ticket.js HOUSE_MAP_LEAD)과 같은 말
+    const MAP_SAY = {
+        calm: w => `${w} 모두 선 가까이 있고, 밝기만 다릅니다.`,
+        weight: w => `${w} 모두 선보다 짙은 쪽에 있고, 따뜻한 정도만 다릅니다.`,
+        point: w => `${w} 모두 선에서 벗어난 쪽이라, 창 쪽의 포인트가 됩니다.`
+    };
+    const MAP_LEAD = '선은 이 공간의 벽 색과 바닥 색을 잇습니다. 커튼이 선 가까이 있으면 벽과 바닥을 자연스럽게 잇고, 선에서 멀어지면 무게나 포인트가 됩니다.';
     const SCENE_PHOTO = 'photos/scene/window_view.jpg';      // 속지 빛 한 장 바탕 (예시 창밖 사진)
     const SHEER_BLUR = { light: 3, medium: 10, day: 18, heavy: 26 };          // 창밖이 흐려지는 정도(px)
     const SHEER_VEIL = { light: 0.3, medium: 0.58, day: 0.78, heavy: 0.88 };  // 원단 색이 덮는 정도
@@ -166,6 +173,7 @@
         const s = cp();
         if (s.view === 'open') return openHtml(r);
         if (s.view === 'picked') return pickedHtml(r);
+        if (s.view === 'map') return mapHtml(r);      // 190번
         return sheetHtml(r);
     }
     // 한 장: 속지 = 창밖이 비침만큼 흐려지고 원단 색이 덮음 / 겉지 = 화면 전체가 그 색(포인트만 벽·바닥 테두리)
@@ -176,7 +184,9 @@
         const f0 = x.fabrics[0] || {};
         const n = x.fabrics.length;
         const doorTxt = n === 1 ? fabName(f0.id, f0.color) : `원단 ${n}가지 보기`;      // 원단이 하나면 그 원단 이름
-        const say = `<div class="cp-say"><h1 class="cp-hero">${esc(seatName(r, x))}</h1><p class="cp-why">${esc(whyOf(r, x))}</p></div>`;
+        // 190번: 겉지 자리가 둘 이상이면 이유 한 줄 아래 작은 글 "왜 이 셋인가요"(두 장이면 "왜 이 둘인가요") → 지도. 한 장·속지는 없음
+        const mapLink = r.kind === 'drape' && r.list.length > 1 ? `<button type="button" class="cp-map-link" onclick="concierge.cpMap()">${r.list.length === 2 ? '왜 이 둘인가요' : '왜 이 셋인가요'}</button>` : '';
+        const say = `<div class="cp-say"><h1 class="cp-hero">${esc(seatName(r, x))}</h1><p class="cp-why">${esc(whyOf(r, x))}</p>${mapLink}</div>`;
         if (r.kind === 'sheer') {
             const tint = f0.hex || '#efece6';
             return `<div class="cp-stage cp-sheet" style="background:${tint};color:var(--ink)">
@@ -191,6 +201,36 @@
         return `<div class="cp-stage cp-sheet cp-framed" style="background:${(mc.wall && mc.wall.hex) || '#eee9e0'};color:${col}">
             <i class="cp-frame-in" style="background:${x.hex}"></i><i class="cp-frame-floor" style="background:${(mc.floor && mc.floor.hex) || '#b98a5e'}"></i>
             ${names}${say}<div class="cp-door-at">${door(doorTxt, 'concierge.cpOpen()')}</div></div>`;
+    }
+    // "왜 이 셋인가요" (190번): 종이 위에 최종 제안 "공간의 색과 빛"과 같은 지도(ticket.js drawHouseMap) — 이 공간의 벽·바닥과 선, 세 자리 조각만 진하게, 나머지 원단 색은 흐린 점
+    //  조각을 누르면 그 색 한 장으로, ← 는 보던 색 한 장으로
+    function mapHtml(r) {
+        const word = r.list.length === 2 ? '두 색' : '세 색';
+        return `<div class="cp-stage cp-map" style="background:var(--paper-sheet);color:var(--ink)">
+            <canvas class="cp-map-cv" width="1800" height="1040" aria-label="벽과 바닥, ${word}의 자리"></canvas>
+            <div class="cp-map-say"><p class="cp-map-ttl">${esc((MAP_SAY[r.feel] || MAP_SAY.calm)(word))}</p><p class="cp-map-lead">${esc(MAP_LEAD)}</p></div></div>`;
+    }
+    function drawMap(stage, r) {
+        const cv = stage.querySelector('.cp-map-cv'), ed = state.editingRoom;
+        if (!cv || !r || !ed || typeof drawHouseMap !== 'function') return;
+        const mc = ed.measuredColor || {};
+        const part = k => (mc[k] && typeof mc[k].L === 'number' && mc[k].hex) ? { L: mc[k].L, a: mc[k].a, b: mc[k].b, hex: String(mc[k].hex).toUpperCase(), name: typeof matNameOf === 'function' ? matNameOf(k, mc[k]) : '' } : null;
+        const sp = [{ name: ed.name || '', wall: part('wall'), floor: part('floor'), fur: [], fabs: [] }];
+        const seats = r.list.map(x => ({ hex: x.hex, L: x.L, a: x.a, b: x.b, name: x.name }));
+        const taken = new Set(r.list.map(x => String(x.hex).toUpperCase()));
+        const room = cz.roomWithTaste ? cz.roomWithTaste(ed) : ed;
+        const dots = (typeof seatPoolColors === 'function' ? seatPoolColors('겉지', room) : [])      // 세 자리를 고른 것과 같은 원단(빛 가림으로 거른 뒤)
+            .filter(c => c.hex && !taken.has(String(c.hex).toUpperCase())).map(c => ({ hex: c.hex, L: c.L, b: c.b }));
+        const ctx = cv.getContext('2d');
+        ctx.save(); ctx.scale(2, 2); ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, 900, 520);
+        const hits = (drawHouseMap(ctx, sp, '#fffdf9', { sel: 0, seats, dots }) || []).filter(q => typeof q.seat === 'number');
+        ctx.restore();
+        cv.addEventListener('click', e => {      // 세 자리 조각(둘레 16 넉넉히)을 누르면 그 색 한 장으로 (지도 좌표 900×520)
+            const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * 900 / b.width, y = (e.clientY - b.top) * 520 / b.height;
+            const hit = hits.find(q => x >= q.x1 - 16 && x <= q.x2 + 16 && y >= q.y1 - 16 && y <= q.y2 + 16);
+            if (!hit) return;
+            const s = cp(); s.seat = hit.seat; s.fab = 0; s.alt = null; s.view = 'sheet'; rerender();
+        });
     }
     // 열림: 왼쪽 360px 밝은 띠(그 원단의 잰 색) + 사진. 사진은 손으로 밀거나 ‹ › 로 바꿈
     function openHtml(r) {
@@ -255,8 +295,10 @@
         if (btn) {
             if (s.view === 'open') { btn.style.color = getComputedStyle(stage.querySelector('.cp-strip')).color; if (r) btn.textContent = '← ' + seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]); }
             else if (s.view === 'picked') btn.style.color = '#fff';
+            else if (s.view === 'map') { btn.style.color = 'var(--ink)'; if (r) btn.textContent = '← ' + seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]); }      // 190번: 지도에서 ← 는 보던 색 한 장으로
             else btn.style.color = getComputedStyle(stage).color;
         }
+        if (s.view === 'map') drawMap(stage, r);      // 190번
         // 사진: 원단 사진(기기에 넣은 보정 사진 → 앱 photos/) 주소를 찾아 넣음. 없으면 잰 색 + 한 줄
         stage.querySelectorAll('.cp-img').forEach(img => {
             cz.findPhoto(img.dataset.id, img.dataset.color).then(url => {
@@ -300,7 +342,7 @@
     function back() {
         if (state.step !== '3.5-Bridge' || !document.querySelector('.cp-stage')) return false;
         const s = cp();
-        if (s.view === 'open') { s.view = 'sheet'; s.alt = null; rerender(); return true; }
+        if (s.view === 'open' || s.view === 'map') { s.view = 'sheet'; s.alt = null; rerender(); return true; }      // 190번: 지도에서도 ← 는 한 장으로
         return false;
     }
     // 다음: 칸에 적고 다음 칸으로(옛 pickQueueFabric 그대로). 속지 → 겉지는 띠가 그대로 왼쪽으로 밀고 나가며 겉지 색 한 장을 데려옴(D안)
@@ -328,6 +370,7 @@
     Object.assign(window.concierge, {
         cpSeat: i => { const s = cp(); s.seat = i; s.fab = 0; s.alt = null; rerender(); },
         cpOpen: () => { const s = cp(); s.view = 'open'; s.alt = null; rerender(); },
+        cpMap: () => { const s = cp(); s.view = 'map'; rerender(); },      // 190번: 왜 이 셋인가요
         cpFab: i => { const s = cp(); s.fab = i; s.alt = null; rerender(); },
         cpStep: d => step(d),
         cpAlt: name => { const s = cp(), f = seatNow() && seatNow().fabrics[s.fab]; s.alt = name && f ? { name, hex: colorHex(f.id, name) } : null; rerender(); },

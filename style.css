@@ -3178,3 +3178,13 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .cp-fin-row span { font-family: var(--serif); font-size: var(--t-name); line-height: 1.36; }
 .cp-fin-band .cp-next { margin-top: auto; }
 @media (prefers-reduced-motion: reduce) { .cp-photo, .cp-strip, .cp-img, .cp-names button { transition: none; } }
+
+/* ==============================================================
+   190번: "왜 이 셋인가요" — 겉지 색 한 장의 이유 한 줄 아래 작은 글. 누르면 종이 위 지도(ticket.js drawHouseMap, 최종 제안 "공간의 색과 빛"과 같은 그림)
+   ============================================================== */
+.cp-map-link { align-self: flex-start; margin-top: 4px; font-size: var(--t-small) !important; line-height: 1.5; opacity: 0.75; border-bottom: 1px solid currentColor !important; padding-bottom: 2px !important; position: relative; }
+.cp-map-link::before { content: ''; position: absolute; inset: -12px -14px; }      /* 누르는 범위만 넓힘 */
+.cp-map-cv { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: min(900px, calc(100vw - 240px), calc((100vh - 300px) * 1.7308)); height: auto; aspect-ratio: 900 / 520; cursor: pointer; }      /* 1.7308 = 900 ÷ 520 */
+.cp-map-say { position: absolute; left: 120px; bottom: 48px; max-width: 760px; display: flex; flex-direction: column; gap: 10px; }
+.cp-map-ttl { margin: 0; font-family: var(--serif); font-size: var(--t-title); line-height: 1.35; letter-spacing: -0.02em; }
+.cp-map-lead { margin: 0; font-size: var(--t-base); line-height: 1.6; color: var(--muted); }

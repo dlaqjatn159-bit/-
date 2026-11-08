@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261242';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261243';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1246,10 +1246,13 @@ function drawHouseMap(ctx, sp, bg, o) {
             marks.push(seen[key] = { t: 'c', c: Object.assign({ hex: f.hex }, f.lab), k: f.k, cn: f.cn || '', who: [s.name], rooms: [si] });
         });
     });
+    // 190번: 4막 "왜 이 셋인가요" — o.seats(그 공간 겉지의 세 자리)를 원단 조각처럼 그리고 이름표는 색 이름. 최종 제안은 o.seats가 없어 그대로
+    (o.seats || []).forEach((x, i) => marks.push({ t: 'c', c: { hex: x.hex, L: x.L, a: x.a, b: x.b }, k: x.name, cn: '', who: [], rooms: [0], seat: i }));
     if (!marks.length) return [];
     const SEL = typeof o.sel === 'number' ? o.sel : null;      // 141번
     const act = m => SEL === null || m.rooms.includes(SEL);
-    const Ls = marks.map(m => m.c.L), bs = marks.map(m => m.c.b);
+    // 190번: 흐린 점(o.dots)도 눈금에 넣음 — 세 자리와 벽·바닥만으로 잡으면 작은 차이가 크게 벌어져 보임
+    const Ls = marks.map(m => m.c.L).concat((o.dots || []).map(d => d.L)), bs = marks.map(m => m.c.b).concat((o.dots || []).map(d => d.b));
     let Lmin = Math.min(...Ls) - 3, Lmax = Math.max(...Ls) + 3, bmin = Math.min(...bs) - 3, bmax = Math.max(...bs) + 3;
     // 색이 몇 개 안 되거나 서로 가까우면 조금 벌어진 것도 크게 보이므로 눈금 폭을 조금은 남김
     if (Lmax - Lmin < 24) { const m = (Lmax + Lmin) / 2; Lmin = m - 12; Lmax = m + 12; }
@@ -1296,6 +1299,13 @@ function drawHouseMap(ctx, sp, bg, o) {
         nLine++;
     });
     ctx.setLineDash([]);
+    // 190번: o.dots(나머지 원단 색)는 흐린 점, 조각보다 아래
+    (o.dots || []).forEach(d => {
+        if (d.L < Lmin || d.L > Lmax || d.b < bmin || d.b > bmax) return;
+        ctx.globalAlpha = 0.35; ctx.fillStyle = d.hex;
+        ctx.beginPath(); ctx.arc(X(d.b), Y(d.L), 3, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
     // 색 조각 (벽·바닥 네모 먼저, 원단 긴 조각은 위에)
     const chip = p => {
         const w = p.hw * 2, h = p.hh * 2, x = p.x - p.hw, y = p.y - p.hh;
@@ -1335,7 +1345,7 @@ function drawHouseMap(ctx, sp, bg, o) {
     };
     pts.filter(p => act(p.m) && p.m.t === 'c').forEach(put);
     pts.filter(p => act(p.m) && p.m.t !== 'c').forEach(put);
-    return pts.map(p => ({ x1: p.x - p.hw - 4, y1: p.y - p.hh - 4, x2: p.x + p.hw + 4, y2: p.y + p.hh + 4, room: p.m.rooms.includes(SEL) ? SEL : p.m.rooms[0] }));
+    return pts.map(p => ({ x1: p.x - p.hw - 4, y1: p.y - p.hh - 4, x2: p.x + p.hw + 4, y2: p.y + p.hh + 4, room: p.m.rooms.includes(SEL) ? SEL : p.m.rooms[0], seat: p.m.seat }));      // 190번: seat = 세 자리 조각이면 자리 번호
 }
 // 색 지도 아래 공간별 문장 (132번): 원단이 그 공간의 벽–바닥 선 가까이 있는지, 벗어났다면 어느 쪽인지를 담백하게 (원단을 사람처럼 움직이지 않음)
 //  벽·바닥을 둘 다 잰 공간만. [{ name, text }]
