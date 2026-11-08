@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261248';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261249';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -638,7 +638,7 @@ function whyItemCands(F, R, facts) {
             if (whyDE(c, R.wall) < 6) add('C', 'C1', '커튼을 닫아도 공간이 넓어 보입니다.', '커튼이 눈에 띄지 않습니다.');
             else if (dL > 15) add('C', 'C3', '창 쪽이 가장 환해 보입니다.', '창이 넓어 보입니다.');
             else if (dL >= 6) add('C', 'C2', '창 쪽이 환해 보입니다.', '공간이 가벼워 보입니다.');
-            else if (dL < -15 && R.pres !== 'calm') add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '공간이 또렷하게 나뉘어 보입니다.');      // 183번: "조용히 스며들게요"면 아래 C4로
+            else if (dL < -15 && R.pres !== 'calm' && !(kind === 'sheer' && !R.pres)) add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '공간이 또렷하게 나뉘어 보입니다.');      // 183번: "조용히 스며들게요"면 아래 C4로 · 197번: 느낌을 안 물은 속지도 C4로
             else if (dL <= -6) add('C', 'C4', '창 쪽이 차분해 보입니다.', '공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
@@ -1134,13 +1134,15 @@ function houseMoodLines(sp) {
     sp.forEach(s => {
         const r = s.raw || {};
         if (!r.ownTaste || missNames.has(s.name)) return;
+        if (!s.fabs.some(f => f.k !== '속지')) return;      // 197번: 속지만 공간은 느낌을 묻지 않음 — 분위기 묶음에서 뺌
         const w = houseMoodWord(r.ownPres || ht.pres, r.ownTex || ht.tex, drapeOf(s));
         if (!w || w === houseWord) return;
         const g = groups.find(x => x.w === w);
         if (g) g.names.push(s.name); else groups.push({ w, names: [s.name] });
     });
     // 123번: 취향을 공간마다 물으면 집 취향 말이 없음 → 모든 공간이 같은 말이면 집 한 문장, 다르면 공간끼리 묶어 한 문장씩
-    if (!houseWord && groups.length === 1 && groups[0].names.length === sp.length) {
+    const tasteN = sp.filter(s => s.fabs.some(f => f.k !== '속지')).length;      // 197번: 속지만 공간은 셈에서 뺌
+    if (!houseWord && groups.length === 1 && groups[0].names.length === tasteN) {
         out.push(`${groups[0].w} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
         return out.concat(missLines);
     }

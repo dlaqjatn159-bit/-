@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261248';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261249';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -206,7 +206,7 @@
         return [
             ['lightBlock', r.lightBlock],
             ['privacy', r.privacy],
-            ['pres', r.ownTaste ? r.ownPres : null],
+            ['pres', (has('drape') || has('blind')) && r.ownTaste ? r.ownPres : null],      // 197번: 속지만 공간은 느낌 낱말을 안 보임(옛 상담 값은 저장에 그대로)
             ['sheer', has('sheer') ? r.sheerFeel : null],
             ['tex', has('drape') && r.ownTaste ? r.ownTex : null]
         ].filter(([k, v]) => v && ANSWER_SAY[k][v] && (!keys || keys.includes(k))).map(([k, v]) => ({ key: k, text: ANSWER_SAY[k][v] }));

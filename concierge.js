@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261248';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261249';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -475,7 +475,7 @@
         if (!askedRoom(r)) return { kind: 'ask', room: r };
         if (!r.compOk || !r.planComp) return { kind: 'comp', room: r };      // 138번: 공간마다 구성 사진 화면
         // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
-        if (!(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };
+        if ((planHas(r, 'drape') || planHas(r, 'blind')) && !(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };      // 197번: 속지만 공간은 느낌을 묻지 않음(속지 추천은 느낌 답을 안 씀)
         if (planHas(r, 'sheer') && !r.sheerFeel) return { kind: 'sheer', room: r };      // 162번: 속지 결 먼저 (원단도 속지 → 겉지 순)
         if (planHas(r, 'drape') && !(r.ownTaste && r.ownTex)) return { kind: 'tex', room: r };
         if (planHas(r, 'blind') && !r.blindWant) return { kind: 'blind', room: r };
