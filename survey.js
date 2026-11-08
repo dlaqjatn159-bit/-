@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261243';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261244';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -10,7 +10,7 @@ function emptyHouseTaste() { return { pres: null, tex: null, sheer: null }; }
 var houseTaste = emptyHouseTaste();
 //  pres: 'calm' (조용히 스며들게) | 'weight' (차분히 무게감 있게) | 'point' (포인트가 되게)
 //  tex: 'smooth' (매끈한) | 'texture' (결이 살아 있는) | 'fluffy' (보송한)
-//  sheer: 'smooth' (매끈하게) | 'texture' (결 있게) | 'thick' (도톰하게) | 'unknown' (잘 모르겠어요)
+//  sheer: 'smooth' (매끈하게) | 'texture' (결 있게) | 'linen' (린넨으로, 191번) | 'unknown' (잘 모르겠어요) — 'thick'(도톰하게)은 191번 전 옛 상담, 결 있게로 보임
 // 115번 첫 커밋(푸시 전)에서 쓰던 칸 이름·값을 고객 화면과 같은 칸으로 옮김 (임시 저장본이 남아 있을 때만)
 function migrateSurveyRoom(r) {
     if (!r) return r;
@@ -87,7 +87,7 @@ function roomWithSurveyTaste(room, dirOverride) {
         out.drapeFeel = { smooth: 'smooth', texture: 'natural', fluffy: 'cozy' }[tex] || tex;
     }
     if (sheer && !room.sheerFeel) {      // 123번: 공간마다 고른 속지 결이 먼저
-        out.sheerFeel = { smooth: 'smooth', texture: 'textured', thick: 'cozy', unknown: 'any' }[sheer] || sheer;
+        out.sheerFeel = { smooth: 'smooth', texture: 'textured', thick: 'cozy', linen: 'linen', unknown: 'any' }[sheer] || sheer;      // 191번: 린넨
     }
     return out;
 }
@@ -489,8 +489,8 @@ function renderSurvey() {
             <div class="k">속지 결</div>
             <div class="survey-opts">
                 <button type="button" class="survey-opt ${houseTaste.sheer === 'smooth' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'smooth')">매끈하게</button>
-                <button type="button" class="survey-opt ${houseTaste.sheer === 'texture' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'texture')">결 있게</button>
-                <button type="button" class="survey-opt ${houseTaste.sheer === 'thick' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'thick')">도톰하게</button>
+                <button type="button" class="survey-opt ${houseTaste.sheer === 'texture' || houseTaste.sheer === 'thick' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'texture')">결 있게</button>
+                <button type="button" class="survey-opt ${houseTaste.sheer === 'linen' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'linen')">린넨으로</button>
                 <button type="button" class="survey-opt dim ${houseTaste.sheer === 'unknown' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'unknown')">잘 모르겠어요</button>
             </div>
         </div>

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261243';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261244';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -524,7 +524,7 @@
         setCompItems(ed, room.planComp || 'double');
         if (room.altBuilding) { ed.sizeKnown = false; ed.altPins = linePins(room.altLine); }      // 167번: 둘째 줄은 크기 화면(첫 줄 크기가 들어 있음)을 꼭 지남 · 같은 겹이면 첫 줄 원단을 첫 장에
         const hs = houseTasteNow().sheer;      // 123번: 공간 답이 먼저, 없으면 예전 집 답
-        ed.sheerFeel = planHas(room, 'sheer') ? (room.sheerFeel || { smooth: 'smooth', texture: 'textured', thick: 'cozy', unknown: 'any' }[hs] || null) : null;
+        ed.sheerFeel = planHas(room, 'sheer') ? (room.sheerFeel || { smooth: 'smooth', texture: 'textured', thick: 'cozy', linen: 'linen', unknown: 'any' }[hs] || null) : null;      // 191번: 린넨
         flowGo("3.5-Bridge", ed, room.id, () => { state.pendingItemQueue = ed.items; state.currentItemIndex = 0; });
     }
     // ② 질문 답(과 카드로 고친 벽·바닥)을 공간에 담아 둠 — 아직 상담 전 공간 그대로
@@ -1203,14 +1203,16 @@
             // [속지 결 (117번): 집에서 처음 속지가 들어가는 공간에서 한 번. 답은 우리 집 취향(속지 결)에 저장 — 예전 속지 느낌 사진 그대로]
             case "2-Base-SheerFeel": {
                 const fe = state.editingRoom && state.editingRoom.flow;      // 123번: 공간마다 물음 → 그 공간 답만 표시
-                const hs = fe ? ({ smooth: 'smooth', textured: 'texture', cozy: 'thick', any: 'unknown' }[state.editingRoom.sheerFeel] || null) : houseTasteNow().sheer, wasS = v => hs === v ? ' was-picked' : '';
+                // 191번: 셋째 칸이 린넨으로. 옛 "도톰한" 답(cozy·thick)은 "짜임이 보이는" 칸에 회색 표시(188번 엔진도 결 있음으로 읽음)
+                const hs0 = fe ? ({ smooth: 'smooth', textured: 'texture', cozy: 'texture', linen: 'linen', any: 'unknown' }[state.editingRoom.sheerFeel] || null) : houseTasteNow().sheer;
+                const hs = hs0 === 'thick' ? 'texture' : hs0, wasS = v => hs === v ? ' was-picked' : '';
                 html += '<div class="bookmark-stage">';
                 html += stepHead(fe ? `${state.editingRoom.name}의 속지는 어떤 질감이 좋으실까요?` : '속지는 어떤 질감이 좋으실까요?');
                 html += `<button type="button" class="step-skip${wasS('unknown')}" onclick="window.concierge.selectSheerFeel('any')">잘 모르겠어요</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
                 html += renderBookmarkCard("매끈한", "", "", sheerFeelBg('feel_smooth', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc' + wasS('smooth'));
                 html += renderBookmarkCard("짜임이 보이는", "", "", sheerFeelBg('feel_textured', SOLID_TEXTURES.oak), function() { window.concierge.selectSheerFeel('textured'); }, 'vdesc' + wasS('texture'));
-                html += renderBookmarkCard("도톰한", "", "", sheerFeelBg('feel_cozy', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('cozy'); }, 'vdesc' + wasS('thick'));
+                html += renderBookmarkCard("린넨", "", "", sheerFeelBg('feel_linen', SOLID_TEXTURES.l1), function() { window.concierge.selectSheerFeel('linen'); }, 'vdesc' + wasS('linen'));      // 191번: 도톰한 → 린넨(린넨 소재만 추천)
                 html += '</div></div>';
                 break;
             }
@@ -2025,7 +2027,7 @@
                 flowNext();
                 return;
             }
-            if (typeof setHouseTaste === 'function') setHouseTaste('sheer', { smooth: 'smooth', textured: 'texture', cozy: 'thick', any: 'unknown' }[feel] || 'unknown');
+            if (typeof setHouseTaste === 'function') setHouseTaste('sheer', { smooth: 'smooth', textured: 'texture', cozy: 'thick', linen: 'linen', any: 'unknown' }[feel] || 'unknown');      // 191번: 린넨
             if (!state.editingRoom) {
                 todoRooms().forEach(r => { if (planHas(r, 'sheer')) r.sheerFeel = feel; });
                 flowNext();

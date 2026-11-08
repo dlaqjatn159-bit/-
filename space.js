@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261243';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261244';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -198,7 +198,7 @@
         lightBlock: { light: '빛 들어와도 괜찮음', soft: '빛 적당히 가림', dark: '빛 완전히 가림' },
         privacy: { open: '시선 괜찮음', some: '시선 조금 가림', high: '시선 많이 가림' },
         pres: { calm: '조용히 스며들게', weight: '차분한 무게감', point: '포인트 있게' },
-        sheer: { smooth: '매끈한 속지', textured: '짜임이 보이는 속지', cozy: '도톰한 속지' },
+        sheer: { smooth: '매끈한 속지', textured: '짜임이 보이는 속지', cozy: '도톰한 속지', linen: '린넨 속지' },      // 191번: 린넨 (cozy는 옛 상담)
         tex: { smooth: '매끈한 겉지', texture: '짜임이 보이는 겉지', fluffy: '보송한 겉지' }
     };
     function answerSay(r, keys) {      // 170번: keys를 주면 그 칸만 (두 줄 공간은 이름 아래 빛·시선, 줄마다 느낌·결)

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261243';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261244';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -664,9 +664,9 @@ function whyItemCands(F, R, facts) {
     ].find(x => x[0]);
     if (D) add('D', D[1], D[2]);
     // O3 · T. 재질 (결 이야기는 하나만)
-    const feelMatch = kind === 'sheer' && ((R.feel === 'textured' && F.tex === 'natural') || (R.feel === 'cozy' && F.tex === 'cozy'));
+    const feelMatch = kind === 'sheer' && ((R.feel === 'textured' && F.tex === 'natural') || (R.feel === 'cozy' && F.tex === 'cozy') || (R.feel === 'linen' && F.mat === 'linen'));      // 191번: 린넨
     if (F.tex === 'natural' && R.opp) add('T', 'O3', '반대쪽 창에서 든 빛이 커튼 앞면을 비춰, 낮에도 짜임이 잘 보입니다.');
-    if (feelMatch) add('T', 'T4', `고르신 ${R.feel === 'cozy' ? '도톰하고 보송한' : '짜임이 보이는'} 느낌 그대로입니다.`);
+    if (feelMatch) add('T', 'T4', `고르신 ${R.feel === 'cozy' ? '도톰하고 보송한' : (R.feel === 'linen' ? '린넨' : '짜임이 보이는')} 느낌 그대로입니다.`);
     if (F.tex === 'natural' && !R.opp && (R.E || R.W || R.light === 'high')) add('T', 'T1', '짜임이 있는 원단이라, 비스듬히 드는 햇빛에 질감이 잘 보입니다.');
     else if (F.tex === 'cozy') add('T', 'T2', '도톰하고 보송해서, 만지면 포근합니다.');
     else if (F.tex === 'smooth' && kind === 'sheer' && R.feel === 'smooth') add('T', 'T3', '매끈해서 주름이 곧고 깔끔하게 떨어집니다.');
