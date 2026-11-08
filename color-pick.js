@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261245';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261246';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -155,10 +155,10 @@
         return s.alt ? Object.assign({}, base, { color: s.alt.name, hex: s.alt.hex || colorHex(base.id, s.alt.name) }) : base;
     }
     function seatName(r, x) { return r.kind === 'sheer' ? SHEER_NAME[x.key] : x.name; }
-    function whyOf(r, x) {
+    function whyOf(r, x, room) {      // room (194번): 최종 제안에서 부를 때 그 공간. 없으면 지금 고르는 공간
         if (r.kind === 'sheer') return WHY.sheer[x.key] || '';
         if (r.feel === 'calm') {
-            const mc = state.editingRoom && state.editingRoom.measuredColor;
+            const rm = room || state.editingRoom, mc = rm && rm.measuredColor;
             if (x.key === 'light' && mc && mc.wall && mc.wall.L >= 90 && x.L >= 85) return WHY.calm.lightWhite;
             return WHY.calm[x.key] || '';
         }
@@ -394,5 +394,21 @@
             ${rows}<div class="cp-next">${door(room.name + ' 마치기', 'window.concierge.commitRoomCart()')}</div></div>`;
     }
 
-    cz.colorPick = { wants, html, after, back, finishHtml };      // concierge.js가 부름
+    // 최종 제안 "공간의 색과 빛" 문장 (194번): 4막에서 손님이 본 이유 한 줄과 같은 말
+    //  room = 저장된 공간(raw), kind = '속지'·'겉지', fabricId·colorName = 고른 원단. 자리를 못 찾으면 '' (ticket.js가 예전 문장으로)
+    function whyLineFor(room, kind, fabricId, colorName) {
+        try {
+            if (!room || !fabricId) return '';
+            if (kind === '속지') { const d = fabOf(fabricId).density; return (d && WHY.sheer[d]) || ''; }      // 빛 한 장의 장 = 원단 비침(density)
+            if (kind !== '겉지') return '';
+            const rm = cz.roomWithTaste ? cz.roomWithTaste(room) : room;
+            const r = typeof seatDrape === 'function' ? seatDrape(rm, presOf(room)) : null;
+            if (!r || !r.seats || !r.seats.length) return '';
+            // 고른 원단이 들어 있는 자리: 같은 색 먼저, 없으면 같은 원단("한 톤 짙게"로 고른 색) — cp()의 pin 찾기와 같은 차례
+            const hit = same => r.seats.find(x => x.fabrics.some(f => f.id === fabricId && (!same || !colorName || f.color === colorName)));
+            const seat = hit(true) || hit(false);
+            return seat ? whyOf({ kind: 'drape', feel: r.feel, house: r.house }, seat, room) : '';
+        } catch (e) { return ''; }
+    }
+    cz.colorPick = { wants, html, after, back, finishHtml, whyLineFor };      // concierge.js가 부름 · whyLineFor는 ticket.js(194번)
 })();

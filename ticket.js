@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261245';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261246';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1347,10 +1347,11 @@ function drawHouseMap(ctx, sp, bg, o) {
     pts.filter(p => act(p.m) && p.m.t !== 'c').forEach(put);
     return pts.map(p => ({ x1: p.x - p.hw - 4, y1: p.y - p.hh - 4, x2: p.x + p.hw + 4, y2: p.y + p.hh + 4, room: p.m.rooms.includes(SEL) ? SEL : p.m.rooms[0], seat: p.m.seat }));      // 190번: seat = 세 자리 조각이면 자리 번호
 }
-// 색 지도 아래 공간별 문장 (132번): 원단이 그 공간의 벽–바닥 선 가까이 있는지, 벗어났다면 어느 쪽인지를 담백하게 (원단을 사람처럼 움직이지 않음)
-//  벽·바닥을 둘 다 잰 공간만. [{ name, text }]
+// 공간의 색과 빛 공간별 문장 (132번 → 194번): 품목마다 한 줄 [{ k, text }]. 4막 이유 한 줄(color-pick.js whyLineFor)을 먼저, 못 찾으면 벽–바닥 선 계산 문장(예전 말, 주어 없이)
+//  벽·바닥을 둘 다 잰 공간만. [{ name, parts: [{ k, text }], text }]
 function houseRoomLines(sp) {
     const out = [];
+    const cp = window.conciergeCore && window.conciergeCore.colorPick;
     sp.forEach(s => {
         const w = s.wall, fl = s.floor, fabs = s.fabs.filter(f => f.lab).slice().sort((x, y) => ({ 속지: 0, 겉지: 1 }[x.k] ?? 2) - ({ 속지: 0, 겉지: 1 }[y.k] ?? 2));
         if (!w || !fl || !fabs.length) return;
@@ -1361,26 +1362,26 @@ function houseRoomLines(sp) {
             return { f, t, d: Math.hypot(dL, db), dL, db };
         });
         const sayOf = x => {
-            const { f, t, d, dL, db } = x, who = f.k + houseJosa(f.k, '은', '는');
+            const { f, t, d, dL, db } = x;
             if (d <= HOUSE_LINE_NEAR) {
-                if (t <= 0.25) return `${who} 벽 바로 곁의 색이라, 닫아 두면 창 쪽이 벽과 하나로 보입니다.`;
-                if (t >= 0.75) return `${who} 바닥 가까운 색이라, 닫아 두면 창 쪽이 바닥과 이어져 보입니다.`;
-                return `${who} 벽과 바닥 사이의 색이라, 닫아도 공간이 한 덩어리로 보입니다.`;
+                if (t <= 0.25) return '벽 바로 곁의 색이라, 닫아 두면 창 쪽이 벽과 하나로 보입니다.';
+                if (t >= 0.75) return '바닥 가까운 색이라, 닫아 두면 창 쪽이 바닥과 이어져 보입니다.';
+                return '벽과 바닥 사이의 색이라, 닫아도 공간이 한 덩어리로 보입니다.';
             }
             if (Math.abs(dL) >= Math.abs(db)) {
-                if (dL < 0 && typeof pointVivid === 'function' && pointVivid(f.lab)) return `${who} 짙고 색 기운이 또렷한 색이라, 창 쪽의 포인트가 됩니다.`;      // 183번: 와인처럼 또렷한 짙은 색은 무게가 아니라 포인트 (차콜과 같은 말이 되지 않게)
-                if (dL < 0) return f.lab.L < fl.L ? `${who} 선에서 한참 아래, 바닥보다 짙은 색이라 공간에 무게를 잡아 줍니다.` : `${who} 선보다 짙은 쪽이라, 공간에 무게를 더합니다.`;
-                return f.lab.L > w.L ? `${who} 벽보다 밝은 색이라, 닫아 두면 창 쪽이 환하게 보입니다.` : `${who} 선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.`;
+                if (dL < 0 && typeof pointVivid === 'function' && pointVivid(f.lab)) return '짙고 색 기운이 또렷한 색이라, 창 쪽의 포인트가 됩니다.';      // 183번: 와인처럼 또렷한 짙은 색은 무게가 아니라 포인트 (차콜과 같은 말이 되지 않게)
+                if (dL < 0) return f.lab.L < fl.L ? '선에서 한참 아래, 바닥보다 짙은 색이라 공간에 무게를 잡아 줍니다.' : '선보다 짙은 쪽이라, 공간에 무게를 더합니다.';
+                return f.lab.L > w.L ? '벽보다 밝은 색이라, 닫아 두면 창 쪽이 환하게 보입니다.' : '선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.';
             }
-            if (typeof pointVivid === 'function' && !pointVivid(f.lab)) return `${who} 벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽이지만 색 기운이 적어, 공간을 ${db > 0 ? '포근하게' : '차분하게'} 받쳐 줍니다.`;      // 160번: 회색을 포인트라 하지 않음
-            return `${who} 벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽으로 벗어난 색이라, 창 쪽의 포인트가 됩니다.`;
+            if (typeof pointVivid === 'function' && !pointVivid(f.lab)) return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽이지만 색 기운이 적어, 공간을 ${db > 0 ? '포근하게' : '차분하게'} 받쳐 줍니다.`;      // 160번: 회색을 포인트라 하지 않음
+            return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽으로 벗어난 색이라, 창 쪽의 포인트가 됩니다.`;
         };
-        let text;
-        if (pos.length === 2 && pos.every(x => x.d <= HOUSE_LINE_NEAR)) {
-            const a = pos[0].f.k, b = pos[1].f.k;
-            text = `${a}${houseJosa(a, '과', '와')} ${b} 모두 벽과 바닥을 잇는 선 가까이 있습니다. 닫아도 공간이 한 덩어리로 보입니다.`;
-        } else text = pos.map(sayOf).join(' ');
-        out.push({ name: s.name, text });
+        const parts = pos.map(x => {
+            const wLine = cp && cp.whyLineFor ? cp.whyLineFor(s.raw, x.f.k, x.f.fabricId, x.f.colorName) : '';
+            return { k: x.f.k, text: wLine || sayOf(x) };
+        }).filter(p => p.text);
+        if (!parts.length) return;
+        out.push({ name: s.name, parts, text: parts.map(p => p.text).join(' ') });
     });
     return out;
 }
@@ -1389,6 +1390,7 @@ function houseRoomLines(sp) {
 //  칸 이름은 맨 위 한 번만. 없는 품목은 칸을 비움(회색으로 채우지 않음). 블라인드만인 공간은 커튼 두 칸 자리를 블라인드 하나가 쓰고 그 줄에만 칸 이름
 //  화면(지도, 한 공간씩 진하게)과 순서만 같고 모양은 다름 — 80번 원칙의 의도한 예외(141번)
 const HOUSE_MB_COLS = [['벽', 34], ['속지', 22], ['겉지', 22], ['바닥', 22]];
+const HOUSE_MEASURED_NOTE = '벽·바닥 색은 상담 때 회색 카드와 함께 잰 값입니다.';      // 194번(E): 잰 값 한 줄 — 화면(final.js)과 종이가 같이 씀
 function houseMoodParts(s) {
     const okHex = h => /^#[0-9a-f]{6}$/i.test(h || '');
     const fab = k => { const f = s.fabs.find(x => x.k === k && okHex(x.hex)); return f ? f.hex : null; };
@@ -1423,13 +1425,21 @@ function planHouse(data) {
     let y = TICKET_HEAD_Y + 24;
     const headY = y + PAPER_F4, headCells = cells(HOUSE_MB_COLS.map(c => [null, c[1], c[0]]));
     y = headY + 14;
+    const KEY_W = 64;      // 194번: 이름표 폭 (SX: key는 fKey·MUTED, SX + KEY_W: 글은 fBody·MUTED)
     const rows = sp.map(s => {
         const mp = houseMoodParts(s), ln = roomLines.find(r => r.name === s.name);
         const o = { s, odd: mp.odd, cells: cells(mp.parts), stripY: y };
         o.nameY = y + 16 + PAPER_F3;
         let ty = y + SH;
         if (o.odd) { o.keyY = ty + 8 + PAPER_F4 * 0.85; ty = o.keyY; }
-        o.lines = ln ? wrap(ln.text, SW, fBody) : [];
+        const lines = [];
+        if (ln && ln.parts) {
+            ln.parts.forEach(p => {
+                const sub = wrap(p.text, SW - KEY_W, fBody);
+                sub.forEach((t, i) => lines.push({ key: i === 0 ? (p.k || '') : '', t }));
+            });
+        }
+        o.lines = lines;
         o.textY = ty + 14 + PAPER_F4;
         const end = o.lines.length ? o.textY + (o.lines.length - 1) * LH4 : ty;
         y = Math.max(end, o.nameY) + 40;
@@ -1438,6 +1448,9 @@ function planHouse(data) {
     const bLines = brief.length ? wrap(brief.join(' '), CW, fBrief) : [];
     const briefLineY = y, bY = y + 26 + PAPER_F4;
     if (bLines.length) y = bY + (bLines.length - 1) * LH4 + 10;
+    const hasMeasured = sp.some(s => s.wall && s.floor);      // 194번(E): 벽·바닥을 둘 다 잰 공간이 하나라도 있을 때만
+    const noteY = hasMeasured ? (bLines.length ? y + 34 : briefLineY + 26 + Math.round(PAPER_F4 * 0.85)) : 0;
+    if (hasMeasured) y = noteY + 10;
     const pages = [{ rows: [], y: y + 10 }];
     const draw = (c, pi, label) => {
         const t = drawWhy(c, data, W, false, '공간의 색과 빛');      // 65번
@@ -1452,12 +1465,20 @@ function planHouse(data) {
                 c.strokeStyle = 'rgba(35,28,22,0.14)'; c.lineWidth = PAPER_HL; c.strokeRect(q.x + PAPER_HL / 2, o.stripY + PAPER_HL / 2, q.w - PAPER_HL, SH - PAPER_HL);
             });
             if (o.odd) { c.font = fKey; c.fillStyle = MUTED; o.cells.forEach(q => { if (q.hex) c.fillText(q.k, q.x, o.keyY); }); }
-            c.font = fBody; c.fillStyle = MUTED; o.lines.forEach((ln, i) => c.fillText(ln, SX, o.textY + i * LH4));
+            o.lines.forEach((ln, i) => {
+                const py = o.textY + i * LH4;
+                if (ln.key) { c.font = fKey; c.fillStyle = MUTED; c.fillText(ln.key, SX, py); }
+                c.font = fBody; c.fillStyle = MUTED; c.fillText(ln.t, SX + KEY_W, py);
+            });
         });
         if (bLines.length) {
             c.strokeStyle = LINE; c.lineWidth = 0.6; c.beginPath(); c.moveTo(CX, briefLineY); c.lineTo(RX, briefLineY); c.stroke();
             c.font = fBrief; c.fillStyle = DARK; c.textAlign = 'left';
             bLines.forEach((ln, i) => c.fillText(ln, CX, bY + i * LH4));
+        }
+        if (hasMeasured) {
+            c.font = fKey; c.fillStyle = MUTED; c.textAlign = 'left';
+            c.fillText(HOUSE_MEASURED_NOTE, CX, noteY);
         }
         label();
     };

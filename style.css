@@ -1599,6 +1599,21 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .jg-overview { padding-bottom: 6rem; }
 .jg-sec-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.8rem; }
 .jg-sec-ttl { margin: 0; font-size: 40px; font-weight: 400; letter-spacing: 0.01em; color: #231c16; }
+/* 띠 모양 (194번) */
+.jg-mb-row { display: flex; align-items: center; }
+.jg-mb-name { width: 182px; flex: none; font-size: 22px; line-height: 1.36; letter-spacing: -0.015em; color: #2b221a; }
+.jg-mb-strip { flex: 1; max-width: 586px; display: flex; gap: 4px; }
+.jg-mb-room .jg-mb-strip { height: 88px; }
+.jg-mb-strip > i { display: block; box-shadow: inset 0 0 0 0.5px rgba(35, 28, 22, 0.14); }
+.jg-mb-strip > i.is-empty { box-shadow: none; }
+.jg-mb-head, .jg-mb-key { font-size: 14px; line-height: 1.5; color: #6f5f4f; }
+.jg-mb-head { margin-bottom: 10px; }
+.jg-mb-key { margin-top: 8px; }
+.jg-mb-room + .jg-mb-room { margin-top: 44px; }
+.jg-mb-say { display: grid; grid-template-columns: 3.2em 1fr; gap: 4px 0; max-width: 586px; margin: 14px 0 0 182px; font-size: 17px; line-height: 1.8; word-break: keep-all; }
+.jg-mb-say dt { color: #6f5f4f; font-size: 14px; line-height: 30px; }
+.jg-mb-say dd { margin: 0; color: #2b221a; }
+.jg-mb-note { margin: 18px 0 0; font-size: 14px; line-height: 1.5; color: #6f5f4f; }
 .jg-map-lead { margin: 0 0 2.5rem; max-width: 30em; font-size: 22px; font-weight: 400; line-height: 1.75; color: #2b221a; word-break: keep-all; }
 .jg-map-box { position: relative; margin: 0 -3.5rem; } /* 132번: 900 좌표 지도가 줄지 않게 양옆 여백까지 (이름표 17px 그대로) */
 .fin-ed-map { display: block; width: 100%; height: auto; }
@@ -1716,6 +1731,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     .jg-sr-sw { margin-top: 1.4rem; }
     .jg-map-read { grid-template-columns: 1fr; gap: 1.5rem; }
     .jg-map-box { margin: 0 -1.4rem; }
+    .jg-mb-name { width: 96px; font-size: 18px; } .jg-mb-say { margin-left: 96px; }
     .jg-cover-poem, .fin-closing-poem, .fin-closing-mark { font-size: 30px; }
     .fin-ed-closing { margin: 4.5rem -1.4rem 0; padding: 48px 1.4rem 40px; }
     .fin-night { margin: 4.5rem -1.4rem 0; padding: 48px 1.4rem 40px; }

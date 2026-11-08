@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261245';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261246';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -301,21 +301,28 @@
         h += '<div class="fin-ed-logo font-serif-kr" data-staff-hold>' + redamLogoSVG() + '</div></footer>';
         h += '</section>';
 
-        // [공간의 색과 빛] 132번: 사분면을 살려 도록의 말로 — 읽는 법 한 문장 → 색 조각 지도(범례 없음) → 공간별 문장 → 집 전체 총평
+        // [공간의 색과 빛] 194번: 종이 장과 같은 띠 — 칸 이름 한 번 → 공간마다 이름 | 띠(벽 34 · 속지 22 · 겉지 22 · 바닥 22) → 띠 아래 품목마다 한 줄 → 총평 → 잰 값 한 줄
         if (showHouse) {
             const brief = (typeof houseBrief === 'function') ? houseBrief(sp) : [];
             const roomLines = (typeof houseRoomLines === 'function') ? houseRoomLines(sp) : [];
             const hasLine = sp.some(s => s.wall && s.floor);
             h += '<section class="jg-overview" id="finSecHouse">';
             h += '<div class="jg-sec-head"><h2 class="jg-sec-ttl font-serif-kr">공간의 색과 빛</h2></div>';
-            if (hasLine && typeof HOUSE_MAP_LEAD === 'string') h += `<p class="jg-map-lead font-serif-kr">${esc(HOUSE_MAP_LEAD)}</p>`;
-            h += `<div class="jg-map-box"><canvas id="finEdMapCanvas" class="fin-ed-map" width="${(typeof HOUSE_MAP_W === 'number' ? HOUSE_MAP_W : 900) * 2}" height="${(typeof HOUSE_MAP_H === 'number' ? HOUSE_MAP_H : 470) * 2}"></canvas></div>`;
-            if (sp.length > 1) {
-                // 141번(B-4 결정): 공간 이름 줄은 지도 아래(명조 22), 고른 이름 앞 흙빛 점 → 바로 아래 그 공간 문장 한 줄(17, 옅게). 처음엔 첫 공간
-                h += '<div class="jg-map-rooms" role="group" aria-label="공간">' + sp.map((s, i) => `<button type="button" class="font-serif-kr" data-map-room="${i}">${esc(s.name)}</button>`).join('') + '</div>';
-                h += '<p class="jg-map-say" id="finMapSay"></p>';
-            } else if (roomLines.length) h += '<div class="jg-map-read">' + roomLines.map(r => `<div><p>${esc(r.text)}</p></div>`).join('') + '</div>';
-            if (brief.length) h += `<div class="jg-lead-line"><p class="jg-lead-quote font-serif-kr">${esc(brief.join(' '))}</p></div>`;      // 148번: 선은 본문 폭 끝까지, 글만 46em
+            if (typeof houseMoodParts === 'function' && typeof HOUSE_MB_COLS !== 'undefined') {
+                // 칸 이름 한 번 (블라인드만인 공간은 그 줄 아래에 따로)
+                h += '<div class="jg-mb-row jg-mb-head"><span></span><div class="jg-mb-strip">' + HOUSE_MB_COLS.map(c => `<span style="flex:${c[1]}">${c[0]}</span>`).join('') + '</div></div>';
+                sp.forEach(s => {
+                    const mp = houseMoodParts(s), ln = roomLines.find(r => r.name === s.name);
+                    h += '<div class="jg-mb-room">';
+                    h += `<div class="jg-mb-row"><span class="jg-mb-name font-serif-kr">${esc(s.name)}</span><div class="jg-mb-strip">`
+                       + mp.parts.map(p => `<i style="flex:${p[1]}${p[0] ? ';background:' + p[0] : ''}"${p[0] ? '' : ' class="is-empty"'}></i>`).join('') + '</div></div>';
+                    if (mp.odd) h += '<div class="jg-mb-row jg-mb-key"><span></span><div class="jg-mb-strip">' + mp.parts.map(p => `<span style="flex:${p[1]}">${p[0] ? esc(p[2]) : ''}</span>`).join('') + '</div></div>';
+                    if (ln && ln.parts && ln.parts.length) h += '<dl class="jg-mb-say">' + ln.parts.map(q => `<dt>${esc(q.k)}</dt><dd>${esc(q.text)}</dd>`).join('') + '</dl>';
+                    h += '</div>';
+                });
+            }
+            if (brief.length) h += `<div class="jg-lead-line"><p class="jg-lead-quote font-serif-kr">${esc(brief.join(' '))}</p></div>`;      // 148번 그대로
+            if (hasLine && typeof HOUSE_MEASURED_NOTE === 'string') h += `<p class="jg-mb-note">${esc(HOUSE_MEASURED_NOTE)}</p>`;      // 194번(E)
             h += '</section>';
         }
 
@@ -435,37 +442,6 @@
 
         box.innerHTML = h;
         bindFinalNavSpy(box);      // 144번
-        if (showHouse && typeof drawHouseMap === 'function') {
-            const cv = document.getElementById('finEdMapCanvas');
-            if (cv) {
-                const many = sp.length > 1;      // 141번: 공간이 둘 이상이면 한 공간씩 진하게
-                const lines = (typeof houseRoomLines === 'function') ? houseRoomLines(sp) : [];
-                let hits = [];
-                const paint = sel => {
-                    const ctx = cv.getContext('2d');
-                    ctx.save();
-                    ctx.scale(2, 2);
-                    ctx.fillStyle = '#fffdf9';      // 132번: 상자 없이 종이 위에 바로 (도록의 말)
-                    ctx.fillRect(0, 0, cv.width / 2, cv.height / 2);
-                    hits = drawHouseMap(ctx, sp, '#fffdf9', many ? { sel } : undefined) || [];
-                    ctx.restore();
-                    if (!many) return;
-                    box.querySelectorAll('[data-map-room]').forEach(b => { const on = +b.dataset.mapRoom === sel; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
-                    const say = document.getElementById('finMapSay'), ln = lines.find(r => r.name === sp[sel].name);
-                    if (say) say.textContent = ln ? ln.text : '';
-                };
-                paint(0);
-                if (many) {
-                    box.querySelectorAll('[data-map-room]').forEach(b => b.addEventListener('click', () => paint(+b.dataset.mapRoom)));
-                    // 흐린 조각을 눌러도 그 공간으로 (지도 좌표 900×520)
-                    cv.addEventListener('click', e => {
-                        const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * (cv.width / 2) / r.width, y = (e.clientY - r.top) * (cv.height / 2) / r.height;
-                        const hit = hits.find(q => x >= q.x1 && x <= q.x2 && y >= q.y1 && y <= q.y2);
-                        if (hit && typeof hit.room === 'number') paint(hit.room);
-                    });
-                }
-            }
-        }
     }
 
     // ---- 최종 제안의 종이: 저장·인쇄되는 이미지를 한 쪽씩 보여 줌 (app.js makeTicketBlobs) ----
