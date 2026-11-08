@@ -1602,13 +1602,14 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 /* 띠 모양 (194번) */
 .jg-mb-row { display: flex; align-items: center; }
 .jg-mb-name { width: 182px; flex: none; font-size: 22px; line-height: 1.36; letter-spacing: -0.015em; color: #2b221a; }
-.jg-mb-strip { flex: 1; max-width: 586px; display: flex; gap: 4px; }
-.jg-mb-room .jg-mb-strip { height: 88px; }
+.jg-mb-strip { flex: 1; display: flex; gap: 4px; }      /* 196번: 최대 586px를 빼 본문 오른쪽 끝까지 */
+.jg-mb-room .jg-mb-strip { height: 60px; }      /* 196번: 88 → 60, 가늘고 긴 띠 */
 .jg-mb-strip > i { display: block; box-shadow: inset 0 0 0 0.5px rgba(35, 28, 22, 0.14); }
 .jg-mb-strip > i.is-empty { box-shadow: none; }
 .jg-mb-head, .jg-mb-key { font-size: 14px; line-height: 1.5; color: #6f5f4f; }
 .jg-mb-head { margin-bottom: 10px; }
 .jg-mb-key { margin-top: 8px; }
+.jg-mb-head > span:first-child, .jg-mb-key > span:first-child { width: 182px; flex: none; }      /* 196번: 칸 이름 줄 첫 칸을 공간 이름 칸 너비로 — 칸 이름이 띠 칸과 맞게 */
 .jg-mb-room + .jg-mb-room { margin-top: 44px; }
 .jg-mb-say { display: grid; grid-template-columns: 3.2em 1fr; gap: 4px 0; max-width: 586px; margin: 14px 0 0 182px; font-size: 17px; line-height: 1.8; word-break: keep-all; }
 .jg-mb-say dt { color: #6f5f4f; font-size: 14px; line-height: 30px; }
@@ -1732,6 +1733,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     .jg-map-read { grid-template-columns: 1fr; gap: 1.5rem; }
     .jg-map-box { margin: 0 -1.4rem; }
     .jg-mb-name { width: 96px; font-size: 18px; } .jg-mb-say { margin-left: 96px; }
+    .jg-mb-head > span:first-child, .jg-mb-key > span:first-child { width: 96px; }      /* 196번: 좁은 화면도 이름 칸 너비와 같게 */
     .jg-cover-poem, .fin-closing-poem, .fin-closing-mark { font-size: 30px; }
     .fin-ed-closing { margin: 4.5rem -1.4rem 0; padding: 48px 1.4rem 40px; }
     .fin-night { margin: 4.5rem -1.4rem 0; padding: 48px 1.4rem 40px; }
