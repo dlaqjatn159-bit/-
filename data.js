@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261240';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261241';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1499,6 +1499,239 @@ function pointTechPreview(mc, category, key, n) {
         picks.push(c);
     });
     return { term: POINT_TECH_TERM[key] || '', say: POINT_TECH_DESC[key] || '', hexes: picks.map(toHex).filter(Boolean) };
+}
+// ==============================================================
+// 세 자리 엔진 (188번): 4막 새 화면(189번)이 쓸 겉지 "색 한 장"의 세 자리와 속지 "빛 한 장"의 네 장을 계산만 함
+//  지금 화면·추천 점수·저장은 그대로(부르는 곳 없음). 숫자는 임시 — 가족 집 리허설 뒤 확정
+//  근거: Claude outputs/노트상세 1109c(차례·두께) · 1109e(반경·시험) · 1109f(포인트 세기·중지·속지 결) · 1109g(무채색 집 포인트)
+// ==============================================================
+const SEAT_CFG = {
+    R: 8, RDark: 10,        // 자리 반경(밝기 차이는 0.7배로 셈). "완전히 어둡게요"일 때만 한 걸음 넓힘
+    step: 8,                // 한 톤 = 밝기 8 (스며들게 밝게·진하게)
+    tolMid: 8, tol: 5,      // 사이는 이어주는 색에서 밝기 ±8 안, 밝게·진하게는 목표 ±5 안에서 가장 가까운 곳
+    gapL: 3,                // 자리 색끼리 밝기 차이: 밝게는 사이보다 3 이상 밝게, 진하게는 3 이상 진하게(반경이 겹쳐 거꾸로 서는 것 막음)
+    minN: 3,                // 자리 두께: 원단 3종 이상이어야 자리(스며들게·무게감, 속지 첫 장). 포인트는 1종도 자리
+    wR: 9,                  // 무게감 자리 반경
+    pointCMax: 45, pointPeak: 30,   // 색 있는 집 포인트: 채도 45 넘으면 뺌, 대표 색은 채도 30에 가까운 색(산 모양)
+    grayCMax: 40            // 무채색·중성 집 포인트: 채도 40 넘으면 뺌
+};
+// 겉지 빛 가림 맞음 정도: calculateFabricMatchScore의 빛 차단 표와 같은 숫자 (3 이상 맞음 · 0~2 괜찮음 · 음수 맨 뒤)
+const SEAT_BLOCK = {
+    dark: { full: 10, life: 2, mid: -2, none: -3, unknown: -1 },
+    soft: { full: 1, life: 4, mid: 3, none: 0, unknown: 0 },
+    light: { full: -1, life: 1, mid: 3, none: 3, unknown: 1 }
+};
+function seatLabOk(c) { return !!c && typeof c.L === 'number' && typeof c.a === 'number' && typeof c.b === 'number'; }
+function seatDE(p, c) { return Math.sqrt(Math.pow((p.L - c.L) * 0.7, 2) + Math.pow(p.a - c.a, 2) + Math.pow(p.b - c.b, 2)); }
+function seatName(c) { const p = (typeof proColorName === 'function') ? proColorName(c.L, c.a, c.b) : null; return p ? p.ko : ''; }      // 182번: 손님 색 이름 = 색 사전
+function seatBridge(mc) {
+    if (seatLabOk(mc.bridge)) return mc.bridge;
+    if (window.RoomColor && RoomColor.bridgeOf) return RoomColor.bridgeOf(mc.wall, mc.floor, mc.bridgeK);
+    return { L: (mc.wall.L + mc.floor.L) / 2, a: (mc.wall.a + mc.floor.a) / 2, b: (mc.wall.b + mc.floor.b) / 2 };
+}
+// 원단 하나에 색 하나씩 펼친 목록 (거름: 판매가·색값은 categoryPool이, 빛 가림은 여기서)
+function seatPoolColors(category, room) {
+    let pool = [];
+    try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool(category) : []; } catch (e) { pool = []; }
+    if (category === '겉지' && room && room.lightBlock === 'dark') {      // 181번: 완전 암막만, 3종이 안 되면 거르지 않음(순서로 맨 앞)
+        const full = pool.filter(f => blackoutLevel(f) === 'full');
+        if (full.length >= 3) pool = full;
+    }
+    const out = [];
+    pool.forEach(f => getFabricColors(f.id).filter(colorHasLab).forEach(c => {
+        out.push({ f, id: f.id, fabric: f.name, color: c.name, hex: c.hex || null, L: c.light, a: c.a, b: c.b });
+    }));
+    return out;
+}
+// 목표 점 p에서 반경 r 안의 원단(원단마다 가장 가까운 색 하나) → 자리 이름 = 가깝고 많은 색 사전 이름
+function seatRegion(p, cols, r) {
+    const best = {};
+    cols.forEach(c => { const d = seatDE(p, c); if (d <= r && (!best[c.id] || d < best[c.id].d)) best[c.id] = Object.assign({}, c, { d }); });
+    const list = Object.keys(best).map(k => best[k]);
+    if (!list.length) return null;
+    const w = {};
+    list.forEach(c => { const n = seatName(c) || '?'; w[n] = (w[n] || 0) + 1 / (1 + c.d); });
+    const name = Object.keys(w).sort((x, y) => w[y] - w[x])[0];
+    const rep = list.filter(c => seatName(c) === name).sort((x, y) => x.d - y.d)[0];      // 자리 색 = 그 이름 색 중 가운데에 가장 가까운 것
+    return { name, n: list.length, items: list, p, rep };
+}
+// 자리 안 순서: 빛 가림 맞음 → 손님 결 → 자리 가운데에 가까운 순 (완전 암막 "괜찮음"은 끝)
+function seatOrder(items, room) {
+    const t = SEAT_BLOCK[room && room.lightBlock];
+    const fitOf = f => { if (!t) return 1; const s = t[blackoutLevel(f) || 'unknown']; return s >= 3 ? 0 : (s >= 0 ? 1 : 2); };
+    const feel = (room && room.drapeFeel) || ({ smooth: 'smooth', texture: 'natural', fluffy: 'cozy' })[room && room.ownTex] || null;
+    const feelOf = f => { const v = feel ? drapeFeelFit(f, feel) : null; return v == null ? 1 : (v >= 0.5 ? 0 : 1); };
+    return items.map(c => Object.assign({}, c, { fitRank: fitOf(c.f), feelRank: feelOf(c.f) }))
+        .sort((x, y) => x.fitRank - y.fitRank || x.feelRank - y.feelRank || (x.d || 0) - (y.d || 0))
+        .map(c => ({ id: c.id, fabric: c.fabric, color: c.color, hex: c.hex, L: c.L, a: c.a, b: c.b, fit: ['맞음', '괜찮음', '뒤'][c.fitRank], tech: c.tech || null }));
+}
+// 자리 한 칸으로 정리
+function seatOut(key, label, axis, reg, room) {
+    if (!reg) return null;
+    const rep = reg.rep || reg.items[0];
+    return { key, label, axis, name: reg.name, hex: rep.hex, L: rep.L, a: rep.a, b: rep.b, tech: rep.tech || null, n: reg.n, fabrics: seatOrder(reg.items, room) };
+}
+// 스며들게: 벽–바닥 선을 따라 밝게 / 사이 / 진하게
+function seatCalm(mc, cols, room) {
+    const w = mc.wall, fl = mc.floor, br = seatBridge(mc), R = room && room.lightBlock === 'dark' ? SEAT_CFG.RDark : SEAT_CFG.R;
+    const v = { L: fl.L - w.L, a: fl.a - w.a, b: fl.b - w.b };
+    const k = Math.abs(v.L) >= 4 ? 1 / v.L : 0;      // 밝기 1 옮길 때 a·b도 선을 따라. 벽·바닥 밝기가 거의 같으면 밝기만
+    const pt = s => ({ L: br.L + s, a: br.a + v.a * s * k, b: br.b + v.b * s * k });
+    const stops = [];
+    for (let s = -30; s <= 30; s++) { const r = seatRegion(pt(s), cols, R); if (r && r.n >= SEAT_CFG.minN) stops.push({ s, r }); }
+    const pick = (t, used, tol, ok) => {
+        let b = null;
+        stops.forEach(x => { const d = Math.abs(x.s - t); if (d <= tol && !used.has(x.r.name) && (!ok || ok(x.r.rep)) && (!b || d < b.d)) b = { d, s: x.s, r: x.r }; });
+        return b;
+    };
+    const used = new Set();
+    const mid = pick(0, used, SEAT_CFG.tolMid); if (mid) used.add(mid.r.name);
+    const base = mid ? mid.s : 0;
+    const G = SEAT_CFG.gapL, ref = mid ? mid.r.rep : null;
+    const lt = pick(base + SEAT_CFG.step, used, SEAT_CFG.tol, c => !ref || c.L >= ref.L + G); if (lt) used.add(lt.r.name);
+    const top = ref || (lt ? lt.r.rep : null);
+    const dk = pick(base - SEAT_CFG.step, used, SEAT_CFG.tol, c => !top || c.L <= top.L - G);
+    return [seatOut('light', '밝게', 'line', lt && lt.r, room), seatOut('mid', '사이', 'line', mid && mid.r, room), seatOut('deep', '진하게', 'line', dk && dk.r, room)];
+}
+// 무게감: 벽·바닥 중 어두운 쪽보다 아래에서 기운 셋 (안쪽 이름 — 손님 말은 189번)
+function seatWeight(mc, cols, room) {
+    const w = mc.wall, fl = mc.floor, br = seatBridge(mc);
+    const Lt = Math.max(32, Math.min(w.L, fl.L, 48) - 3);
+    const ch = Math.hypot(br.a, br.b);
+    const hs = ch > 2 ? { a: br.a / ch * 6, b: br.b / ch * 6 } : { a: 0, b: 0 };
+    const targets = [['warm', '따뜻한 짙음', { L: Lt, a: 5, b: 12 }], ['house', '이 집 기운 짙음', { L: Lt, a: hs.a, b: hs.b }], ['cool', '차가운 짙음', { L: Lt, a: -2, b: -10 }]];
+    const used = new Set();
+    return targets.map(([key, label, p]) => {
+        let got = null;
+        [0, -4, 4, -8, 8].some(dL => {      // 두께가 모자라면 밝기를 한 걸음씩 옮겨 다시
+            const r = seatRegion({ L: p.L + dL, a: p.a, b: p.b }, cols.filter(c => !used.has(seatName(c))), SEAT_CFG.wR);
+            if (r && r.n >= SEAT_CFG.minN) { got = r; return true; }
+            return false;
+        });
+        if (got) used.add(got.name);
+        return seatOut(key, label, 'depth', got, room);
+    });
+}
+// 포인트: 세기 셋(은근히·또렷이·과감히). 색 있는 집 = 기법 묶음, 무채색·중성 집 = 숨은 기운 표
+function seatPoint(mc, cols, room) {
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    if (!r) return [null, null, null];
+    const groups = { soft: [], clear: [], bold: [] };
+    const hue = c => (Math.atan2(c.b, c.a) * 180 / Math.PI + 360) % 360;
+    const hd = (x, y) => { const d = Math.abs(x - y) % 360; return d > 180 ? 360 - d : d; };
+    if (r.house === 'color') {
+        const GROUP = { tint: 'soft', analog: 'soft', sat: 'clear', split: 'clear', comp: 'bold' };
+        const byKey = {};
+        cols.forEach(c => { byKey[c.id + '__' + c.color] = c; });      // 거른 뒤 남은 색만
+        r.rows.forEach(row => {
+            const g = GROUP[row.key];
+            if (!g) return;
+            row.drape.forEach(x => {
+                const c = byKey[x.id + '__' + x.color];
+                if (c && Math.hypot(c.a, c.b) <= SEAT_CFG.pointCMax) groups[g].push(Object.assign({}, c, { tech: row.key }));
+            });
+        });
+    } else {
+        const w = mc.wall, fl = mc.floor, br = seatBridge(mc);
+        const v = Math.hypot(w.a, w.b) >= 2 ? w : fl;      // 숨은 기운: 벽이 먼저, 벽이 거의 무채색이면 바닥
+        let tone = v.b < 0 ? 'cool' : (Math.hypot(v.a, v.b) >= 1.5 ? 'warm' : 'neutral');
+        if (windowDirOf(room && room.windowDir).includes('N')) tone = tone === 'warm' ? 'neutral' : 'cool';      // 북쪽 창: 차가운 쪽으로 한 칸
+        const up = tone === 'cool' ? 250 : 95, opp = tone === 'neutral' ? up : (up + 180) % 360;
+        const term = { soft: tone === 'cool' ? 'cool' : (tone === 'warm' ? 'warm' : 'tint'), clear: 'opp', bold: 'value' };
+        cols.forEach(c => {
+            const C = Math.hypot(c.a, c.b), h = hue(c);
+            if (C > SEAT_CFG.grayCMax) return;
+            let g = null;
+            if (C >= 8 && C <= 20 && Math.abs(c.L - br.L) <= 15 && (tone === 'neutral' || hd(h, up) <= 70)) g = 'soft';      // 같은 기운 흐린 색
+            else if (C >= 16 && C <= 40 && c.L >= 45 && c.L <= 80 && hd(h, opp) <= 70) g = 'clear';      // 반대 기운 차분한 색
+            else if (c.L <= 42 && C >= 8) g = 'bold';      // 밝기 대비(짙은 색)
+            if (g) groups[g].push(Object.assign({}, c, { tech: term[g] }));
+        });
+    }
+    const used = new Set();
+    return [['soft', '은근히'], ['clear', '또렷이'], ['bold', '과감히']].map(([key, label]) => {
+        const seen = new Set(), list = groups[key].filter(c => { const k = c.id + '__' + c.color; if (seen.has(k)) return false; seen.add(k); return true; });
+        const byName = {};
+        list.forEach(c => {
+            const n = seatName(c) || '?', o = byName[n] = byName[n] || { name: n, ids: new Set(), C: 0, items: [] };
+            o.ids.add(c.id); o.C = Math.max(o.C, Math.hypot(c.a, c.b)); o.items.push(c);
+        });
+        const PEAK = SEAT_CFG.pointPeak;
+        const names = Object.keys(byName).map(k => byName[k]).sort((x, y) => Math.abs(x.C - PEAK) - Math.abs(y.C - PEAK) || y.ids.size - x.ids.size);
+        const top = names.find(o => !used.has(o.name));      // 앞 세기에서 쓴 이름은 대표로 안 씀
+        if (!top) return null;
+        used.add(top.name);
+        // 원단마다 한 번: 대표 이름 색 먼저, 그다음 다른 이름(같은 세기의 다른 기법 색 — 열림에서 씀)
+        const items = [], fids = new Set();
+        [top].concat(names.filter(o => o !== top)).forEach(o => o.items
+            .slice().sort((x, y) => Math.abs(Math.hypot(x.a, x.b) - PEAK) - Math.abs(Math.hypot(y.a, y.b) - PEAK))
+            .forEach(c => { if (!fids.has(c.id)) { fids.add(c.id); items.push(Object.assign({}, c, { d: items.length })); } }));
+        return seatOut(key, label, 'strength', { name: top.name, n: items.length, items, rep: items[0] }, room);
+    });
+}
+// 겉지 세 자리. room: 공간(measuredColor 벽·바닥 필요), feel: 'calm' | 'weight' | 'point'(없으면 room.ownPres)
+//  → { feel, house, seats: [자리…](못 채운 자리는 빼서 두 장일 수 있음), gaps: [못 채운 자리 이름], at: 첫 장 번호 }. 못 하면 null
+function seatDrape(room, feel) {
+    const mc = room && room.measuredColor;
+    feel = feel || (room && room.ownPres) || null;
+    if (!mc || !seatLabOk(mc.wall) || !seatLabOk(mc.floor) || !['calm', 'weight', 'point'].includes(feel)) return null;
+    const cols = seatPoolColors('겉지', room);
+    const three = feel === 'calm' ? seatCalm(mc, cols, room) : (feel === 'weight' ? seatWeight(mc, cols, room) : seatPoint(mc, cols, room));
+    const KEYS = { calm: ['light', 'mid', 'deep'], weight: ['warm', 'house', 'cool'], point: ['soft', 'clear', 'bold'] }[feel];
+    const LABELS = { calm: ['밝게', '사이', '진하게'], weight: ['따뜻한 짙음', '이 집 기운 짙음', '차가운 짙음'], point: ['은근히', '또렷이', '과감히'] }[feel];
+    const seats = three.filter(Boolean);
+    const gaps = LABELS.filter((x, i) => !three[i]);      // 구색 신호(원단 들일 근거) — 저장은 안 함
+    // 첫 장: 가운데 자리. 스며들게는 잇는 방향(linkDir)을 정했으면 그쪽
+    let atKey = KEYS[1];
+    if (feel === 'calm' && room.linkDir === 'wall') atKey = 'light';
+    if (feel === 'calm' && room.linkDir === 'floor') atKey = 'deep';
+    let at = seats.findIndex(s => s.key === atKey);
+    if (at < 0) at = 0;
+    let house = null;
+    try { const r = colorTechCounts(mc); house = r ? r.house : null; } catch (e) { house = null; }
+    return { feel, house, dark: room.lightBlock === 'dark', seats, gaps, at };
+}
+// 속지 빛 한 장의 네 장: 많이 비침 · 은은한 · 낮 가림 · 중지(거의 안 비침 원단). 장 이름은 안쪽 이름 — 손님 글은 189번
+const SHEER_CARDS = [['light', '많이 비침'], ['medium', '은은한'], ['day', '낮 가림'], ['heavy', '중지']];
+// 속지 결 셋: 린넨(소재 칸 linen) · 매끈(질감 smooth) · 결 있음(그 밖 — 부클 같은 도톰한 것도)
+function sheerGrain(f) { return materialOf(f) === 'linen' ? 'linen' : (f && f.texture === 'smooth' ? 'smooth' : 'natural'); }
+// room: 공간(privacy·lightLevel·sheerFeel·measuredColor) → { cards: [{ key, label, n, fabrics }](원단 없는 장은 뺌), gaps, at }
+function seatSheer(room) {
+    let pool = [];
+    try { pool = window.concierge && window.concierge.categoryPool ? window.concierge.categoryPool('속지') : []; } catch (e) { pool = []; }
+    const want = room && room.sheerFeel;      // smooth · textured · cozy(옛 "도톰" → 결 있음으로 읽음) · linen(191번) · any
+    const wantG = want === 'smooth' ? 'smooth' : (want === 'linen' ? 'linen' : ((want === 'textured' || want === 'cozy') ? 'natural' : null));
+    const grainRank = f => { if (!wantG) return 0; const g = sheerGrain(f); return (g === wantG || (wantG === 'natural' && g === 'linen')) ? 0 : 1; };
+    const mc = room && room.measuredColor;
+    const br = mc && seatLabOk(mc.wall) && seatLabOk(mc.floor) ? seatBridge(mc) : null;
+    const all = SHEER_CARDS.map(([key, label]) => {
+        let list = pool.filter(f => f.density === key);
+        if (wantG === 'linen') list = list.filter(f => sheerGrain(f) === 'linen');      // 린넨을 고르면 린넨만
+        const fabrics = list.map(f => {
+            const cs = getFabricColors(f.id).filter(colorHasLab);
+            const c = br ? cs.slice().sort((x, y) => seatDE(br, { L: x.light, a: x.a, b: x.b }) - seatDE(br, { L: y.light, a: y.a, b: y.b }))[0] : cs[0];
+            if (!c) return null;
+            return { f, id: f.id, fabric: f.name, color: c.name, hex: c.hex || null, L: c.light, a: c.a, b: c.b, grain: sheerGrain(f), d: br ? seatDE(br, { L: c.light, a: c.a, b: c.b }) : 0 };
+        }).filter(Boolean)
+            .sort((x, y) => grainRank(x.f) - grainRank(y.f) || x.d - y.d)
+            .map(x => ({ id: x.id, fabric: x.fabric, color: x.color, hex: x.hex, L: x.L, a: x.a, b: x.b, grain: x.grain }));
+        return { key, label, n: fabrics.length, fabrics };
+    });
+    // 첫 장 = 바깥 시선 답 (괜찮아요 → 많이 비침 · 조금 → 은은한 · 많이 → 낮 가림, 해가 덜 드는 창 + 많이 → 중지)
+    const pv = room && room.privacy;
+    let atKey = ({ open: 'light', some: 'medium', high: 'day' })[pv] || null;
+    if (pv === 'high' && room.lightLevel === 'low') atKey = 'heavy';
+    let ai = SHEER_CARDS.findIndex(x => x[0] === atKey);
+    if (ai >= 0 && all[ai].n < SEAT_CFG.minN) {      // 첫 장이 얇으면 이웃 장으로 한 걸음(더 비치는 쪽 먼저)
+        const nb = [ai - 1, ai + 1].find(i => i >= 0 && i < all.length && all[i].n >= SEAT_CFG.minN);
+        if (nb !== undefined) ai = nb;
+    }
+    const firstKey = ai >= 0 ? all[ai].key : null;
+    const cards = all.filter(c => c.n > 0);
+    let at = cards.findIndex(c => c.key === firstKey);
+    if (at < 0) at = 0;
+    return { cards, gaps: all.filter(c => !c.n).map(c => c.label), at };
 }
 const HARMONY_RANGE = 20;       // 색 잇기 점수가 0이 되는 거리(LINK_RANGE)와 같음
 // 포인트 자리 (120번): 공간마다 정함. 그 공간의 겉지 또는 블라인드(공간 하나에는 둘 중 하나만 들어감). 'value'(무게감)는 겉지만
