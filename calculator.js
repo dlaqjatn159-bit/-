@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261250';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261251';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -129,6 +129,7 @@ function calculateAll() {
         const finalCostWithInstall = grandCostTotal + globalInstallFee + light.price;      // 131번: 이케아 가격은 그대로 나가는 돈
         const netProfit = sellingPrice - finalCostWithInstall;
         const netMarginRate = sellingPrice > 0 ? Math.round((netProfit / sellingPrice) * 100) : 0;
+        window.redamNetProfitNow = netProfit;      // 201번 보완: 장부 '남는 돈'으로 (직원 화면 · 원가 있을 때만)
         setText('resTotalCost', `${finalCostWithInstall.toLocaleString()}원`);
         setText('resNetProfit', `${netProfit.toLocaleString()}원`);
         setText('resMarginRateBadge', `순마진 ${netMarginRate}%`);
@@ -137,6 +138,7 @@ function calculateAll() {
         setText('resCostHardware', `${sumHwCost.toLocaleString()}원`);
         if (typeof renderMultiples === 'function') renderMultiples(grp, mx);
     } else {
+        window.redamNetProfitNow = null;      // 201번 보완: 손님 화면·원가 없음 → 남는 돈 모름
         if (typeof renderMultiples === 'function') renderMultiples(null, null);
         // 고객 모드이거나 원가 데이터가 없으면 원가 칸을 비워 둡니다.
         ['resTotalCost', 'resNetProfit', 'resMarginRateBadge', 'resCostFabric', 'resCostLabor', 'resCostHardware']

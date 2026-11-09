@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261250';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261251';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -2045,6 +2045,7 @@ async function saveTicketImage() {
         if (!blob) throw new Error('견적서 그림을 만들지 못함');
         saveBlobAsFile(blob, ticketFileNames(1, 'jpg', false)[0]);
         showToast("한 장으로 저장했어요. 카카오톡 → 사진(갤러리)에서 골라 보내 주세요.", "success");
+        if (typeof queueNotionLedger === 'function') queueNotionLedger();      // 201번
     } catch (err) {
         console.error(err);
         showToast("견적서 저장 중 오류가 발생했습니다.", "error");
@@ -2099,6 +2100,7 @@ async function copyTicketText() {
     // 163번: 직원 화면에서는 복사한 뒤 빈칸·크기 문제를 알림(창을 먼저 띄우면 복사가 막힐 수 있어 뒤에). 공급자는 카톡 글에 없어 빼고 봄
     const gaps = (ok && typeof quoteGaps === 'function' && typeof appMode !== 'undefined' && appMode === 'staff') ? quoteGaps(false) : [];
     showToast(ok ? (gaps.length ? `카톡 글을 복사했어요. 다만 ${gaps.join(' · ')}.` : "카톡 글을 복사했어요. 카카오톡 대화창에 붙여 넣어 주세요.") : "복사하지 못했습니다.", (ok && !gaps.length) ? "success" : "error");
+    if (ok && typeof queueNotionLedger === 'function') queueNotionLedger();      // 201번
 }
 
 async function preparePrintSheet() {
@@ -2172,6 +2174,7 @@ async function printTicket() {
     let canvases;
     try { ({ canvases } = await makeTicketBlobs()); }
     catch (err) { console.error(err); showToast("견적서 인쇄 준비 중 오류가 발생했습니다.", "error"); return; }
+    if (typeof queueNotionLedger === 'function') queueNotionLedger();      // 201번
     const prevTitle = document.title;
     const custName = (document.getElementById('custName').value || '').trim();
     const title = `${custName ? custName + '_' : ''}맞춤견적서`;      // PDF 기본 파일명

@@ -653,6 +653,17 @@
                     </div>
 
                     <div class="staff-set">
+                        <h2 class="font-serif-kr">장부로 보내기</h2>
+                        <p>견적서를 저장·카톡 복사·인쇄하거나 상담 결과를 남기면, 견적 금액(계약이면 계약 금액도)과 남는 돈(견적 요약의 예상 순이익)을 노션 '손님 장부'에서 같은 연락처 줄에 넣습니다. 원단별 원가는 보내지 않아요. 주소와 비밀 말은 이 기기에만 저장되고 백업 파일에는 담기지 않습니다.</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input type="url" id="notionLedgerUrlInput" placeholder="중계 주소 (https://script.google.com/…)" autocomplete="off" class="w-72 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" oninput="saveNotionLedgerRelay()">
+                            <input type="password" id="notionLedgerSecretInput" placeholder="비밀 말" autocomplete="off" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" oninput="saveNotionLedgerRelay()">
+                            <button type="button" onclick="flushNotionLedger()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">지금 보내기</button>
+                            <span id="notionLedgerStatus" class="text-[11px] font-bold text-slate-400">꺼짐</span>
+                        </div>
+                    </div>
+
+                    <div class="staff-set">
                         <h2 class="font-serif-kr">데이터</h2>
                         <p>백업 파일에는 원가와 상담 기록이 들어 있습니다. 고객 이름·연락처도 들어 있어요. 메신저·공개 저장소에 올리지 말고 본인만 보는 곳에 보관하세요.</p>
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -816,26 +827,26 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="logo.js?v=20261250"></script> <!-- 150번: 새 글씨 로고 -->
-    <script src="pricing.js?v=20261250"></script>
-    <script src="costing.js?v=20261250"></script>
-    <script src="data.js?v=20261250"></script>
-    <script src="calculator.js?v=20261250"></script>
-    <script src="concierge.js?v=20261250"></script>
-    <script src="intro.js?v=20261250"></script>
-    <script src="fabric-pick.js?v=20261250"></script>
-    <script src="color-pick.js?v=20261250"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
-    <script src="space.js?v=20261250"></script>
-    <script src="final.js?v=20261250"></script>
-    <script src="app.js?v=20261250"></script>
-    <script src="more.js?v=20261250"></script>
-    <script src="survey.js?v=20261250"></script>
-    <script src="ticket.js?v=20261250"></script>
-    <script src="color-dict.js?v=20261250"></script>
-    <script src="fabrics.js?v=20261250"></script>
-    <script src="finder.js?v=20261250"></script>
-    <script src="settings.js?v=20261250"></script>
-    <script src="room-color.js?v=20261250"></script>
+    <script src="logo.js?v=20261251"></script> <!-- 150번: 새 글씨 로고 -->
+    <script src="pricing.js?v=20261251"></script>
+    <script src="costing.js?v=20261251"></script>
+    <script src="data.js?v=20261251"></script>
+    <script src="calculator.js?v=20261251"></script>
+    <script src="concierge.js?v=20261251"></script>
+    <script src="intro.js?v=20261251"></script>
+    <script src="fabric-pick.js?v=20261251"></script>
+    <script src="color-pick.js?v=20261251"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
+    <script src="space.js?v=20261251"></script>
+    <script src="final.js?v=20261251"></script>
+    <script src="app.js?v=20261251"></script>
+    <script src="more.js?v=20261251"></script>
+    <script src="survey.js?v=20261251"></script>
+    <script src="ticket.js?v=20261251"></script>
+    <script src="color-dict.js?v=20261251"></script>
+    <script src="fabrics.js?v=20261251"></script>
+    <script src="finder.js?v=20261251"></script>
+    <script src="settings.js?v=20261251"></script>
+    <script src="room-color.js?v=20261251"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

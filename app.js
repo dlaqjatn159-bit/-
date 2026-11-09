@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261250';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261251';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261250';
+const REDAM_BUILD = '20261251';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
     const reg = window.REDAM_FILES || {};
@@ -46,6 +46,7 @@ window.onload = function() {
     switchMainTrack('curation');
     restoreDraftOnLoad();
     initTicketNoteInput();
+    initNotionLedgerInputs(); flushNotionLedger(); window.addEventListener('online', flushNotionLedger);      // 201번: 모아 둔 장부 금액 보내기
     setInterval(saveDraftTick, 3000);
     updateOfflineStatus();
     renderUndoButton();
@@ -343,6 +344,7 @@ function endConsultation() {
     if (collectConsultation().rooms.length === 0) { showToast('남길 상담이 없습니다.', 'info'); return; }
     openOutcomeDialog({ initial: consultOutcome, onSave: out => {
         consultOutcome = out; saveDraftTick();
+        queueNotionLedger();      // 201번
         showToast('상담 결과를 남겼습니다: ' + outcomeText(out), 'info');
     } });
 }
@@ -351,7 +353,7 @@ function endConsultation() {
 function startNewConsultation() {
     if (finderGate(startNewConsultation)) return;
     if (!consultOutcome && collectConsultation().rooms.length > 0) {      // 결과를 안 남긴 상담이면 먼저 물음 (건너뛰기 가능)
-        openOutcomeDialog({ skipLabel: '건너뛰고 새 상담', onSave: out => { consultOutcome = out; saveDraftTick(); startNewConsultationConfirmed(); }, onSkip: startNewConsultationConfirmed });
+        openOutcomeDialog({ skipLabel: '건너뛰고 새 상담', onSave: out => { consultOutcome = out; saveDraftTick(); queueNotionLedger(); startNewConsultationConfirmed(); }, onSkip: startNewConsultationConfirmed });
         return;
     }
     startNewConsultationConfirmed();
@@ -642,7 +644,9 @@ function collectConsultation() {
         jogakboSeed: window.getJogakboSeed(),      // 조각보 모양 고정 (79번)
         picks: finderPicks.slice(),         // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
         quoteDate: quoteDate || null, quoteValid: quoteValidOverride,      // 견적 날짜 (85번)
-        outcome: consultOutcome || null     // 상담 결과 (84번)
+        outcome: consultOutcome || null,     // 상담 결과 (84번)
+        quoteTotal: notionLedgerTotalNow(),   // 견적서 합계(빛·시공비·부가세 포함, 화면의 최종 금액) — 장부로 보내기 (201번)
+        marginTotal: notionLedgerMarginNow()   // 남는 돈 = 직원 화면 '예상 순이익'(원가 있을 때만, 없으면 null) — 201번 보완
     };
 }
 
@@ -821,6 +825,7 @@ function editHistoryOutcome(id) {
         if (!t) return;
         t.snapshot.outcome = out; t.updatedAt = Date.now();
         saveHistory(list); renderHistory();
+        queueNotionLedger(t.snapshot, t.snapshot.quoteTotal || t.total);      // 201번: 옛 기록은 quoteTotal이 없어 기록 합계로
     } });
 }
 
@@ -828,6 +833,91 @@ function deleteHistoryItem(id) {
     if (!confirm('이 상담 기록을 삭제할까요?')) return;
     saveHistory(loadHistory().filter(h => h.id !== id));
     renderHistory();
+}
+
+// ---- 장부로 보내기 (201번): 견적 금액(계약이면 계약 금액도)을 노션 '손님 장부'의 같은 연락처 줄로 ----
+// 노션 열쇠는 앱 밖 구글 중계(Apps Script)가 가짐. 중계 주소·비밀 말은 코드에 적지 않고 이 기기에만 저장(백업 파일에 안 담음 — STORE_KEYS에 넣지 않음)
+// 보내는 것: 비밀 말 · 연락처(숫자만) · 견적서 합계 · 계약 여부. 원가·원단·이름은 보내지 않음. 알림은 직원 화면에서만
+const NOTION_LEDGER_KEY = 'redam_notion_ledger_v1', NOTION_LEDGER_QUEUE_KEY = 'redam_notion_ledger_queue_v1', NOTION_LEDGER_QUEUE_MAX = 50;
+let __notionLedgerBusy = false;
+function notionLedgerRaw() { try { return JSON.parse(localStorage.getItem(NOTION_LEDGER_KEY)) || {}; } catch (e) { return {}; } }
+function notionLedgerRelay() {
+    const v = notionLedgerRaw(), url = String(v.url || '').trim(), secret = String(v.secret || '').trim();
+    return (/^https:\/\/script\.google\.com\//.test(url) && secret) ? { url, secret } : null;
+}
+function notionLedgerQueue() { try { const q = JSON.parse(localStorage.getItem(NOTION_LEDGER_QUEUE_KEY)); return Array.isArray(q) ? q : []; } catch (e) { return []; } }
+function notionLedgerSaveQueue(q) { try { localStorage.setItem(NOTION_LEDGER_QUEUE_KEY, JSON.stringify(q.slice(-NOTION_LEDGER_QUEUE_MAX))); } catch (e) {} }
+function notionLedgerToast(msg, kind) { if (appMode === 'staff') showToast(msg, kind || 'info'); }
+function notionLedgerTotalNow() {
+    const el = document.getElementById('totalGrandPrice');
+    const n = Number(((el && el.textContent) || '').replace(/\D/g, ''));
+    return n > 0 ? n : null;
+}
+function notionLedgerMarginNow() {      // 201번 보완: 손해면 음수도 그대로
+    const v = window.redamNetProfitNow;
+    return (typeof v === 'number' && Number.isFinite(v)) ? Math.round(v) : null;
+}
+// 견적서를 저장·복사·인쇄한 뒤, 상담 결과를 남긴 뒤 부름. snap이 없으면 지금 상담, total이 없으면 지금 화면의 최종 금액
+function queueNotionLedger(snap, total) {
+    if (!notionLedgerRelay()) return;                 // 설정 전엔 아무 일도 안 함
+    const s = snap || collectConsultation();
+    const phone = String(s.phone || '').replace(/\D/g, '');
+    const quote = Number(total || s.quoteTotal || notionLedgerTotalNow());
+    if (!(quote > 0)) return;
+    if (phone.length < 9) { notionLedgerToast('연락처가 없어 장부에 금액을 넣지 못했어요.', 'error'); return; }
+    const won = !!(s.outcome && s.outcome.result === 'won');
+    const q = notionLedgerQueue(), old = q.find(x => x.phone === phone);
+    const mt = s.marginTotal, margin = (mt !== null && mt !== undefined && Number.isFinite(Number(mt))) ? Math.round(Number(mt)) : null;      // 201번 보완: 모르면 null(장부 칸 그대로)
+    const item = { phone, quote: Math.round(quote), won: won || !!(old && old.won), margin, at: Date.now() };
+    notionLedgerSaveQueue(q.filter(x => x.phone !== phone).concat([item]));      // 같은 손님은 마지막 금액 하나만
+    flushNotionLedger();
+}
+async function flushNotionLedger() {
+    const relay = notionLedgerRelay();
+    if (!relay || __notionLedgerBusy || !notionLedgerQueue().length || navigator.onLine === false) { renderNotionLedgerStatus(); return; }
+    __notionLedgerBusy = true;
+    let sent = 0, kept = 0, setupBad = false;
+    try {
+        for (const item of notionLedgerQueue()) {
+            let res = null;
+            try {
+                // 머리말(headers)을 붙이지 않음: 구글 중계가 받는 단순한 요청이어야 미리 묻기 없이 감
+                const r = await fetch(relay.url, { method: 'POST', body: JSON.stringify({ secret: relay.secret, phone: item.phone, quote: item.quote, won: item.won, margin: item.margin }) });
+                res = await r.json();
+            } catch (e) { res = null; }
+            if (!res) { kept++; continue; }                                                   // 인터넷·중계 문제: 남겨 두고 다음에
+            if (res.reason === 'secret' || res.reason === 'setup' || res.reason === 'error') { kept++; setupBad = true; continue; }
+            notionLedgerSaveQueue(notionLedgerQueue().filter(x => !(x.phone === item.phone && x.at === item.at)));      // 됨·못 찾음은 목록에서 뺌
+            if (res.ok) sent++;
+            else if (res.reason === 'not_found') notionLedgerToast(`장부에서 연락처 끝 ${item.phone.slice(-4)} 손님 줄을 못 찾았어요. 장부에 손님을 먼저 적고 견적서를 다시 저장해 주세요.`, 'error');
+            else if (res.reason === 'many') notionLedgerToast(`장부에 연락처 끝 ${item.phone.slice(-4)} 줄이 여럿이라 넣지 않았어요. 장부에서 직접 적어 주세요.`, 'error');
+        }
+    } finally { __notionLedgerBusy = false; }
+    if (sent) notionLedgerToast(`장부에 견적 금액을 넣었어요${sent > 1 ? ` (${sent}건)` : ''}.`, 'success');
+    if (setupBad) notionLedgerToast('장부 중계 설정을 확인해 주세요 (설정 › 장부로 보내기).', 'error');
+    else if (kept) notionLedgerToast(`장부에 못 보낸 금액 ${kept}건은 모아 두었다가 다음에 저절로 보냅니다.`, 'info');
+    renderNotionLedgerStatus();
+}
+// 설정 칸 (직원 화면 › 설정 › 장부로 보내기)
+function saveNotionLedgerRelay() {
+    const url = ((document.getElementById('notionLedgerUrlInput') || {}).value || '').trim();
+    const secret = ((document.getElementById('notionLedgerSecretInput') || {}).value || '').trim();
+    try { if (!url && !secret) localStorage.removeItem(NOTION_LEDGER_KEY); else localStorage.setItem(NOTION_LEDGER_KEY, JSON.stringify({ url, secret })); } catch (e) {}
+    renderNotionLedgerStatus();
+}
+function initNotionLedgerInputs() {
+    const v = notionLedgerRaw();
+    const u = document.getElementById('notionLedgerUrlInput'), s = document.getElementById('notionLedgerSecretInput');
+    if (u) u.value = v.url || '';
+    if (s) s.value = v.secret || '';
+    renderNotionLedgerStatus();
+}
+function renderNotionLedgerStatus() {
+    const el = document.getElementById('notionLedgerStatus');
+    if (!el) return;
+    const on = !!notionLedgerRelay(), n = notionLedgerQueue().length, raw = notionLedgerRaw();
+    el.textContent = on ? ('켜짐' + (n ? ` · 보낼 것 ${n}건 남음` : '')) : ((raw.url || raw.secret) ? '꺼짐 — 중계 주소(https://script.google.com/…)와 비밀 말을 둘 다 넣어 주세요' : '꺼짐');
+    el.className = 'text-[11px] font-bold ' + (on ? 'text-emerald-700' : 'text-slate-400');
 }
 
 // 오프라인 사용 준비 상태 표시
