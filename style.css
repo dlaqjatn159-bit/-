@@ -2543,7 +2543,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     border: 1px solid #efe7dc;
     border-radius: 14px;
     padding: 22px 26px;
-    margin-bottom: 20px;
+    margin-top: 20px;      /* 199번: 공간 카드 아래로 옮겨 여백을 위에 */
     box-shadow: 0 1px 3px rgba(43,34,26,0.03);
 }
 .survey-block h2 {

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261249';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261250';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -460,18 +460,25 @@ function renderSurvey() {
     const housePointBtn = rooms.length <= 1 || houseTaste.pres === 'point'
         ? `<button type="button" class="survey-opt ${houseTaste.pres === 'point' ? 'on' : ''}" onclick="setHouseTaste('pres', 'point')">포인트가 되게</button>` : '';
 
+    // 199번: 손님 화면처럼 들어가는 것만 — 겉지·블라인드가 있으면 커튼 느낌, 겉지가 있으면 겉지 결, 속지가 있으면 속지 결.
+    //        품목이 없는 공간이 있거나(구성 전) 공간이 없으면 모두 보임. 숨겨도 답은 지우지 않음
+    const houseGroups = new Set();
+    let houseUnknown = rooms.length === 0;
+    rooms.forEach(r => { const cs = r.curtains || []; if (!cs.length) houseUnknown = true; cs.forEach(c => houseGroups.add(curtainGroupOf(c))); });
+    const houseShow = k => houseUnknown || (k === 'pres' ? (houseGroups.has('drape') || houseGroups.has('blind')) : houseGroups.has(k));
+
     // 1. 우리 집 취향 렌더링
     houseBox.innerHTML = `
         <h2>우리 집</h2>
-        <div class="survey-row">
+        ${houseShow('pres') ? `<div class="survey-row">
             <div class="k">커튼은</div>
             <div class="survey-opts">
                 <button type="button" class="survey-opt ${houseTaste.pres === 'calm' ? 'on' : ''}" onclick="setHouseTaste('pres', 'calm')">조용히 스며들게</button>
                 <button type="button" class="survey-opt ${houseTaste.pres === 'weight' ? 'on' : ''}" onclick="setHouseTaste('pres', 'weight')">차분히 무게감 있게</button>
                 ${housePointBtn}
             </div>
-        </div>
-        <div class="survey-row">
+        </div>` : ''}
+        ${houseShow('drape') ? `<div class="survey-row">
             <div class="k">겉지 결</div>
             <div class="survey-opts">
                 <button type="button" class="survey-opt tex ${houseTaste.tex === 'smooth' ? 'on' : ''}" onclick="setHouseTaste('tex', 'smooth')">
@@ -484,8 +491,8 @@ function renderSurvey() {
                     ${texImgs.fluffy ? `<img src="${texImgs.fluffy}" alt="">` : ''}<span>보송한</span>
                 </button>
             </div>
-        </div>
-        <div class="survey-row">
+        </div>` : ''}
+        ${houseShow('sheer') ? `<div class="survey-row">
             <div class="k">속지 결</div>
             <div class="survey-opts">
                 <button type="button" class="survey-opt ${houseTaste.sheer === 'smooth' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'smooth')">매끈하게</button>
@@ -493,7 +500,7 @@ function renderSurvey() {
                 <button type="button" class="survey-opt ${houseTaste.sheer === 'linen' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'linen')">린넨으로</button>
                 <button type="button" class="survey-opt dim ${houseTaste.sheer === 'unknown' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'unknown')">잘 모르겠어요</button>
             </div>
-        </div>
+        </div>` : ''}
     `;
 
     // 2. 공간별 카드 렌더링
@@ -557,6 +564,12 @@ function renderSurvey() {
         const ownTaste = !!room.ownTaste;
         const ownPres = room.ownPres || null;
         const ownTex = room.ownTex || null;
+        // 199번: "이 공간만 다르게"도 들어가는 것만 — 겉지·블라인드가 있으면 커튼 느낌(197번 손님 화면과 같음), 겉지가 있으면 겉지 결.
+        //        속지만 공간은 남는 줄이 없어 버튼째 숨김. 품목이 없으면 모두 보임. 숨겨도 답은 지우지 않음
+        const roomGroups = new Set((room.curtains || []).map(curtainGroupOf));
+        const roomKnown = roomGroups.size > 0;
+        const ownShowPres = !roomKnown || roomGroups.has('drape') || roomGroups.has('blind');
+        const ownShowTex = !roomKnown || roomGroups.has('drape');
 
         // 자동 추천 원단 요약 줄 (116번: 설문·방 색에 따라 채워진 원단을 상담란에서도 바로 보고 찾기·견적란으로 이동)
         const recPills = (room.curtains || []).map(c => {
@@ -639,23 +652,23 @@ function renderSurvey() {
                     </div>
                 </div>` : ''}
 
-                <button type="button" class="survey-quiet" onclick="toggleRoomOwnTaste(${room.id})">${ownTaste ? '집 취향 따르기' : '이 공간만 다르게'}</button>
+                ${ownShowPres || ownShowTex ? `<button type="button" class="survey-quiet" onclick="toggleRoomOwnTaste(${room.id})">${ownTaste ? '집 취향 따르기' : '이 공간만 다르게'}</button>
                 <div class="survey-own ${ownTaste ? 'on' : ''}">
-                    <div class="survey-row"><div class="k">커튼은</div>
+                    ${ownShowPres ? `<div class="survey-row"><div class="k">커튼은</div>
                         <div class="survey-opts">
                             <button type="button" class="survey-opt ${ownPres === 'calm' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'calm')">조용히 스며들게</button>
                             <button type="button" class="survey-opt ${ownPres === 'weight' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'weight')">차분히 무게감 있게</button>
                             <button type="button" class="survey-opt ${ownPres === 'point' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'point')">포인트가 되게</button>
                         </div>
-                    </div>
-                    <div class="survey-row"><div class="k">겉지 결</div>
+                    </div>` : ''}
+                    ${ownShowTex ? `<div class="survey-row"><div class="k">겉지 결</div>
                         <div class="survey-opts">
                             <button type="button" class="survey-opt ${ownTex === 'smooth' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'smooth')">매끈한</button>
                             <button type="button" class="survey-opt ${ownTex === 'texture' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'texture')">결 있는</button>
                             <button type="button" class="survey-opt ${ownTex === 'fluffy' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'fluffy')">보송한</button>
                         </div>
-                    </div>
-                </div>
+                    </div>` : ''}
+                </div>` : ''}
 
                 <div class="survey-rec-bar">
                     <span class="survey-rec-k">추천 원단</span>
