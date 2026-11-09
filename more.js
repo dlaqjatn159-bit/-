@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261252';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // more.js — 고객 화면 중심 화면 › 더 보기(20번 4단계 · 72번): 카드 ↔ 색 지도, 조건·순서·잇는 방향, 후보 1~4, 후보 비교하기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================

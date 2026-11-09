@@ -3222,7 +3222,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 
 .bk-body { flex: 1; display: flex; overflow: hidden; background: var(--paper); }
 .bk-left { flex: 0 0 58%; height: 100%; overflow-y: auto; padding: 3rem 2.6rem 4rem; box-sizing: border-box; }
-.bk-right { flex: 0 0 42%; height: 100%; overflow-y: auto; padding: 3rem 2.6rem 4rem; box-sizing: border-box; background: #F4EFE7; display: flex; flex-direction: column; }
+.bk-right { flex: 0 0 42%; height: 100%; overflow-y: auto; padding: 3rem 2.6rem 1.5rem; box-sizing: border-box; background: #F4EFE7; display: flex; flex-direction: column; }
 
 .bk-title { font-family: var(--serif); font-size: 40px; font-weight: 600; color: var(--ink); margin: 0 0 8px 0; line-height: 1.3; }
 .bk-subtitle { font-family: var(--sans); font-size: 17px; color: var(--muted); margin: 0 0 28px 0; }
@@ -3231,28 +3231,38 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .bk-cal-head span { font-family: var(--sans); font-size: 15px; color: var(--muted); padding: 4px 0; }
 
 .bk-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.bk-cal-cell { min-height: 64px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--paper-sheet); border: none; cursor: pointer; text-align: center; box-sizing: border-box; }
+.bk-cal-cell { position: relative; min-height: 64px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--paper-sheet); border: none; cursor: pointer; text-align: center; box-sizing: border-box; }
 .bk-cal-cell.is-empty { background: transparent; cursor: default; }
 .bk-cal-cell.is-disabled { opacity: 0.4; cursor: default; }
-.bk-cal-cell .bk-day-num { font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 4px; }
+.bk-cal-cell .bk-day-num { font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--ink); display: flex; align-items: center; justify-content: center; }
 .bk-cal-cell .bk-day-status { font-family: var(--sans); font-size: 15px; margin-top: 4px; color: var(--ink); }
 .bk-cal-cell.is-disabled .bk-day-status { color: var(--muted); }
 .bk-cal-cell .bk-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--earth); display: inline-block; }
+.bk-cal-cell .bk-dot { position: absolute; left: 10px; top: 10px; }
+.bk-cal-cell.is-selected { background: var(--ink); }
+.bk-cal-cell.is-selected .bk-day-num, .bk-cal-cell.is-selected .bk-day-status { color: var(--on-band); }
+.bk-cal-cell.is-selected .bk-dot { background: #D19A72; }
 
 .bk-right-title { font-family: var(--serif); font-size: 28px; font-weight: 600; color: var(--ink); margin: 0 0 20px 0; line-height: 1.3; }
 .bk-time-group-title { font-family: var(--sans); font-size: 15px; color: var(--muted); margin: 16px 0 8px 0; }
-.bk-time-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.bk-time-chip { font-family: var(--sans); font-size: 22px; color: var(--ink); background: var(--paper-sheet); border: none; padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-.bk-time-chip.is-selected { font-weight: 600; }
+.bk-time-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.bk-time-chip { position: relative; font-family: var(--sans); font-size: 22px; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--paper-sheet); border: none; padding: 10px 0; min-height: 52px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.bk-time-chip.is-selected { font-weight: 600; background: var(--ink); color: var(--on-band); }
+.bk-time-chip.is-selected .bk-dot { background: #D19A72; }
 .bk-time-chip .bk-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--earth); display: inline-block; }
+.bk-time-chip .bk-dot { position: absolute; left: 10px; top: 10px; }
 
 .bk-empty-msg { font-family: var(--sans); font-size: 17px; color: var(--muted); margin: 20px 0; }
 .bk-error-msg { font-family: var(--sans); font-size: 22px; color: var(--ink); margin: 40px 0; text-align: center; }
 
-.bk-confirm-box { margin-top: auto; padding-top: 24px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.bk-confirm-box { margin-top: auto; position: sticky; bottom: 0; background: #F4EFE7; padding: 20px 0 8px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .bk-summary-text { font-family: var(--sans); font-size: 22px; font-weight: 600; color: var(--ink); }
+.bk-go { font-family: var(--serif); font-size: var(--t-body); font-weight: 600; color: var(--ink); background: none; border: 0; border-bottom: 1px solid var(--ink); padding: 8px 2px; cursor: pointer; }
 .bk-hold-msg { font-family: var(--sans); font-size: 17px; color: var(--muted); }
-.bk-hold-btn { background: none; border: none; border-bottom: 1px solid var(--muted); font-family: var(--sans); font-size: 15px; color: var(--muted); cursor: pointer; padding: 2px 0; -webkit-user-select: none; user-select: none; }
-.bk-hold-btn:active { color: var(--ink); border-color: var(--ink); }
+.bk-hold-btn { position: relative; overflow: hidden; background: var(--paper-sheet); border: 1px solid var(--ink); font-family: var(--sans); font-size: 17px; font-weight: 600; color: var(--ink); cursor: pointer; padding: 12px 22px; min-height: 48px; -webkit-user-select: none; user-select: none; touch-action: none; -webkit-touch-callout: none; }
+.bk-hold-btn::before { content: ""; position: absolute; inset: 0; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform 0s; z-index: 0; }
+.bk-hold-btn.is-holding::before { transform: scaleX(1); transition: transform 1s linear; }
+.bk-hold-btn.is-holding { color: var(--on-band); }
+.bk-hold-label { position: relative; z-index: 1; }
 .bk-confirmed-wrap { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
 .bk-confirmed-sub { font-family: var(--sans); font-size: 22px; font-weight: 600; color: var(--ink); }

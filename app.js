@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261252';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261252';
+const REDAM_BUILD = '20261253';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -119,6 +119,7 @@ function handleBack() {
     if (visible('finderShow')) { closeFinderShow(); return false; }              // 후보 보여 주기 (닫는 × 와 같음. 이 화면 동안은 잠긴 상태로 셈)
     if (appMode === 'staff' && staffLocked) return false;                          // 잠긴 상태: 아무것도 안 함
     if (window.concierge && window.concierge.isSeeking && window.concierge.isSeeking()) return false;     // "찾는 중" 화면은 끝날 때까지 기다림
+    if (document.getElementById('bookPanel') && window.redamBooking) { window.redamBooking.close(); return false; }      // 203번: 시공 날짜 잡기 = ← 견적서와 같음
     if (visible('roomColorOverlay')) { RoomColor.close(); return false; }
     if (visible('roomColorCust')) { RoomColor.cancelCustomer(); return false; }        // 고객 화면 색 재기 = ← 와 같음
     if (visible('spaceMore')) { if (spaceMore && spaceMore.sheet) { spaceMore.sheet = null; renderSpaceMore(); } else closeSpaceMore(); return false; }     // 중심 화면 › 더 보기

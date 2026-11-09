@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261252';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 시공 날짜 잡기 (작업목록 202번)
 //  - 견적서 다음 단계에서 고객이 편한 날짜와 도착 시간을 선택
@@ -399,7 +399,7 @@
             const isSelected = (d.dateStr === state.selectedDateStr);
             const dot = isSelected ? '<i class="bk-dot"></i>' : '';
             const clickAttr = isDisabled ? '' : `onclick="window.redamBooking.selectDate('${d.dateStr}')"`;
-            html += `<div class="bk-cal-cell ${isDisabled ? 'is-disabled' : ''}" ${clickAttr}>`;
+            html += `<div class="bk-cal-cell ${isDisabled ? 'is-disabled' : ''}${isSelected ? ' is-selected' : ''}" ${clickAttr}>`;
             html += `  <div class="bk-day-num">${dot}${d.date.getDate()}</div>`;
             html += `  <div class="bk-day-status">${d.status}</div>`;
             html += `</div>`;
@@ -457,10 +457,10 @@
                 html += `  <div class="bk-summary-text">${formatTimeKorean(selDateObj, state.installMinutes)}</div>`;
 
                 if (!isPicked) {
-                    html += `  <button type="button" class="dos-act is-main" onclick="window.redamBooking.chooseTime()">이 시간으로 할게요</button>`;
+                    html += `  <button type="button" class="bk-go" onclick="window.redamBooking.chooseTime()">이 시간으로 할게요</button>`;
                 } else {
                     html += `  <div class="bk-hold-msg">확인한 뒤 확정해 드리겠습니다.</div>`;
-                    html += `  <button type="button" id="bkHoldBtn" class="bk-hold-btn">${state.isBooking ? '확정하는 중…' : '확정 (길게 누르기)'}</button>`;
+                    html += `  <button type="button" id="bkHoldBtn" class="bk-hold-btn"><span class="bk-hold-label">${state.isBooking ? '확정하는 중…' : '확정 · 길게 누르기'}</span></button>`;
                 }
                 html += '</div>';
             }
@@ -481,7 +481,8 @@
 
         const startHold = (e) => {
             if (state.isBooking) return;
-            if (e.type === 'touchstart') e.preventDefault();
+            e.preventDefault();
+            btn.classList.add('is-holding');
             clearTimeout(holdTimer);
             holdTimer = setTimeout(() => {
                 confirmBooking();
@@ -490,15 +491,14 @@
 
         const cancelHold = () => {
             clearTimeout(holdTimer);
+            btn.classList.remove('is-holding');
         };
 
-        btn.addEventListener('mousedown', startHold);
-        btn.addEventListener('mouseup', cancelHold);
-        btn.addEventListener('mouseleave', cancelHold);
-
-        btn.addEventListener('touchstart', startHold, { passive: false });
-        btn.addEventListener('touchend', cancelHold);
-        btn.addEventListener('touchcancel', cancelHold);
+        btn.addEventListener('pointerdown', startHold);
+        btn.addEventListener('pointerup', cancelHold);
+        btn.addEventListener('pointerleave', cancelHold);
+        btn.addEventListener('pointercancel', cancelHold);
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     async function confirmBooking(replace) {
@@ -524,7 +524,10 @@
         const settings = loadSettings();
         state.isBooking = true;
         const btn = document.getElementById('bkHoldBtn');
-        if (btn) btn.textContent = '확정하는 중…';
+        if (btn) {
+            btn.classList.remove('is-holding');
+            btn.innerHTML = '<span class="bk-hold-label">확정하는 중…</span>';
+        }
 
         const payload = {
             secret: relay.secret,
