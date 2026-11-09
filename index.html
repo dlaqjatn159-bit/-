@@ -664,6 +664,49 @@
                     </div>
 
                     <div class="staff-set">
+                        <h2 class="font-serif-kr">시공 날짜 잡기</h2>
+                        <p>견적서 다음 '시공 날짜'에서 손님이 날과 도착 시간을 고르고, 확정을 길게 누르면 장부 '시공일'에 들어갑니다. 장부의 시공일·상담일과 구글 기본 캘린더의 '바쁨' 일정을 피해서 보여 줍니다(이름·주소는 앱으로 오지 않아요). 장부로 보내기가 켜져 있어야 합니다.</p>
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="text-slate-600 font-bold">준비 기간</span>
+                            <input type="number" id="bookLeadInput" min="0" max="30" class="w-16 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" onchange="window.redamBooking && window.redamBooking.saveSettings()">
+                            <span class="text-slate-600">일 · 앞당기면</span>
+                            <input type="number" id="bookLeadMinInput" min="0" max="30" class="w-16 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" onchange="window.redamBooking && window.redamBooking.saveSettings()">
+                            <span class="text-slate-600">일</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="text-slate-600 font-bold">일하는 시간</span>
+                            <input type="time" step="1800" id="bookStartInput" class="px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" onchange="window.redamBooking && window.redamBooking.saveSettings()">
+                            <span class="text-slate-600">~</span>
+                            <input type="time" step="1800" id="bookEndInput" class="px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" onchange="window.redamBooking && window.redamBooking.saveSettings()">
+                            <span class="text-slate-600 font-bold ml-2">이동(편도)</span>
+                            <input type="number" id="bookTravelInput" min="0" max="240" step="15" class="w-20 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" onchange="window.redamBooking && window.redamBooking.saveSettings()">
+                            <span class="text-slate-600">분</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="text-slate-600 font-bold">쉬는 요일</span>
+                            <div id="bookRestDows" class="flex flex-wrap items-center gap-1">
+                                <button type="button" data-dow="1" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-sm" onclick="window.redamBooking && window.redamBooking.toggleDow(1)">월</button>
+                                <button type="button" data-dow="2" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-sm" onclick="window.redamBooking && window.redamBooking.toggleDow(2)">화</button>
+                                <button type="button" data-dow="3" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-sm" onclick="window.redamBooking && window.redamBooking.toggleDow(3)">수</button>
+                                <button type="button" data-dow="4" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-sm" onclick="window.redamBooking && window.redamBooking.toggleDow(4)">목</button>
+                                <button type="button" data-dow="5" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-sm" onclick="window.redamBooking && window.redamBooking.toggleDow(5)">금</button>
+                                <button type="button" data-dow="6" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-sm" onclick="window.redamBooking && window.redamBooking.toggleDow(6)">토</button>
+                                <button type="button" data-dow="0" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-sm" onclick="window.redamBooking && window.redamBooking.toggleDow(0)">일</button>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-4 text-xs">
+                            <label class="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700">
+                                <input type="checkbox" id="bookBlockConsultInput" onchange="window.redamBooking && window.redamBooking.saveSettings()">
+                                <span>상담 방문 시간도 막기</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700">
+                                <input type="checkbox" id="bookBlockPersonalInput" onchange="window.redamBooking && window.redamBooking.saveSettings()">
+                                <span>개인 일정도 막기 (구글 캘린더에서 '한가함'으로 둔 일정은 빼요)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="staff-set">
                         <h2 class="font-serif-kr">데이터</h2>
                         <p>백업 파일에는 원가와 상담 기록이 들어 있습니다. 고객 이름·연락처도 들어 있어요. 메신저·공개 저장소에 올리지 말고 본인만 보는 곳에 보관하세요.</p>
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -827,26 +870,27 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="logo.js?v=20261251"></script> <!-- 150번: 새 글씨 로고 -->
-    <script src="pricing.js?v=20261251"></script>
-    <script src="costing.js?v=20261251"></script>
-    <script src="data.js?v=20261251"></script>
-    <script src="calculator.js?v=20261251"></script>
-    <script src="concierge.js?v=20261251"></script>
-    <script src="intro.js?v=20261251"></script>
-    <script src="fabric-pick.js?v=20261251"></script>
-    <script src="color-pick.js?v=20261251"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
-    <script src="space.js?v=20261251"></script>
-    <script src="final.js?v=20261251"></script>
-    <script src="app.js?v=20261251"></script>
-    <script src="more.js?v=20261251"></script>
-    <script src="survey.js?v=20261251"></script>
-    <script src="ticket.js?v=20261251"></script>
-    <script src="color-dict.js?v=20261251"></script>
-    <script src="fabrics.js?v=20261251"></script>
-    <script src="finder.js?v=20261251"></script>
-    <script src="settings.js?v=20261251"></script>
-    <script src="room-color.js?v=20261251"></script>
+    <script src="logo.js?v=20261252"></script> <!-- 150번: 새 글씨 로고 -->
+    <script src="pricing.js?v=20261252"></script>
+    <script src="costing.js?v=20261252"></script>
+    <script src="data.js?v=20261252"></script>
+    <script src="calculator.js?v=20261252"></script>
+    <script src="concierge.js?v=20261252"></script>
+    <script src="intro.js?v=20261252"></script>
+    <script src="fabric-pick.js?v=20261252"></script>
+    <script src="color-pick.js?v=20261252"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
+    <script src="space.js?v=20261252"></script>
+    <script src="final.js?v=20261252"></script>
+    <script src="app.js?v=20261252"></script>
+    <script src="more.js?v=20261252"></script>
+    <script src="survey.js?v=20261252"></script>
+    <script src="ticket.js?v=20261252"></script>
+    <script src="color-dict.js?v=20261252"></script>
+    <script src="fabrics.js?v=20261252"></script>
+    <script src="finder.js?v=20261252"></script>
+    <script src="settings.js?v=20261252"></script>
+    <script src="room-color.js?v=20261252"></script>
+    <script src="booking.js?v=20261252"></script> <!-- 202번: 시공 날짜 잡기 -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

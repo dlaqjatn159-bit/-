@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261251';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261252';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -287,6 +287,7 @@
         h += '<button type="button" data-sec="finSecEst" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
         const night = (typeof houseNightOf === 'function') ? houseNightOf(data) : null;      // 131번
         if (night) h += '<button type="button" data-sec="finSecNight" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">공간의 밤</button>';
+        if (window.redamBooking && window.redamBooking.ready()) h += '<button type="button" onclick="window.redamBooking.open()">시공 날짜</button>';      // 202번
         h += '<button type="button" class="is-save" onclick="window.concierge.saveQuote()">견적서 저장</button>';
         h += '</nav></div>';
 
@@ -414,6 +415,7 @@
         if (infoRows.length) {
             h += '<dl class="fin-est-dl">' + infoRows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(String(v).trim()).replace(/\r?\n/g, '<br>')}</dd>`).join('') + '</dl>';
         }
+        if (window.redamBooking && window.redamBooking.ready()) h += '<div class="fin-est-book"><button type="button" class="dos-act is-main" onclick="window.redamBooking.open()">시공 날짜 잡기 →</button></div>';      // 202번
         h += '</div></section>';
 
         // [이 집의 밤] 131번: 표지 조각보를 지금의 방등 / 권하는 빛 아래 두 장 + 시간 순서 글 + 제품 카드 (ticket.js houseNightOf, 저장 이미지와 같은 글)

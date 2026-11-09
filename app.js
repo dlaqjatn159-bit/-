@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261251';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261252';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,9 +22,9 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261251';
+const REDAM_BUILD = '20261252';
 function checkFileVersions() {
-    const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js'];
+    const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
     const old = expected.filter(f => reg[f] !== REDAM_BUILD);
     if (old.length === 0) return;
@@ -47,6 +47,7 @@ window.onload = function() {
     restoreDraftOnLoad();
     initTicketNoteInput();
     initNotionLedgerInputs(); flushNotionLedger(); window.addEventListener('online', flushNotionLedger);      // 201번: 모아 둔 장부 금액 보내기
+    if (window.redamBooking) window.redamBooking.initSettings();      // 202번: 시공 날짜 잡기 설정 칸 채우기
     setInterval(saveDraftTick, 3000);
     updateOfflineStatus();
     renderUndoButton();
@@ -286,6 +287,9 @@ function formatPhone(v) {
 let quoteValidOverride = null;      // 이 상담만의 유효기간(일). null이면 설정 값 (85번)
 let quoteDate = null;      // 견적을 처음 만든 날 'YYYY-MM-DD' — 상담에 저장, 불러와도 안 바뀜 (85번)
 let consultOutcome = null;      // { result: 'won'|'hold'|'lost', reasons: [], note: '', at: 시각 }
+let bookingPick = null;      // 시공 날짜 잡기에서 고른 시간 { start, minutes, travel, confirmed } (202번)
+window.getBookingPick = () => bookingPick;
+window.setBookingPick = v => { bookingPick = v || null; saveDraftTick(); };
 const OUTCOME_LABEL = { won: '계약', hold: '생각해 보신다', lost: '안 됨' };
 const OUTCOME_REASONS = ['가격', '다른 업체', '시기 미룸', '색·디자인', '연락 끊김', '기타'];
 function outcomeText(o) {
@@ -362,7 +366,7 @@ function startNewConsultationConfirmed() {
     if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
     archiveConsultation(collectConsultation(), Date.now());
     clearDraft();
-    consultOutcome = null; quoteDate = null; quoteValidOverride = null;
+    consultOutcome = null; quoteDate = null; quoteValidOverride = null; bookingPick = null;
     const qv0 = document.getElementById('quoteValidOverrideInput'); if (qv0) qv0.value = '';
     initDefaultRooms();
     collapsedRooms.clear(); openCurtainDetails.clear();
@@ -646,7 +650,8 @@ function collectConsultation() {
         quoteDate: quoteDate || null, quoteValid: quoteValidOverride,      // 견적 날짜 (85번)
         outcome: consultOutcome || null,     // 상담 결과 (84번)
         quoteTotal: notionLedgerTotalNow(),   // 견적서 합계(빛·시공비·부가세 포함, 화면의 최종 금액) — 장부로 보내기 (201번)
-        marginTotal: notionLedgerMarginNow()   // 남는 돈 = 직원 화면 '예상 순이익'(원가 있을 때만, 없으면 null) — 201번 보완
+        marginTotal: notionLedgerMarginNow(),   // 남는 돈 = 직원 화면 '예상 순이익'(원가 있을 때만, 없으면 null) — 201번 보완
+        bookingPick: bookingPick || null   // 시공 날짜 잡기 (202번)
     };
 }
 
@@ -736,6 +741,7 @@ function applySnapshot(snap) {
     quoteValidOverride = (Number.isFinite(snap.quoteValid) && snap.quoteValid >= 0) ? Math.min(365, Math.round(snap.quoteValid)) : null;
     const qv1 = document.getElementById('quoteValidOverrideInput'); if (qv1) qv1.value = quoteValidOverride === null ? '' : quoteValidOverride;
     consultOutcome = (snap.outcome && OUTCOME_LABEL[snap.outcome.result]) ? snap.outcome : null;      // 84번
+    bookingPick = (snap.bookingPick && Number.isFinite(snap.bookingPick.start)) ? snap.bookingPick : null;      // 202번
     finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set('custName', snap.name || ''); set('expressCustName', snap.name || ''); set('surveyCustName', snap.name || '');
