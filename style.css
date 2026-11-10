@@ -2053,10 +2053,6 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .fo-say { grid-column: 1 / 2; margin: 6px 0 0; font-size: var(--t-base); line-height: 1.55; color: var(--muted); }
 .fo-act { position: relative; padding: 6px 0; border: 0; background: none; cursor: pointer; font-family: var(--sans); font-size: var(--t-base); color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
 .fo-act::after, .fo-pick button::after { content: ''; position: absolute; inset: -14px; }      /* 누르는 범위 44px 이상 */
-/* 158번: 형상기억 줄 — 버튼 대신 "포함" 글자(빼기 버튼과 같은 자리·크기, 밑줄 없음). 사장님이 길게 눌러도 글자 고르기·메뉴가 뜨지 않게 */
-.fo-staff { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
-.fo-state { padding: 6px 0; font-family: var(--sans); font-size: var(--t-base); color: var(--muted); }
-.fo-row.on .fo-state { color: var(--ink); }
 .fo-pick { display: flex; gap: 28px; }
 .fo-pick button { position: relative; padding: 6px 0; border: 0; background: none; cursor: pointer; font-family: var(--sans); font-size: var(--t-base); color: var(--muted); }
 .fo-pick button.on { color: var(--ink); }

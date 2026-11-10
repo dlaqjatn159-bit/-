@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261257';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261258';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261257';
+const REDAM_BUILD = '20261258';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -1117,7 +1117,7 @@ function addCurtainToRoom(roomId, presetType = "") {
     let targetFabId = FABRIC_DB[0] ? FABRIC_DB[0].id : "DAM_WIDE_01";
     let shapeFee = 0;
     let leadBand = false;
-    let hotelFit = false;      // 175번: 겉지 줄은 호텔핏 켬으로 시작 (손님 화면과 같게)
+    let hotelFit = false;      // 212번: 겉지 줄도 호텔핏·형상기억 끔으로 시작 (손님 화면과 같게)
     let pleat = "2.0";
     let pleatType = "나비주름";
     let installType = "rail";
@@ -1132,8 +1132,6 @@ function addCurtainToRoom(roomId, presetType = "") {
     } else if (presetType === "drape") {
         const drapeFab = FABRIC_DB.find(f => f.categoryType === "겉지");
         if (drapeFab) targetFabId = drapeFab.id;
-        shapeFee = 1;      // 켜짐 표시 (금액은 rates의 설정 단가)
-        hotelFit = true;      // 175번
     } else if (presetType === "blind") {
         const blindFab = FABRIC_DB.find(f => f.categoryType === "블라인드");
         if (blindFab) targetFabId = blindFab.id;
