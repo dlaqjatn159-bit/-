@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261259';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261260';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 시공 날짜 잡기 (작업목록 202번)
 //  - 견적서 다음 단계에서 고객이 편한 날짜와 도착 시간을 선택
@@ -690,7 +690,7 @@
 
     function cycleInstall() {
         let mins = state.installMinutes + 30;
-        if (mins > 240) mins = 60;
+        if (mins > 240) mins = 30; // 짧은 시공(블라인드 한 장 등)도 잡게 30분부터 (214번)
         state.installMinutes = mins;
         renderModal(cacheBusy);
     }
