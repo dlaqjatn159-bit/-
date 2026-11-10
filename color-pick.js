@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261254';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -249,6 +249,7 @@
                     <span class="cp-book">${esc(bookLine(f.id))}</span>
                     <span class="cp-name">${esc(fabName(f.id, f.color))}</span>
                     ${facts.filter(Boolean).map(t => `<span class="cp-fact">${esc(t)}</span>`).join('')}
+                    ${(typeof fabricTraitOf === 'function' && fabricTraitOf(f.id)) ? `<span class="cp-fact">${esc(fabricTraitOf(f.id))}</span>` : ''}
                     ${pair ? `<button type="button" class="cp-pair" onclick="concierge.cpAlt('${esc(pair.name)}')"><i class="cp-thumb" data-id="${esc(f.id)}" data-color="${esc(pair.name)}" style="background-color:${pair.hex || band}"></i><span>한 톤 짙게 · ${esc(fabName(f.id, pair.name))}</span></button>` : ''}
                     ${base ? `<button type="button" class="cp-pair" onclick="concierge.cpAlt('')"><i class="cp-thumb" data-id="${esc(base.id)}" data-color="${esc(base.color)}" style="background-color:${base.hex || band}"></i><span>← ${esc(fabName(base.id, base.color))}</span></button>` : ''}
                 </div>

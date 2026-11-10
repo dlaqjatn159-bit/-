@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['intro.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['intro.js']='20261254';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // intro.js — 고객 화면 시작의 로고 모션 (82번). 130-4①에서 concierge.js에서 떼어 냄. concierge.js 다음에 읽힘
 
 (function() {

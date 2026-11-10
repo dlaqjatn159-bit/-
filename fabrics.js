@@ -1,9 +1,23 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261254';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabrics.js — 직원 화면 › 원단: 원단 분류(톤·분위기) 편집·원단 색상 관리·되돌리기/중복 정리 버튼·원단 사진 확인·기기 사진 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
 // 원단 분류(톤·분위기) 편집 / 원단 사진 확인
 // ==============================================================
+// 원단의 성격 문장 틀 (206번, 11-10 사장님이 넷 다 고름). ○○를 고쳐 씀
+const TRAIT_FRAMES = [
+    ['두 색', '가까이서는 ○○과 ○○ 실이 섞여 보이고, 멀리서는 ○○로 어우러집니다.'],
+    ['점', '가까이서는 ○○빛 실이 드문드문 보이고, 멀리서는 ○○로 보입니다.'],
+    ['대비', '○○ 바탕에 ○○ 실이 드문드문 보여 린넨 느낌이 납니다.'],
+    ['질감', '겉이 올록볼록해 빛에 따라 결이 살아납니다.']
+];
+// 틀 버튼: 칸이 비어 있을 때만 틀을 넣고 커서를 둠 (저장은 칸 밖을 누를 때 onchange)
+function fillTraitFrame(btn, i) {
+    const inp = btn.closest('[data-trait-row]').querySelector('input');
+    if (!inp || inp.value.trim()) { if (inp) inp.focus(); return; }
+    inp.value = TRAIT_FRAMES[i][1]; inp.focus();
+}
+
 function renderTagEditor() {
     const box = document.getElementById('tagRows');
     if (!box) return;
@@ -68,6 +82,7 @@ function renderTagEditor() {
         const hidden = isCustomerHidden(f);
         const hideNext = hidden ? (f.fabricOnly ? 'no' : '') : (f.fabricOnly ? '' : 'yes');
         const hideBtn = `<button onclick="setFabricTag('${f.id}','hide','${hideNext}')" title="고객 화면 추천에 보일지 정합니다 (직원 견적에는 항상 보임)" class="${hidden ? 'bg-slate-700 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-300'} border rounded-lg px-2 py-1 text-[10px] font-bold whitespace-nowrap">${hidden ? '고객 추천 숨김' : '고객 추천 보임'}</button>`;
+        const traitAttr = String(f.trait || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');      // 206번: 글칸 값 (따옴표가 있어도 깨지지 않게)
         const thumb = `<img class="w-10 h-10 rounded-lg object-cover bg-stone-100 flex-shrink-0" alt="" data-id="${f.id}" data-i="0" src="${fabricPhotoUrls(f.id)[0]}" onerror="photoFallback(this)">`;
         return `<div class="py-2.5 border-b border-slate-100">
             <div class="flex items-center gap-2.5">
@@ -87,6 +102,11 @@ function renderTagEditor() {
                 <select onchange="setFabricTag('${f.id}','mood',this.value)" class="px-2 py-1.5 border rounded-lg text-xs font-semibold bg-white outline-none">${moodOpts}</select>
                 ${densBlock}${blackBlock}
                 ${(m.tone || m.mood || m.density || m.blackout || f.texture || f.material) ? `<button onclick="clearFabricTags('${f.id}')" class="text-[11px] text-rose-500 font-bold px-1.5">자동으로</button>` : ''}
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 mt-2" data-trait-row>
+                <span class="text-[10px] font-bold text-slate-500 mr-0.5" title="손님 화면(고를 때·최종 제안)에 한 줄로 나갑니다. 비우면 안 나갑니다">원단의 성격</span>
+                <input type="text" maxlength="80" value="${traitAttr}" placeholder="${TRAIT_FRAMES[0][1]}" onchange="setFabricTag('${f.id}','trait',this.value.trim())" class="flex-1 min-w-[16rem] px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white outline-none">
+                ${TRAIT_FRAMES.map((fr, i) => `<button type="button" onclick="fillTraitFrame(this,${i})" class="bg-white text-slate-500 border-slate-300 border rounded-lg px-2 py-1 text-[10px] font-bold whitespace-nowrap">${fr[0]}</button>`).join('')}
             </div>
         </div>`;
     }).join('');
@@ -255,8 +275,10 @@ function savePhotoList() {
 }
 // 그 원단·색의 사진 주소 (색 사진이 없으면 원단 대표 사진, 없으면 ''). 기기에 넣은 사진이 먼저 (34번)
 function photoFor(fabricId, color) {
-    return (color && (DevicePhotos.urlOf(fabricId, color) || __photoFound[fabricId + '__' + color]))
-        || DevicePhotos.urlOf(fabricId, '') || __photoFound[fabricId] || '';
+    const own = color && (DevicePhotos.urlOf(fabricId, color) || __photoFound[fabricId + '__' + color]);
+    if (own) return own;
+    if (color && typeof photoMayUseGeneric === 'function' && !photoMayUseGeneric(fabricId, color)) return '';      // 206번: 색이 여럿인 원단은 다른 색 대표 사진으로 넘어가지 않음
+    return DevicePhotos.urlOf(fabricId, '') || __photoFound[fabricId] || '';
 }
 // 고객 원단 화면(concierge.js)이 쓰는 같은 목록: 주소 / '' (이번 실행에서 확인했는데 없음) / undefined (모름 → 직접 찾음)
 function knownPhotoFor(fabricId, color) {

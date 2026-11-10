@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261254';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -872,6 +872,15 @@ function pickShowcase(ranked, n, spread) {
 // ---- 원단 사진: photos/원단ID.jpg, 색상별은 photos/원단ID__번호.jpg (없으면 .webp, .png 순서로 찾고, 없으면 원단 대표 사진 → 색상 배경) ----
 // 34번: 기기에 넣은 사진(직원 화면 › 사진 › 사진 불러오기, IndexedDB)이 있으면 그것을 먼저 씀 → 없으면 photos/ 주소 → 없으면 색 질감
 //  colorOnly: 색 사진 주소만 (대표 사진은 빼고)
+// 206번: 원단의 성격 한 줄 (사장님이 직원 화면 › 원단 분류에 적은 글). 없으면 ''
+function fabricTraitOf(id) {
+    const f = (typeof FABRIC_DB !== 'undefined' && Array.isArray(FABRIC_DB)) ? FABRIC_DB.find(x => x.id === id) : null;
+    return (f && typeof f.trait === 'string') ? f.trait.trim() : '';
+}
+// 206번: 색이 여럿인 원단은 그 색 사진이 없을 때 대표 사진으로 넘어가지 않음(다른 색 사진이 이 색처럼 보여서) → 잰 색 칸. 색이 하나뿐(포아 등)이면 대표 사진이 곧 그 색
+function photoMayUseGeneric(id, color) {
+    return !normalizeColorName(color) || getFabricColors(id).length <= 1;
+}
 function fabricPhotoUrls(id, color, colorOnly) {
     const sf = sampleBlindFabric(id);
     if (sf) return sf.blindKind ? [scenePhotoUrl('blind', 'blind_' + sf.blindKind)] : [];      // 177번: 커튼 견본은 장면 사진이 없어 색 칸으로
@@ -880,7 +889,7 @@ function fabricPhotoUrls(id, color, colorOnly) {
     const dev = DevicePhotos.urlOf(id, col);
     if (!col) return dev ? [dev].concat(repo) : repo;
     const colorUrls = (dev ? [dev] : []).concat(repo.slice(0, 3));
-    if (colorOnly) return colorUrls;
+    if (colorOnly || !photoMayUseGeneric(id, col)) return colorUrls;      // 206번
     const devG = DevicePhotos.urlOf(id, '');
     return colorUrls.concat(devG ? [devG] : [], repo.slice(3));
 }
@@ -2112,6 +2121,7 @@ function applyTagOverrides(list) {
         if (t && t.texture && TEXTURE_LABELS[t.texture]) { f.texture = t.texture; f.manual.texture = true; }
         if (t && t.material && MATERIAL_LABELS[t.material]) f.material = t.material;      // 소재 (94번)
         f.hideOverride = (t && (t.hide === 'yes' || t.hide === 'no')) ? t.hide : null;
+        f.trait = (t && typeof t.trait === 'string' && t.trait.trim()) ? t.trait.trim() : null;      // 원단의 성격 한 줄 (206번, 사장님이 적음)
     });
 }
 
@@ -2126,11 +2136,13 @@ function setFabricTag(id, key, val) {
     const o = loadTagOverrides();
     o[id] = o[id] || {};
     if (!val) delete o[id][key]; else o[id][key] = val;
-    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide && !o[id].blackout && !o[id].texture && !o[id].material) delete o[id];
+    if (!o[id].tone && !o[id].mood && !o[id].density && !o[id].hide && !o[id].blackout && !o[id].texture && !o[id].material && !o[id].trait) delete o[id];      // 206번: trait
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
     if (f && key === 'hide') {
         f.hideOverride = val || null;
+    } else if (f && key === 'trait') {
+        f.trait = val || null;      // 원단의 성격 (206번): 자동 분류를 다시 돌리지 않음
     } else if (f && key === 'material') {
         f.material = val || null;      // 소재 (94번)
     } else if (f && key === 'texture') {
@@ -2147,7 +2159,8 @@ function setFabricTag(id, key, val) {
 function clearFabricTags(id) {
     const o = loadTagOverrides();
     const keepHide = o[id] && o[id].hide;                  // "고객 추천 숨김" 설정은 그대로 둠
-    if (keepHide) o[id] = { hide: keepHide }; else delete o[id];
+    const keepTrait = o[id] && o[id].trait;                // 원단의 성격 글도 그대로 둠 (206번)
+    if (keepHide || keepTrait) o[id] = Object.assign({}, keepHide ? { hide: keepHide } : {}, keepTrait ? { trait: keepTrait } : {}); else delete o[id];
     saveTagOverrides(o);
     const f = FABRIC_DB.find(x => x.id === id);
     if (f) { f.tone = null; f.mood = null; f.density = null; f.blackout = null; f.texture = null; f.material = null; f.tags = null; f.manual = { tone: false, mood: false, density: false, blackout: false, texture: false }; autoTagFabricAttributes(f); }

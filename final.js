@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261253';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261254';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -222,6 +222,7 @@
     function showroomRowsOf(data) {
         const whyInfo = (typeof whySetsOf === 'function') ? whySetsOf(data) : { rooms: [] };
         const allSp = (typeof houseSpacesOf === 'function') ? houseSpacesOf(data) : [];
+        const traitSeen = new Set();      // 206번: 같은 원단·색의 성격 한 줄은 처음 나오는 공간에만
         return (data.rooms || []).filter(r => r.items && r.items.length).map(rm => {
             const R = (whyInfo.rooms || []).find(x => x.name === rm.name) || null;
             const s = allSp.find(x => x.name === rm.name) || null;
@@ -234,9 +235,17 @@
             const paraParts = [{ k: 'heard', t: R ? R.heard : '' }, { k: 'seen', t: seenLines.join(' ') }, { k: 'chose', t: (R && R.chose) ? R.chose.join(' ') : '' }].filter(p => p.t);      // 132번: 단락마다 글자 크기가 달라 종류를 같이 넘김
             const paras = paraParts.map(p => p.t);      // 네 칸 단락 ①②③ (83번)
             const metaLine = [dirTxt ? dirTxt + '향' : '', sz ? `${sz.w} × ${sz.h}` : '', COMP_SAY[comp] || ''].filter(Boolean).join(' · ');
-            const sets = (R && R.sets && R.sets.length) ? R.sets : (rm.items || []).map(it => ({
+            const sets0 = (R && R.sets && R.sets.length) ? R.sets : (rm.items || []).map(it => ({
                 it, hex: it.fill || '', lines: it.reason ? [it.reason] : [], note: ''
             }));
+            // 206번: 사장님이 적은 원단의 성격 한 줄을 설명 끝에. 원본(R.sets)은 건드리지 않고 복사본에 붙임(다시 그릴 때 두 번 붙지 않게)
+            const sets = sets0.map(st => {
+                const tr = (st.it && st.it.fabricId && typeof fabricTraitOf === 'function') ? fabricTraitOf(st.it.fabricId) : '';
+                const key = st.it ? st.it.fabricId + '__' + (st.it.colorName || '') : '';
+                if (!tr || traitSeen.has(key)) return st;
+                traitSeen.add(key);
+                return Object.assign({}, st, { lines: (st.lines || []).concat([tr]) });
+            });
             let back = null, front = null;
             if (sets.length >= 2) {
                 // 78번: 방 안에서 사람이 체감하는 느낌(겉지가 바깥 틀, 속지가 안쪽 주인공)에 맞춰 겉지를 뒤, 속지를 앞에 배치
