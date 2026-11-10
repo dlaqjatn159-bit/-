@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261255';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261256';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1651,6 +1651,13 @@ function seatPoint(mc, cols, room) {
                 if (c && Math.hypot(c.a, c.b) <= SEAT_CFG.pointCMax) pool.push(Object.assign({}, c, { tech: row.key }));
             });
         });
+        // 209번: 집 색과 색상각 60~135° 떨어진 또렷한 색은 기법 표 어느 줄에도 없어(3색은 표에서 뺌) 딥 그린 같은 색이 원단이 있어도 안 나오던 것 → 포인트 후보에 넣음
+        //  이유 한 줄은 가까운 쪽 기법: 97.5° 아래 유사색, 위는 분열보색. 같은 색이 두 번 들어가도 아래에서 하나로 걸러짐
+        const T = colorTechCfg(), refH = hue(r.ref);
+        cols.forEach(c => {
+            const dh = hd(hue(c), refH);
+            if (dh > T.analogHue && dh < 135 && Math.hypot(c.a, c.b) <= SEAT_CFG.pointCMax && pointVivid(c, T)) pool.push(Object.assign({}, c, { tech: dh < 97.5 ? 'analog' : 'split' }));
+        });
     } else {
         const fl = mc.floor, v = Math.hypot(w.a, w.b) >= 2 ? w : fl;      // 숨은 기운: 벽이 먼저, 벽이 거의 무채색이면 바닥
         let tone = v.b < 0 ? 'cool' : (Math.hypot(v.a, v.b) >= 1.5 ? 'warm' : 'neutral');
@@ -1667,6 +1674,9 @@ function seatPoint(mc, cols, room) {
     const seen = new Set();
     pool = pool.filter(c => { const k = c.id + '__' + c.color; if (seen.has(k)) return false; seen.add(k); return true; })
         .map(c => Object.assign(c, { e: seatWallDE(w, c) }));
+    // 209번: 과감히 자리에 와야 할 계열이 짙은 찬색(딥 그린·네이비)인데 그 계열 원단이 후보에 하나도 없으면 → 그 목표 색에 가장 가까운 이름을 얼굴로, 손님 장에 한 줄
+    let lack = null;
+    try { const wb = pointWants(mc, room, r).bold; if (wb.t && POINT_NEAR_SAY[wb.want] && !pool.some(c => pointFamilyOf(c) === wb.want)) lack = wb; } catch (e) { lack = null; }
     const B = SEAT_CFG.pointDE, MID = SEAT_CFG.pointMid, used = new Set();
     return [['soft', '은근히'], ['clear', '또렷이'], ['bold', '과감히']].map(([key, label], i) => {
         const lo = B[i], hi = i + 1 < B.length ? B[i + 1] : Infinity, mid = MID[i];
@@ -1676,7 +1686,8 @@ function seatPoint(mc, cols, room) {
             o.ids.add(c.id); o.sum += c.e; o.items.push(c);
         });
         const off = o => Math.abs(o.sum / o.items.length - mid);      // 이름의 평균 색 차가 띠 가운데에서 얼마나 먼가
-        const names = Object.keys(byName).map(k => byName[k]).sort((x, y) => y.ids.size - x.ids.size || off(x) - off(y));
+        let names = Object.keys(byName).map(k => byName[k]).sort((x, y) => y.ids.size - x.ids.size || off(x) - off(y));
+        if (key === 'bold' && lack) { const dn = o => Math.min(...o.items.map(c => seatWallDE(lack.t, c))); names = names.slice().sort((x, y) => dn(x) - dn(y)); }      // 209번: 목표 색에 가까운 이름부터
         const top = names.find(o => !used.has(o.name));      // 앞 세기에서 쓴 이름은 얼굴로 안 씀
         if (!top) return null;
         used.add(top.name);
@@ -1685,7 +1696,9 @@ function seatPoint(mc, cols, room) {
         [top].concat(names.filter(o => o !== top)).forEach(o => o.items
             .slice().sort((x, y) => Math.abs(x.e - mid) - Math.abs(y.e - mid))
             .forEach(c => { if (!fids.has(c.id)) { fids.add(c.id); items.push(Object.assign({}, c, { d: items.length })); } }));
-        return seatOut(key, label, 'strength', { name: top.name, n: items.length, items, rep: items[0] }, room);
+        const out = seatOut(key, label, 'strength', { name: top.name, n: items.length, items, rep: items[0] }, room);
+        if (out && key === 'bold' && lack) out.near = POINT_NEAR_SAY[lack.want];      // 209번: 손님 장 한 줄 (color-pick.js)
+        return out;
     });
 }
 // 겉지 세 자리. room: 공간(measuredColor 벽·바닥 필요), feel: 'calm' | 'weight' | 'point'(없으면 room.ownPres)
@@ -1788,6 +1801,30 @@ function pointFamilyOf(c) {
     const h = (Math.atan2(c.b, c.a) * 180 / Math.PI + 360) % 360, hd = x => { const d = Math.abs(x - h) % 360; return d > 180 ? 360 - d : d; };
     return POINT_FAMILY.slice().sort((x, y) => hd(x[4]) - hd(y[4]))[0][0];
 }
+// 209번: 세기마다 와야 할 계열과 목표 색 → { hue, soft: { want, t }, clear, bold } (want = 계열 key | null, t = {L,a,b} | null)
+//  pointWantRecord(195번 기록)와 seatPoint(과감히 한 줄)가 같이 씀. 고르는 차례는 아래 기록 설명과 같음
+function pointWants(mc, room, r) {
+    const H = pointHouseHue(mc, room, r), w = mc.wall;
+    const hd = x => { const d = Math.abs(x - H) % 360; return d > 180 ? 360 - d : d; };
+    const near = POINT_FAMILY.slice().sort((x, y) => hd(x[4]) - hd(y[4]));
+    const far = list => list.slice().sort((x, y) => hd(y[4]) - hd(x[4]));
+    const ORDER = {
+        soft: near,
+        clear: far(POINT_FAMILY.filter(f => f[2] >= POINT_WANT_CFG.darkL)),
+        bold: far(POINT_FAMILY.filter(f => f[2] < POINT_WANT_CFG.darkL))
+    };
+    const used = new Set(), out = { hue: H };
+    ['soft', 'clear', 'bold'].forEach((key, i) => {
+        let want = null, t = null;
+        ORDER[key].some(f => { if (used.has(f[0])) return false; const c = pointWantColor(w, f, SEAT_CFG.pointMid[i]); if (!c) return false; want = f[0]; t = c; return true; });
+        if (want) used.add(want);
+        out[key] = { want, t };
+    });
+    return out;
+}
+// 209번: 손님 장에 이름을 밝히는 짙은 찬색 계열 (11-09 사장님: 원단이 없으면 가장 가까운 원단 + "딱 맞는 색은 아직 없습니다")
+const POINT_NEAR_SAY = { teal: '딥 그린', navy: '네이비' };
+
 // 공간 하나의 기록. room: measuredColor 벽·바닥 필요 → { v, house, wall, floor, feel, hue, soft, clear, bold } · 못 하면 null
 //  세기마다 { want: 계열 key | null, t: [L,a,b] | null, face: 얼굴 이름 | null, fam: 얼굴 계열, f: [L,a,b] | null, d: 비틂 거리 | null }
 //  고르는 차례: 은근히 = 집 방향에 가장 가까운 계열 · 또렷이 = 밝은·중간 계열 중 맞은편에 가장 먼 것 · 과감히 = 짙은 계열 중 맞은편에 가장 먼 것. 앞 세기에서 쓴 계열은 빼고, 목표 색이 포인트가 못 되면 다음 계열
@@ -1801,21 +1838,11 @@ function pointWantRecord(room) {
     try { seat = seatDrape(room, 'point'); } catch (e) { seat = null; }
     const faces = {};
     ((seat && seat.seats) || []).forEach(s => { faces[s.key] = s; });
-    const H = pointHouseHue(mc, room, r), w = mc.wall;
-    const hd = x => { const d = Math.abs(x - H) % 360; return d > 180 ? 360 - d : d; };
+    const W = pointWants(mc, room, r), w = mc.wall;      // 209번: 계열 고르기는 pointWants 하나로 (값은 그대로)
     const r1 = x => Math.round(x * 10) / 10, arr = c => c ? [r1(c.L), r1(c.a), r1(c.b)] : null;
-    const near = POINT_FAMILY.slice().sort((x, y) => hd(x[4]) - hd(y[4]));
-    const far = list => list.slice().sort((x, y) => hd(y[4]) - hd(x[4]));
-    const ORDER = {
-        soft: near,
-        clear: far(POINT_FAMILY.filter(f => f[2] >= POINT_WANT_CFG.darkL)),
-        bold: far(POINT_FAMILY.filter(f => f[2] < POINT_WANT_CFG.darkL))
-    };
-    const used = new Set(), out = { v: 1, house: r.house, wall: seatName(w), floor: seatName(mc.floor), feel: (room.ownTaste && room.ownPres) || ((typeof getHouseTaste === 'function' && getHouseTaste()) || {}).pres || null, hue: Math.round(H) };
-    ['soft', 'clear', 'bold'].forEach((key, i) => {
-        let want = null, t = null;
-        ORDER[key].some(f => { if (used.has(f[0])) return false; const c = pointWantColor(w, f, SEAT_CFG.pointMid[i]); if (!c) return false; want = f[0]; t = c; return true; });
-        if (want) used.add(want);
+    const out = { v: 1, house: r.house, wall: seatName(w), floor: seatName(mc.floor), feel: (room.ownTaste && room.ownPres) || ((typeof getHouseTaste === 'function' && getHouseTaste()) || {}).pres || null, hue: Math.round(W.hue) };
+    ['soft', 'clear', 'bold'].forEach(key => {
+        const want = W[key].want, t = W[key].t;
         const fc = faces[key] || null, fl = fc && seatLabOk(fc) ? { L: fc.L, a: fc.a, b: fc.b } : null;
         out[key] = { want, t: arr(t), face: fc ? fc.name : null, fam: fl ? pointFamilyOf(fl) : null, f: arr(fl), d: (t && fl) ? Math.round(seatWallDE(t, fl)) : null };
     });
