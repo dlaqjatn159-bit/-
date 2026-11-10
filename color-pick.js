@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261258';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261259';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -406,9 +406,11 @@
             const rm = cz.roomWithTaste ? cz.roomWithTaste(room) : room;
             const r = typeof seatDrape === 'function' ? seatDrape(rm, presOf(room)) : null;
             if (!r || !r.seats || !r.seats.length) return '';
-            // 고른 원단이 들어 있는 자리: 같은 색 먼저, 없으면 같은 원단("한 톤 짙게"로 고른 색) — cp()의 pin 찾기와 같은 차례
-            const hit = same => r.seats.find(x => x.fabrics.some(f => f.id === fabricId && (!same || !colorName || f.color === colorName)));
-            const seat = hit(true) || hit(false);
+            // 고른 원단이 들어 있는 자리: 같은 색 먼저, 없으면 그 자리 색의 "한 톤 짙게" 짝(darkerPair)으로 고른 색일 때만
+            //  213번: 예전엔 같은 원단이면 아무 색이나 그 자리 말을 빌려 써서, 직원 화면에서 색을 바꾸면 바꾸기 전 색의 이유가 붙었음 → 짝이 아니면 '' (ticket.js 계산 문장으로)
+            const same = r.seats.find(x => x.fabrics.some(f => f.id === fabricId && (!colorName || f.color === colorName)));
+            const twin = !same && colorName ? r.seats.find(x => x.fabrics.some(f => f.id === fabricId && (darkerPair(f.id, f.color) || {}).name === colorName)) : null;
+            const seat = same || twin;
             return seat ? whyOf({ kind: 'drape', feel: r.feel, house: r.house }, seat, room) : '';
         } catch (e) { return ''; }
     }
