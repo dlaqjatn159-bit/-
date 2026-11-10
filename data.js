@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261256';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261257';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -422,9 +422,9 @@ const SAMPLE_BLIND_ITEMS = {
     _sample_combi: { id: '_sample_combi', book: '실물 샘플', name: '콤비 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'neutral', blindKind: 'combi', sampleOnly: true },
     _sample_roll: { id: '_sample_roll', book: '실물 샘플', name: '롤 블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'neutral', blindKind: 'roll', sampleOnly: true },
     _sample_any: { id: '_sample_any', book: '실물 샘플', name: '블라인드 (실물 상담)', categoryType: '블라인드', calcType: 'hebe', price: 0, tone: 'neutral', blindKind: 'combi', sampleOnly: true },
-    // 177번: 벽·바닥 색을 못 재 추천을 못 한 커튼(속지·겉지) → 상담 때 실물 견본으로. 원단을 고르기 전이라 금액 0(pricing.js)
-    _sample_sheer: { id: '_sample_sheer', book: '실물 샘플', name: '속지 (실물 상담)', categoryType: '속지', calcType: 'yard', specCm: 280, unit: '마', price: 0, tone: 'neutral', blindKind: null, sampleOnly: true },
-    _sample_drape: { id: '_sample_drape', book: '실물 샘플', name: '겉지 (실물 상담)', categoryType: '겉지', calcType: 'width', specCm: 150, unit: '폭', price: 0, tone: 'neutral', blindKind: null, sampleOnly: true }
+    // 177번: 벽·바닥 색을 못 재 추천을 못 한 커튼(속지·겉지) → 상담 때 실물 견본으로. 원단을 고르기 전이라 금액 0(pricing.js) · 이름은 '실물 상담'(종류 칸과 겹치지 않게, 211번)
+    _sample_sheer: { id: '_sample_sheer', book: '실물 샘플', name: '실물 상담', categoryType: '속지', calcType: 'yard', specCm: 280, unit: '마', price: 0, tone: 'neutral', blindKind: null, sampleOnly: true },
+    _sample_drape: { id: '_sample_drape', book: '실물 샘플', name: '실물 상담', categoryType: '겉지', calcType: 'width', specCm: 150, unit: '폭', price: 0, tone: 'neutral', blindKind: null, sampleOnly: true }
 };
 function sampleBlindFabric(id) { return SAMPLE_BLIND_ITEMS[id] || null; }
 // 비고 칸: "TRIPLE & COMBI" → 콤비, "ROLL TYPE" → 롤, "PRINTED FABRIC BLINDS" → 프린트, "WOOD" → 우드, "ALU" → 알루미늄 (38-2)

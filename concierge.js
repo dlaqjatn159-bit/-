@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261256';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261257';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -766,6 +766,7 @@
     }
     // 고른 원단으로 칸을 채우는 스타일: 톤 색 위에 사진(있으면)을 덮음. 첫 화면 공간 칸·제안서 원단 칸이 함께 씀
     function fabricFillStyle(fabricId, colorName) {
+        if (typeof sampleBlindFabric === 'function' && sampleBlindFabric(fabricId)) return `background: ${HATCH};`;      // 211번: 실물 견본(아직 안 고른 원단)은 톤 색 대신 "아직 모름" 빗금
         const color = colorFillOf(fabricId, colorName);      // 잰 색(색상코드)이 있으면 그 색, 없으면 톤 색
         const urls = (typeof fabricPhotoUrls === 'function') ? fabricPhotoUrls(fabricId, colorName) : [];
         const imgs = urls.map(u => `url('${u}')`).join(', ');

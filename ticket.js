@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261256';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261257';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -216,8 +216,8 @@ function ticketData() {
     calculateAll();
     const d = ticketDataBase();
     d.light = ticketLightOf(d);      // 131번: 견적서 빛 묶음 (넣지 않으면 null)
-    // 161번: 실물 견본 품목(우드·색 못 잰 블라인드 등, 금액 0)이 있으면 합계가 그 품목을 뺀 금액임을 밝힘 — 저장 그림·최종 제안 화면·카톡 글이 같이 씀
-    const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.name.replace(' (실물 상담)', '')))];
+    // 161번: 실물 견본 품목(우드·색 못 잰 블라인드 등, 금액 0)이 있으면 합계가 그 품목을 뺀 금액임을 밝힘 — 저장 그림·최종 제안 화면·카톡 글이 같이 씀 · 커튼 견본은 종류 이름(속지·겉지)으로(211번)
+    const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.blindKind ? s.name.replace(' (실물 상담)', '') : s.categoryType))];
     d.totalLabel = sampleNames.length ? '합계 금액 (시공비 포함 · 실물 견본 품목 제외)' : '합계 금액 (시공비 포함)';
     if (sampleNames.length) {
         const nm = sampleNames.join('·');
@@ -373,7 +373,8 @@ function drawTicket(ctx, data, W, slim) {
         blocks.forEach(b => {
             // 원단 칸: 사진이 있으면 가운데를 잘라 넣고, 없으면 톤 색으로 채움
             const swY = by + (slim ? 10 : 12);
-            ctx.fillStyle = b.it.fill || '#d9cdbb'; ctx.fillRect(px, swY, SW_W, SW_H);
+            if (b.it.sampleBlind) paperHatch(ctx, px, swY, SW_W, SW_H);      // 211번: 실물 견본은 빗금
+            else { ctx.fillStyle = b.it.fill || '#d9cdbb'; ctx.fillRect(px, swY, SW_W, SW_H); }
             if (b.photo) {
                 const sw = b.photo.naturalWidth, sh = b.photo.naturalHeight;
                 const k = Math.max(SW_W / sw, SW_H / sh), cw = SW_W / k, ch = SW_H / k;
@@ -1036,7 +1037,7 @@ function houseSpacesOf(data) {
         const fabs = items.map(it => {
             const col = whyFabricColor(it.fabricId, it.colorName);
             const lab = col && typeof col.L === 'number' ? { L: col.L, a: col.a, b: col.b } : null;
-            return { k: it.kind, fabricId: it.fabricId, colorName: it.colorName, nm: it.tone ? `${it.name} · ${it.tone}` : it.name, hex: (col && col.hex) || it.fill, lab,      // 61번
+            return { k: it.kind, fabricId: it.fabricId, colorName: it.colorName, nm: it.tone ? `${it.name} · ${it.tone}` : it.name, hex: it.sampleBlind ? null : ((col && col.hex) || it.fill), lab: it.sampleBlind ? null : lab,      // 61번 · 211번: 실물 견본은 색 없음(띠 칸 비움)
                 cn: String(it.name || '').split(' · ')[0] };      // 132번: 색 지도 이름표의 색 이름 (색 사전 이름, "색 이름 · 재질"의 앞)
         });
         return { name: room.name, wall: part('wall'), floor: part('floor'), fur, fabs, raw: room.raw || {} };
@@ -1542,9 +1543,19 @@ function paperCanvas(H, pr) {
     ctx.textBaseline = 'alphabetic';
     return { canvas, ctx };
 }
+// 211번: 실물 견본(아직 안 고른 원단) 칸 — 화면 HATCH와 같은 빗금(종이색 바탕 + 6px 폭 옅은 줄, 135°)
+function paperHatch(ctx, x, y, w, h) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = '#fffdf9'; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#efe7da'; ctx.lineWidth = 6;
+    for (let d = -h; d < w + h; d += 12 * Math.SQRT2) { ctx.beginPath(); ctx.moveTo(x + d, y); ctx.lineTo(x + d - h, y + h); ctx.stroke(); }
+    ctx.restore();
+}
 // 원단 칸: 사진이 있으면 가운데를 잘라 채우고, 없으면 원단 색. 테두리는 초세선
 function paperSwatch(ctx, it, photos, x, y, w, h) {
-    ctx.fillStyle = (it && it.fill) || '#d9cdbb'; ctx.fillRect(x, y, w, h);
+    if (it && it.sampleBlind) paperHatch(ctx, x, y, w, h);      // 211번
+    else { ctx.fillStyle = (it && it.fill) || '#d9cdbb'; ctx.fillRect(x, y, w, h); }
     const ph = it && photos && photos[it.photoKey];
     if (ph) {
         const sw = ph.naturalWidth, sh = ph.naturalHeight, k = Math.max(w / sw, h / sh), cw = w / k, ch = h / k;
