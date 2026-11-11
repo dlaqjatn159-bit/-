@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261260';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -640,6 +640,14 @@ function renderSurvey() {
                     </div>
                 </div>
 
+                ${!roomKnown || roomGroups.has('sheer') ? `<div class="survey-row"><div class="k">속지 결</div>
+                    <div class="survey-opts">
+                        <button type="button" class="survey-opt ${room.sheerFeel === 'smooth' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'smooth')">매끈하게</button>
+                        <button type="button" class="survey-opt ${room.sheerFeel === 'textured' || room.sheerFeel === 'cozy' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'textured')">결 있게</button>
+                        <button type="button" class="survey-opt ${room.sheerFeel === 'linen' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'linen')">린넨으로</button>
+                        <button type="button" class="survey-opt dim ${room.sheerFeel === 'any' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'any')">잘 모르겠어요</button>
+                    </div>
+                </div>` : ''}
                 ${roomCurtainConfig(room) !== 'sheer' ? `<div class="survey-row"><div class="k">포인트</div>
                     <div class="survey-opts">
                         <button type="button" class="survey-opt ${roomPointOn(room) ? 'on' : ''}" onclick="toggleRoomPoint(${room.id})">이 공간에 주기</button>

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261260';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // finder.js — 직원 화면 › 원단 › 찾기: 원단 색 카드·거름망·정렬·비슷한 색·후보 모아 보기·고객에게 보여주기·색 지도·넣을 칸 고르기 (130-2에서 app.js에서 떼어 냄)
 
 
@@ -416,7 +416,7 @@ function openFinderShow(custom) {
     finderShowList = picks; finderShowSel = -1; finderShowChanged = false;
     canvas.style.setProperty('--items-count', picks.length);
     canvas.innerHTML = picks.map((e, i) => {
-        const n = finderShowName(e), clean = s => String(s).replace(/[<>&"]/g, '');
+        const n = (custom && typeof moreShowName === 'function') ? moreShowName(e) : finderShowName(e), clean = s => String(s).replace(/[<>&"]/g, '');      // 215번: 더 보기에서 연 나란히 보기만 손님 화면 이름 (직원 원단 찾기는 그대로, 182번)
         // 색 값도 사진도 없는 원단은 지어낸 색을 보여 주지 않고 "샘플북으로" (가로 글)
         const look = e.hex || photoFor(e.fabricId, e.color);
         return window.concierge.bookmarkCard(clean(n.name), clean(look ? n.color : '샘플북으로 보여 드릴게요'), '', e.hex || 'var(--brand-panel)', function() { finderShowTap(i); }, look ? 'vdesc' : '');
@@ -463,7 +463,7 @@ const finderShowEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').rep
 function openFinderShowAsk() {
     const e = finderShowList[finderShowSel], ask = document.getElementById('finderShowAsk');
     if (!e || !ask) return;
-    ask.querySelector('.finder-show-ask-in').innerHTML = `<p class="finder-show-ask-q font-serif-kr">${finderShowEsc(finderJosa(finderShowName(e).full, '으로', '로'))} 할까요?</p>`
+    ask.querySelector('.finder-show-ask-in').innerHTML = `<p class="finder-show-ask-q font-serif-kr">${finderShowEsc(finderJosa(((finderShowMode && typeof moreShowName === 'function') ? moreShowName(e) : finderShowName(e)).full, '으로', '로'))} 할까요?</p>`
         + '<div class="finder-show-ask-acts"><button type="button" class="is-yes font-serif-kr" data-ask="yes">이걸로 할게요</button><button type="button" class="font-serif-kr" data-ask="no">다시 고를게요</button></div>';
     ask.classList.remove('hidden');
 }

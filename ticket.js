@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261260';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -352,7 +352,7 @@ function drawTicket(ctx, data, W, slim) {
             setFont(400, PAPER_F4, SANS);
             // 옵션은 이름 옆에 작게. 자리가 모자라면 다음 줄로
             const metaInline = false, sub = [it.bookSub, it.size, it.meta].filter(Boolean).join(' · ');      // 208번: 책자 이름·번호가 작은 줄 맨 앞
-            const metaLines = sub ? wrap(sub, tw) : [];
+            const metaLines = sub ? wrap(sub.split(' · ').map(p => p.replace(/ /g, ' ')).join(' · '), tw) : [];      // 215번: 옵션 한 덩이("호텔핏(기본보다 한 폭 더)")는 한 줄에 — 끊김은 " · " 자리에서만
             const rlines = (it.reason && !slim) ? wrap(it.reason, tw) : [];
             const nameEnd = NAME_Y + (lines.length - 1) * NAME_LH;
             const textEnd = nameEnd + metaLines.length * 32 + rlines.length * 32;

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261260';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -381,7 +381,7 @@
     // 우리 집 취향 (117번): 집에 한 번. 이 공간만 다르게 고칠 때(state.tasteFor === 'room')는 같은 화면을 그 공간 값으로 씀
     function houseTasteNow() { return (typeof getHouseTaste === 'function') ? getHouseTaste() : {}; }
     // 123번: 취향은 공간마다(원단 고르기 직전). 길잡이로 온 공간(flow)도 그 공간 값으로 — 뒤로 가기로 돌아와도 같음
-    function tasteRoom() { const ed = state.editingRoom; return ed && (state.tasteFor === 'room' || ed.flow) ? ed : null; }
+    function tasteRoom() { const ed = state.editingRoom; return ed && (state.tasteFor === 'room' || ed.flow || ed.askTex) ? ed : null; }      // 215번: 수정하기에서 묻는 겉지 결도 그 공간 값으로
     function tasteNow() {
         const ht = houseTasteNow(), ed = tasteRoom();
         if (ed) return { pres: ed.ownTaste ? ed.ownPres : null, tex: ed.ownTaste ? ed.ownTex : null };
@@ -391,9 +391,15 @@
     function needSheerTaste(ed) {
         return !!(ed && (ed.items || []).some(i => i.presetType === 'sheer') && !houseTasteNow().sheer);
     }
+    // 215번: 수정하기(길잡이 아님)로 겉지가 들어가는데 이 공간 겉지 결 답이 없으면 겉지 결 한 번 (길잡이 flowPeek와 같은 조건)
+    function editTexStep(ed) {
+        if (!ed || ed.flow || !(ed.items || []).some(i => i.presetType === 'drape') || (ed.ownTaste && ed.ownTex)) return null;
+        ed.askTex = true; return "0.6-House-Tex";
+    }
+    function stepAfterTaste(ed) { return (ed.items || []).some(i => i.presetType === 'blind') ? "2-Base-BlindKind" : "3.5-Bridge"; }
     function stepAfterComp(ed) {
         if (needSheerTaste(ed)) { ed.askSheer = true; return "2-Base-SheerFeel"; }
-        return (ed.items || []).some(i => i.presetType === 'blind') ? "2-Base-BlindKind" : "3.5-Bridge";
+        return editTexStep(ed) || stepAfterTaste(ed);
     }
     // 공간 → 질문·원단 화면에서 쓰는 사본 (openRoomCart에서 꺼냄, 119번 길잡이도 씀)
     function loadEditing(target) {
@@ -1524,6 +1530,7 @@
             } else if (typeof setHouseTaste === 'function') {
                 setHouseTaste(key, val);
             }
+            if (forRoom && ed.askTex) { ed.askTex = false; state.tasteFor = null; goToStep(stepAfterTaste(ed)); return; }      // 215번: 수정하기의 겉지 결 답 → 원단(블라인드면 종류)으로, 길잡이로 빠지지 않음
             if (forRoom) {
                 saveOwnTaste(ed);
                 state.tasteFor = null; flowNext(); return;      // 123번: 길잡이가 다음(결 → 원단)
@@ -1885,7 +1892,7 @@
                 });
                 state.pendingItemQueue = state.editingRoom.items;
                 state.currentItemIndex = 0;
-                goToStep("3.5-Bridge");
+                goToStep(stepAfterComp(state.editingRoom));      // 215번
                 return;
             }
 
@@ -1954,7 +1961,7 @@
                     });
                     state.pendingItemQueue = state.editingRoom.items;
                     state.currentItemIndex = 0;
-                    goToStep("3.5-Bridge");
+                    goToStep(stepAfterComp(state.editingRoom));      // 215번
                 }
                 return;
             }
@@ -1970,7 +1977,7 @@
                 });
                 state.pendingItemQueue = state.editingRoom.items;
                 state.currentItemIndex = 0;
-                goToStep("3.5-Bridge");
+                goToStep(stepAfterComp(state.editingRoom));      // 215번
                 return;
             }
 
@@ -2021,8 +2028,7 @@
             }
             state.editingRoom.sheerFeel = feel;
             state.editingRoom.askSheer = false;
-            const hasBlind = (state.editingRoom.items || []).some(i => i.presetType === 'blind');
-            goToStep(hasBlind ? "2-Base-BlindKind" : "3.5-Bridge");
+            goToStep(editTexStep(state.editingRoom) || stepAfterTaste(state.editingRoom));      // 215번: 속지 결 다음 (겉지 결) → 블라인드 종류 → 원단. stepAfterComp를 다시 부르지 않음(속지 결 되풀이 막기)
         },
         selectBlindKind: function(kind) {
             if (state.editingRoom && state.editingRoom.flow) {      // 123번: 이 공간에만 담고 다음으로
@@ -2363,6 +2369,13 @@
         showProposalFromRooms: function(masterRooms, installFee) {
             window.concierge.loadFromMaster(masterRooms, installFee);
             stepHistory.length = 0;
+            const waitRoom = state.roomsCart.find(r => r.pickPending || r.altBuilding);      // 215번: 손님 "최종 제안 보기"(goToCheckout, 167번)와 같은 막기 — 둘째 줄 만드는 중·고르기 전 공간이 있으면 그 공간 화면으로
+            if (waitRoom) {
+                state.activeSpaceId = waitRoom.id; state.spaceViewAll = false;
+                goToStep("1-Space", false);
+                spaceToast(`${waitRoom.name}: 두 구성 중 하나를 골라 주세요`);
+                return;
+            }
             goToStep("7-Final-Dossier", false);
         },
         // 새 상담 시작: 고객 입력 내용을 모두 비움

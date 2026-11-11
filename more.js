@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261260';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // more.js — 고객 화면 중심 화면 › 더 보기(20번 4단계 · 72번): 카드 ↔ 색 지도, 조건·순서·잇는 방향, 후보 1~4, 후보 비교하기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -70,6 +70,11 @@ function spaceMoreFit(e, room) {
     return calculateFabricMatchScore(e.view, room, cat) + roomLinkBonus({ light: e.L, a: e.a, b: e.b }, linkRoom);
 }
 const moreEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+// 215번(182번 이어서): 더 보기 카드·점 판·나란히 보기 색 이름도 손님 화면 이름 하나(custColorName — 원단 카드·공간 화면·제안서와 같음)
+function moreShowName(e) {
+    const cc = (e && e.fabricId && e.color && typeof custColorName === 'function') ? custColorName(e.fabricId, e.color) : '';
+    return finderShowName(cc ? Object.assign({}, e, { label: cc }) : e);
+}
 function renderSpaceMore() {
     const ov = document.getElementById('spaceMore'), d = spaceMore && spaceMoreData();
     if (!ov || !d) { closeSpaceMore(); return; }
@@ -181,7 +186,7 @@ function spaceMoreCardsHtml(d) {
     if (d.cur) list = [d.cur].concat(list);
     // 72번: 별표 대신 카드 아무 데나 누르면 후보에 담김(사진 넘기는 점은 그대로). 담긴 카드는 먹선 테두리 + 오른쪽 위 번호
     const card = e => {
-        const n = finderShowName(e), isCur = e.key === d.curKey, no = spaceMore.stars.indexOf(e.key) + 1;
+        const n = moreShowName(e), isCur = e.key === d.curKey, no = spaceMore.stars.indexOf(e.key) + 1;
         const photo = photoFor(e.fabricId, e.color);
         const colorPage = `<div class="finder-sw-page${e.hex ? '' : ' is-none'}"${e.hex ? ` style="background:${e.hex}"` : ''}>${e.hex ? '' : '<span>샘플북</span>'}</div>`;
         return `<article class="finder-card more-card${isCur ? ' is-current' : ''}${no ? ' is-on' : ''}${e.key === spaceMore.focus ? ' is-focus' : ''}"${isCur ? '' : ` data-mstar="${moreEsc(e.key)}" aria-pressed="${!!no}"`}>`
@@ -254,7 +259,7 @@ function spaceMoreSheetHtml(d) {
     if (!spaceMore.sheet || spaceMore.view !== 'map') return '';
     const e = d.all.find(x => x.key === spaceMore.sheet);
     if (!e) return '';
-    const cur = d.cur, n = finderShowName(e), isCur = e.key === d.curKey, st = spaceMore.stars.includes(e.key), photo = photoFor(e.fabricId, e.color);
+    const cur = d.cur, n = moreShowName(e), isCur = e.key === d.curKey, st = spaceMore.stars.includes(e.key), photo = photoFor(e.fabricId, e.color);
     let word = '지금 고른 색입니다.';
     if (!isCur && cur && cur.L != null && e.L != null && cur.b != null && e.b != null) {
         const lw = e.L > cur.L + 1 ? '밝고' : (e.L < cur.L - 1 ? '진하고' : '비슷한 밝기에');

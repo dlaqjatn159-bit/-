@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261260';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261260';
+const REDAM_BUILD = '20261261';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -635,6 +635,7 @@ function collectConsultation() {
             name: r.name, sunlight: r.sunlight, lightLevel: r.lightLevel, floorTone: r.floorTone, wallTone: r.wallTone, mood: r.mood, wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
             roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed,
             curtainConfig: roomCurtainConfig(r), ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 구성(커튼 줄에서 읽음)·이 공간만 다르게 (115번)
+            planComp: r.planComp || null, planPicked: !!r.planPicked, compOk: !!r.compOk,      // 품목을 다 뺀(상담 전) 공간의 정한 구성 — 앱을 다시 열어도 답 한 줄 느낌·지난 구성 회색 그대로 (215번)
             measuredColor: r.measuredColor || null,          // 방 색 재기로 잰 벽·바닥 색 (사진은 저장 안 함)
             altLine: r.altLine ? Object.assign({}, r.altLine, { curtains: (r.altLine.curtains || []).map(c => { const x = Object.assign({}, c); delete x.calc; return x; }) }) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번: 둘째 줄 후보 (안 고른 줄도 기록에)
             techGaps: (typeof colorTechGaps === 'function' && r.measuredColor) ? colorTechGaps(r.measuredColor) : null,      // 후보 0인 색 기법 (96번, 원단 들일 근거 · 화면엔 안 씀)
@@ -818,6 +819,7 @@ function loadHistoryItem(id) {
     applySnapshot(item.snapshot);
     finderTarget = null; finderView = 'grid'; resetFinderFilters(true);       // 원단 찾기의 넣을 칸·거름망은 상담 하나 동안만
     renderRooms();
+    calculateAll();      // 불러온 뒤 견적란 품목 금액·산출수량·공간 소계를 채움 — renderRooms가 0원·-로 다시 그림 (215번)
     renderHistory();
     warnIfQuoteFabricsMissing();
     showToast('상담을 불러왔습니다. 현재 단가표 기준으로 다시 계산했습니다.', 'info');
@@ -1658,8 +1660,8 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
         if (expEl) expEl.value = globalInstallFee;
     }
 
-    calculateAll();
     renderRooms();
+    calculateAll();      // 그린 뒤에 계산해야 품목 칸이 0원으로 안 남음 (215번)
 };
 
 
