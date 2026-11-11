@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261263';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -973,6 +973,16 @@ const DevicePhotos = (() => {
         const folder = Object.keys(SCENE_PHOTOS).find(k => SCENE_PHOTOS[k].includes(stem.toLowerCase()));
         if (folder) return { scene: folder + '/' + stem.toLowerCase() };
         if (/^(mood|feel|comp|blind|tex)_/i.test(stem)) return { why: '장면 사진 이름이 아님(mood_01_cozy~mood_06_bright, feel_*, comp_*, blind_*, tex_smooth·tex_texture·tex_fluffy)' };
+        // 217번: 블라인드 걸린 사진 — 원단ID__걸린__색번호_열림.jpg / _닫힘.jpg (한 장뿐이면 원단ID__걸린__색번호.jpg). 키는 "hung/원단ID__걸린__색번호_닫힘"
+        //   색번호는 그 원단 색 목록에 없어도 받음(팥색·번호모름 — 번호를 모르는 사진). 끝이 _열림·_닫힘이 아닌데 _가 남으면(C11_가까이 등) 안 받음
+        const hm = /^(.+?)__걸린__(.+)$/.exec(stem);
+        if (hm) {
+            const hf = FABRIC_DB.find(f => String(f.id).normalize('NFC') === hm[1].trim());
+            if (!hf) return { why: '없는 원단 이름' };
+            const sm = /^(.+?)(?:_(열림|닫힘))?$/.exec(hm[2].trim());
+            if (!sm || sm[1].includes('_')) return { why: '걸린 사진 이름이 아님(원단ID__걸린__색번호_열림·_닫힘, 한 장이면 원단ID__걸린__색번호)' };
+            return { scene: 'hung/' + hf.id + '__걸린__' + sm[1] + (sm[2] ? '_' + sm[2] : '') };
+        }
         const at = stem.lastIndexOf('__');
         const id = (at > 0 ? stem.slice(0, at) : stem).trim();
         const color = at > 0 ? normalizeColorName(stem.slice(at + 2)) : '';
@@ -1012,6 +1022,29 @@ const DevicePhotos = (() => {
         totalSize: () => Object.values(info).reduce((a, x) => a + (x.size || 0), 0)
     };
 })();
+
+// 217번: 블라인드 걸린 사진(삼보텍스 카탈로그, 기기에만) — 원단 고르기 카드 안 작은 판. 고른 색에 맞는 사진 한 벌 { tag, closed, open, one } 또는 null
+//   번호를 아는 사진(그 원단 색 목록에 있는 번호) 중 잰 색값(밝기·붉은기·노란기) 거리가 가장 가까운 것. 고른 색을 안 쟀으면 번호순 첫째.
+//   번호를 아는 사진이 없으면, 번호를 모르는 사진(팥색·번호모름 등)이 그 원단에 한 벌뿐일 때만 그것.
+function hungPhotoSet(fabricId, colorName) {
+    if (typeof DevicePhotos === 'undefined' || !fabricId) return null;
+    const pre = 'hung/' + fabricId + '__걸린__', sets = {};
+    DevicePhotos.keys().forEach(k => {
+        if (k.indexOf(pre) !== 0) return;
+        const m = /^(.+?)(?:_(열림|닫힘))?$/.exec(k.slice(pre.length));
+        if (!m) return;
+        const s = sets[m[1]] = sets[m[1]] || { tag: m[1], closed: '', open: '', one: '' };
+        s[m[2] === '열림' ? 'open' : (m[2] === '닫힘' ? 'closed' : 'one')] = DevicePhotos.sceneUrl('hung', k.slice(5));
+    });
+    const all = Object.values(sets);
+    if (!all.length) return null;
+    const known = all.filter(s => fabricColorOf(fabricId, s.tag)).sort((x, y) => x.tag.localeCompare(y.tag, 'ko', { numeric: true }));
+    if (!known.length) return all.length === 1 ? all[0] : null;
+    const p = fabricColorOf(fabricId, colorName);
+    if (!colorHasLab(p)) return known[0];
+    const d = s => { const c = fabricColorOf(fabricId, s.tag); return colorHasLab(c) ? Math.hypot(c.light - p.light, c.a - p.a, c.b - p.b) : Infinity; };
+    return known.slice().sort((x, y) => d(x) - d(y))[0];
+}
 
 // 사진 파일을 못 찾으면 다음 확장자를 시도하고, 모두 없으면 사진 칸을 없앰
 function photoFallback(el) {

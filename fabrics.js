@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261263';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabrics.js — 직원 화면 › 원단: 원단 분류(톤·분위기) 편집·원단 색상 관리·되돌리기/중복 정리 버튼·원단 사진 확인·기기 사진 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -372,7 +372,7 @@ function renderDevicePhotos() {
     if (clearBtn) clearBtn.hidden = !keys.length;
     if (!listEl) return;
     const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    const groups = {}, scenes = { mood: [], feel: [], comp: [], blind: [], tex: [] };
+    const groups = {}, scenes = { mood: [], feel: [], comp: [], blind: [], tex: [], hung: [] };      // 217번: hung = 블라인드 걸린 사진
     keys.forEach(k => {
         const sl = k.indexOf('/');
         if (sl > 0 && scenes[k.slice(0, sl)]) { scenes[k.slice(0, sl)].push(k); return; }      // 분위기·속지 느낌·창 구성·블라인드 종류 사진 (34·38번)
@@ -380,10 +380,11 @@ function renderDevicePhotos() {
     });
     const num = s => /^\d+$/.test(s) ? Number(s) : Infinity;
     const chip = (key, label) => `<button type="button" class="dev-photo-chip" title="이 사진 지우기" onclick="removeDevicePhoto('${esc(key)}')">${esc(label)}<i aria-hidden="true">×</i></button>`;
-    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진', comp: '창 구성 사진', blind: '블라인드 종류 사진', tex: '겉지 결 사진' };
+    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진', comp: '창 구성 사진', blind: '블라인드 종류 사진', tex: '겉지 결 사진', hung: '블라인드 걸린 사진' };
     const sceneRows = Object.keys(scenes).filter(k => scenes[k].length).map(k => {
-        const order = SCENE_PHOTOS[k];
-        const chips = scenes[k].sort((a, b) => order.indexOf(a.split('/')[1]) - order.indexOf(b.split('/')[1])).map(key => chip(key, key.split('/')[1])).join('');
+        const order = SCENE_PHOTOS[k] || [];      // 217번: 걸린 사진(hung)은 정해진 이름이 없어 이름순, 칩 글자는 "콤비_테라_암막 RR-317_닫힘"
+        const nm = key => key.split('/')[1];
+        const chips = scenes[k].sort((a, b) => (order.indexOf(nm(a)) - order.indexOf(nm(b))) || nm(a).localeCompare(nm(b), 'ko', { numeric: true })).map(key => chip(key, k === 'hung' ? nm(key).replace('__걸린__', ' ') : nm(key))).join('');
         return `<div class="dev-photo-row"><span>${SCENE_LABEL[k]}</span><span class="dev-photo-chips">${chips}</span></div>`;
     }).join('');
     listEl.innerHTML = sceneRows + Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })).map(id => {

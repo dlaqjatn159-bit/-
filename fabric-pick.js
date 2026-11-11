@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261263';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -65,6 +65,16 @@
         if (cw && name.length > cw[0].length) { name = name.slice(0, -cw[0].length); colorTag = colorTag || cw[1]; }
         return { name, colorTag };
     }
+    // 217번: 블라인드 걸린 사진 판 — 카드 왼쪽 아래 작은 판. 이름표·설명 없음(레이아웃이 설명)
+    //   열림·닫힘 두 장이면 닫힘 먼저, 사진을 누르면 0.25초 겹쳐 바뀜(카드 고르기로 안 넘어감). 한 장이면 누름 없음(누르면 카드를 누른 것과 같음)
+    function hungPhotoHtml(fabId, pick) {
+        const set = (typeof hungPhotoSet === 'function') ? hungPhotoSet(fabId, pick) : null;
+        if (!set) return '';
+        const first = set.closed || set.one || set.open, second = (set.closed && set.open) ? set.open : '';
+        const tag = String(set.tag).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        if (!second) return `<div class="hung-photo is-one" data-set="${tag}" aria-hidden="true"><img alt="" src="${first}"></div>`;
+        return `<div class="hung-photo" data-set="${tag}" role="button" aria-label="블라인드 올리고 내려 보기" onclick="event.stopPropagation(); this.classList.toggle('is-open')"><img alt="" src="${first}"><img class="is-alt" alt="" src="${second}"></div>`;
+    }
     function fabricCardHtml(f, best, idx, pick, queueItem, targetCategory) {
         const order = colorDeckOrder(best), n = order.length;
         const { name, colorTag } = splitNameColor(f, colorTagOf(f, pick, n));
@@ -78,6 +88,7 @@
         h += '<div class="bookmark-gradient fab-gradient"></div>';
         const mini = fabricMiniSvg(f.id, pick);      // 137번: 카드마다 작은 창 그림 (색을 잰 공간일 때만)
         if (mini) h += `<div class="room-mini-box card-mini" aria-hidden="true">${mini}</div>`;
+        if (targetCategory === '블라인드') h += hungPhotoHtml(f.id, pick);      // 217번: 블라인드 카드에만
         // 138번: 아래 띠 가로쓰기 — 1줄 이름 + 색 이름(같은 줄), 오른쪽 끝 견본 칩 / 2줄 원단 차이 한 줄
         h += `<div class="fab-band${isLast ? ' is-last' : ''}"><div class="fab-hrow">`;
         h += `<h3 class="fab-hname font-serif-kr">${name}${colorTag ? ` <span class="fab-hcolor">${colorTag}</span>` : ''}</h3>`;
@@ -294,6 +305,13 @@
             b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
         });
         syncMoreChip(panel);
+        // 217번: 걸린 사진 판 — 고를 사진이 바뀔 때만 갈아 끼움(같은 사진이면 열림·닫힘 그대로). 0.25초 겹쳐, 빨리 여러 번 눌러도 나가는 판은 하나만
+        const hNow = card.querySelector('.hung-photo:not(.is-leaving)'), hNext = next.querySelector('.hung-photo');
+        if ((hNow ? hNow.getAttribute('data-set') : '') !== (hNext ? hNext.getAttribute('data-set') : '')) {
+            card.querySelectorAll('.hung-photo.is-leaving').forEach(el => el.remove());
+            if (hNext) { hNext.classList.add('is-in'); card.insertBefore(hNext, card.querySelector('.fab-band')); }
+            if (hNow) { hNow.classList.add('is-leaving'); setTimeout(() => hNow.remove(), 260); }
+        }
         const token = (panel.__swap || 0) + 1;
         panel.__swap = token;
         card.querySelectorAll('.fabric-photo').forEach(img => { img.removeAttribute('data-pending'); img.setAttribute('data-color', colorName || ''); });

@@ -3289,3 +3289,14 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .msr-stage:has(.pane-block) .measure-box.msr-box { padding: 16px 0 20px; }
 .dos-panes-k { margin-right: 0.15rem; font-family: var(--sans); font-size: 15px; color: var(--muted); }
 .dos-panes b { font-weight: 600; }
+
+/* 217번: 블라인드 걸린 사진 판 — 원단 카드 왼쪽 아래(띠 위 24px, 띠 글자와 같은 왼쪽 30px), 폭 42%(최대 200px) · 4:5. 색은 카드 바탕(잰 색)이 주인 */
+.hung-photo { position: absolute; left: 30px; bottom: calc(var(--band-h, 120px) + 24px); z-index: 5; width: min(42%, 200px); aspect-ratio: 4 / 5; overflow: hidden; box-shadow: 0 0 0 1px rgba(43, 34, 26, 0.14); background: rgba(255, 255, 255, 0.25); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.hung-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; transition: opacity 0.25s ease; }
+.hung-photo img.is-alt, .hung-photo.is-open img { opacity: 0; }
+.hung-photo.is-open img.is-alt { opacity: 1; }
+.hung-photo.is-one { pointer-events: none; cursor: default; }
+.hung-photo.is-in { animation: hungIn 0.25s ease both; }
+.hung-photo.is-leaving { opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
+@keyframes hungIn { from { opacity: 0; } to { opacity: 1; } }
+
