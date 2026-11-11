@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261264';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261265';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -128,7 +128,8 @@
         let dh = Math.abs(Math.atan2(fab.b, fab.a) - Math.atan2(w.b, w.a)) * 180 / Math.PI; if (dh > 180) dh = 360 - dh;
         const same = (fab.C < 6 && w.C < 6) || (fab.C >= 6 && w.C >= 6 && dh <= 30);
         if (same && Math.abs(fab.L - w.L) < 8) return '벽과 같은 색';
-        if (!same && fl && de(fl) < de(w)) return '바닥 쪽 따뜻한 색';
+        const cool = fab.fam === 'mint' || fab.fam === 'blue' || fab.fam === 'lavender';      // 219번: 색 기운이 찬 원단(데님 등)엔 '따뜻한'을 안 붙임 → 아래 밝기 말로
+        if (!same && !cool && fl && de(fl) < de(w)) return '바닥 쪽 따뜻한 색';
         return fab.L > w.L ? '벽보다 밝은 색' : '벽보다 짙은 색';
     }
     function fabricDiffWords() {

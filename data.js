@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261264';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261265';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -2143,13 +2143,15 @@ function pointPopBonus(c) {
 //  - 약하게: 이어주는 색(+1.5)보다 작게. 시험 칸에서 켜고 끄며 비교(window.LIGHT_FIX_ON)
 const LIGHT_FIX_WEIGHT = 1;
 if (typeof window !== 'undefined' && window.LIGHT_FIX_ON === undefined) window.LIGHT_FIX_ON = true;
-// 180번: 찬 회색 — 색 사전(88번) 계열이 쿨 그레이, 또는 블루·그린 계열인데 색 기운이 적은(채도 12 미만) 색. 북쪽 빛에서 더 푸르고 짙게 보임
+// 180번: 찬 회색 — 색 사전(88번) 계열이 쿨 그레이, 또는 블루·그린 계열인데 색 기운이 적은(채도 12 미만) 색. 북쪽 빛에서 더 푸르고 짙게 보임 · 아주 짙은 색·또렷한 색은 뺌(219번)
 //  c: 원단 색(light·a·b) 또는 잰 색(L·a·b)
 function isCoolGray(c) {
     const L = c && (typeof c.L === 'number' ? c.L : c.light);
     if (!c || typeof L !== 'number' || typeof c.a !== 'number' || typeof c.b !== 'number' || typeof proColorName !== 'function') return false;
     const p = proColorName(L, c.a, c.b);
     if (!p) return false;
+    // 219번: 아주 짙은 색(색 사전 이름의 기준 밝기 35 아래 — 다크 차콜·잉크 블랙·네이비 등)·또렷한 색은 찬 회색이 아님
+    if (p.L < 35 || (typeof pointVivid === 'function' && pointVivid({ L: L, a: c.a, b: c.b }))) return false;
     return p.fam === 'cool' || ((p.fam === 'blue' || p.fam === 'green') && Math.hypot(c.a, c.b) < 12);
 }
 function lightFixBonus(c, room) {

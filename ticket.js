@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261264';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261265';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -760,7 +760,7 @@ function whyChoseOf(facts, candsList, R, heard) {
 function whySetsOf(data) {
     const out = [], used = {}, shown = [];
     const nFab = data.rooms.reduce((a, r) => a + (r.diagnosed ? r.items.filter(i => i.fabricId).length : 0), 0);
-    const MAX = nFab >= 6 ? 1 : 2;      // 원단 줄은 원단마다 2문장까지, 원단이 6개 이상이면 1문장 (83번)
+    const MAX = nFab >= 6 ? 1 : 2;      // 원단 줄은 원단마다 2문장까지, 원단이 6개 이상이면 1문장 (83번) · D0은 한도와 따로(219번)
     const say = c => {
         const n = used[c.id] || 0, t = c.t[n] || null;
         if (t) used[c.id] = n + 1;
@@ -783,7 +783,7 @@ function whySetsOf(data) {
             // 재료마다 하나씩 먼저(C → D → O3/T → P), 자리가 남으면 C·T의 두 번째. 고른 뒤에는 원래 순서대로 놓음
             const picked = [], per = {};
             [1, 2].forEach(pass => pool.forEach((x, i) => {
-                if (picked.length >= MAX || picked.some(p => p.i === i)) return;
+                if ((x.id !== 'D0' && picked.filter(p => p.id !== 'D0').length >= MAX) || picked.some(p => p.i === i)) return;      // 219번: D0(북쪽 창 + 찬 회색, 180번)은 문장 수 한도와 따로 붙임
                 if ((per[x.g] || 0) >= (pass === 1 ? 1 : (x.g === 'C' || x.g === 'T' ? 2 : 1))) return;
                 const t = x.g === 'B' ? x.t[0] : say(x);
                 if (t) { picked.push({ i, t, id: x.id }); per[x.g] = (per[x.g] || 0) + 1; }
