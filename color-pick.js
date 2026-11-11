@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261265';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261266';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -114,6 +114,17 @@
             }
             if (item.presetType === 'drape') {
                 if (!roomHasLab(ed)) return null;
+                if (presOf(ed) === 'point' && typeof seatDrapeTechs === 'function') {      // 220번: 포인트는 방식 묶음. 방식이 둘 이상이면 맨 끝에 '맡길게요' 묶음(모든 방식의 원단, 방식 차례)
+                    const t = seatDrapeTechs(room);
+                    if (!t) return null;
+                    const list = t.seats.slice();
+                    if (list.length > 1) {
+                        const seen = new Set(), fabrics = [];
+                        list.forEach(y => y.fabrics.forEach(f => { const k = f.id + '__' + f.color; if (!seen.has(k)) { seen.add(k); fabrics.push(f); } }));
+                        list.push({ key: 'all', all: true, name: '', hex: list[0].hex, L: list[0].L, a: list[0].a, b: list[0].b, tech: null, n: fabrics.length, fabrics });
+                    }
+                    return { kind: 'drape', list, at: 0, house: t.house, feel: 'point', tech: true };
+                }
                 const r = typeof seatDrape === 'function' ? seatDrape(room, presOf(ed)) : null;
                 return r && r.seats && r.seats.length ? { kind: 'drape', list: r.seats, at: r.at || 0, house: r.house, feel: r.feel } : null;
             }
@@ -128,7 +139,7 @@
         const key = (state.editingRoomId || '') + '_' + state.currentItemIndex;
         if (!state.cp || state.cp.key !== key) {
             const r = result(cur()), it = cur();
-            const s = { key, view: 'sheet', seat: r ? r.at : 0, fab: 0, alt: null, anim: false };
+            const s = { key, view: (r && r.tech && r.list.some(y => y.all)) ? 'ask' : 'sheet', seat: r ? r.at : 0, fab: 0, alt: null, anim: false, chip: 0 };      // 220번: 포인트는 방식 질문부터(방식이 하나면 설명 한 장부터)
             // 이미 고른 원단이 있으면(뒤로 와서·다시 상담) 그 자리·그 원단을 고른 모습으로
             // 167번 둘째 줄: 첫 줄 원단이 들어 있는 자리를 첫 장으로
             const pin = it.fabricId ? { fabricId: it.fabricId, colorName: it.colorName }
@@ -171,14 +182,42 @@
     function html() {
         const r = result(cur()); if (!r) return '';
         const s = cp();
+        if (s.view === 'ask') return askHtml(r);      // 220번
         if (s.view === 'open') return openHtml(r);
         if (s.view === 'picked') return pickedHtml(r);
         if (s.view === 'map') return mapHtml(r);      // 190번
         return sheetHtml(r);
     }
+    // 220번: 포인트 방식 질문 — 블라인드와 같은 질문·같은 틀(concierge.js askStage). 방식 이름은 손님 화면에도 그대로(11-11 결정)
+    function askHtml(r) {
+        const s = cp(), picked = !!cur().fabricId;
+        return cz.askStage('포인트는 어떤 방식으로 주실까요?', '', r.list.map((y, i) => y.all
+            ? { label: '맡길게요', quiet: true, on: `window.concierge.cpTech(${i})`, was: picked && i === s.seat }
+            : { label: esc(y.name), on: `window.concierge.cpTech(${i})`, was: picked && i === s.seat }));
+    }
+    // 220번: 방식 설명 한 장의 색 칩 — 그 방식의 커튼 원단 묶음에서(서로 색 차 8 이상, 다섯까지). i = 그 색 원단의 차례
+    function chipsOf(x) {
+        const out = [];
+        ((x && x.fabrics) || []).forEach((f, i) => {
+            if (out.length >= 5 || !f.hex) return;
+            if (out.some(p => Math.hypot(p.L - f.L, p.a - f.a, p.b - f.b) < 8)) return;
+            out.push({ hex: f.hex, L: f.L, a: f.a, b: f.b, i });
+        });
+        return out;
+    }
     // 한 장: 속지 = 창밖이 비침만큼 흐려지고 원단 색이 덮음 / 겉지 = 화면 전체가 그 색(포인트만 벽·바닥 테두리)
     function sheetHtml(r) {
         const s = cp(), x = r.list[Math.min(s.seat, r.list.length - 1)];
+        if (r.tech) {      // 220번: 포인트 방식 설명 한 장 — 벽 바탕 · 커튼 색 면 · 바닥 띠 + 색 칩(누르면 면 색이 바뀜) → "이 방식으로" → 바로 원단 사진
+            const chips = chipsOf(x), k = Math.max(0, Math.min(s.chip || 0, chips.length - 1)), face = (chips[k] && chips[k].hex) || x.hex || '#efece6', ink = inkOn(face);
+            const chipRow = chips.length > 1 ? `<div class="pt-chips">${chips.map((c, i) => `<button type="button" class="pt-chip${i === k ? ' is-on' : ''}" aria-label="색 ${i + 1}" style="background:${c.hex}" onclick="concierge.cpChip(${i})"></button>`).join('')}</div><span class="pt-cap">이 방식으로 고를 수 있는 색</span>` : '';
+            const other = r.list.some(y => y.all) ? `<button type="button" class="cp-map-link" onclick="concierge.cpAsk()">다른 방식 보기</button>` : '';
+            const mcT = state.editingRoom.measuredColor || {};
+            return `<div class="cp-stage cp-sheet cp-framed" style="background:${(mcT.wall && mcT.wall.hex) || '#eee9e0'};color:${ink}">
+            <i class="cp-frame-in" style="background:${face}"></i><i class="cp-frame-floor" style="background:${(mcT.floor && mcT.floor.hex) || '#b98a5e'}"></i>
+            <div class="cp-say"><h1 class="cp-hero">${esc(x.name)}</h1><p class="cp-why">${esc((typeof POINT_TECH_DESC !== 'undefined' && POINT_TECH_DESC[x.key]) || '')}</p>${chipRow}${other}</div>
+            <div class="cp-door-at">${door('이 방식으로', 'concierge.cpOpen()')}</div></div>`;
+        }
         const names = r.list.length > 1 ? `<div class="cp-names">${r.list.map((y, i) =>
             `<button type="button" class="${i === s.seat ? 'is-on' : ''}" onclick="concierge.cpSeat(${i})">${esc(seatName(r, y))}</button>`).join('')}</div>` : '';      // 한 장뿐이면 이름 줄 없음
         const f0 = x.fabrics[0] || {};
@@ -258,7 +297,7 @@
                     return `<button type="button" class="cp-thumb${i === s.fab && !s.alt ? ' is-on' : ''}" aria-label="${esc(fabName(y.id, y.color))}" data-id="${esc(y.id)}" data-color="${esc(y.color)}" style="background-color:${y.hex || band}" onclick="concierge.cpFab(${i})"></button>`; }).join('')}</div>`).join('')}</div>` : ''}
             </div></div>`;
     }
-    // 고름: 사진은 왼쪽, 띠는 오른쪽으로 건너가며 같은 기운 그대로 어두워짐(Lab 밝기 24). 띠 안: 자리 이름(고른 것에 밝은 점) · 책자 · 원단 · 사실 · 다른 원단 보기 · 다음 →
+    // 고름: 사진은 왼쪽, 띠는 오른쪽으로 건너가며 같은 기운 그대로 어두워짐(Lab 밝기 24). 띠 안: 자리 이름(고른 것에 밝은 점) · 책자 · 원단 · 사실 · 다른 원단 보기 · 다음 → · 220번: 맡길게요는 원단의 방식 이름
     function pickedHtml(r) {
         const s = cp(), x = r.list[Math.min(s.seat, r.list.length - 1)], f = fabNow(), fab = fabOf(f.id), band = f.hex || '#efece6';
         const facts = r.kind === 'sheer' ? [SHEER_GRAIN[f.grain], SHEER_DENSITY[fab.density]] : [DRAPE_TEX[fab.texture], DRAPE_BLOCK[blackoutKey(fab)]];
@@ -266,9 +305,9 @@
         return `<div class="cp-stage cp-picked${moving ? ' is-start' : ''}">
             <div class="cp-photo" style="background:${band}"><img class="cp-img" data-id="${esc(f.id)}" data-color="${esc(f.color)}" alt=""></div>
             <div class="cp-strip cp-dark" style="background:${moving ? band : deepOf(band)};color:${moving ? inkOn(band) : 'var(--on-band)'}" data-deep="${deepOf(band)}">
-                <div class="cp-list">${r.list.map((y, i) => `<span class="${i === s.seat ? 'is-on' : ''}">${i === s.seat ? '<i></i>' : ''}${esc(seatName(r, y))}</span>`).join('')}</div>
+                <div class="cp-list">${r.list.filter(y => !y.all).map(y => { const on = y === x || (!!x.all && y.key === f.tech); return `<span class="${on ? 'is-on' : ''}">${on ? '<i></i>' : ''}${esc(seatName(r, y))}</span>`; }).join('')}</div>
                 <div class="cp-fabric">
-                    <span class="cp-book">${esc(seatName(r, x) + ' · ' + bookLine(f.id))}</span>
+                    <span class="cp-book">${esc(((x.all && typeof POINT_TECH_TERM !== 'undefined' && POINT_TECH_TERM[f.tech]) || seatName(r, x)) + ' · ' + bookLine(f.id))}</span>
                     <span class="cp-name">${esc(fabName(f.id, f.color))}</span>
                     <span class="cp-fact">${esc(facts.filter(Boolean).join(' · '))}</span>
                     <span><button type="button" class="cp-link" onclick="concierge.cpOther()">다른 원단 보기</button></span>
@@ -295,7 +334,7 @@
         const s = cp(), r = result(cur());
         // 뒤로(왼쪽 위 한 곳): 색 면 위에서는 그 면의 글자색. 열림에서는 "← 그 장 이름"(누르면 한 장으로)
         if (btn) {
-            if (s.view === 'open') { btn.style.color = getComputedStyle(stage.querySelector('.cp-strip')).color; if (r) btn.textContent = '← ' + seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]); }
+            if (s.view === 'open') { btn.style.color = getComputedStyle(stage.querySelector('.cp-strip')).color; if (r) btn.textContent = '← ' + (seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]) || '포인트 방식'); }      // 220번: 맡길게요 묶음은 이름이 없음
             else if (s.view === 'picked') btn.style.color = '#fff';
             else if (s.view === 'map') { btn.style.color = 'var(--ink)'; if (r) btn.textContent = '← ' + seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]); }      // 190번: 지도에서 ← 는 보던 색 한 장으로
             else btn.style.color = getComputedStyle(stage).color;
@@ -344,7 +383,14 @@
     function back() {
         if (state.step !== '3.5-Bridge' || !document.querySelector('.cp-stage')) return false;
         const s = cp();
-        if (s.view === 'open' || s.view === 'map') { s.view = 'sheet'; s.alt = null; rerender(); return true; }      // 190번: 지도에서도 ← 는 한 장으로
+        if (s.view === 'open' || s.view === 'map') {      // 190번: 지도에서도 ← 는 한 장으로 · 220번: 맡길게요 묶음의 열림은 방식 질문으로
+            const r0 = result(cur()), x0 = r0 && r0.list[Math.min(s.seat, r0.list.length - 1)];
+            s.view = (x0 && x0.all) ? 'ask' : 'sheet'; s.alt = null; rerender(); return true;
+        }
+        if (s.view === 'sheet') {      // 220번: 방식 설명 한 장 → 방식 질문 (방식이 하나뿐이면 앱의 뒤로 가기)
+            const r0 = result(cur());
+            if (r0 && r0.tech && r0.list.some(y => y.all)) { s.view = 'ask'; rerender(); return true; }
+        }
         return false;
     }
     // 다음: 칸에 적고 다음 칸으로(옛 pickQueueFabric 그대로). 속지 → 겉지는 띠가 그대로 왼쪽으로 밀고 나가며 겉지 색 한 장을 데려옴(D안)
@@ -382,6 +428,10 @@
             s.view = 'picked'; s.anim = true; rerender();
         },
         cpOther: () => { const s = cp(); s.view = 'open'; rerender(); },
+        // 220번: 포인트 방식 — 방식 고르기(맡길게요 묶음은 바로 열림) · 방식 질문으로 · 색 칩(면 색과 열림 첫 원단을 그 색으로)
+        cpTech: i => { const r = result(cur()), s = cp(), y = r && r.list[i]; if (!y) return; s.seat = i; s.fab = 0; s.chip = 0; s.alt = null; s.view = y.all ? 'open' : 'sheet'; rerender(); },
+        cpAsk: () => { const s = cp(); s.view = 'ask'; s.alt = null; rerender(); },
+        cpChip: i => { const s = cp(), c = chipsOf(seatNow())[i]; if (!c) return; s.chip = i; s.fab = c.i; s.alt = null; rerender(); },
         cpNext: () => next()
     });
 
@@ -404,7 +454,8 @@
             if (kind === '속지') { const d = fabOf(fabricId).density; return (d && WHY.sheer[d]) || ''; }      // 빛 한 장의 장 = 원단 비침(density)
             if (kind !== '겉지') return '';
             const rm = cz.roomWithTaste ? cz.roomWithTaste(room) : room;
-            const r = typeof seatDrape === 'function' ? seatDrape(rm, presOf(room)) : null;
+            const pres = presOf(room);      // 220번: 포인트는 방식 묶음에서 찾음(문장은 그 방식의 지금 문장 그대로)
+            const r = (pres === 'point' && typeof seatDrapeTechs === 'function') ? seatDrapeTechs(rm) : (typeof seatDrape === 'function' ? seatDrape(rm, pres) : null);
             if (!r || !r.seats || !r.seats.length) return '';
             // 고른 원단이 들어 있는 자리: 같은 색 먼저, 없으면 그 자리 색의 "한 톤 짙게" 짝(darkerPair)으로 고른 색일 때만
             //  213번: 예전엔 같은 원단이면 아무 색이나 그 자리 말을 빌려 써서, 직원 화면에서 색을 바꾸면 바꾸기 전 색의 이유가 붙었음 → 짝이 아니면 '' (ticket.js 계산 문장으로)

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261265';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261266';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1500,7 +1500,7 @@ function colorTechGaps(mc) {
 const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog', 'sat'], warm: ['warm'], cool: ['cool'], opp: ['opp'],      // opp = 뉴트럴 집 반대 온도 (101번, '색 하나 더'에만)
     tint: ['tint'], analog: ['analog'], sat: ['sat'], split: ['split'], comp: ['comp'] };      // 120번: 손님이 고른 기법 하나
 // 포인트 기법 (120번): 손님 화면 답은 용어 그대로, 순한 것부터. 이유 문장은 용어 + 풀이
-const POINT_TECH_TERM = { tint: '톤인톤', analog: '유사색', sat: '채도 대비', split: '분열보색', comp: '보색', opp: '반대 온도', warm: '웜 포인트', cool: '쿨 포인트' };
+const POINT_TECH_TERM = { tint: '톤인톤', analog: '유사색', sat: '채도 대비', split: '분열보색', comp: '보색', opp: '반대 온도', warm: '웜 포인트', cool: '쿨 포인트', value: '밝기 대비' };      // 220번: 밝기 대비(커튼 겉지 방식 화면)
 const POINT_TECH_SAY = {
     tint: '톤인톤 · 공간과 같은 차분함은 지키고 색만 살짝 바꾼 색',
     analog: '유사색 · 공간 색 바로 옆이라 어울리면서도 새로워 보이는 색',
@@ -1529,7 +1529,8 @@ const POINT_TECH_DESC = {
     comp: '색상환에서 맞은편에 있는 색을 쓰는 방식입니다. 가장 또렷하게 눈길을 모읍니다.',
     opp: '따뜻한 색에는 차가운 색을, 차가운 색에는 따뜻한 색을 더하는 방식입니다. 온도감에 변화를 줍니다.',
     warm: '흰색·회색처럼 색이 적은 바탕에 따뜻한 색을 더하는 방식입니다. 온기를 줍니다.',
-    cool: '흰색·회색처럼 색이 적은 바탕에 차가운 색을 더하는 방식입니다. 맑고 산뜻한 기운을 줍니다.'
+    cool: '흰색·회색처럼 색이 적은 바탕에 차가운 색을 더하는 방식입니다. 맑고 산뜻한 기운을 줍니다.',
+    value: '색보다 밝기 차이를 크게 두는 방식입니다. 짙은 색 하나로 창을 또렷하게 잡아 줍니다.'      // 220번 (11-11 사장님)
 };
 // 포인트 방식 설명 화면 (146번): 그 방식으로 고를 수 있는 원단 색 몇 개(색이 서로 겹치지 않게)와 쉬운 풀이
 function pointTechPreview(mc, category, key, n) {
@@ -1665,7 +1666,7 @@ function seatWeight(mc, cols, room) {
 //  후보: 색 있는 집 = 기법 표(톤인톤·유사색·채도 대비·분열보색·보색)의 겉지 색(채도 45 이하), 무채색·중성 집 = 또렷한 색(pointVivid) 중 채도 12~40
 //  기법 이름은 색마다 그대로 붙음(이유 한 줄·사장님 쪽 이름표). 얼굴 = 그 띠에서 원단이 가장 많은 이름, 같으면 띠 가운데에 가까운 이름
 function seatWallDE(w, c) { return Math.sqrt(Math.pow(c.L - w.L, 2) + Math.pow(c.a - w.a, 2) + Math.pow(c.b - w.b, 2)); }
-function seatPoint(mc, cols, room) {
+function seatPoint(mc, cols, room, poolOnly) {      // 220번: poolOnly면 세기로 나누기 전의 후보 색 묶음(tech · e 붙음)만 돌려줌
     let r = null;
     try { r = colorTechCounts(mc); } catch (e) { r = null; }
     if (!r) return [null, null, null];
@@ -1707,6 +1708,7 @@ function seatPoint(mc, cols, room) {
     const seen = new Set();
     pool = pool.filter(c => { const k = c.id + '__' + c.color; if (seen.has(k)) return false; seen.add(k); return true; })
         .map(c => Object.assign(c, { e: seatWallDE(w, c) }));
+    if (poolOnly) return pool;      // 220번: 방식 묶음(seatDrapeTechs)이 씀
     // 209번: 과감히 자리에 와야 할 계열이 짙은 찬색(딥 그린·네이비)인데 그 계열 원단이 후보에 하나도 없으면 → 그 목표 색에 가장 가까운 이름을 얼굴로, 손님 장에 한 줄
     let lack = null;
     try { const wb = pointWants(mc, room, r).bold; if (wb.t && POINT_NEAR_SAY[wb.want] && !pool.some(c => pointFamilyOf(c) === wb.want)) lack = wb; } catch (e) { lack = null; }
@@ -1733,6 +1735,26 @@ function seatPoint(mc, cols, room) {
         if (out && key === 'bold' && lack) out.near = POINT_NEAR_SAY[lack.want];      // 209번: 손님 장 한 줄 (color-pick.js)
         return out;
     });
+}
+// 220번: 겉지 포인트 방식 자리 — seatPoint와 같은 후보 색을 세기가 아니라 방식(기법)마다 묶음. 손님이 방식을 먼저 고름(11-11 결정)
+//  색 있는 집: 톤인톤·유사색·채도 대비·분열보색·보색 / 무채색·중성 집(1109g): 숨은 기운 쪽(웜·쿨 포인트, 기운이 없으면 톤인톤)·반대 온도·밝기 대비
+//  → { feel: 'point', house, seats: [{ key: 방식, name: 방식 이름, hex·L·a·b: 가장 또렷한 색, fabrics }], at: 0 } · 후보가 없으면 null. 원단은 방식마다 한 번(가장 또렷한 색)
+function seatDrapeTechs(room) {
+    const mc = room && room.measuredColor;
+    if (!mc || !seatLabOk(mc.wall) || !seatLabOk(mc.floor)) return null;
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    if (!r) return null;
+    const pool = (seatPoint(mc, seatPoolColors('겉지', room), room, true) || []).filter(Boolean);
+    const ORDER = ['tint', 'warm', 'cool', 'analog', 'sat', 'opp', 'split', 'comp', 'value'];      // 순한 것부터 (120번 차례에 맞춤)
+    const seats = ORDER.map(k => {
+        const all = pool.filter(c => c.tech === k).sort((x, y) => Math.hypot(y.a, y.b) - Math.hypot(x.a, x.b));      // 또렷한 순 (160번)
+        const items = [], fids = new Set();
+        all.forEach(c => { if (!fids.has(c.id)) { fids.add(c.id); items.push(Object.assign({}, c, { d: items.length })); } });
+        if (!items.length) return null;
+        return seatOut(k, POINT_TECH_TERM[k], 'tech', { name: POINT_TECH_TERM[k], n: items.length, items, rep: items[0] }, room);
+    }).filter(Boolean);
+    return seats.length ? { feel: 'point', house: r.house, seats, at: 0 } : null;
 }
 // 겉지 세 자리. room: 공간(measuredColor 벽·바닥 필요), feel: 'calm' | 'weight' | 'point'(없으면 room.ownPres)
 //  → { feel, house, seats: [자리…](못 채운 자리는 빼서 두 장일 수 있음), gaps: [못 채운 자리 이름], at: 첫 장 번호 }. 못 하면 null

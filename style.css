@@ -3108,6 +3108,11 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .pt-chips { display: flex; gap: 6px; }
 .pt-chip { display: block; width: 28px; height: 28px; border-radius: 2px; }
 .pt-cap { font-size: var(--t-small); color: var(--muted); }
+/* 220번: 커튼 포인트 방식 설명 한 장 위의 색 칩 — 손가락으로 누르는 크기, 글자색은 면 위 글자색을 따름 */
+.cp-say .pt-chips { gap: 12px; margin-top: 8px; }
+.cp-say .pt-chip { width: 44px; height: 44px; padding: 0; border: 1px solid currentColor; cursor: pointer; }
+.cp-say .pt-chip.is-on { outline: 2px solid currentColor; outline-offset: 3px; }
+.cp-say .pt-cap { color: inherit; opacity: 0.75; }
 
 /* 146번: 밤 장 조명 카드 두 자리 (스탠드 · 라인조명) */
 .fin-night-cards { display: flex; flex-direction: column; gap: 28px; }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261265';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261266';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1524,7 +1524,7 @@
     function playIntro(then) { return cz.playIntro(then); }
 
     // 130-4: 나뉜 파일이 쓰는 이 파일의 상태·함수
-    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, takeLine, putLine, swapLine, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab, paneBlockHtml });      // 216번: paneBlockHtml
+    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, takeLine, putLine, swapLine, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab, paneBlockHtml, askStage });      // 216번: paneBlockHtml · 220번: askStage
 
     window.concierge = {
         // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
