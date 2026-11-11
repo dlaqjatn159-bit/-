@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261263';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261264';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -906,14 +906,14 @@ function repoPhotoUrls(id, color) {
 // 분위기·속지 느낌·창 구성·블라인드 종류 장면 사진 이름 (photos/mood/, photos/feel/, photos/comp/, photos/blind/의 기본값. 같은 이름으로 기기에 넣으면 그것이 먼저 — 34·38번)
 const SCENE_PHOTOS = {
     mood: ['mood_01_cozy', 'mood_02_clean', 'mood_03_subtle', 'mood_04_natural', 'mood_05_warm', 'mood_06_bright'],
-    feel: ['feel_smooth', 'feel_textured', 'feel_cozy', 'feel_linen'],      // 191번: 린넨 장면 — 기기에 feel_linen.jpg를 넣으면 그것, 없으면 임시로 feel_cozy 사진(SCENE_TEMP)
+    feel: ['feel_smooth', 'feel_textured', 'feel_cozy', 'feel_linen'],      // 191번: 린넨 장면 · 218번: photos/feel/feel_linen.jpg가 들어와 임시 사진(feel_cozy)은 안 씀
     comp: ['comp_double', 'comp_sheer', 'comp_drape', 'comp_blind'],
     blind: ['blind_combi', 'blind_roll', 'blind_wood', 'blind_alu'],
     tex: ['tex_smooth', 'tex_texture', 'tex_fluffy']      // 겉지 결 접사 (115번): 원단 사진이라 저장소에 두지 않고 기기에만(53번). 없으면 상담란은 글자만
 };
 // 장면 사진 주소: 기기 사진 → 저장소 기본값
 // 191번: 저장소에 아직 없는 장면 사진은 임시로 다른 사진을 씀 (린넨 장면 사진이 photos/feel/에 들어오면 이 칸에서 뺌)
-const SCENE_TEMP = { 'feel/feel_linen': 'feel_cozy' };
+const SCENE_TEMP = {};      // 218번: 린넨 사진이 들어와 비움 (저장소에 아직 없는 장면 사진이 생기면 여기에 '폴더/이름': '대신 쓸 이름')
 function scenePhotoUrl(folder, name) {
     return DevicePhotos.sceneUrl(folder, name) || `photos/${folder}/${SCENE_TEMP[folder + '/' + name] || name}.jpg`;
 }
