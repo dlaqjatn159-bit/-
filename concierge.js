@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -207,6 +207,7 @@
             diagnosed: !!r.diagnosed,
             altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번: 둘째 줄 후보 (직원 화면을 다녀와도 남게) · 168번: 만드는 중 표시도
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
+            panes: r.panes ? JSON.parse(JSON.stringify(r.panes)) : null,      // 216번: 크기 화면에서 넣은 블라인드 나눔
             width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 공간 추가 때 정한 크기·색 출처 (중심 화면)
             curtains: r.curtains.map((c, cIdx) => {
                 const isBlind = c.presetType === "blind";
@@ -242,6 +243,7 @@
                     baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)
                     aiPick: c.aiPick || null, staffPick: c.staffPick || null, staffPicked: !!c.staffPicked, changeReason: c.changeReason || null, custPicked: !!c.custPicked,      // 세 픽·바꾼 이유·손님이 고른 원단 (116번)
                     rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
+                    panes: isBlind && c.panes ? JSON.parse(JSON.stringify(c.panes)) : undefined,      // 216번: 블라인드 장마다 가로·세로·손잡이 (빠지면 직원 화면을 다녀올 때 사라짐)
             calc: c.calc
                 };
             })
@@ -807,6 +809,15 @@
         const w = Number(r.width || c.width) || 0, h = Number(r.height || c.height) || 0;
         return w && h ? { w, h } : null;
     }
+    // 216번: 이 공간의 블라인드 나눔 — 블라인드 품목이 있으면 그 품목 것, 없으면 공간 것(크기 화면에서 넣은 것). 복사본
+    function roomPanesNow(r) {
+        const b = (r.curtains || []).find(c => c.presetType === 'blind');
+        const src = (b && Array.isArray(b.panes) && b.panes.length) ? b.panes : r.panes;
+        return Array.isArray(src) && src.length ? JSON.parse(JSON.stringify(src)) : null;
+    }
+    // 216번: 키패드 칸이 장 줄이면 { key, i } — 'pw-0' = 1번 줄 가로, 'ph-1' = 2번 줄 세로
+    function paneTarget(t) { const m = /^p([wh])-(\d+)$/.exec(String(t || '')); return m ? { key: m[1], i: Number(m[2]) } : null; }
+
     function roomComp(r) {
         const k = (r.curtains || []).map(c => c.presetType);
         return k.includes('blind') ? 'blind_only' : (k.includes('sheer') && k.includes('drape')) ? 'double' : k.includes('sheer') ? 'sheer_only' : (k.includes('drape') ? 'drape_only' : null);
@@ -895,6 +906,33 @@
             '</div>';
     }
     // 치수 미세 조절 버튼 (숫자를 누르면 키패드, 버튼은 조금씩 더하고 빼기)
+    // 216번: 블라인드 여러 장 — 크기 칸 아래. 나누기 전엔 조용한 글 버튼 하나, 나누면 그림 막대 + 줄(번호 · 가로 · (세로) · 몇 장 · 빼기).
+    //   손잡이는 여기서 안 넣음 — 공간 화면에서 크기를 눌러 좌 ↔ 우 (기본 우). 커튼이면 나눔은 안 씀
+    function paneBlockHtml(ed) {
+        const rows = Array.isArray(ed.panes) ? ed.panes : null;
+        if (!Pricing.paneSplit(rows)) return '<button type="button" class="r-quiet pane-split" onclick="window.concierge.splitPanes()">여러 장으로 나누기</button>';
+        const sameH = rows.every(p => p.h == null);
+        let h = `<div class="pane-block"><div class="pane-bar-wrap">${paneBarHtml({ width: ed.width, height: ed.height, panes: rows })}</div>`;
+        rows.forEach((p, i) => {
+            h += `<div class="pane-row"><span class="pane-no">${i + 1}</span>`
+                + paneBoxHtml(`pw-${i}`, '가로', p.w == null ? ed.width : p.w)
+                + (sameH ? '' : paneBoxHtml(`ph-${i}`, '세로', p.h == null ? ed.height : p.h))
+                + `<span class="pane-qty"><button type="button" aria-label="${i + 1}번 줄 한 장 빼기" onclick="window.concierge.paneQty(${i}, -1)">−</button><b class="font-serif-kr">${p.qty || 1}장</b><button type="button" aria-label="${i + 1}번 줄 한 장 더하기" onclick="window.concierge.paneQty(${i}, 1)">+</button></span>`
+                + `<button type="button" class="r-quiet pane-del" onclick="window.concierge.removePane(${i})">빼기</button></div>`;
+        });
+        h += `<div class="pane-acts"><button type="button" class="r-quiet" onclick="window.concierge.addPane()">+ 줄 더하기</button>`
+            + `<button type="button" class="r-quiet" onclick="window.concierge.setPaneSameH(${!sameH})">${sameH ? '높이 따로 넣기' : '높이 같이'}</button></div></div>`;
+        return h;
+    }
+    function paneBoxHtml(target, label, val) {
+        return `<div id="measureBox_${target}" class="measure-box pane-box" onclick="window.concierge.openKeypad('${target}')"><span class="pane-k">${label}</span><span id="displayVal_${target}" class="pane-v font-serif-kr${val ? '' : ' is-empty'}">${val || '—'}</span></div>`;
+    }
+    // 키패드로 숫자를 바꾼 뒤 그림 막대만 다시 (화면 전체를 다시 그리지 않음)
+    function refreshPaneBar() {
+        const ed = state.editingRoom, wrap = document.querySelector('.pane-block .pane-bar-wrap');
+        if (ed && wrap) wrap.innerHTML = paneBarHtml({ width: ed.width, height: ed.height, panes: ed.panes });
+    }
+
     function nudgeRowHtml(target, steps) {
         return '<div class="nudge-row">' + steps.map(s =>
             `<button type="button" class="nudge-btn font-serif-kr" aria-label="${target === 'width' ? '가로' : '세로'} ${s > 0 ? '+' : '−'}${Math.abs(s)}cm" onclick="event.stopPropagation(); window.concierge.nudge('${target}', ${s})">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`
@@ -1086,6 +1124,7 @@
                     msrBoxHtml('width', '가로', curW) +
                     msrBoxHtml('height', '세로', curH) +
                     '</div>'; // 41번, 43번
+                html += paneBlockHtml(d);      // 216번
                 html += '<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.addRoomColor()">다음 →</button>';
                 html += '</div>';
                 break;
@@ -1485,7 +1524,7 @@
     function playIntro(then) { return cz.playIntro(then); }
 
     // 130-4: 나뉜 파일이 쓰는 이 파일의 상태·함수
-    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, takeLine, putLine, swapLine, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab });
+    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, takeLine, putLine, swapLine, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab, paneBlockHtml });      // 216번: paneBlockHtml
 
     window.concierge = {
         // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
@@ -1600,6 +1639,7 @@
                 sizeMode: isPart ? 'part' : 'full',
                 spaceWidth: sW, spaceHeight: sH,
                 width: pW, height: pH, // 41번, 43번
+                panes: Pricing.cleanPanes(d.panes),      // 216번: 크기 화면에서 나눈 블라인드 (블라인드 품목을 만들 때 복사)
                 floorTone: "warm", wallTone: "cool", lightLevel: "mid", mood: "soft_warm",
                 isConfigured: false, curtains: [], subtotal: 0,
                 colorSrc: src === 'first' ? 'measured' : (src === 'none' ? null : (src === 'room' ? 'house' : src)),
@@ -1721,6 +1761,7 @@
                 partWidth: r.sizeMode === 'part' ? size.w : null,
                 partHeight: r.sizeMode === 'part' ? size.h : null,
                 width: size.w, height: size.h,
+                panes: roomPanesNow(r),      // 216번
                 floorTone: r.floorTone, wallTone: r.wallTone, diagnosed: r.diagnosed, cardParts: r.cardParts ? Object.assign({}, r.cardParts) : null, colorSrc: r.colorSrc || null,
                 measuredColor: r.measuredColor ? JSON.parse(JSON.stringify(r.measuredColor)) : null,
                 windowDir: windowDirOf(r.windowDir)
@@ -1808,6 +1849,7 @@
             r.spaceHeight = sH;
             r.width = pW;
             r.height = pH;
+            r.panes = Pricing.cleanPanes(ed.panes);      // 216번
             r.floorTone = ed.floorTone; r.wallTone = ed.wallTone; r.measuredColor = ed.measuredColor || null;
             r.cardParts = ed.cardParts || null;
             r.colorSrc = ed.colorSrc || null;
@@ -1827,7 +1869,7 @@
             if (state.house && state.house.roomId === r.id && r.measuredColor && r.measuredColor.wall && r.measuredColor.floor) state.house = houseOf(r.measuredColor, r.id);
             // 상담을 마친 공간: 커튼 크기도 같이 바꾸고 금액을 다시 셈 (고른 원단·옵션은 그대로)
             if (r.isConfigured) {
-                r.curtains.forEach(c => { c.width = r.width; c.height = r.height; c.calc = calculateV1ItemPrice(c); });
+                r.curtains.forEach(c => { c.width = r.width; c.height = r.height; if (c.presetType === 'blind') c.panes = r.panes ? JSON.parse(JSON.stringify(r.panes)) : undefined; c.calc = calculateV1ItemPrice(c); });      // 216번: 블라인드 나눔도 같이
                 r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
                 syncToV1MasterRooms();
             }
@@ -1852,6 +1894,7 @@
             r.spaceHeight = sH;
             r.width = pW;
             r.height = pH;
+            r.panes = Pricing.cleanPanes(ed.panes);      // 216번 (블라인드로 바꾸면 commitRoomCart가 이걸 품목에 복사)
             r.floorTone = ed.floorTone;
             r.wallTone = ed.wallTone;
             r.measuredColor = ed.measuredColor || null;
@@ -2210,7 +2253,8 @@
                         hwPrice: isBlind ? 0 : hwPriceOf(item.presetType === 'panel' ? 'rail_2line' : 'rail'),      // 설정의 자당 단가 (29번)
                         shapeFee: isBlind ? 0 : ((item.presetType === 'drape' && state.editingRoom.shapeFee) ? 1 : 0),      // 켜짐 표시 (금액은 rates)
                         leadBand: isBlind ? false : Boolean(item.presetType === 'sheer' && state.editingRoom.leadBand),
-                        hotelFit: isBlind ? false : Boolean(item.presetType === 'drape' && state.editingRoom.hotelFit)
+                        hotelFit: isBlind ? false : Boolean(item.presetType === 'drape' && state.editingRoom.hotelFit),
+                        panes: isBlind && roomTarget.panes ? JSON.parse(JSON.stringify(roomTarget.panes)) : undefined      // 216번: 공간 나눔을 블라인드 품목으로
                     };
                     cObj.rates = optionRatesNow(cObj.installType);      // 지금 설정의 가공·부자재 단가를 품목에 적어 둠 (나중에 단가를 바꿔도 이 견적은 그대로)
                     
@@ -2349,6 +2393,7 @@
                     altLine: r.altLine || null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번
                     width: Number(r.width) || null, height: Number(r.height) || null,
                     spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null,
+                    panes: r.panes ? JSON.parse(JSON.stringify(r.panes)) : null,      // 216번
                     colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                     isConfigured: r.curtains.length > 0,          // 공간 추가만 하고 아직 상담 전인 공간(커튼 없음)은 "상담하기"로
                     curtains: r.curtains.map(c => ({ ...c })),
@@ -2397,6 +2442,47 @@
             if (ph) ph.value = '';
             goToStep("0-Start", false);
         },
+        // ---- 216번: 블라인드 여러 장 줄 (크기 화면·수정하기) — 반씩 나누지 않음, 새 줄은 빈칸으로 시작 ----
+        splitPanes: function() {
+            const ed = state.editingRoom; if (!ed) return;
+            const first = Pricing.panesOf({ panes: ed.panes })[0];
+            ed.panes = [{ w: 0, h: null, hand: first.hand, qty: 1 }, { w: 0, h: null, hand: Pricing.PANE_HAND_DEFAULT, qty: 1 }];
+            render(); window.concierge.openKeypad('pw-0');
+        },
+        addPane: function() {
+            const ed = state.editingRoom; if (!ed || !Array.isArray(ed.panes)) return;
+            const sameH = ed.panes.every(p => p.h == null);
+            ed.panes.push({ w: 0, h: sameH ? null : (Number(ed.height) || 0), hand: Pricing.PANE_HAND_DEFAULT, qty: 1 });
+            render(); window.concierge.openKeypad('pw-' + (ed.panes.length - 1));
+        },
+        removePane: function(i) {
+            const ed = state.editingRoom; if (!ed || !Array.isArray(ed.panes)) return;
+            ed.panes.splice(i, 1);
+            if (!ed.panes.length) ed.panes = null;      // 마지막 줄까지 빼면 나누기 전(전체 크기 한 장)으로. 한 줄이 남으면 그 줄 그대로(같은 창 6장 등)
+            hideKeypadDirectly(); render();
+        },
+        paneQty: function(i, d) {
+            const ed = state.editingRoom, p = ed && Array.isArray(ed.panes) && ed.panes[i]; if (!p) return;
+            p.qty = Math.max(1, Math.min(99, (p.qty || 1) + d));
+            hideKeypadDirectly(); render();
+        },
+        setPaneSameH: function(on) {
+            const ed = state.editingRoom; if (!ed || !Array.isArray(ed.panes)) return;
+            ed.panes.forEach(p => { p.h = on ? null : (Number(ed.height) || 0); });
+            hideKeypadDirectly(); render();
+        },
+        // 216번: 공간 화면에서 블라인드 장 크기를 누르면 손잡이 좌 ↔ 우 (그 품목과 공간 나눔을 같이 고침, 금액은 그대로)
+        flipPaneHand: function(roomId, ci, row) {
+            const r = state.roomsCart.find(x => x.id === roomId), c = r && r.curtains[ci];
+            if (!c || c.presetType !== 'blind') return;
+            const rows = Pricing.panesOf(c);
+            if (!rows[row]) return;
+            rows[row].hand = rows[row].hand === 'L' ? 'R' : 'L';
+            c.panes = rows;
+            r.panes = JSON.parse(JSON.stringify(rows));
+            syncToV1MasterRooms();
+            render();
+        },
         syncToMaster: function() { syncToV1MasterRooms(); },
         // 중복 원단 정리: 고객 화면 공간 목록의 옛 원단 ID를 새 ID로 바꿔 닮 (55번)
         remapFabricIds: function(fix) { fix(state.roomsCart); },
@@ -2414,6 +2500,7 @@
                 altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번
                 width: r.width || null, height: r.height || null,
                 spaceWidth: r.spaceWidth || null, spaceHeight: r.spaceHeight || null, sizeMode: r.sizeMode || null,
+                panes: r.panes || null,      // 216번
                 colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                 curtains: r.isConfigured ? r.curtains : []
             }));
@@ -2486,7 +2573,9 @@
             if (target === 'width') curVal = isPart ? (ed.partWidth != null ? ed.partWidth : ed.width) : (ed.spaceWidth != null ? ed.spaceWidth : ed.width);
             else curVal = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
 
-            const lbl = target === "width" ? "가로" : "세로";
+            const pt = paneTarget(target), prow = pt && ed && Array.isArray(ed.panes) && ed.panes[pt.i];      // 216번: 장 줄 칸
+            if (prow) curVal = (prow[pt.key] == null ? (pt.key === 'w' ? ed.width : ed.height) : prow[pt.key]) || 0;
+            const lbl = prow ? `${pt.i + 1}번 줄 ${pt.key === 'w' ? '가로' : '세로'}` : (target === "width" ? "가로" : "세로");
             document.getElementById("v2KeypadTargetLabel").textContent = lbl;
             document.getElementById("v2KeypadValueDisplay").textContent = curVal;
             document.getElementById("v2VirtualKeypadSheet").classList.add("active");
@@ -2497,6 +2586,21 @@
         },
         pressKey: function(k) {
             if (!state.keypadTarget || !state.editingRoom) return;
+            {      // 216번: 장 줄 칸 (넣은 숫자는 그 줄에만, 그림 막대만 다시)
+                const ed0 = state.editingRoom, pt = paneTarget(state.keypadTarget), prow = pt && Array.isArray(ed0.panes) && ed0.panes[pt.i];
+                if (prow) {
+                    let pv = String((prow[pt.key] == null ? (pt.key === 'w' ? ed0.width : ed0.height) : prow[pt.key]) || "0");
+                    if (k === "C") pv = "0";
+                    else if (k === "DEL") pv = pv.length > 1 ? pv.slice(0, -1) : "0";
+                    else pv = pv === "0" ? k : (pv + k).slice(0, 4);
+                    prow[pt.key] = parseInt(pv, 10) || 0;
+                    document.getElementById("v2KeypadValueDisplay").textContent = prow[pt.key];
+                    const pb = document.getElementById(`displayVal_${state.keypadTarget}`);
+                    if (pb) { pb.textContent = prow[pt.key] || '—'; pb.classList.toggle('is-empty', !prow[pt.key]); }
+                    refreshPaneBar();
+                    return;
+                }
+            }
             const ed = state.editingRoom;
             const isPart = ed.sizeMode === 'part';
             let curVal = 0;
@@ -2520,6 +2624,7 @@
 
             const boxVal = document.getElementById(`displayVal_${state.keypadTarget}`);
             if (boxVal) boxVal.textContent = v;
+            refreshPaneBar();      // 216번: 전체 가로가 바뀌면 남는 폭(빗금)도
         },
         // 최종 제안의 시공비 입력: 직원 화면과 맞춘 뒤 세로 제안서 합계는 즉시 갱신하고 종이는 잠깐 기다렸다가 다시 그림 (40-2)
         updateInstallFee: function(val) {

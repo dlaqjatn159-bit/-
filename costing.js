@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 원가 계산 엔진  (costing.js)  ※ 직원 모드 전용
    - 이 파일에는 금액(숫자 상수)이 없습니다. 모든 원가 규칙은 "비공개 팩"에서 읽어옵니다.
@@ -41,10 +41,15 @@
 
         if (q.calcType === 'hebe') {
             const h = rule.hebe || rules.hebeDefault;
-            const heightForCalc = h.minHeight ? Math.max(h.minHeight, q.heightM) : q.heightM;
-            const raw = q.widthM * heightForCalc;
-            factoryHebe = Math.max(2.0, Math.round(raw * h.roundTo) / h.roundTo);
-            fabricSupplyCost = Math.round(factoryHebe * cost * (h.costMult || 1));
+            // 216번: 여러 장이면 장마다 따로 (공장 최저 헤베·최저 높이가 장마다). 한 장이면 예전과 같은 셈
+            const pcs = (Array.isArray(q.pieces) && q.pieces.length) ? q.pieces : [{ widthM: q.widthM, heightM: q.heightM }];
+            pcs.forEach(p => {
+                const heightForCalc = h.minHeight ? Math.max(h.minHeight, p.heightM) : p.heightM;
+                const fh = Math.max(2.0, Math.round(p.widthM * heightForCalc * h.roundTo) / h.roundTo);
+                factoryHebe += fh;
+                fabricSupplyCost += Math.round(fh * cost * (h.costMult || 1));
+            });
+            if (pcs.length > 1) factoryHebe = Math.round(factoryHebe * 100) / 100;
         } else {
             const yards = q.totalYards, widths = q.numWidths;
             if (q.isPanel) {

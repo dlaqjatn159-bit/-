@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261261';
+const REDAM_BUILD = '20261262';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -640,6 +640,7 @@ function collectConsultation() {
             altLine: r.altLine ? Object.assign({}, r.altLine, { curtains: (r.altLine.curtains || []).map(c => { const x = Object.assign({}, c); delete x.calc; return x; }) }) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번: 둘째 줄 후보 (안 고른 줄도 기록에)
             techGaps: (typeof colorTechGaps === 'function' && r.measuredColor) ? colorTechGaps(r.measuredColor) : null,      // 후보 0인 색 기법 (96번, 원단 들일 근거 · 화면엔 안 씀)
             pointWant: (typeof pointWantRecord === 'function' && r.measuredColor) ? pointWantRecord(r) : null,      // 포인트 원하는 자리와 실제 얼굴의 비틂 (195번, 구색 신호 · 화면엔 안 씀)
+            panes: r.panes || null,      // 216번 (품목의 panes는 아래 curtains 통째 복사에 들어감)
             width: r.width || null, height: r.height || null, spaceWidth: r.spaceWidth || null, spaceHeight: r.spaceHeight || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 중심 화면: 공간 추가 때 정한 크기·색 출처
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
@@ -1168,7 +1169,8 @@ function addCurtainToRoom(roomId, presetType = "") {
         shapeFee: shapeFee,
         leadBand: leadBand,
         hotelFit: hotelFit,
-        rates: optionRatesNow(installType)      // 지금 설정의 가공·부자재 단가 (29번, 나중에 단가를 바꿔도 이 품목 금액은 그대로)
+        rates: optionRatesNow(installType),      // 지금 설정의 가공·부자재 단가 (29번, 나중에 단가를 바꿔도 이 품목 금액은 그대로)
+        panes: presetType === 'blind' && room.panes ? JSON.parse(JSON.stringify(room.panes)) : undefined      // 216번: 공간 나눔이 있으면 블라인드 줄로
     });
 
     autoFillSurveyPicks(room.id);
@@ -1353,6 +1355,70 @@ function curtainOptionSummary(c) {
 
 // 직원 화면 상담란(설문)은 survey.js로 옮김 (130-2)
 
+// 216번: 직원 견적란 블라인드 여러 장 — 나누기 전: [손잡이 우] [여러 장으로 나누기] / 나눈 뒤: 그림 막대 + 줄(번호 · 가로 · (세로) · 손잡이 · 몇 장 · 빼기) + [+ 줄 더하기] [높이 따로 넣기/높이 같이]
+//   손잡이는 눌러서 좌 ↔ 우 (고객 화면과 같게). 숫자 칸은 치는 동안 다시 그리지 않음(막대·금액만)
+function staffPaneHtml(room, c) {
+    const rows = Pricing.panesOf(c), split = Pricing.paneSplit(c.panes);
+    const sameH = rows.every(p => p.h == null);
+    const handBtn = (i, p) => `<button type="button" onclick="flipStaffPaneHand(${room.id}, ${c.id}, ${i})" title="눌러서 좌·우 바꾸기" class="staff-btn whitespace-nowrap flex-shrink-0">손잡이 ${p.hand === 'L' ? '좌' : '우'}</button>`;
+    const link = (on, label) => `<button type="button" onclick="${on}" class="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline underline-offset-4">${label}</button>`;
+    if (!split) return `<div class="staff-panes flex items-center gap-3">${handBtn(0, rows[0])}${link(`staffSplitPanes(${room.id}, ${c.id})`, '여러 장으로 나누기')}</div>`;
+    const num = (i, key, val, ph, w) => `<input type="number" value="${val || ''}" placeholder="${ph}" oninput="setStaffPane(${room.id}, ${c.id}, ${i}, '${key}', this.value)" class="${w} h-8 px-2 border rounded-lg text-xs font-bold text-indigo-950 bg-white outline-none min-w-0 box-border${key !== 'qty' && !(Number(val) > 0) ? ' size-out' : ''}">`;
+    let h = `<div class="staff-panes space-y-1.5"><div id="staffPaneBar_${c.id}">${paneBarHtml(c)}</div>`;
+    rows.forEach((p, i) => {
+        h += `<div class="flex items-center gap-1.5"><span class="staff-num sm">${i + 1}</span>`
+            + num(i, 'w', p.w == null ? c.width : p.w, '가로', 'w-20')
+            + (sameH ? '' : num(i, 'h', p.h == null ? c.height : p.h, '세로', 'w-20'))
+            + handBtn(i, p)
+            + num(i, 'qty', p.qty, '장', 'w-14') + '<span class="text-[11px] text-slate-500">장</span>'
+            + `<button type="button" onclick="removeStaffPane(${room.id}, ${c.id}, ${i})" class="whitespace-nowrap text-[11px] text-rose-500 hover:text-rose-700 font-bold px-1.5">빼기</button></div>`;
+    });
+    h += `<div class="flex gap-3">${link(`addStaffPane(${room.id}, ${c.id})`, '+ 줄 더하기')}${link(`setStaffPaneSameH(${room.id}, ${c.id}, ${!sameH})`, sameH ? '높이 따로 넣기' : '높이 같이')}</div></div>`;
+    return h;
+}
+// 블라인드 품목의 나눔을 고치고, 이 공간의 첫 블라인드면 공간 나눔도 같이 (고객 화면 수정하기·공간 화면과 어긋나지 않게)
+function staffPaneSave(room, c, rows, redraw) {
+    c.panes = rows;
+    if (room.curtains.find(x => x.presetType === 'blind') === c) room.panes = rows ? JSON.parse(JSON.stringify(rows)) : null;
+    if (redraw) renderRooms();
+    else { const bar = document.getElementById('staffPaneBar_' + c.id); if (bar) bar.innerHTML = paneBarHtml(c); }
+    calculateAll();
+}
+function staffPaneFind(roomId, curtainId) {
+    const room = rooms.find(r => r.id === roomId), c = room && room.curtains.find(x => x.id === curtainId);
+    return c ? { room, c, rows: Pricing.panesOf(c) } : null;
+}
+function staffSplitPanes(roomId, curtainId) {
+    const f = staffPaneFind(roomId, curtainId); if (!f) return;
+    staffPaneSave(f.room, f.c, [{ w: 0, h: null, hand: f.rows[0].hand, qty: 1 }, { w: 0, h: null, hand: Pricing.PANE_HAND_DEFAULT, qty: 1 }], true);
+}
+function addStaffPane(roomId, curtainId) {
+    const f = staffPaneFind(roomId, curtainId); if (!f) return;
+    const sameH = f.rows.every(p => p.h == null);
+    f.rows.push({ w: 0, h: sameH ? null : (Number(f.c.height) || 0), hand: Pricing.PANE_HAND_DEFAULT, qty: 1 });
+    staffPaneSave(f.room, f.c, f.rows, true);
+}
+function removeStaffPane(roomId, curtainId, i) {
+    const f = staffPaneFind(roomId, curtainId); if (!f) return;
+    f.rows.splice(i, 1);
+    staffPaneSave(f.room, f.c, f.rows.length ? f.rows : null, true);      // 마지막 줄까지 빼면 나누기 전으로
+}
+function setStaffPane(roomId, curtainId, i, key, val) {
+    const f = staffPaneFind(roomId, curtainId); if (!f || !f.rows[i]) return;
+    f.rows[i][key] = key === 'qty' ? Math.max(1, Math.min(99, parseInt(val, 10) || 1)) : (parseFloat(val) || 0);
+    staffPaneSave(f.room, f.c, f.rows, false);
+}
+function setStaffPaneSameH(roomId, curtainId, on) {
+    const f = staffPaneFind(roomId, curtainId); if (!f) return;
+    f.rows.forEach(p => { p.h = on ? null : (Number(f.c.height) || 0); });
+    staffPaneSave(f.room, f.c, f.rows, true);
+}
+function flipStaffPaneHand(roomId, curtainId, i) {
+    const f = staffPaneFind(roomId, curtainId); if (!f || !f.rows[i]) return;
+    f.rows[i].hand = f.rows[i].hand === 'L' ? 'R' : 'L';
+    staffPaneSave(f.room, f.c, f.rows, true);
+}
+
 function renderRooms() {
     const container = document.getElementById('roomsContainer');
     if (!container) return;
@@ -1456,6 +1522,7 @@ function renderRooms() {
                         </div>
                     </div>
 
+                    ${isBlind ? staffPaneHtml(room, c) : ''}
                     ${curtainPickBarHtml(room, c, curFab)}
 
                     <div class="min-w-0">
@@ -1622,6 +1689,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 diagnosed: !!r.diagnosed,          // 고객 화면에서 바닥·벽·채광 진단을 거친 공간 (제안서에 진단 요약 표시)
                 measuredColor: r.measuredColor || null,
                 altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 둘째 줄 후보 (169번: 직원 화면을 다녀와도 남게)
+                panes: r.panes ? JSON.parse(JSON.stringify(r.panes)) : null,      // 216번
                 width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";
@@ -1647,6 +1715,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                         baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)
                         aiPick: c.aiPick || null, staffPick: c.staffPick || null, staffPicked: !!c.staffPicked, changeReason: c.changeReason || null, custPicked: !!c.custPicked,      // 세 픽·바꾼 이유·손님이 고른 원단 (116번)
                         rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
+                        panes: isBlind && c.panes ? JSON.parse(JSON.stringify(c.panes)) : undefined,      // 216번: 블라인드 장마다 가로·세로·손잡이
                         calc: c.calc
                     };
                 })

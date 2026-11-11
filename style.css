@@ -3262,3 +3262,30 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .bk-hold-label { position: relative; z-index: 1; }
 .bk-confirmed-wrap { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
 .bk-confirmed-sub { font-family: var(--sans); font-size: 22px; font-weight: 600; color: var(--ink); }
+
+/* 216번: 블라인드 여러 장 — 그림 막대(보기만) · 크기 화면 줄 · 공간 화면 손잡이 */
+.pane-bar { display: flex; gap: 3px; height: 14px; width: 100%; max-width: 880px; margin: 0 auto 12px; }
+.pane-bar i { position: relative; min-width: 4px; background: #e5dcd0; }
+.pane-bar i::after { content: ''; position: absolute; top: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
+.pane-bar i.is-L::after { left: 3px; }
+.pane-bar i.is-R::after { right: 3px; }
+.pane-bar b { background: repeating-linear-gradient(45deg, transparent 0 4px, #d8cfc2 4px 5px); }
+.pane-bar.is-over { outline: 1.5px solid #be123c; outline-offset: 2px; }
+.pane-block { width: 100%; max-width: 880px; margin-top: 8px; }
+.pane-row { display: flex; align-items: center; gap: 28px; margin-top: 6px; padding: 6px 20px; background: #F4EFE7; }
+.pane-no { width: 1.5em; font-family: var(--sans); font-size: 14px; color: var(--muted); }
+.msr-stage .measure-box.pane-box, .measure-box.pane-box { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; background: none; border: 0; border-radius: 0; outline: none; transform: none; }
+.pane-k { font-family: var(--sans); font-size: 14px; color: var(--muted); }
+.pane-v { min-width: 3ch; font-size: 20px; color: var(--ink); }
+.pane-v.is-empty { color: var(--muted); }
+.measure-box.pane-box.is-active .pane-v { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+.pane-qty { display: inline-flex; align-items: center; gap: 6px; font-size: 20px; color: var(--ink); }
+.pane-qty b { font-weight: 400; }
+.pane-qty button { padding: 8px 12px; border: 0; background: none; cursor: pointer; font-size: 20px; color: var(--ink); }
+.pane-del { margin-left: auto; }
+.pane-acts { display: flex; justify-content: center; gap: 32px; margin-top: 10px; }
+.pane-split { margin-top: 10px; }
+.msr-stage:has(.pane-block) { justify-content: flex-start; overflow-y: auto; }
+.msr-stage:has(.pane-block) .measure-box.msr-box { padding: 16px 0 20px; }
+.dos-panes-k { margin-right: 0.15rem; font-family: var(--sans); font-size: 15px; color: var(--muted); }
+.dos-panes b { font-weight: 600; }

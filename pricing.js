@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -38,6 +38,41 @@
      *            shapeFee: 0보다 크면 형상기억 켜짐 (rates가 없는 예전 저장본은 폭당 금액이기도 함)
      * @param fab 원단 { calcType, specCm, price, extra, categoryType, name, book }
      */
+    // 216번: 블라인드 여러 장 — 품목 c.panes = [{ w, h, hand, qty }] (w·h가 null이면 품목 전체 가로·세로를 따름, 0이면 아직 안 넣은 줄)
+    //   panes가 없으면 한 장(전체 크기). 손잡이 기본은 '우' — 바꿀 땐 PANE_HAND_DEFAULT 한 곳만
+    const PANE_HAND_DEFAULT = 'R';
+    function panesOf(c) {
+        const src = (c && Array.isArray(c.panes) && c.panes.length) ? c.panes : [{}];
+        return src.map(p => ({
+            w: (p && p.w != null && p.w !== '') ? (Number(p.w) || 0) : null,
+            h: (p && p.h != null && p.h !== '') ? (Number(p.h) || 0) : null,
+            hand: (p && (p.hand === 'L' || p.hand === 'R')) ? p.hand : PANE_HAND_DEFAULT,
+            qty: Math.max(1, Math.min(99, parseInt(p && p.qty, 10) || 1))
+        }));
+    }
+    // 장 하나씩 풀어서 (금액·발주서용): [{ w, h, hand, row }] — 가로나 세로가 0인 장(아직 안 넣은 줄)은 뺌
+    function panePieces(c) {
+        const W = Number(c && c.width) || 0, H = Number(c && c.height) || 0, out = [];
+        panesOf(c).forEach((p, row) => {
+            const w = p.w == null ? W : p.w, h = p.h == null ? H : p.h;
+            if (!(w > 0 && h > 0)) return;
+            for (let k = 0; k < p.qty; k++) out.push({ w, h, hand: p.hand, row });
+        });
+        return out;
+    }
+    // 나눈 상태인지: 줄이 둘 이상이거나, 한 줄이라도 가로를 따로 넣었거나 여러 장(같은 창 6장 등). 손잡이만 바꾼 한 장은 나누기 전
+    function paneSplit(panes) {
+        if (!Array.isArray(panes) || !panes.length) return false;
+        const p = panes[0] || {};
+        return panes.length > 1 || (p.w != null && p.w !== '') || (parseInt(p.qty, 10) || 1) > 1;
+    }
+    // 저장할 때: 빈 줄(가로 0)은 빼고, 아무 줄도 없으면 null(= 한 장)
+    function cleanPanes(panes) {
+        if (!Array.isArray(panes) || !panes.length) return null;
+        const rows = panesOf({ panes }).filter(p => p.w == null || p.w > 0);
+        return rows.length ? rows : null;
+    }
+
     function priceItem(c, fab) {
         if (!fab) {      // 원단을 못 찾은 품목: 다른 원단 값으로 셈하지 않고 금액 0 + 표시 (126번)
             return { noFabric: true, fabName: '', fabBook: '', calcType: '', numWidths: 0, totalYards: 0, appliedHebe: 0, qtyText: '원단 없음',
@@ -59,6 +94,7 @@
 
         let fabricSellingCost = 0, hwSellingTotal = 0, leadBandCost = 0;
         let qtyText = '', numWidths = 0, totalYards = 0, appliedHebe = 0;
+        let pieces = null;      // 216번: 블라인드 장마다 [{ w, h, hand, row, hebe }] — 발주서가 씀
         let isSeamless = false, isPanel = false, panelExtraUnits = 0;
         let actualH = height;
         let isSheer = false, isWideFabric = false;
@@ -67,12 +103,18 @@
         if (fab.calcType === 'hebe') {
             const widthM = width / 100;
             const heightM = height / 100;
-            const consumerH = Math.max(1.5, heightM);
-            const consumerRawHebe = Math.round(widthM * consumerH * 100) / 100;
-            appliedHebe = Math.max(2.0, consumerRawHebe);
-            fabricSellingCost = Math.round(appliedHebe * (fab.price || 0));
-            qtyText = `${appliedHebe.toFixed(2)}m² (${appliedHebe}헤베)`;
+            // 216번: 장마다 따로 셈해서 더함 (개당 최저 2헤베 · 최저 높이 1.5m가 장마다). 한 장이면 예전과 같은 셈
+            const hebeOf = (wM, hM) => Math.max(2.0, Math.round(wM * Math.max(1.5, hM) * 100) / 100);
+            const all = panePieces(c);
+            const pcs = all.length ? all : [{ w: width, h: height, hand: panesOf(c)[0].hand, row: 0 }];
+            pieces = pcs.map(p => ({ w: p.w, h: p.h, hand: p.hand, row: p.row, hebe: hebeOf(p.w / 100, p.h / 100) }));
+            appliedHebe = pieces.length > 1 ? Math.round(pieces.reduce((s, p) => s + p.hebe, 0) * 100) / 100 : pieces[0].hebe;
+            fabricSellingCost = pieces.reduce((s, p) => s + Math.round(p.hebe * (fab.price || 0)), 0);
+            qtyText = pieces.length > 1
+                ? `${pieces.length}장 · 합 ${appliedHebe.toFixed(2)}m² (${appliedHebe}헤베)`
+                : `${appliedHebe.toFixed(2)}m² (${appliedHebe}헤베)`;
             q.widthM = widthM; q.heightM = heightM;
+            q.pieces = pieces.map(p => ({ widthM: p.w / 100, heightM: p.h / 100 }));      // 원가도 장마다 (costing.js)
         } else {
             const deduction = heightDeduction(c.installType);
             const floorGapVal = parseFloat(c.floorGap) || 0;
@@ -166,6 +208,7 @@
             installDesc: c.hwName || '레일',
             floorGapVal: parseFloat(c.floorGap) || 0,
             isSeamless,
+            pieces,
             q
         };
     }
@@ -177,7 +220,7 @@
         return { sellingPrice, vatAmount, finalPrice: sellingPrice + vatAmount };
     }
 
-    const api = { priceItem, totals, pickFabric, heightDeduction };
+    const api = { priceItem, totals, pickFabric, heightDeduction, panesOf, panePieces, cleanPanes, paneSplit, PANE_HAND_DEFAULT };      // 216번: 장 셈 도우미
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.Pricing = api;
 })(typeof window !== 'undefined' ? window : globalThis);

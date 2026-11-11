@@ -1,9 +1,9 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
     const cz = window.conciergeCore;      // concierge.js와 잇는 다리 (130-4)
-    const { state, getLiveDb, calculateV1ItemPrice, syncToV1MasterRooms, askedRoom, planHas, takeLine, putLine, swapLine, COMP_NAMES, flowPeek, fabricFillStyle, HATCH, hexCode, roomPart, roomSize, roomComp, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, render, colorFillOf, splitNameColor } = cz;
+    const { state, getLiveDb, calculateV1ItemPrice, syncToV1MasterRooms, askedRoom, planHas, takeLine, putLine, swapLine, COMP_NAMES, flowPeek, fabricFillStyle, HATCH, hexCode, roomPart, roomSize, roomComp, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, paneBlockHtml, render, colorFillOf, splitNameColor } = cz;
 
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
     // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
@@ -311,6 +311,7 @@
             h += `<section class="dos-room${isAllMode ? '' : ' is-hero'}">`;
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
                 + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured && !r.altLine ? `<button type="button" class="dos-redit" onclick="window.concierge.addAltLine(${r.id})">+ 다른 구성 더하기</button>` : ''}<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></div>`;      // 151번: 상담 전 공간에도
+            if (!isAllMode) h += paneChipsHtml(r);      // 216번: 블라인드 장 크기 — 누르면 손잡이 좌 ↔ 우
             const says = answerSay(r, r.altLine ? ['lightBlock', 'privacy'] : null);      // 166번: 손님 답 한 줄 — 낱말마다 그 질문으로 고치기 · 170번: 두 줄 공간은 공간 답(빛·시선)만
             if (says.length) h += `<div class="dos-rsay font-serif-kr">${says.map(s => `<button type="button" onclick="window.concierge.fixAnswer(${r.id}, '${s.key}')">${esc(s.text)}</button>`).join('<i aria-hidden="true">·</i>')}</div>`;
             const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.hex) : [];
@@ -456,6 +457,20 @@
         return h;
     }
     // 수정하기: 크기와 색을 고치는 화면 (상담 내용은 그대로). 고친 값은 "저장"을 눌러야 공간에 들어감
+    // 216번: 공간 화면 블라인드 장 — "손잡이  100 × 240 좌 · 230 × 240 우 · 100 × 240 우", 크기를 누르면 좌 ↔ 우 (기본 우). 블라인드가 없는 공간은 빈 글
+    function paneChipsHtml(r) {
+        const ci = (r.curtains || []).findIndex(c => c.presetType === 'blind');
+        if (ci < 0) return '';
+        const c = r.curtains[ci], W = Number(c.width) || 0, H = Number(c.height) || 0;
+        const HAND = { L: '좌', R: '우' };
+        const btns = Pricing.panesOf(c).map((p, i) => {
+            const w = p.w == null ? W : p.w, hh = p.h == null ? H : p.h;
+            if (!(w > 0 && hh > 0)) return '';
+            return `<button type="button" aria-label="${w} × ${hh} 손잡이 ${HAND[p.hand]}, 누르면 바뀝니다" onclick="window.concierge.flipPaneHand(${r.id}, ${ci}, ${i})">${w} × ${hh}${p.qty > 1 ? ` · ${p.qty}장` : ''} <b>${HAND[p.hand]}</b></button>`;
+        }).filter(Boolean);
+        return btns.length ? `<div class="dos-rsay dos-panes font-serif-kr"><span class="dos-panes-k">손잡이</span>${btns.join('<i aria-hidden="true">·</i>')}</div>` : '';
+    }
+
     function spaceEditHtml() {
         const ed = state.editingRoom, r = state.roomsCart.find(x => x.id === state.editingRoomId);
         if (!ed || !r) return '';
@@ -483,6 +498,7 @@
             msrBoxHtml('width', '가로', curW) +
             msrBoxHtml('height', '세로', curH) +
             '</div>'; // 41번, 43번
+        h += paneBlockHtml(ed);      // 216번: 블라인드 여러 장 줄 (저장을 눌러야 공간에 들어감)
         h += `<div class="ed-color">${row('벽', 'wall')}${row('바닥', 'floor')}`;
         if (house) h += '<button type="button" class="ed-sub" onclick="window.concierge.editRoomUseHouse()">집 기본 색으로 맞추기</button>';
         // 가구 (66번): 벽·바닥과 따로 찍어 더하고 빼기 · 종류 바꾸기. 저장을 눌러야 공간에 들어감

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -78,6 +78,19 @@ function ticketEstName(c, calc) {
     return `${color} ${ticketEstKind(c)}`;
 }
 // 208번: 이름 뒤 종류 낱말 — 블라인드는 콤비 블라인드 · 롤스크린 · 프린트 블라인드(없으면 블라인드), 겉지·속지는 왼쪽 종류 칸에 있으니 "커튼"
+// 216번: 견적서 크기 글 (사장님 11-11: 장별 크기 + 손잡이). 블라인드 한 장 "450 × 240cm · 손잡이 우",
+//   여러 장 "3장 · 100×240 좌 · 230×240 우 · 100×240 우" (같은 줄 여러 장은 "120×200 우 6장"). " · "에서 줄이 끊김. 커튼은 그대로
+function ticketSizeText(c, calc) {
+    const W = Number(c.width), H = Number(c.height);
+    if (!(W > 0 && H > 0)) return '';
+    if (c.presetType !== 'blind' && !(calc && calc.calcType === 'hebe')) return `${W} × ${H}cm`;
+    const HAND = { L: '좌', R: '우' };
+    const rows = Pricing.panesOf(c).map(p => ({ w: p.w == null ? W : p.w, h: p.h == null ? H : p.h, hand: p.hand, qty: p.qty })).filter(p => p.w > 0 && p.h > 0);
+    const n = rows.reduce((s, p) => s + p.qty, 0);
+    if (n <= 1) { const p = rows[0] || { w: W, h: H, hand: Pricing.PANE_HAND_DEFAULT }; return `${p.w} × ${p.h}cm · 손잡이 ${HAND[p.hand]}`; }
+    return [`${n}장`].concat(rows.map(p => `${p.w}×${p.h} ${HAND[p.hand]}${p.qty > 1 ? ` ${p.qty}장` : ''}`)).join(' · ');
+}
+
 function ticketEstKind(c) {
     if (c.presetType !== 'blind') return '커튼';
     const f = FABRIC_DB.find(x => x.id === c.fabricId) || (typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null);
@@ -248,7 +261,7 @@ function ticketDataBase() {
                     bookName: ticketEstName(c, calc), bookSub: ticketEstSub(c),      // 견적서(그림·최종 제안 표·카톡 글): 큰 이름 = 색·종류 "베이지 콤비 블라인드", 작은 줄 = 책자 이름·번호 "블랑 1번" (208번)
                     fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly: sampleOnly || !!calc.noFabric, sampleBlind: sampleOnly,      // 원단 없는 품목은 금액을 숨김 (126번) · 176번: sampleBlind = 실물 견본 품목(금액 칸에 "견본 확인 후")
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
-                    size: (Number(c.width) > 0 && Number(c.height) > 0) ? `${Number(c.width)} × ${Number(c.height)}cm` : '',      // 제작 크기 (넓이 × 높이)
+                    size: ticketSizeText(c, calc),      // 제작 크기 (넓이 × 높이) · 216번: 블라인드는 장·손잡이까지
                     photoKey: (c.fabricId || '') + '__' + (c.colorName || ''),
                     kindKey: c.presetType || '', colorDesc: custColorName(c.fabricId, c.colorName),      // 182번
                     keep: ticketKeepWord(r, c),      // 원단을 고른 이유 카드용

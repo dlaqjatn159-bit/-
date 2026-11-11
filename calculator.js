@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261261';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261262';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -166,6 +166,31 @@ function sizeOutOfRange(v) { const n = Number(v); return !(n >= SIZE_MIN_CM && n
 function sizeClass(c, key) { return sizeOutOfRange(c[key]) ? ' size-out' : (c.sizeUnset ? ' size-unset' : ''); }
 function sizeInputMark(el) { el.classList.remove('size-unset'); el.classList.toggle('size-out', sizeOutOfRange(el.value)); }
 function sizeWarnToast(v, what) { if (sizeOutOfRange(v)) showToast(`${what} ${Number(v) || 0}cm — ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖입니다. 맞게 재셨는지 확인해 주세요.`, 'error'); }
+// 216번: 블라인드 여러 장 그림 막대 — 보기만(누르는 곳 아님). 전체 폭 위에 장마다 칸 · 손잡이 쪽에 점 · 남는 폭(창틀·기둥)은 빗금 · 넘치면 붉은 테두리
+function paneBarHtml(c) {
+    const W = Number(c && c.width) || 0;
+    const pcs = Pricing.panePieces(c);
+    if (!(W > 0) || pcs.length < 2) return '';
+    const sum = pcs.reduce((s, p) => s + p.w, 0);
+    const cells = pcs.map(p => `<i class="is-${p.hand}" style="flex:${p.w} 0 0"></i>`).join('');
+    const rest = W > sum ? `<b style="flex:${W - sum} 0 0"></b>` : '';
+    return `<div class="pane-bar${sum > W ? ' is-over' : ''}" aria-hidden="true">${cells}${rest}</div>`;
+}
+// 216번: 가로를 안 넣은 블라인드 장 줄 — "거실 블라인드 2번 줄"처럼
+function blankPaneRows() {
+    const out = [];
+    rooms.forEach(r => r.curtains.forEach(c => {
+        if (!Pricing.paneSplit(c.panes)) return;
+        Pricing.panesOf(c).forEach((p, i) => { if (p.w != null && !(p.w > 0)) out.push(`${c.label} ${i + 1}번 줄`); });
+    }));
+    return out;
+}
+function blockIfBlankPanes() {
+    const b = blankPaneRows();
+    if (!b.length) return false;
+    showToast(`가로를 넣지 않은 블라인드 장이 있어 발주서를 만들 수 없어요: ${b.join(', ')}`, 'error');
+    return true;
+}
 // 163번: 견적서를 내보내기 전 빈칸·크기 확인 (withSupplier: 공급자 줄이 있는 견적서 그림·인쇄만 true)
 function quoteGaps(withSupplier) {
     const out = [];
@@ -175,6 +200,8 @@ function quoteGaps(withSupplier) {
     rooms.forEach(r => r.curtains.forEach(c => { if (c.sizeUnset) unset++; else if (sizeOutOfRange(c.width) || sizeOutOfRange(c.height)) outN++; }));
     if (unset) out.push(`크기를 넣지 않은 줄이 ${unset}개 있습니다(처음 값 그대로)`);
     if (outN) out.push(`크기가 ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖인 줄이 ${outN}개 있습니다`);
+    const blankP = blankPaneRows();      // 216번
+    if (blankP.length) out.push(`블라인드 장 중 가로를 넣지 않은 줄이 있습니다(${blankP.join(', ')} — 그 장은 빠짐)`);
     const zero = rooms.reduce((n, r) => n + r.curtains.filter(c => { const f = Pricing.pickFabric(FABRIC_DB, c.fabricId); return f && !f.sampleOnly && !(Number(f.price) > 0); }).length, 0);      // 172번
     if (zero) out.push(`판매가가 비어 있는 원단을 쓴 줄이 ${zero}개 있습니다(견적서에 0원)`);
     return out;
@@ -220,7 +247,7 @@ function docFabName(calc, fab, isFactory, curtain) {
 }
 
 // 공장 발주 표(서류 시트·CSV 같은 칸): 머리 줄과 품목마다 한 줄 (130-1번에서 두 벌을 하나로)
-const DOC_ORDER_HEADERS = ["일자", "고객명", "공간", "항목", "샘플북", "품목명", "실측가로", "실측세로", "설치방식", "바닥간격", "제작세로", "가공방식", "옵션", "수량", "단위", "단가", "부자재", "판매금액"];
+const DOC_ORDER_HEADERS = ["일자", "고객명", "공간", "항목", "샘플북", "품목명", "실측가로", "실측세로", "손잡이", "설치방식", "바닥간격", "제작세로", "가공방식", "옵션", "수량", "단위", "단가", "부자재", "판매금액"];      // 216번: 손잡이 칸
 function docOrderRows(dateStr, custName) {
     const out = [];
     rooms.forEach(r => {
@@ -232,14 +259,20 @@ function docOrderRows(dateStr, custName) {
             const optText = `${c.shapeFee > 0 ? '형상 ' : ''}${c.leadBand ? '리드밴드' : ''}`.trim() || '기본';
             const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
 
-            out.push([
-                dateStr, custName, r.name, c.label, calc.fabBook || "", fabDisplayName || "",
-                c.width, c.height, calc.installDesc || "레일", `${calc.floorGapVal || 0}cm`,
-                calc.actualCurtainHeight || c.height,
-                methodDesc, optText, qtyVal, fab.unit || "", fab.price || 0,
+            // 216번: 블라인드는 장마다 한 줄 + 손잡이. 금액은 첫 줄에 품목 금액(나머지 장은 빈칸 — 합계가 맞게)
+            const pcs = (calc.calcType === 'hebe' && Array.isArray(calc.pieces) && calc.pieces.length) ? calc.pieces : null;
+            const HAND = { L: '좌', R: '우' };
+            const row = (lbl, w, h, hand, madeH, qty, amount) => out.push([
+                dateStr, custName, r.name, lbl, calc.fabBook || "", fabDisplayName || "",
+                w, h, hand, calc.installDesc || "레일", `${calc.floorGapVal || 0}cm`,
+                madeH,
+                methodDesc, optText, qty, fab.unit || "", fab.price || 0,
                 calc.calcType === 'hebe' ? '미적용' : `${c.hwName} (${calc.numJa}자)`,
-                calc.curtainSubtotal || 0
+                amount
             ]);
+            if (pcs && pcs.length > 1) pcs.forEach((p, k) => row(`${c.label} ${k + 1}/${pcs.length}`, p.w, p.h, HAND[p.hand] || '', p.h, p.hebe, k === 0 ? (calc.curtainSubtotal || 0) : ''));
+            else if (pcs) row(c.label, pcs[0].w, pcs[0].h, HAND[pcs[0].hand] || '', pcs[0].h, qtyVal, calc.curtainSubtotal || 0);
+            else row(c.label, c.width, c.height, '', calc.actualCurtainHeight || c.height, qtyVal, calc.curtainSubtotal || 0);
         });
     });
     return out;
@@ -247,6 +280,7 @@ function docOrderRows(dateStr, custName) {
 
 function generateDoc(type) {
     if (blockIfNoFabric()) return;
+    if ((type === 'factory' || type === 'sheet') && blockIfBlankPanes()) return;      // 216번
     calculateAll();
     const custName = document.getElementById('custName').value || "고객";
     const textarea = document.getElementById('outputDoc');
@@ -269,10 +303,14 @@ function generateDoc(type) {
             if (c.leadBand) optionsList.push("리드밴드");
             const optionsStr = optionsList.length > 0 ? optionsList.join(', ') : '기본';
             const gapStr = (calc.floorGapVal > 0 ? `+${calc.floorGapVal}` : calc.floorGapVal) + "cm";
-            const methodDesc = calc.calcType === 'width' ? '폭당 완제품' : (calc.isSeamless ? '대폭 무이음' : '소폭 이음제작');
+            const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당 완제품' : (calc.isSeamless ? '대폭 무이음' : '소폭 이음제작'));      // 216번: 블라인드가 "소폭 이음제작"으로 나오던 것
+            const pcs = (calc.calcType === 'hebe' && Array.isArray(calc.pieces) && calc.pieces.length) ? calc.pieces : null;      // 216번: 장마다 크기·손잡이
+            const paneLines = !pcs ? '' : (pcs.length > 1
+                ? pcs.map((p, k) => `\n      • ${k + 1}/${pcs.length}장: 가로 ${p.w}cm x 세로 ${p.h}cm · 손잡이 ${p.hand === 'L' ? '좌' : '우'}`).join('')
+                : `\n      • 손잡이: ${pcs[0].hand === 'L' ? '좌' : '우'}`);
 
             return `    └ ${c.label}\n` +
-                   `      • 실측규격: 가로 ${c.width}cm x 세로 ${c.height}cm\n` +
+                   `      • 실측규격: 가로 ${c.width}cm x 세로 ${c.height}cm${paneLines}\n` +
                    `      • 제작규격: 가로 ${c.width}cm x 세로 ${calc.actualCurtainHeight || c.height}cm [${calc.installDesc}, 바닥:${gapStr}]\n` +
                    `      • 원단/방식: [${calc.fabBook}] ${fabDisplayName} (${methodDesc}, ${c.pleat === 'panel' ? '판넬' : c.pleat + '배'})\n` +
                    `      • 가공옵션: ${optionsStr}\n` +
@@ -294,9 +332,9 @@ function generateDoc(type) {
             let rows = [DOC_ORDER_HEADERS.join('\t')];
             docOrderRows(dateStr, custName).forEach(row => rows.push(row.join('\t')));
 
-            if (typeof lightStandOf === 'function' && lightStandOf().on) rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "빛 (조명·설치)", lightStandOf().total].join('\t'));      // 131번
-            rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "전체 시공비", globalInstallFee].join('\t'));
-            rows.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "최종 금액", finalPriceVal].join('\t'));
+            if (typeof lightStandOf === 'function' && lightStandOf().on) rows.push([...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "빛 (조명·설치)", lightStandOf().total].join('\t'));      // 131번
+            rows.push([...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "전체 시공비", globalInstallFee].join('\t'));
+            rows.push([...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "최종 금액", finalPriceVal].join('\t'));
             textarea.value = rows.join('\n');
         } else if (type === 'ledger') {
             const headers = ["일자", "고객명", "공간수", "창문수", "대표품목", "판매가", "부가세", "최종금액", "시공비", "VAT구분"];
@@ -322,6 +360,7 @@ function generateDoc(type) {
 
 function downloadCsvFile() {
     if (blockIfNoFabric()) return;
+    if (blockIfBlankPanes()) return;      // 216번
     calculateAll();
     const custName = (document.getElementById('custName').value || "고객").trim();
     const today = new Date();
@@ -342,9 +381,9 @@ function downloadCsvFile() {
 
     docOrderRows(dateStr, custName).forEach(row => { csvContent += row.map(escapeCsv).join(',') + '\r\n'; });      // 시트와 한 곳에서 (130-1번)
 
-    if (typeof lightStandOf === 'function' && lightStandOf().on) csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "빛 (조명·설치)", lightStandOf().total].map(escapeCsv).join(',') + '\r\n';      // 131번
-    csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "전체 시공비", globalInstallFee].map(escapeCsv).join(',') + '\r\n';
-    csvContent += ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "최종 금액", finalPrice].map(escapeCsv).join(',') + '\r\n';
+    if (typeof lightStandOf === 'function' && lightStandOf().on) csvContent += [...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "빛 (조명·설치)", lightStandOf().total].map(escapeCsv).join(',') + '\r\n';      // 131번
+    csvContent += [...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "전체 시공비", globalInstallFee].map(escapeCsv).join(',') + '\r\n';
+    csvContent += [...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "최종 금액", finalPrice].map(escapeCsv).join(',') + '\r\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
