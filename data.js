@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261266';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261267';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1745,7 +1745,7 @@ function seatDrapeTechs(room) {
     let r = null;
     try { r = colorTechCounts(mc); } catch (e) { r = null; }
     if (!r) return null;
-    const pool = (seatPoint(mc, seatPoolColors('겉지', room), room, true) || []).filter(Boolean);
+    const pool = (seatPoint(mc, seatPoolColors('겉지', room), room, true) || []).filter(c => c && c.e >= SEAT_CFG.pointDE[0]);      // 221번: 벽과의 색 차 15 아래는 스며들게 몫이라 뺌(193번 세기 방식과 같은 거름)
     const ORDER = ['tint', 'warm', 'cool', 'analog', 'sat', 'opp', 'split', 'comp', 'value'];      // 순한 것부터 (120번 차례에 맞춤)
     const seats = ORDER.map(k => {
         const all = pool.filter(c => c.tech === k).sort((x, y) => Math.hypot(y.a, y.b) - Math.hypot(x.a, x.b));      // 또렷한 순 (160번)
