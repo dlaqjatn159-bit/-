@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261269';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabrics.js — 직원 화면 › 원단: 원단 분류(톤·분위기) 편집·원단 색상 관리·되돌리기/중복 정리 버튼·원단 사진 확인·기기 사진 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -116,7 +116,7 @@ function renderTagEditor() {
 let __colorSel = '';
 function renderColorEditor() {
     const cnt = document.getElementById('colorCount');
-    if (cnt) cnt.textContent = `${Object.keys(colorsStore()).filter(id => FABRIC_DB.some(f => f.id === id)).length}개 원단`;
+    if (cnt) cnt.textContent = `색 등록 ${Object.keys(colorsStore()).filter(id => FABRIC_DB.some(f => f.id === id)).length}개 원단 · 단가표 ${FABRIC_DB.length}줄`;      // 223번: 무엇을 세는지 (원단 목록 = 단가표 줄 전부)
     const bookSel = document.getElementById('colorBook'), fabSel = document.getElementById('colorFab'), box = document.getElementById('colorEditor');
     if (!bookSel || !fabSel || !box) return;
     const curtains = FABRIC_DB;      // 블라인드도 커튼처럼 색상(번호)별 톤 지정
@@ -143,7 +143,7 @@ function renderColorEditor() {
             return `<button onclick="colorSetTone('${q(cl.name)}','${on ? '' : t}')" class="${cls} border rounded-lg px-2.5 py-1.5 text-xs font-bold whitespace-nowrap">${TONE_LABELS[t]}</button>`;
         }).join('');
         return `<div class="flex items-center gap-1.5 py-1.5 border-b border-slate-100">
-            <span class="w-12 text-xs font-bold text-slate-800 flex-shrink-0">${cl.name}${/^\d+$/.test(cl.name) ? '번' : ''}</span>
+            <span class="w-12 text-xs font-bold text-slate-800 flex-shrink-0">${cl.name}${/^\d+$/.test(cl.name) ? '번' : ''}${typeof redamNo === 'function' && redamNo(__colorSel, cl.name).includes('-') ? `<br><span class="font-mono text-[10px] font-normal text-amber-900">${redamNo(__colorSel, cl.name)}</span>` : ''}</span>
             <input type="text" value="${(cl.label || '').replace(/"/g, '&quot;')}" placeholder="색 이름" maxlength="20" onchange="colorSetLabel('${q(cl.name)}', this.value)" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold bg-white outline-none flex-shrink-0">${btns}
             <button onclick="colorRemove('${q(cl.name)}')" class="ml-auto text-[11px] text-rose-500 font-bold px-2">삭제</button>
         </div>`;

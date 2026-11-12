@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261269';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -72,10 +72,12 @@ const PLAIN_TEXTURE_WORDS = { smooth: '매끈한 질감', natural: '짜임이 �
 const PLAIN_BLIND_WORDS = { combi: '콤비 블라인드', roll: '롤스크린', print: '프린트 블라인드' };
 // 견적서 품목 이름 (208번, 11-09 사장님): 색·종류 먼저 — "베이지 콤비 블라인드" · "아이보리 커튼". 책자 이름·번호는 ticketEstSub로 뒤에 작게
 //  색 이름은 손님 화면과 같은 custColorName(182번). 색 이름이 없으면(실물 견본 등) 지금처럼 책자 이름 + 번호(147번)
+// 223번: 색 이름이 없으면 책자 이름 대신 종류 낱말만("커튼" · "콤비 블라인드"). 실물 상담 품목은 그 이름
 function ticketEstName(c, calc) {
+    const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
+    if (sf) return sf.name;
     const color = custColorName(c.fabricId, c.colorName);
-    if (!color) return ticketBookName(c);
-    return `${color} ${ticketEstKind(c)}`;
+    return color ? `${color} ${ticketEstKind(c)}` : ticketEstKind(c);
 }
 // 208번: 이름 뒤 종류 낱말 — 블라인드는 콤비 블라인드 · 롤스크린 · 프린트 블라인드(없으면 블라인드), 겉지·속지는 왼쪽 종류 칸에 있으니 "커튼"
 // 216번: 견적서 크기 글 (사장님 11-11: 장별 크기 + 손잡이). 블라인드 한 장 "450 × 240cm · 손잡이 우",
@@ -97,8 +99,10 @@ function ticketEstKind(c) {
     return PLAIN_BLIND_WORDS[blindKind(f)] || '블라인드';
 }
 // 208번: 이름 아래 작은 줄 맨 앞에 붙는 책자 이름·번호("블랑 1번"). 이름이 이미 책자 이름이면 빈칸(되풀이 막기)
+// 223번 (11-12 사장님): 작은 줄은 책자 이름·번호 대신 리담 번호("C014-2"). 손님에게 책자 이름·책자 색 번호는 건네지 않음. 번호가 아직 없으면 빈칸
 function ticketEstSub(c) {
-    return custColorName(c.fabricId, c.colorName) ? ticketBookName(c) : '';
+    if (typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId)) return '';
+    return (typeof redamNo === 'function') ? redamNo(c.fabricId, c.colorName) : '';
 }
 function ticketPlainName(c, calc) {
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
@@ -258,7 +262,7 @@ function ticketDataBase() {
                 return {
                     label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
                     name: ticketPlainName(c, calc), tone: ticketToneWord(r, c),      // 이유 장·우리 집 색: 색 이름 · 재질 + 벽·바닥과 톤 관계 (61번)
-                    bookName: ticketEstName(c, calc), bookSub: ticketEstSub(c),      // 견적서(그림·최종 제안 표·카톡 글): 큰 이름 = 색·종류 "베이지 콤비 블라인드", 작은 줄 = 책자 이름·번호 "블랑 1번" (208번)
+                    bookName: ticketEstName(c, calc), bookSub: ticketEstSub(c),      // 견적서(그림·최종 제안 표·카톡 글): 큰 이름 = 색·종류 "베이지 콤비 블라인드", 작은 줄 = 리담 번호 "C014-2" (208번 · 223번)
                     fill: fabricColorFill(c.fabricId, c.colorName), opts, price: calc.curtainSubtotal || 0, sampleOnly: sampleOnly || !!calc.noFabric, sampleBlind: sampleOnly,      // 원단 없는 품목은 금액을 숨김 (126번) · 176번: sampleBlind = 실물 견본 품목(금액 칸에 "견본 확인 후")
                     reason: ticketItemReason(r, c), fabricId: c.fabricId || '', colorName: c.colorName || '',
                     size: ticketSizeText(c, calc),      // 제작 크기 (넓이 × 높이) · 216번: 블라인드는 장·손잡이까지
@@ -360,7 +364,7 @@ function drawTicket(ctx, data, W, slim) {
         const blocks = room.items.map(it => {
             const photo = (data.photos && data.photos[it.photoKey]) || null;
             setFont(400, NAME_PX, SERIF);
-            const lines = wrap(it.bookName || ticketBookName(it), tw);      // 책자 원단 이름 + 색 번호, 예) 블랑 1번 (75번)
+            const lines = wrap(it.bookName || it.name || '', tw);      // 책자 원단 이름 + 색 번호, 예) 블랑 1번 (75번)
             const lastW = ctx.measureText(lines[lines.length - 1] || '').width;
             setFont(400, PAPER_F4, SANS);
             // 옵션은 이름 옆에 작게. 자리가 모자라면 다음 줄로
@@ -509,7 +513,7 @@ function planTicket(data, s, slim) {
     }
     const fitsOnePage = pages.length === 1 && last.y + F.h <= PAGE_H;
     // 145번: 견적서 기본 공간 = 공간 3개(각 겉지·속지 두 줄)만큼. 품목이 적어도 합계는 이 높이 아래에
-    const fakeIt = k => ({ kind: k, kindKey: k === '속지' ? 'sheer' : 'drape', bookName: '베이지 커튼', bookSub: '블랑 1번', size: '2,400 × 2,300', price: 0 });      // 208번: 진짜 품목과 같은 모양
+    const fakeIt = k => ({ kind: k, kindKey: k === '속지' ? 'sheer' : 'drape', bookName: '베이지 커튼', bookSub: 'C014-2', size: '2,400 × 2,300', price: 0 });      // 208번: 진짜 품목과 같은 모양
     const fakeH = T.layoutRoom({ name: '공간', total: 0, items: [fakeIt('겉지'), fakeIt('속지')] }).cardH;
     const minY = T.START_Y + 3 * (fakeH + GAP);
     return { s, W, PAGE_H, BOTTOM, F, pages, fitsOnePage, minY };
@@ -2101,7 +2105,7 @@ function ticketKakaoText(data) {
         if (!room.items.length) return;
         out.push('', `■ ${room.name}${room.sampleOnly ? '' : ' ' + won(room.total)}`);
         room.items.forEach(it => {
-            out.push(`· ${it.kind} · ${it.bookName || it.name}${it.bookSub ? ` (${it.bookSub})` : ''}`);      // 208번: 책자 이름·번호는 괄호로 뒤에
+            out.push(`· ${it.kind} · ${it.bookName || it.name}${it.bookSub ? ` (${it.bookSub})` : ''}`);      // 208번 · 223번: 리담 번호는 괄호로 뒤에
             const sub = [it.size, it.meta, it.sampleOnly ? (it.sampleBlind ? '견본 확인 후' : '') : won(it.price)].filter(Boolean).join(' · ');      // 176번
             if (sub) out.push(`  ${sub}`);
         });

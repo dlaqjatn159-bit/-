@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261269';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // finder.js — 직원 화면 › 원단 › 찾기: 원단 색 카드·거름망·정렬·비슷한 색·후보 모아 보기·고객에게 보여주기·색 지도·넣을 칸 고르기 (130-2에서 app.js에서 떼어 냄)
 
 
@@ -130,7 +130,7 @@ function finderMatch(e, words) {
     if (s.price.size && !s.price.has(e.priceTier)) return false;
     if (s.book.size && !s.book.has(e.book)) return false;
     if (words.length) {
-        const hay = `${e.label}${e.fabName}${e.book}${e.fabricId}${e.blindKind ? BLIND_KIND_LABELS[e.blindKind] : ''}`.toLowerCase().replace(/\s+/g, '');
+        const hay = `${e.label}${e.fabName}${e.book}${e.fabricId}${e.blindKind ? BLIND_KIND_LABELS[e.blindKind] : ''}${typeof redamNo === 'function' ? redamNo(e.fabricId, e.color) : ''}`.toLowerCase().replace(/\s+/g, '');      // 223번: 리담 번호(C014-2)로도 찾음
         const isNo = /^\d+$/.test(e.color);
         if (!words.every(w => (/^\d+$/.test(w) && isNo) ? parseInt(w, 10) === parseInt(e.color, 10) : hay.includes(w))) return false;
     }
@@ -278,7 +278,7 @@ function renderFinder() {
     if (cnt) cnt.innerHTML = sim ? `<b class="font-serif-kr">비슷한 색 ${list.length}개</b><small>거름망은 종류(겉지·속지)만 적용</small>`
         : (pair ? `<b class="font-serif-kr">어울리는 속지 ${list.length}개</b><small>${pairRule} · 거름망은 적용 안 함</small>`
             : (mMode ? `<b class="font-serif-kr">${list.length}색</b><small>${esc(mRoom.name)} ${FINDER_ROOM_MODES[mMode]} · ${{ bridge: '벽과 바닥을 잇는 색 가운데 벽 쪽에 가까운 순', wall: '잰 벽 색과 가까운 순', floor: '바닥 색기를 따르고 바닥보다 밝은 순' }[mMode]} · 색 값이 있는 색만</small>`
-            : `<b class="font-serif-kr">${finderColorTotal(list)}색</b><small>${finderFabricTotal(list)}개 원단 · 전체 ${finderColorTotal(all)}색${finderNoColorNote(list)}</small>`));      // 색 수는 등록된 색만 (58번)
+            : `<b class="font-serif-kr">${finderColorTotal(list)}색</b><small>${finderFabricTotal(list)}개 원단 · 전체 ${finderColorTotal(all)}색${finderNoColorNote(list)}${FABRIC_DB.some(isCustomerHidden) ? ` · 손님 추천 숨김 ${FABRIC_DB.filter(isCustomerHidden).length}개 빠짐` : ''}</small>`));      // 색 수는 등록된 색만 (58번)
     const rbox = document.getElementById('finderRef');
     if (rbox) {
         rbox.hidden = !ref;
@@ -314,7 +314,8 @@ function renderFinder() {
         const title = e.color ? (e.label || `${e.no}번`) : e.fabName;
         const light = (e.L != null ? `밝기 ${Math.round(e.L)}` : '밝기 미정') + (sim ? ` · ${colorDistanceWord(e.dist)}` : '') + (pair && e.dist == null ? ' · 톤만 맞춤' : '') + (fitRoom ? ` · 어울림 ${e.fit}` : '')
             + (mMode === 'floor' ? ` · 바닥보다 ${Math.round(e.L - mc.floor.L)} 밝음` : (mMode ? ` · ${mMode === 'wall' ? '벽과' : '이어주는 색과'} ${colorDistanceWord(e.rd)}` : ''));
-        const meta = e.color ? `${e.book} ${e.fabName} ${e.no} · ${light}` : `${e.book} · ${light}`;
+        const rno = typeof redamNo === 'function' ? redamNo(e.fabricId, e.color) : '';      // 223번
+        const meta = (rno ? rno + ' · ' : '') + (e.color ? `${e.book} ${e.fabName} ${e.no} · ${light}` : `${e.book} · ${light}`);
         // 정보판 안: 찾기 버튼 줄(비슷한 색 · 겉지는 어울리는 속지). 넣기 버튼은 상담에 커튼·블라인드 칸이 하나라도 있으면 카드 맨 아래에 늘 보임
         //  (넣을 칸이 정해져 있으면 바로 넣고, 없으면 누를 때 "어느 칸에 넣을까요?" 판이 뜸)
         const finds = (finderHasLab(e) ? `<button type="button" data-sim="${esc(e.key)}">비슷한 색</button>` : '') + (e.cat === 'drape' ? `<button type="button" data-pair="${esc(e.key)}">어울리는 속지</button>` : '');

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261269';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -30,7 +30,8 @@ function renderDbTable() {
             (f.name && f.name.toLowerCase().includes(searchKeyword)) ||
             (f.engName && f.engName.toLowerCase().includes(searchKeyword)) ||
             (f.book && f.book.toLowerCase().includes(searchKeyword)) ||
-            (f.id && f.id.toLowerCase().includes(searchKeyword))
+            (f.id && f.id.toLowerCase().includes(searchKeyword)) ||
+            (typeof redamNo === 'function' && redamNo(f.id).toLowerCase().includes(searchKeyword))      // 223번: 리담 번호로 찾기
         );
     }
 
@@ -53,6 +54,7 @@ function renderDbTable() {
             <tr class="hover:bg-slate-50 transition text-xs">
                 <td class="p-2.5 font-bold text-amber-900">
                     <div class="text-[10px] text-slate-400 font-normal">${f.book}${pv && pv.supplier ? ` · ${pv.supplier}` : ''} [${f.id}]</div>
+                    ${typeof redamNo === 'function' ? `<div class="text-[10px] font-normal text-stone-500">${redamNo(f.id) ? `리담 <b class="font-mono text-amber-900">${redamNo(f.id)}</b> · 견본 ${redamSamplePlace(f.id) || '-'}` : (getFabricColors(f.id).length ? '리담 번호 없음(갈래 모름)' : '리담 번호: 색을 넣으면 붙음')} <input type="text" value="${(redamNoStore().pages[f.id] || '').replace(/"/g, '&quot;')}" placeholder="쪽" maxlength="9" onchange="setRedamPage('${f.id.replace(/'/g, "\\'")}', this.value); renderDbTable()" class="w-12 ml-1 px-1 py-0.5 border border-slate-300 rounded text-[10px]"></div>` : ''}
                     <div class="text-slate-800 font-semibold">${f.name}${f.engName ? ` <span class="text-stone-400 font-mono text-[11px] font-normal">[${f.engName}]</span>` : ''}</div>
                 </td>
                 <td class="p-2.5 font-mono">${calcBadge}</td>

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261269';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1109,6 +1109,7 @@ function colorsStore() {
 }
 function saveColorsStore() {
     try { localStorage.setItem(STORE_KEYS.colors, JSON.stringify(colorsStore())); } catch (e) { console.warn('색상 저장 실패', e); }
+    if (typeof assignRedamNumbers === 'function') assignRedamNumbers();      // 223번: 새 색이 생기면 리담 번호 (팩 불러오는 중엔 멈춤)
 }
 function replaceColorsStore(obj) { __colorsCache = (obj && typeof obj === 'object') ? obj : {}; saveColorsStore(); }
 function colorSort(a, b) {
@@ -2311,6 +2312,7 @@ function loadFabricDb() {
 
 function saveFabricDb(triggerRoomsRender = true) {
     localStorage.setItem(STORE_KEYS.fabrics, JSON.stringify(FABRIC_DB));
+    if (typeof assignRedamNumbers === 'function') assignRedamNumbers();      // 223번: 새 원단(같은 원단 묶음 포함)에 리담 번호
     if (typeof updateBookFilterOptions === 'function') updateBookFilterOptions();
     if (typeof renderDbTable === 'function') renderDbTable();
     if (triggerRoomsRender && typeof renderRooms === 'function') renderRooms();
@@ -2936,10 +2938,156 @@ function handleFabricFileUpload(event) {
 }
 
 // ==============================================================
+// 리담 번호 (223번, 11-12 사장님): 원단 갈래 한 글자 + 원단 세 자리 + 색 번호. 예) C014-2
+//  한 번 붙으면 안 바뀜(책자가 바뀌어도 · 단종돼도 · 지워도), 쓴 번호는 다시 안 씀. 같은 원단 묶음은 번호 하나
+//  번호 저장소는 원단·색과 따로 — 팩 불러오기·되돌리기가 덮어쓰지 않음(팩과는 합치기만)
+// ==============================================================
+// 갈래 표: 새 갈래는 맨 아래에 한 줄. 한 번 쓴 글자는 바꾸거나 다시 쓰지 않음 (B는 11-12 첫 결정에만 있고 안 씀)
+const REDAM_NO_KINDS = [
+    { k: 'C', name: '겉지', test: f => !redamIsBlind(f) && f.categoryType === '겉지' },
+    { k: 'S', name: '속지', test: f => !redamIsBlind(f) && f.categoryType === '속지' },
+    { k: 'K', name: '콤비', test: f => blindKind(f) === 'combi' },
+    { k: 'R', name: '롤', test: f => blindKind(f) === 'roll' },
+    { k: 'W', name: '우드', test: f => blindKind(f) === 'wood' },
+    { k: 'A', name: '알루미늄', test: f => blindKind(f) === 'alu' },
+    { k: 'P', name: '프린트', test: f => blindKind(f) === 'print' }
+];
+const REDAM_NO_KEY = 'redam_numbers_v1';
+const REDAM_COLOR_ARCHIVE_KEY = 'redam_colors_archive_v1';
+// 옛 이름으로 남은 색 (원단 줄이 없음, 11-12 사장님: 지우지 말고 보관으로)
+const REDAM_OLD_COLOR_KEYS = ['보브_보브', '울피치A', '울피치B', '보브_암막1', '보브_암막2', '보브_암막3', '보브_암막4', '보브_암막5', '보브_암막6', '보브_암막7', '보브_암막8', '보브_암막9', '보브_암막10', '보브_암막11'];
+let __redamNo = null;
+let __redamNoHold = false;      // 팩을 불러오는 동안은 번호를 매기지 않음 (색과 원단이 따로 바뀌는 사이)
+function redamIsBlind(f) { return !!f && (f.categoryType === '블라인드' || f.calcType === 'hebe' || !!blindKind(f)); }
+function redamKindOf(f) { const r = f ? REDAM_NO_KINDS.find(x => x.test(f)) : null; return r ? r.k : null; }
+function redamNoClean(s) {
+    s = (s && typeof s === 'object') ? s : {};
+    const obj = v => (v && typeof v === 'object') ? v : {};
+    return { v: 1, next: obj(s.next), fab: obj(s.fab), nums: obj(s.nums), books: obj(s.books), nextBook: Number(s.nextBook) || 0, pages: obj(s.pages) };
+}
+function redamNoStore() {
+    if (__redamNo) return __redamNo;
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(REDAM_NO_KEY) || 'null'); } catch (e) { s = null; }
+    __redamNo = redamNoClean(s);
+    return __redamNo;
+}
+function saveRedamNoStore() {
+    try { localStorage.setItem(REDAM_NO_KEY, JSON.stringify(redamNoStore())); } catch (e) { console.warn('리담 번호 저장 실패', e); }
+}
+function redamBookLabel(i) { const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; return i < 26 ? A[i] : A[Math.floor(i / 26) - 1] + A[i % 26]; }
+function redamColorKey(name) { return normalizeColorName(name); }
+// 번호 매기기: 색이 하나라도 있는 원단(숨김 포함, 실물 샘플 빼고). 이미 있는 번호는 절대 안 건드림. 매긴 개수를 돌려줌
+function assignRedamNumbers() {
+    if (__redamNoHold || typeof FABRIC_DB === 'undefined' || !Array.isArray(FABRIC_DB)) return 0;
+    const s = redamNoStore();
+    let changed = 0, repOf = {};
+    try { repOf = fabricTwinReps() || {}; } catch (e) { repOf = {}; }
+    const isRep = f => !repOf[f.id] || repOf[f.id] === f.id;
+    const order = FABRIC_DB.filter(f => f && !f.sampleOnly);
+    order.sort((a, b) => (isRep(a) ? 0 : 1) - (isRep(b) ? 0 : 1));      // 묶음의 대표 먼저 (나머지는 대표 번호를 따름)
+    order.forEach(f => {
+        if (s.fab[f.id] || !getFabricColors(f.id).length) return;
+        const rep = repOf[f.id];
+        if (rep && rep !== f.id && s.fab[rep]) { s.fab[f.id] = s.fab[rep]; changed++; return; }
+        const k = redamKindOf(f);
+        if (!k) return;      // 갈래를 모르는 원단은 번호 없음 (직원 화면에 '갈래 모름')
+        const n = Math.max(1, Number(s.next[k]) || 1);
+        const no = k + String(n).padStart(3, '0');
+        s.next[k] = n + 1; s.fab[f.id] = no;
+        if (!s.nums[no]) s.nums[no] = { cols: {}, nextCol: 1 };
+        changed++;
+    });
+    // 색 번호: 처음엔 밝은 색부터, 그 뒤 새 색은 다음 번호 (책자 색 번호는 안 씀)
+    Object.keys(s.fab).forEach(id => {
+        const no = s.fab[id];
+        const rec = s.nums[no] || (s.nums[no] = { cols: {}, nextCol: 1 });
+        rec.cols = rec.cols || {};
+        const fresh = getFabricColors(id).filter(c => c && redamColorKey(c.name) && rec.cols[redamColorKey(c.name)] == null);
+        if (!fresh.length) return;
+        const L = c => (typeof c.light === 'number' ? c.light : -1);
+        fresh.sort((a, b) => (L(b) - L(a)) || colorSort(a, b));
+        fresh.forEach(c => {
+            const n = Math.max(1, Number(rec.nextCol) || 1);
+            rec.cols[redamColorKey(c.name)] = n; rec.nextCol = n + 1; changed++;
+        });
+    });
+    // 견본 책자 이름 A·B·C…: 번호 붙은 원단의 책자가 처음 나온 순서
+    FABRIC_DB.forEach(f => {
+        if (!f || !s.fab[f.id]) return;
+        const b = String(f.book || '').trim();
+        if (!b || s.books[b]) return;
+        s.books[b] = redamBookLabel(s.nextBook); s.nextBook++; changed++;
+    });
+    if (changed) saveRedamNoStore();
+    return changed;
+}
+// 원단·색의 리담 번호. 색 번호가 없으면 원단 번호만(C014), 번호가 없으면 ''
+function redamNo(fabricId, colorName) {
+    if (!fabricId) return '';
+    const s = redamNoStore(), no = s.fab[fabricId];
+    if (!no) return '';
+    const rec = s.nums[no], k = redamColorKey(colorName);
+    const n = (k && rec && rec.cols) ? rec.cols[k] : null;
+    return n ? `${no}-${n}` : no;
+}
+// 견본 위치 (직원 화면만): 책자 이름 A·B·C + 쪽. 예) "A · 12쪽"
+function redamSamplePlace(fabricId) {
+    const s = redamNoStore(), f = FABRIC_DB.find(x => x.id === fabricId);
+    if (!f) return '';
+    const b = s.books[String(f.book || '').trim()], p = s.pages[fabricId];
+    return b ? `${b}${p ? ' · ' + p + '쪽' : ''}` : '';
+}
+function setRedamPage(fabricId, val) {
+    const s = redamNoStore(), v = String(val || '').replace(/[^0-9~\-]/g, '').slice(0, 9);
+    if (v) s.pages[fabricId] = v; else delete s.pages[fabricId];
+    saveRedamNoStore();
+}
+// 팩의 번호와 합치기: 이 기기에 있는 번호는 안 바꾸고, 없는 것만 더함. 다음 번호는 큰 쪽(쓴 번호를 다시 안 쓰게)
+function mergeRedamNoFromPack(p) {
+    if (!p || typeof p !== 'object') return;
+    const s = redamNoStore(), q = redamNoClean(p);
+    Object.keys(q.fab).forEach(id => { if (!s.fab[id]) s.fab[id] = q.fab[id]; });
+    Object.keys(q.nums).forEach(no => {
+        const a = s.nums[no] || (s.nums[no] = { cols: {}, nextCol: 1 }), b = q.nums[no] || {};
+        a.cols = a.cols || {};
+        Object.keys(b.cols || {}).forEach(c => { if (a.cols[c] == null) a.cols[c] = b.cols[c]; });
+        a.nextCol = Math.max(Number(a.nextCol) || 1, Number(b.nextCol) || 1, ...Object.values(a.cols).map(n => Number(n) + 1));
+    });
+    Object.keys(q.next).forEach(k => { s.next[k] = Math.max(Number(s.next[k]) || 1, Number(q.next[k]) || 1); });
+    Object.keys(s.nums).forEach(no => { const k = no.charAt(0), n = parseInt(no.slice(1), 10); if (n >= (Number(s.next[k]) || 1)) s.next[k] = n + 1; });
+    Object.keys(q.books).forEach(b => { if (!s.books[b]) s.books[b] = q.books[b]; });
+    s.nextBook = Math.max(s.nextBook, q.nextBook, Object.keys(s.books).length);
+    Object.keys(q.pages).forEach(id => { if (!s.pages[id]) s.pages[id] = q.pages[id]; });
+    saveRedamNoStore();
+}
+// 옛 색 보관 (11-12): 원단 줄이 없는 옛 이름 색을 색 저장소에서 보관 칸으로 옮김. 진짜 원단 목록이 들어와 있을 때만(보브가 있을 때)
+function redamColorsArchive() {
+    try { return JSON.parse(localStorage.getItem(REDAM_COLOR_ARCHIVE_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+function archiveOldColors(extra) {
+    const arc = redamColorsArchive();
+    if (extra && typeof extra === 'object') Object.keys(extra).forEach(k => { if (!arc[k]) arc[k] = extra[k]; });
+    const store = colorsStore();
+    let moved = 0;
+    if (Array.isArray(FABRIC_DB) && FABRIC_DB.some(f => f.id === '데미안_보브')) {
+        REDAM_OLD_COLOR_KEYS.forEach(k => {
+            if (!store[k] || FABRIC_DB.some(f => f.id === k)) return;
+            if (!arc[k]) arc[k] = store[k];
+            delete store[k]; moved++;
+        });
+    }
+    try { localStorage.setItem(REDAM_COLOR_ARCHIVE_KEY, JSON.stringify(arc)); } catch (e) {}
+    if (moved) { __redamNoHold = true; try { saveColorsStore(); } finally { __redamNoHold = false; } }
+    return moved;
+}
+
+// ==============================================================
 // 비공개 팩 (원가 규칙 + 원단 원가 + 원단 목록) 불러오기 / 백업 내보내기
 // ==============================================================
 function applyPrivatePack(pack) {
     if (!pack || pack.type !== 'redam-private-pack' || !pack.rules) throw new Error('Re.dam 비공개 팩 형식이 아닙니다.');
+    __redamNoHold = true;      // 223번: 색·원단이 다 바뀔 때까지 리담 번호를 매기지 않음
     Costing.setPrivate({ rules: pack.rules, costs: pack.costs || {} });
     savePrivateStore();
     if (pack.tags && typeof pack.tags === 'object') saveTagOverrides(pack.tags);
@@ -2954,6 +3102,10 @@ function applyPrivatePack(pack) {
     }
     saveFabricDb(true);
     warnIfQuoteFabricsMissing();
+    __redamNoHold = false;
+    if (pack.redamNo) mergeRedamNoFromPack(pack.redamNo);      // 223번: 팩의 번호를 먼저 합치고(이 기기 번호는 그대로)
+    archiveOldColors(pack.colorsArchive);                      //  옛 이름 색은 보관 칸으로
+    assignRedamNumbers();                                       //  그다음 번호 없는 원단·색에만 새 번호
     return FABRIC_DB.length;
 }
 
@@ -2983,6 +3135,8 @@ function exportPrivatePack() {
         rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides(), colors: colorsStore(),
         ticket: (typeof ticketTextsForPack === 'function') ? ticketTextsForPack() : undefined,        // 견적서 글(안내 문구·결제 조건·맞춤 제작 안내·공급자 정보)
         prices: storedOptionPrices(),                                                                 // 가공·부자재 단가와 원가 (이 기기에서 정한 칸만)
+        redamNo: redamNoStore(),                                                                      // 223번: 리담 번호(원단·색 번호, 견본 책자 이름·쪽)
+        colorsArchive: redamColorsArchive(),                                                          // 223번: 옛 이름 색 보관
         history: (typeof loadHistory === 'function') ? loadHistory() : undefined };                    // 상담 기록(고객 이름·연락처 포함)
     const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
     const d = new Date();
