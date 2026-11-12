@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261269';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261270';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -451,7 +451,7 @@ function blindKind(f) { return (f && f.blindKind && BLIND_KIND_LABELS[f.blindKin
 function blindLight(f) {
     const n = String((f && f.name) || '').toUpperCase();
     if (/B\/O|BLACKOUT|암막/.test(n)) return 'full';
-    if (/SUN\s*SCREEN|선스크린/.test(n)) return 'see';
+    if (/SUN\s*SCREEN|선스크린|썬스크린/.test(n)) return 'see';      // 224번: 원단 이름은 "썬스크린 3%"
     return 'none';
 }
 // 분류 화면용: 어떤 원단이 이 분위기인지 (원단 기준 설명). 분위기는 질감·톤·비침으로 자동이라 직접 고르는 건 선택
@@ -3081,6 +3081,32 @@ function archiveOldColors(extra) {
     if (moved) { __redamNoHold = true; try { saveColorsStore(); } finally { __redamNoHold = false; } }
     return moved;
 }
+// 224번 (11-12 사장님): 롤스크린 한 번 고치기 — 단종(KX2510 · 콤비 블랙라벨)만 숨기고 나머지 롤은 손님 추천에 보임,
+//  롤 린넨에 복사돼 들어온 콤비 린넨 색(UC-…)은 '옛 색 보관'으로. 한 번 고친 기기는 다시 안 고침(나중에 사장님이 다시 숨긴 건 그대로)
+const ONCE_224_KEY = 'redam_once_224';
+const DISCONTINUED_IDS = ['롤스크린_KX2510_암막', '콤비_블랙라벨'];      // 공장에서 더 안 만듦 (11-12 사장님)
+function fixRollsOnce224() {
+    try { if (localStorage.getItem(ONCE_224_KEY)) return false; } catch (e) { return false; }
+    if (!Array.isArray(FABRIC_DB) || !FABRIC_DB.some(f => f.id === '롤스크린_크라토스_폼_암막')) return false;      // 진짜 원단 목록이 들어온 뒤에만
+    FABRIC_DB.filter(f => blindKind(f) === 'roll' || DISCONTINUED_IDS.includes(f.id)).forEach(f => {
+        const off = DISCONTINUED_IDS.includes(f.id);
+        if (off && !isCustomerHidden(f)) setFabricTag(f.id, 'hide', 'yes');
+        if (!off && isCustomerHidden(f)) setFabricTag(f.id, 'hide', f.fabricOnly ? 'no' : '');
+    });
+    const store = colorsStore(), roll = store['롤스크린_린넨'], combi = store['콤비_린넨'];
+    if (Array.isArray(roll) && Array.isArray(combi)) {
+        const copied = roll.filter(c => /^UC-/.test(String(c.name)) && combi.some(d => d.name === c.name && d.hex === c.hex));
+        if (copied.length) {
+            const arc = redamColorsArchive();
+            arc['롤스크린_린넨 (콤비 린넨 색, 224번)'] = copied;
+            try { localStorage.setItem(REDAM_COLOR_ARCHIVE_KEY, JSON.stringify(arc)); } catch (e) {}
+            store['롤스크린_린넨'] = roll.filter(c => !copied.includes(c));
+            saveColorsStore();
+        }
+    }
+    try { localStorage.setItem(ONCE_224_KEY, new Date().toISOString()); } catch (e) {}
+    return true;
+}
 
 // ==============================================================
 // 비공개 팩 (원가 규칙 + 원단 원가 + 원단 목록) 불러오기 / 백업 내보내기
@@ -3106,6 +3132,7 @@ function applyPrivatePack(pack) {
     if (pack.redamNo) mergeRedamNoFromPack(pack.redamNo);      // 223번: 팩의 번호를 먼저 합치고(이 기기 번호는 그대로)
     archiveOldColors(pack.colorsArchive);                      //  옛 이름 색은 보관 칸으로
     assignRedamNumbers();                                       //  그다음 번호 없는 원단·색에만 새 번호
+    fixRollsOnce224();                                          // 224번: 롤 숨김·롤 린넨 색 한 번 고치기
     return FABRIC_DB.length;
 }
 
