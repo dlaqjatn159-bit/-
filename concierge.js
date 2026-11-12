@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261267';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -470,7 +470,7 @@
         if (!ed || !item || (item.presetType !== 'drape' && item.presetType !== 'blind') || !roomHasLab(ed)) return [];
         const eff = roomWithTaste(Object.assign({}, ed, { pointTech: null }));
         if (!eff || eff.colorStrength !== 'point' || eff.colorAccent !== 'point') return [];
-        return (typeof pointTechOptions === 'function') ? pointTechOptions(ed.measuredColor, item.presetType === 'blind' ? '블라인드' : '겉지') : [];
+        return (typeof pointTechOptions === 'function') ? pointTechOptions(ed.measuredColor, item.presetType === 'blind' ? '블라인드' : '겉지', ed) : [];      // 222번: 공간(창 방향)
     }
     function canPointRoom(r) { return planHas(r, 'drape') || planHas(r, 'blind') || (r.curtains || []).some(c => c.presetType === 'drape' || c.presetType === 'blind'); }
     // 다음에 할 일 { kind: 'ask' | 'comp' | 'houseComp' | 'pres' | 'tex' | 'sheer' | 'blind' | 'fabric', room } — 없으면 null(모두 마침)
@@ -1302,7 +1302,7 @@
                     // 146번: 방식을 누르면 설명(벽 색 + 그 방식의 원단 색 몇 개 + 쉬운 한 줄)을 보고 확정, 아니면 돌아감
                     const pv = state.pointPreview && techs.find(o => o.key === state.pointPreview);
                     if (pv && typeof pointTechPreview === 'function') {
-                        const P = pointTechPreview(ed.measuredColor, curItem.presetType === 'blind' ? '블라인드' : '겉지', pv.key, 4);
+                        const P = pointTechPreview(ed.measuredColor, curItem.presetType === 'blind' ? '블라인드' : '겉지', pv.key, 4, ed);      // 222번: 공간(창 방향)
                         // 직원 화면 색 기법(color-guide.js)의 방 그림을 떼어 옴: 벽·바닥은 이 공간에서 잰 색, 양쪽 커튼은 이 방식의 원단 색
                         const wall = (ed.measuredColor && ed.measuredColor.wall && ed.measuredColor.wall.hex) || '#EEE9E0';
                         const floor = (ed.measuredColor && ed.measuredColor.floor && ed.measuredColor.floor.hex) || '#B98A5E';

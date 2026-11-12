@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261267';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -655,7 +655,7 @@ function renderSurvey() {
                 </div>` : ''}
                 ${roomCurtainConfig(room) !== 'sheer' && (roomPointOn(room) || (!room.ownTaste && houseTaste.pres === 'point')) ? `<div class="survey-row"><div class="k">기법</div>
                     <div class="survey-opts">
-                        ${(typeof pointTechOptions === 'function' ? pointTechOptions(room.measuredColor, roomCurtainConfig(room) === 'blind' ? '블라인드' : '겉지') : []).map(o => `<button type="button" class="survey-opt ${room.pointTech === o.key ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'pointTech', '${o.key}')">${o.term}</button>`).join('')}
+                        ${(typeof pointTechOptions === 'function' ? pointTechOptions(room.measuredColor, roomCurtainConfig(room) === 'blind' ? '블라인드' : '겉지', room) : []).map(o => `<button type="button" class="survey-opt ${room.pointTech === o.key ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'pointTech', '${o.key}')">${o.term}</button>`).join('')}
                         <button type="button" class="survey-opt dim ${!room.pointTech ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'pointTech', null)">맡김</button>
                     </div>
                 </div>` : ''}

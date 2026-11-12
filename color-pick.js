@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261267';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261268';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -225,8 +225,7 @@
         const doorTxt = n === 1 ? fabName(f0.id, f0.color) : `원단 ${n}가지 보기`;      // 원단이 하나면 그 원단 이름
         // 190번: 겉지 자리가 둘 이상이면 이유 한 줄 아래 작은 글 "왜 이 셋인가요"(두 장이면 "왜 이 둘인가요") → 지도. 한 장·속지는 없음
         const mapLink = r.kind === 'drape' && r.list.length > 1 ? `<button type="button" class="cp-map-link" onclick="concierge.cpMap()">${r.list.length === 2 ? '왜 이 둘인가요' : '왜 이 셋인가요'}</button>` : '';
-        const near = r.kind === 'drape' && x.near ? `<p class="cp-why">${esc('딱 맞는 ' + x.near + ' 원단은 아직 없습니다. 가장 가까운 색입니다.')}</p>` : '';      // 209번 (11-09 사장님)
-        const say = `<div class="cp-say"><h1 class="cp-hero">${esc(seatName(r, x))}</h1><p class="cp-why">${esc(whyOf(r, x))}</p>${near}${mapLink}</div>`;
+        const say = `<div class="cp-say"><h1 class="cp-hero">${esc(seatName(r, x))}</h1><p class="cp-why">${esc(whyOf(r, x))}</p>${mapLink}</div>`;      // 222번: 209번 "딱 맞는 ○○ 원단은 아직 없습니다" 한 줄 없앰(11-12 사장님)
         if (r.kind === 'sheer') {
             const tint = f0.hex || '#efece6';
             return `<div class="cp-stage cp-sheet" style="background:${tint};color:var(--ink)">
