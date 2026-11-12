@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261272';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261273';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -143,7 +143,8 @@ function saveQuoteValidDays(v) {
     try { if (v === '' || !Number.isFinite(n) || n < 0) localStorage.removeItem(QUOTE_VALID_KEY); else localStorage.setItem(QUOTE_VALID_KEY, String(Math.min(365, Math.round(n)))); } catch (e) {}
 }
 // 직원 화면 배수 표시 (86번): 기준 배수는 설정에 저장, 표시는 견적 요약 원가 "보기" 안에만
-const MULTIPLES_KEY = 'redam_multiples_v1', MULTIPLES_DEFAULT = { cT: 2.5, cF: 2.2, bF: 2.0, vat: true };
+// 227번: 기준 배수 숫자는 공개 코드에 두지 않음 — 이 기기 설정·비공개 팩(multiples)에만. 0 = 비어 있음
+const MULTIPLES_KEY = 'redam_multiples_v1', MULTIPLES_DEFAULT = { cT: 0, cF: 0, bF: 0, vat: true };
 function loadMultiples() {
     const m = Object.assign({}, MULTIPLES_DEFAULT);
     try {
@@ -162,7 +163,7 @@ function saveMultiples() {
 }
 function initMultiplesInputs() {
     const m = loadMultiples(), set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-    set('mxCurtainTarget', m.cT); set('mxCurtainFloor', m.cF); set('mxBlindFloor', m.bF);
+    set('mxCurtainTarget', m.cT || ''); set('mxCurtainFloor', m.cF || ''); set('mxBlindFloor', m.bF || '');      // 227번: 비어 있으면 빈칸
     const vat = document.getElementById('mxVat'); if (vat) vat.checked = m.vat;
 }
 // 만 원 글자: 천 원 단위 내림 (예: 125,000 → "12만 5천 원")
@@ -187,6 +188,7 @@ function renderMultiples(grp, m) {
             const tail = gap >= 0 ? `곡선 ×${e.toFixed(1)}보다 ${fmtManWon(gap)} 위` : `곡선 ×${e.toFixed(1)}보다 ${fmtManWon(gap)} 낮음`;
             return `<div class="staff-sum-line ${low ? 'mx-low' : ''}"><span>${name} ×${x.toFixed(1)}${note}</span><span>${tail}</span></div>`;
         }
+        if (!(floor > 0)) return `<div class="staff-sum-line"><span>${name} ×${x.toFixed(1)}${note}</span><span>기준 배수 비어 있음 (설정)</span></div>`;      // 227번
         const slack = g.sell - g.buy * floor;
         const cls = x >= target ? '' : (x >= floor ? 'mx-mid' : 'mx-low');
         const tail = slack >= 0 ? `바닥까지 ${fmtManWon(slack)}` : `바닥보다 ${fmtManWon(slack)} 낮음`;

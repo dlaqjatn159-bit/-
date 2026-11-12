@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-dict.js']='20261272';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-dict.js']='20261273';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-dict.js — 직원 화면 › 색 사전: 색 이름 표(PRO_COLOR_NAMES)·색 이름 붙이기(proColorName, 최종 제안에서도 씀)·거름망·정렬·검색 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================

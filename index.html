@@ -588,14 +588,14 @@
                     <div class="staff-set">
                         <h2 class="font-serif-kr">배수 기준</h2>
                         <p>견적 요약의 원가·순이익 "보기" 안에만 나옵니다. 배수 = 제품 판매가 ÷ 매입가(시공비 제외). 목표 이상은 평소 글자, 목표와 바닥 사이는 흙빛, 바닥 아래는 붉은 글자입니다.<br>판매가 곡선이 있으면 목표·바닥 대신 원단마다 곡선 배수와 비교하고, 0.2 넘게 낮을 때만 붉은 글자입니다(109번).</p>
-                        <label class="staff-field"><span>커튼 목표 배수 (기본 2.5)</span>
-                            <input type="number" id="mxCurtainTarget" step="0.1" min="0" inputmode="decimal" placeholder="2.5" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveMultiples()">
+                        <label class="staff-field"><span>커튼 목표 배수</span>
+                            <input type="number" id="mxCurtainTarget" step="0.1" min="0" inputmode="decimal" placeholder="비어 있음" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveMultiples()">
                         </label>
-                        <label class="staff-field"><span>커튼 바닥 배수 (경쟁 견적 때 · 기본 2.2)</span>
-                            <input type="number" id="mxCurtainFloor" step="0.1" min="0" inputmode="decimal" placeholder="2.2" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveMultiples()">
+                        <label class="staff-field"><span>커튼 바닥 배수 (경쟁 견적 때)</span>
+                            <input type="number" id="mxCurtainFloor" step="0.1" min="0" inputmode="decimal" placeholder="비어 있음" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveMultiples()">
                         </label>
-                        <label class="staff-field"><span>블라인드 바닥 배수 (기본 2.0)</span>
-                            <input type="number" id="mxBlindFloor" step="0.1" min="0" inputmode="decimal" placeholder="2.0" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveMultiples()">
+                        <label class="staff-field"><span>블라인드 바닥 배수</span>
+                            <input type="number" id="mxBlindFloor" step="0.1" min="0" inputmode="decimal" placeholder="비어 있음" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveMultiples()">
                         </label>
                         <label class="staff-field"><span>원가는 부가세 별도 (매입가에 ×1.1)</span>
                             <input type="checkbox" id="mxVat" onchange="saveMultiples()">
@@ -872,27 +872,27 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="logo.js?v=20261272"></script> <!-- 150번: 새 글씨 로고 -->
-    <script src="pricing.js?v=20261272"></script>
-    <script src="costing.js?v=20261272"></script>
-    <script src="data.js?v=20261272"></script>
-    <script src="calculator.js?v=20261272"></script>
-    <script src="concierge.js?v=20261272"></script>
-    <script src="intro.js?v=20261272"></script>
-    <script src="fabric-pick.js?v=20261272"></script>
-    <script src="color-pick.js?v=20261272"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
-    <script src="space.js?v=20261272"></script>
-    <script src="final.js?v=20261272"></script>
-    <script src="app.js?v=20261272"></script>
-    <script src="more.js?v=20261272"></script>
-    <script src="survey.js?v=20261272"></script>
-    <script src="ticket.js?v=20261272"></script>
-    <script src="color-dict.js?v=20261272"></script>
-    <script src="fabrics.js?v=20261272"></script>
-    <script src="finder.js?v=20261272"></script>
-    <script src="settings.js?v=20261272"></script>
-    <script src="room-color.js?v=20261272"></script>
-    <script src="booking.js?v=20261272"></script> <!-- 202번: 시공 날짜 잡기 -->
+    <script src="logo.js?v=20261273"></script> <!-- 150번: 새 글씨 로고 -->
+    <script src="pricing.js?v=20261273"></script>
+    <script src="costing.js?v=20261273"></script>
+    <script src="data.js?v=20261273"></script>
+    <script src="calculator.js?v=20261273"></script>
+    <script src="concierge.js?v=20261273"></script>
+    <script src="intro.js?v=20261273"></script>
+    <script src="fabric-pick.js?v=20261273"></script>
+    <script src="color-pick.js?v=20261273"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
+    <script src="space.js?v=20261273"></script>
+    <script src="final.js?v=20261273"></script>
+    <script src="app.js?v=20261273"></script>
+    <script src="more.js?v=20261273"></script>
+    <script src="survey.js?v=20261273"></script>
+    <script src="ticket.js?v=20261273"></script>
+    <script src="color-dict.js?v=20261273"></script>
+    <script src="fabrics.js?v=20261273"></script>
+    <script src="finder.js?v=20261273"></script>
+    <script src="settings.js?v=20261273"></script>
+    <script src="room-color.js?v=20261273"></script>
+    <script src="booking.js?v=20261273"></script> <!-- 202번: 시공 날짜 잡기 -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

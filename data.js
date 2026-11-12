@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261272';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261273';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -3127,6 +3127,7 @@ function applyPrivatePack(pack) {
     if (pack.colors && typeof pack.colors === 'object') replaceColorsStore(pack.colors);
     if (pack.ticket && typeof applyTicketTextsFromPack === 'function') applyTicketTextsFromPack(pack.ticket);
     if (pack.prices && typeof pack.prices === 'object' && Object.keys(pack.prices).length) saveOptionPricesStore(pack.prices);      // 가공·부자재 단가와 원가 (29번)
+    if (pack.multiples && typeof pack.multiples === 'object') { try { localStorage.setItem('redam_multiples_v1', JSON.stringify(pack.multiples)); } catch (e) {} if (typeof initMultiplesInputs === 'function') initMultiplesInputs(); }      // 227번: 배수 기준 (옛 팩엔 없음 → 이 기기 값 그대로)
     if (typeof renderOptionPriceSettings === 'function') renderOptionPriceSettings();      // 원가 칸의 팩 값도 새로
     if (Array.isArray(pack.history) && typeof mergeHistoryFromPack === 'function') mergeHistoryFromPack(pack.history);      // 상담 기록은 덮어쓰지 않고 합침
     if (Array.isArray(pack.fabrics) && pack.fabrics.length > 0) {
@@ -3169,6 +3170,7 @@ function exportPrivatePack() {
         rules: Costing.state.rules, costs: Costing.state.costs, fabrics: FABRIC_DB, tags: loadTagOverrides(), colors: colorsStore(),
         ticket: (typeof ticketTextsForPack === 'function') ? ticketTextsForPack() : undefined,        // 견적서 글(안내 문구·결제 조건·맞춤 제작 안내·공급자 정보)
         prices: storedOptionPrices(),                                                                 // 가공·부자재 단가와 원가 (이 기기에서 정한 칸만)
+        multiples: (typeof loadMultiples === 'function') ? loadMultiples() : undefined,              // 227번: 배수 기준(코드에는 숫자 없음)
         redamNo: redamNoStore(),                                                                      // 223번: 리담 번호(원단·색 번호, 견본 책자 이름·쪽)
         colorsArchive: redamColorsArchive(),                                                          // 223번: 옛 이름 색 보관
         history: (typeof loadHistory === 'function') ? loadHistory() : undefined };                    // 상담 기록(고객 이름·연락처 포함)
