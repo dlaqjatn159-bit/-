@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261270';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261271';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -53,6 +53,14 @@ function defaultSurveyDir(room) {
     return 'bridge';
 }
 
+// 225번 (11-12 사장님): 집 안 어느 공간·줄에서든 커튼에 린넨·결 있는 느낌을 골랐나 (123번부터 결 답이 공간·줄마다라 집 취향만으로는 모름)
+function houseLinenWant() {
+    const ht = (typeof houseTaste !== 'undefined' && houseTaste) || {};
+    if (ht.sheer === 'linen' || ht.sheer === 'texture' || ht.tex === 'texture') return true;
+    const list = (typeof rooms !== 'undefined' && Array.isArray(rooms)) ? rooms : [];
+    return list.some(r => [r].concat(Array.isArray(r && r.curtains) ? r.curtains : []).some(x => x && (x.sheerFeel === 'linen' || x.sheerFeel === 'textured' || (x.ownTaste && x.ownTex === 'texture'))));
+}
+
 // 상담란 답(집 취향 + 공간별 답)을 점수 엔진용 공간 객체로 합침 (116번 — fake-guest 등에는 영향 없음)
 function roomWithSurveyTaste(room, dirOverride) {
     if (!room) return room;
@@ -86,6 +94,7 @@ function roomWithSurveyTaste(room, dirOverride) {
     if (tex) {
         out.drapeFeel = { smooth: 'smooth', texture: 'natural', fluffy: 'cozy' }[tex] || tex;
     }
+    out.linenHouse = houseLinenWant();      // 225번: 집 커튼 취향(린넨·결 있는)을 블라인드가 따라감
     if (sheer && !room.sheerFeel) {      // 123번: 공간마다 고른 속지 결이 먼저
         out.sheerFeel = { smooth: 'smooth', texture: 'textured', thick: 'cozy', linen: 'linen', unknown: 'any' }[sheer] || sheer;      // 191번: 린넨
     }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261270';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261271';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -707,6 +707,8 @@ function calculateFabricMatchScore(fabric, room, category) {
         if (table) score += table[bl] || 0;
         if (kind === 'combi' && room.lightBlock !== 'dark') score += 1;      // 빛을 들일 만큼만 맞추기 쉬움
     }
+    // 225번 (11-12 사장님): 집 커튼에서 린넨·결 있는 느낌을 골랐으면 린넨룩 블라인드를 조금 앞에 (빛 답 +4 · 종류 답 +8보다 작게)
+    if (category === '블라인드' && room.linenHouse && blindLinenLook(fabric)) score += 3;
     // 블라인드 종류 취향 (38-2): 고른 종류와 같으면 +8, 다르면 -4 (프린트는 무늬 차이라 콤비·롤 안에서 감점 없이 섞임)
     if (category === '블라인드' && room.blindWant && room.blindWant !== 'any') {
         const kind = blindKind(fabric);
@@ -785,6 +787,9 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
             : room.blindWant === 'wood' && kind === 'wood' ? '나무 결이 살아 있는 우드'
             : room.blindWant === 'alu' && kind === 'alu' ? '얇고 깨끗한 알루미늄' : '';
         if (msg) { parts.unshift(msg); said.unshift(msg); }   // 고객이 고른 블라인드 종류 (38-2)
+    }
+    if (category === '블라인드' && room.linenHouse && blindLinenLook(fabric)) {
+        parts.push(MATERIAL_REASON.linenlook);      // 225번: 집 커튼 취향을 따라감 — 이 공간에서 직접 답한 조건이 아니라 이유 카드(said)에는 안 넣음
     }
     if (category === '블라인드' && room.lightBlock) {
         const bl = blindLight(fabric), kind = blindKind(fabric);
@@ -2958,6 +2963,8 @@ const REDAM_COLOR_ARCHIVE_KEY = 'redam_colors_archive_v1';
 const REDAM_OLD_COLOR_KEYS = ['보브_보브', '울피치A', '울피치B', '보브_암막1', '보브_암막2', '보브_암막3', '보브_암막4', '보브_암막5', '보브_암막6', '보브_암막7', '보브_암막8', '보브_암막9', '보브_암막10', '보브_암막11'];
 let __redamNo = null;
 let __redamNoHold = false;      // 팩을 불러오는 동안은 번호를 매기지 않음 (색과 원단이 따로 바뀌는 사이)
+// 225번: 린넨룩 블라인드 — 블라인드는 이름·영문 이름에 린넨/LINEN이 있으면 (지금 콤비 린넨 · 롤 린넨 · 롤 린넨 암막, 모두 폴리 린넨룩)
+function blindLinenLook(f) { return redamIsBlind(f) && /린넨|linen/i.test(String((f && f.name) || '') + ' ' + String((f && f.engName) || '')); }
 function redamIsBlind(f) { return !!f && (f.categoryType === '블라인드' || f.calcType === 'hebe' || !!blindKind(f)); }
 function redamKindOf(f) { const r = f ? REDAM_NO_KINDS.find(x => x.test(f)) : null; return r ? r.k : null; }
 function redamNoClean(s) {

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['logo.js']='20261270';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['logo.js']='20261271';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // logo.js — 새 글씨 로고 "Re.dam" (150번, 11-02 리뉴얼: Playfair Display 500 모양을 선으로 바꾼 것 — 글꼴 없이도 똑같이, 오프라인에서도)
 // 화면은 인라인 SVG(글씨 = 글자색, 점 = .logo-dot 색), 견적서·최종 제안 이미지(캔버스)는 같은 선으로 그림. 맨 먼저 읽힘
 
