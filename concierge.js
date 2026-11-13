@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261277';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261278';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1274,13 +1274,13 @@
                 const ed = state.editingRoom;
                 html += '<div class="bookmark-stage">';
                 html += stepHead(roomTopic(ed) ? `${roomTopic(ed)} 어떤 구성을 원하실까요?` : '어떤 구성을 원하실까요?');      // 안방은 / 거실은 (152번: roomTopic)
-                const cfBand = ed && ed.flow && cz.colorPick && cz.colorPick.cfBand ? cz.colorPick.cfBand() : '';      // 228번: 다섯째 칸 = 이 집의 색 띠(이름표 없음). 길잡이에서 벽·바닥 잰 색으로 색 칸이 나올 때만
-                html += `<div class="bookmark-canvas" style="--items-count: ${cfBand ? 5 : 4};">`;
+                // 233번: 색으로 고르기 입구 = 질문 줄 오른쪽 끝의 작은 글자('맡길게요'와 같은 모양). 사진은 네 칸 그대로. 길잡이에서 벽·바닥 잰 색으로 색 칸이 나올 때만
+                if (ed && ed.flow && cz.colorPick && cz.colorPick.cfCan && cz.colorPick.cfCan()) html += '<button type="button" class="r-quiet cf-quiet" onclick="window.concierge.cfOpen()">색부터 볼게요</button>';
+                html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 [['double', 'comp_double', SOLID_TEXTURES.l1], ['sheer_only', 'comp_sheer', SOLID_TEXTURES.l2], ['drape_only', 'comp_drape', SOLID_TEXTURES.l3], ['blind_only', 'comp_blind', SOLID_TEXTURES.oak]].forEach(([k, ph, fb]) => {
                     html += renderBookmarkCard(COMP_NAMES[k], "", "", compBg(ph, fb), function() { window.concierge.chooseWindowComposition(k); },
                         was('comp', k).trim());
                 });
-                if (cfBand) html += renderBookmarkCard('', '', '', cfBand, function() { window.concierge.cfOpen(); }, 'cf-door');      // 228번
                 html += '</div></div>';
                 break;
             }

@@ -3312,8 +3312,8 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .hung-photo.is-leaving { opacity: 0; transition: opacity var(--m-pick) ease; pointer-events: none; }
 @keyframes hungIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* 228번: 색으로 고르기 — 구성 사진 화면 다섯째 칸(색 띠, 이름표 없음) · 장면 2 색 칩 · 장면 3 구성 카드 (color-pick.js cfHtml) */
-.cf-door .fab-band, .cf-door .bookmark-gradient { display: none; }
+/* 228번: 색으로 고르기 — 장면 2 색 칩 · 장면 3 구성 카드 (color-pick.js cfHtml) · 233번: 입구는 구성 사진 화면 질문 줄(높이 100px) 오른쪽 끝의 작은 글자 */
+.bookmark-stage > .cf-quiet { position: absolute; top: 50px; right: 40px; z-index: 40; transform: translateY(-50%); }
 .cp-say .cf-chips { flex-wrap: wrap; gap: 8px; max-width: 640px; }
 .cp-say .cf-chips .pt-chip { width: 36px; height: 36px; }
 .cf-gap { flex-basis: 100%; height: 6px; }

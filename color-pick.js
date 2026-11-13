@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261277';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261278';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -440,7 +440,7 @@
     });
 
     // ---- 228번: 색으로 고르기 — 장면 2 색 고르기(3.2-Color-Pick) · 장면 3 이 색으로 할 수 있는 구성(3.3-Color-Comps) ----
-    //  엔진은 data.js colorFirstChips · colorFirstSeat · colorFirstNear. 입구는 concierge.js 구성 사진 화면 다섯째 칸(cfBand)
+    //  엔진은 data.js colorFirstChips · colorFirstSeat · colorFirstNear. 입구는 concierge.js 구성 사진 화면 질문 줄 오른쪽 글자(cfCan, 233번)
     //  관계 한 줄은 위 WHY 표를 빌림(whyOf). 어느 자리에도 안 드는 색만 아래 두 문장 (11-13 ③ 초안 — 사장님 아침 확인)
     const CF_NONE = {
         strong: '벽·바닥에 견주면 꽤 강한 색이라, 창이 공간에서 가장 먼저 보입니다.',
@@ -462,13 +462,8 @@
         if (d) state.cf.at = Math.max(0, Math.min(state.cf.at, d.chips.length - 1));
         return state.cf;
     }
-    // 입구: 구성 사진 화면 다섯째 칸 바탕 — 앞 묶음 색(셋 안 되면 모든 칸)을 일곱 줄까지 위(밝음) → 아래(진함) 가로 줄무늬. 칸이 없으면 ''(칸을 그리지 않음)
-    function cfBand() {
-        const d = cfData(); if (!d) return '';
-        const front = d.chips.filter(x => x.front), src = front.length >= 3 ? front : d.chips;
-        const n = Math.min(7, src.length), pick = Array.from({ length: n }, (_, i) => src[Math.round(i * (src.length - 1) / Math.max(1, n - 1))]);
-        return 'linear-gradient(180deg, ' + pick.map((x, i) => `${x.hex} ${(i * 100 / n).toFixed(2)}% ${((i + 1) * 100 / n).toFixed(2)}%`).join(', ') + ')';
-    }
+    // 233번: 입구(구성 사진 화면 질문 줄 오른쪽 글자)를 그릴지 — 색 칸이 하나라도 나오면 true. 예전 다섯째 칸 색 줄무늬(cfBand)는 뺌
+    function cfCan() { return !!cfData(); }
     function cfHtml() {
         const d = cfData(); if (!d) return '';
         const ed = state.editingRoom, s = cfState(d), x = d.chips[s.at], ink = inkOn(x.hex);
@@ -557,5 +552,5 @@
             return seat ? whyOf({ kind: 'drape', feel: r.feel, house: r.house }, seat, room) : '';
         } catch (e) { return ''; }
     }
-    cz.colorPick = { wants, html, after, back, finishHtml, whyLineFor, cfHtml, cfAfter, cfBand };      // concierge.js가 부름 · whyLineFor는 ticket.js(194번) · cf…는 228번 색으로 고르기
+    cz.colorPick = { wants, html, after, back, finishHtml, whyLineFor, cfHtml, cfAfter, cfCan };      // concierge.js가 부름 · whyLineFor는 ticket.js(194번) · cf…는 228번 색으로 고르기
 })();
