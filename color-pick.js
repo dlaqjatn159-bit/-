@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261273';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261274';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -107,6 +107,8 @@
         const ed = state.editingRoom;
         if (!ed || !item) return null;
         const room = cz.roomWithTaste ? cz.roomWithTaste(ed) : ed;
+        const pinned = cfPinned(ed, room, item);      // 228번: 색으로 고른 겹은 그 색 한 자리만(고른 원단 먼저 + 그 색 가까운 같은 겹 원단)
+        if (pinned) return pinned;
         try {
             if (item.presetType === 'sheer') {
                 const r = typeof seatSheer === 'function' ? seatSheer(room) : null;
@@ -139,7 +141,7 @@
         const key = (state.editingRoomId || '') + '_' + state.currentItemIndex;
         if (!state.cp || state.cp.key !== key) {
             const r = result(cur()), it = cur();
-            const s = { key, view: (r && r.tech && r.list.some(y => y.all)) ? 'ask' : 'sheet', seat: r ? r.at : 0, fab: 0, alt: null, anim: false, chip: 0 };      // 220번: 포인트는 방식 질문부터(방식이 하나면 설명 한 장부터)
+            const s = { key, view: (r && r.pinned) ? 'open' : ((r && r.tech && r.list.some(y => y.all)) ? 'ask' : 'sheet'), seat: r ? r.at : 0, fab: 0, alt: null, anim: false, chip: 0 };      // 220번: 포인트는 방식 질문부터(방식이 하나면 설명 한 장부터) · 228번: 색으로 고른 겹은 열림(고른 원단 사진)부터
             // 이미 고른 원단이 있으면(뒤로 와서·다시 상담) 그 자리·그 원단을 고른 모습으로
             // 167번 둘째 줄: 첫 줄 원단이 들어 있는 자리를 첫 장으로
             const pin = it.fabricId ? { fabricId: it.fabricId, colorName: it.colorName }
@@ -165,8 +167,9 @@
         const base = seat.fabrics[Math.min(s.fab, seat.fabrics.length - 1)];
         return s.alt ? Object.assign({}, base, { color: s.alt.name, hex: s.alt.hex || colorHex(base.id, s.alt.name) }) : base;
     }
-    function seatName(r, x) { return r.kind === 'sheer' ? SHEER_NAME[x.key] : x.name; }
+    function seatName(r, x) { return x.key === 'chosen' ? x.name : (r.kind === 'sheer' ? SHEER_NAME[x.key] : x.name); }      // 228번: 색으로 고른 자리는 색 이름
     function whyOf(r, x, room) {      // room (194번): 최종 제안에서 부를 때 그 공간. 없으면 지금 고르는 공간
+        if (x && x.why) return x.why;      // 228번: 색으로 고른 자리는 고를 때 본 한 줄
         if (r.kind === 'sheer') return WHY.sheer[x.key] || '';
         if (r.feel === 'calm') {
             const rm = room || state.editingRoom, mc = rm && rm.measuredColor;
@@ -329,7 +332,7 @@
         const btn = document.getElementById('v2FloatingPrevBtn');
         const stage = document.querySelector('.cp-stage');
         if (btn) { btn.classList.toggle('is-cp', !!stage); btn.style.color = ''; }
-        if (!stage) return;
+        if (!stage || stage.classList.contains('cf-stage')) return;      // 228번: 색으로 고르기 두 장면은 cfAfter가 맡음
         const s = cp(), r = result(cur());
         // 뒤로(왼쪽 위 한 곳): 색 면 위에서는 그 면의 글자색. 열림에서는 "← 그 장 이름"(누르면 한 장으로)
         if (btn) {
@@ -435,6 +438,92 @@
         cpNext: () => next()
     });
 
+    // ---- 228번: 색으로 고르기 — 장면 2 색 고르기(3.2-Color-Pick) · 장면 3 이 색으로 할 수 있는 구성(3.3-Color-Comps) ----
+    //  엔진은 data.js colorFirstChips · colorFirstSeat · colorFirstNear. 입구는 concierge.js 구성 사진 화면 다섯째 칸(cfBand)
+    //  관계 한 줄은 위 WHY 표를 빌림(whyOf). 어느 자리에도 안 드는 색만 아래 두 문장 (11-13 ③ 초안 — 사장님 아침 확인)
+    const CF_NONE = {
+        strong: '벽·바닥에 견주면 꽤 강한 색이라, 창이 공간에서 가장 먼저 보입니다.',
+        other: '벽·바닥과 기운이 다른 색이라, 창이 공간에서 따로 보일 수 있습니다.'
+    };
+    function cfWhy(seat, room) {      // seat: { feel, key, tech, house, L } (색 칸의 seat 또는 공간의 colorFirst)
+        if (!seat) return '';
+        if (seat.feel === 'none') return CF_NONE[seat.key] || CF_NONE.other;
+        return whyOf({ kind: 'drape', feel: seat.feel, house: seat.house }, { key: seat.key, tech: seat.tech, L: seat.L }, room);
+    }
+    function cfData() {
+        const ed = state.editingRoom;
+        if (!ed || typeof colorFirstChips !== 'function') return null;
+        try { return colorFirstChips(cz.roomWithTaste ? cz.roomWithTaste(ed) : ed); } catch (e) { return null; }
+    }
+    function cfState(d) {      // 공간마다 짚은 칸 기억
+        const key = String(state.editingRoomId || '');
+        if (!state.cf || state.cf.key !== key) state.cf = { key, at: d ? d.at : 0 };
+        if (d) state.cf.at = Math.max(0, Math.min(state.cf.at, d.chips.length - 1));
+        return state.cf;
+    }
+    // 입구: 구성 사진 화면 다섯째 칸 바탕 — 앞 묶음 색(셋 안 되면 모든 칸)을 일곱 줄까지 위(밝음) → 아래(진함) 가로 줄무늬. 칸이 없으면 ''(칸을 그리지 않음)
+    function cfBand() {
+        const d = cfData(); if (!d) return '';
+        const front = d.chips.filter(x => x.front), src = front.length >= 3 ? front : d.chips;
+        const n = Math.min(7, src.length), pick = Array.from({ length: n }, (_, i) => src[Math.round(i * (src.length - 1) / Math.max(1, n - 1))]);
+        return 'linear-gradient(180deg, ' + pick.map((x, i) => `${x.hex} ${(i * 100 / n).toFixed(2)}% ${((i + 1) * 100 / n).toFixed(2)}%`).join(', ') + ')';
+    }
+    function cfHtml() {
+        const d = cfData(); if (!d) return '';
+        const ed = state.editingRoom, s = cfState(d), x = d.chips[s.at], ink = inkOn(x.hex);
+        const say = `<h1 class="cp-hero">${esc(x.name)}</h1><p class="cp-why">${esc(cfWhy(x.seat ? Object.assign({ L: x.L }, x.seat) : null, ed))}</p>`;
+        if (state.step === '3.3-Color-Comps') {      // 장면 3: 구성 카드(오른쪽 위) — 구성 사진 · 구성 이름 · 원단 이름
+            const cards = x.comps.map((c, i) => `<button type="button" class="cf-comp" onclick="concierge.cfComp(${i})">
+                <i class="cf-comp-ph" style="background:${(cz.compCardBg && cz.compCardBg(c.comp)) || c.hex || ''}"></i>
+                <span class="cf-comp-name">${esc((cz.COMP_NAMES && cz.COMP_NAMES[c.comp]) || '')}</span><span class="cf-comp-fab">${esc(fabName(c.id, c.color))}</span></button>`).join('');
+            return `<div class="cp-stage cp-sheet cf-stage" style="background:${x.hex};color:${ink}"><div class="cf-comps">${cards}</div><div class="cp-say">${say}</div></div>`;
+        }
+        // 장면 2: 색 칩 — 앞 묶음 · (줄 바꿈) · 뒷 묶음. 칸 차례 = d.chips 차례
+        const chip = (c, i) => `<button type="button" class="pt-chip${i === s.at ? ' is-on' : ''}" aria-label="${esc(c.name)}" style="background:${c.hex}" onclick="concierge.cfChip(${i})"></button>`;
+        const nf = d.chips.filter(c => c.front).length;
+        const chips = d.chips.map((c, i) => (i === nf && nf > 0 ? '<i class="cf-gap"></i>' : '') + chip(c, i)).join('');
+        return `<div class="cp-stage cp-sheet cf-stage" style="background:${x.hex};color:${ink}">
+            <div class="cp-say">${say}<div class="pt-chips cf-chips">${chips}</div></div>
+            <div class="cp-door-at">${door('이 색으로', 'concierge.cfGo()')}</div></div>`;
+    }
+    function cfAfter() {      // 뒤로(왼쪽 위 한 곳) 글자색 = 색 면 위 글자색
+        const stage = document.querySelector('.cf-stage'), btn = document.getElementById('v2FloatingPrevBtn');
+        if (!stage || !btn) return;
+        btn.classList.add('is-cp');
+        btn.style.color = getComputedStyle(stage).color;
+    }
+    // 원단 화면: 색으로 고른 겹(겉지·속지)은 "그 색" 한 자리만 — 블라인드는 옛 화면이 altPins로 첫 장에 꽂음(concierge.js startFabric)
+    function cfPinned(ed, room, item) {
+        const cf = ed && ed.colorFirst, kind = item && item.presetType;
+        if (!cf || !cf.fabricId || cf.kind !== kind || (kind !== 'drape' && kind !== 'sheer') || typeof colorFirstNear !== 'function') return null;
+        if (kind === 'drape' && !roomHasLab(ed)) return null;
+        const fabrics = colorFirstNear(room, kind, cf);
+        if (!fabrics.length) return null;
+        const seat = { key: 'chosen', name: cf.name || '', hex: fabrics[0].hex || cf.hex, L: cf.L, a: cf.a, b: cf.b, why: cfWhy(cf, ed), n: fabrics.length, fabrics };
+        return { kind, list: [seat], at: 0, house: cf.house || null, feel: kind === 'drape' ? (cf.feel === 'none' ? 'point' : cf.feel) : null, pinned: true };
+    }
+    // 카드 누름: 공간에 구성·색으로 고름을 적고, 고른 원단이 정한 답(느낌·결·종류)을 채워 질문을 건너뛰고 길잡이를 이어감
+    function cfPickComp(i) {
+        const ed = state.editingRoom, d = cfData(); if (!ed || !d) return;
+        const x = d.chips[cfState(d).at], c = x && x.comps[i]; if (!c) return;
+        const t = state.roomsCart.find(r => r.id === state.editingRoomId); if (!t) return;
+        const seat = colorFirstSeat(ed.measuredColor, c, ed) || { feel: 'none', key: 'other', tech: null, house: null };
+        const f = getLiveDb().find(z => z.id === c.id) || {};
+        t.planComp = c.comp; t.planPicked = true; t.compOk = true; t.pointTech = null;
+        t.colorFirst = { name: x.name, hex: x.hex, comp: c.comp, kind: c.kind, fabricId: c.id, colorName: c.color, L: c.L, a: c.a, b: c.b, feel: seat.feel, key: seat.key, tech: seat.tech || null, house: seat.house || null };
+        if (c.kind === 'drape' || c.kind === 'blind') { t.ownTaste = true; t.ownPres = seat.feel === 'none' ? 'point' : seat.feel; }
+        if (c.kind === 'drape') t.ownTex = { smooth: 'smooth', natural: 'texture', cozy: 'fluffy' }[f.texture] || null;      // 결을 모르는 원단은 비워 둠(길잡이는 colorFirst로 결 질문을 건너뜀)
+        if (c.kind === 'blind') t.blindWant = (typeof blindKind === 'function' && blindKind(f)) || 'any';
+        if (c.kind === 'sheer') t.sheerFeel = { linen: 'linen', smooth: 'smooth', natural: 'textured' }[typeof sheerGrain === 'function' ? sheerGrain(f) : ''] || 'any';
+        window.concierge.flowNext();
+    }
+    Object.assign(window.concierge, {
+        cfOpen: () => { const d = cfData(); if (!d) return; cfState(d); cz.goToStep('3.2-Color-Pick'); },
+        cfChip: i => { const d = cfData(); if (!d || !d.chips[i]) return; cfState(d).at = i; rerender(); },
+        cfGo: () => { const d = cfData(); if (!d) return; cfState(d); cz.goToStep('3.3-Color-Comps'); },
+        cfComp: i => cfPickComp(i)
+    });
+
     // ---- 마무리 (6-Finish, A안 띠가 남음): 오른쪽 어두운 띠에 이 공간에서 정한 속지·겉지 + "○○ 마치기 →" ----
     //  커튼 원단을 하나라도 색과 함께 골랐을 때만. 아니면 '' (옛 마무리 화면)
     function finishHtml(room) {
@@ -451,6 +540,8 @@
     function whyLineFor(room, kind, fabricId, colorName) {
         try {
             if (!room || !fabricId) return '';
+            const cfw = room.colorFirst;      // 228번: 색으로 고른 겉지는 고를 때 본 한 줄 그대로
+            if (kind === '겉지' && cfw && cfw.kind === 'drape' && cfw.fabricId === fabricId && (!colorName || cfw.colorName === colorName)) return cfWhy(cfw, room);
             if (kind === '속지') { const d = fabOf(fabricId).density; return (d && WHY.sheer[d]) || ''; }      // 빛 한 장의 장 = 원단 비침(density)
             if (kind !== '겉지') return '';
             const rm = cz.roomWithTaste ? cz.roomWithTaste(room) : room;
@@ -465,5 +556,5 @@
             return seat ? whyOf({ kind: 'drape', feel: r.feel, house: r.house }, seat, room) : '';
         } catch (e) { return ''; }
     }
-    cz.colorPick = { wants, html, after, back, finishHtml, whyLineFor };      // concierge.js가 부름 · whyLineFor는 ticket.js(194번)
+    cz.colorPick = { wants, html, after, back, finishHtml, whyLineFor, cfHtml, cfAfter, cfBand };      // concierge.js가 부름 · whyLineFor는 ticket.js(194번) · cf…는 228번 색으로 고르기
 })();

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261273';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261274';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -29,6 +29,11 @@
     // 창 구성·블라인드 종류 카드 배경 (38번): photos/comp/, photos/blind/ 사진. 기기 사진이 있으면 먼저, 안 뜨면 색 질감
     function compBg(name, fallback) {
         return `url('${scenePhotoUrl('comp', name)}') center / cover no-repeat, ${fallback}`;
+    }
+    // 228번: 구성 카드 바탕 — 구성 사진 화면과 같은 사진·바탕 (color-pick.js 색으로 고르기 구성 카드가 씀)
+    function compCardBg(k) {
+        const P = { double: ['comp_double', SOLID_TEXTURES.l1], sheer_only: ['comp_sheer', SOLID_TEXTURES.l2], drape_only: ['comp_drape', SOLID_TEXTURES.l3], blind_only: ['comp_blind', SOLID_TEXTURES.oak] }[k];
+        return P ? compBg(P[0], P[1]) : '';
     }
     // 겉지 결 접사 (117번): 원단 사진이라 기기에만 있음(53번). 없으면 색 질감만 (저장소 주소로 찾지 않음 — 404 방지)
     function texBg(name, fallback) {
@@ -203,7 +208,7 @@
             mood: r.mood || "soft_warm",
             wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
             roomType: r.roomType || null,
-            lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
+            lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null, colorFirst: r.colorFirst || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
             diagnosed: !!r.diagnosed,
             altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번: 둘째 줄 후보 (직원 화면을 다녀와도 남게) · 168번: 만드는 중 표시도
             measuredColor: r.measuredColor || null,      // 직원 화면 "방 색 재기"로 잰 벽·바닥 색 (room-color.js)
@@ -416,6 +421,7 @@
             roomType: target.roomType || roomTypeOf(target),
             lightBlock: target.lightBlock || null, privacy: target.privacy || null, sheerFeel: target.sheerFeel || null, blindWant: target.blindWant || null,
             ownTaste: !!target.ownTaste, ownPres: target.ownPres || null, ownTex: target.ownTex || null, pointTech: target.pointTech || null,      // 이 공간만 다르게 (117번)
+            colorFirst: target.colorFirst ? Object.assign({}, target.colorFirst) : null,      // 228번: 색으로 고름
             measuredColor: target.measuredColor ? JSON.parse(JSON.stringify(target.measuredColor)) : null,     // 카드로 고치면 그 부분을 지우므로 복사본
             colorSrc: target.colorSrc || null,
             cardParts: target.cardParts ? Object.assign({}, target.cardParts) : null,
@@ -468,6 +474,7 @@
     function pointTechsFor(item) {
         const ed = state.editingRoom;
         if (!ed || !item || (item.presetType !== 'drape' && item.presetType !== 'blind') || !roomHasLab(ed)) return [];
+        if (ed.colorFirst && ed.colorFirst.kind === item.presetType) return [];      // 228번: 색으로 고른 겹은 포인트 방식을 다시 묻지 않음
         const eff = roomWithTaste(Object.assign({}, ed, { pointTech: null }));
         if (!eff || eff.colorStrength !== 'point' || eff.colorAccent !== 'point') return [];
         return (typeof pointTechOptions === 'function') ? pointTechOptions(ed.measuredColor, item.presetType === 'blind' ? '블라인드' : '겉지', ed) : [];      // 222번: 공간(창 방향)
@@ -485,7 +492,7 @@
         // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
         if ((planHas(r, 'drape') || planHas(r, 'blind')) && !(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };      // 197번: 속지만 공간은 느낌을 묻지 않음(속지 추천은 느낌 답을 안 씀)
         if (planHas(r, 'sheer') && !r.sheerFeel) return { kind: 'sheer', room: r };      // 162번: 속지 결 먼저 (원단도 속지 → 겉지 순)
-        if (planHas(r, 'drape') && !(r.ownTaste && r.ownTex)) return { kind: 'tex', room: r };
+        if (planHas(r, 'drape') && !(r.ownTaste && r.ownTex) && !(r.colorFirst && r.colorFirst.kind === 'drape')) return { kind: 'tex', room: r };      // 228번: 색으로 고른 겉지는 결을 묻지 않음(원단이 이미 정해짐)
         if (planHas(r, 'blind') && !r.blindWant) return { kind: 'blind', room: r };
         return { kind: 'fabric', room: r };
     }
@@ -531,6 +538,7 @@
         ed.flow = true;
         setCompItems(ed, room.planComp || 'double');
         if (room.altBuilding) { ed.sizeKnown = false; ed.altPins = linePins(room.altLine); }      // 167번: 둘째 줄은 크기 화면(첫 줄 크기가 들어 있음)을 꼭 지남 · 같은 겹이면 첫 줄 원단을 첫 장에
+        if (room.colorFirst && room.colorFirst.fabricId) ed.altPins = Object.assign({}, ed.altPins, { [room.colorFirst.kind]: { fabricId: room.colorFirst.fabricId, colorName: room.colorFirst.colorName || '' } });      // 228번: 색으로 고른 원단을 그 겹 첫 장에
         const hs = houseTasteNow().sheer;      // 123번: 공간 답이 먼저, 없으면 예전 집 답
         ed.sheerFeel = planHas(room, 'sheer') ? (room.sheerFeel || { smooth: 'smooth', texture: 'textured', thick: 'cozy', linen: 'linen', unknown: 'any' }[hs] || null) : null;      // 191번: 린넨
         flowGo("3.5-Bridge", ed, room.id, () => { state.pendingItemQueue = ed.items; state.currentItemIndex = 0; });
@@ -551,7 +559,7 @@
     }
     // ---- 167번: 둘째 줄 후보 — 고른 줄 = 공간 본체 그대로, 다른 줄은 r.altLine 한 칸 (견적서·발주서·직원 견적란은 본체만 봄) ----
     //  r.lineNo: 본체가 몇째 줄인지(없으면 1) · r.altBuilding: 둘째 줄 만드는 중 · r.pickPending: 두 줄 다 만들고 아직 안 고름
-    const LINE_KEYS = ['width', 'height', 'spaceWidth', 'spaceHeight', 'sizeMode', 'curtains', 'subtotal', 'planComp', 'planPicked', 'compOk', 'isConfigured', 'pointTech'];
+    const LINE_KEYS = ['width', 'height', 'spaceWidth', 'spaceHeight', 'sizeMode', 'curtains', 'subtotal', 'planComp', 'planPicked', 'compOk', 'isConfigured', 'pointTech', 'colorFirst'];      // 228번: 색으로 고름도 줄마다
     const LINE_TASTE = ['ownTaste', 'ownPres', 'ownTex', 'sheerFeel', 'blindWant'];      // 168번: 줄의 취향(느낌·겉지 결·속지 결·블라인드 종류) — 줄마다. 빛·시선·창 방향은 공간 것
     function takeLine(r) {
         const o = {};
@@ -590,7 +598,7 @@
         r.altLine = takeLine(r);
         r.lineNo = 2;
         r.curtains = []; r.subtotal = 0; r.isConfigured = false;
-        r.compOk = false; r.planComp = null; r.planPicked = false; r.pointTech = null;
+        r.compOk = false; r.planComp = null; r.planPicked = false; r.pointTech = null; r.colorFirst = null;      // 228번
         r.ownTaste = false; r.ownPres = null; r.ownTex = null; r.sheerFeel = null; r.blindWant = null;      // 168번: 비우면 길잡이가 구성 → 느낌 → 결 → 원단 순서로 다시 물음
         r.altBuilding = true; r.pickPending = true;
         state.activeSpaceId = r.id;
@@ -685,7 +693,7 @@
     // 진행 선: 화면 맨 위 가는 선(흙빛이 차오름). 공간 추가(종류 → 크기 → 색)와 공간 상담(질문들 → 원단 → 마무리)을 따로 셈
     const ADD_STEPS = ["1.5-Room-Type", "1.6-Add-Size", "1.7-Add-Same", "1.8-Add-Dir"];
     // 152번: 공간별 진행 — 진행 선 = (마친 공간 + 이 공간에서 간 만큼) ÷ 공간 수. 숫자는 한 공간 안에서 간 만큼(0~1)
-    const FLOW_PHASE = { "2-Base-Floor": 0.05, "2-Base-Wall": 0.1, "2-Base-Block": 0.15, "2-Base-Privacy": 0.25, "3-Config-Style": 0.35,
+    const FLOW_PHASE = { "2-Base-Floor": 0.05, "2-Base-Wall": 0.1, "2-Base-Block": 0.15, "2-Base-Privacy": 0.25, "3-Config-Style": 0.35, "3.2-Color-Pick": 0.38, "3.3-Color-Comps": 0.41,      // 228번: 색으로 고르기 두 장면
         "0.5-House-Taste": 0.45, "2-Base-SheerFeel": 0.5, "0.6-House-Tex": 0.55, "2-Base-BlindKind": 0.6, "3.5-Bridge": 0.65, "4-Fabric-Queue": 0.75, "6-Finish": 0.9 };
     function flowProg() {
         const ed = state.editingRoom, ph = FLOW_PHASE[state.step];
@@ -1266,12 +1274,21 @@
                 const ed = state.editingRoom;
                 html += '<div class="bookmark-stage">';
                 html += stepHead(roomTopic(ed) ? `${roomTopic(ed)} 어떤 구성을 원하실까요?` : '어떤 구성을 원하실까요?');      // 안방은 / 거실은 (152번: roomTopic)
-                html += '<div class="bookmark-canvas" style="--items-count: 4;">';
+                const cfBand = ed && ed.flow && cz.colorPick && cz.colorPick.cfBand ? cz.colorPick.cfBand() : '';      // 228번: 다섯째 칸 = 이 집의 색 띠(이름표 없음). 길잡이에서 벽·바닥 잰 색으로 색 칸이 나올 때만
+                html += `<div class="bookmark-canvas" style="--items-count: ${cfBand ? 5 : 4};">`;
                 [['double', 'comp_double', SOLID_TEXTURES.l1], ['sheer_only', 'comp_sheer', SOLID_TEXTURES.l2], ['drape_only', 'comp_drape', SOLID_TEXTURES.l3], ['blind_only', 'comp_blind', SOLID_TEXTURES.oak]].forEach(([k, ph, fb]) => {
                     html += renderBookmarkCard(COMP_NAMES[k], "", "", compBg(ph, fb), function() { window.concierge.chooseWindowComposition(k); },
                         was('comp', k).trim());
                 });
+                if (cfBand) html += renderBookmarkCard('', '', '', cfBand, function() { window.concierge.cfOpen(); }, 'cf-door');      // 228번
                 html += '</div></div>';
+                break;
+            }
+
+            // 228번: 색으로 고르기 — 장면 2 색 고르기 · 장면 3 이 색으로 할 수 있는 구성 (color-pick.js cfHtml)
+            case "3.2-Color-Pick":
+            case "3.3-Color-Comps": {
+                html += (cz.colorPick && cz.colorPick.cfHtml && cz.colorPick.cfHtml()) || '';
                 break;
             }
 
@@ -1430,6 +1447,7 @@
         const photo = PHOTO_STEPS.includes(state.step);
         syncBack(photo);
         if (cz.colorPick) cz.colorPick.after();      // 189번: 새 원단 화면의 사진·밀기·띠 움직임·뒤로 글자색
+        if (cz.colorPick && cz.colorPick.cfAfter) cz.colorPick.cfAfter();      // 228번: 색으로 고르기 화면의 뒤로 글자색
         if (photo) {
             // 138번: 띠 높이는 120px 하나(가로쓰기라 글자 길이로 늘리지 않음)
             if (introWant && photoQuestion) playPhotoIntro(photoQuestion);
@@ -1524,7 +1542,7 @@
     function playIntro(then) { return cz.playIntro(then); }
 
     // 130-4: 나뉜 파일이 쓰는 이 파일의 상태·함수
-    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, takeLine, putLine, swapLine, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab, paneBlockHtml, askStage });      // 216번: paneBlockHtml · 220번: askStage
+    Object.assign(cz, { state, stepHistory, goToStep, render, syncToV1MasterRooms, fabricFillStyle, COMP_NAMES, roomPart, roomSize, roomComp, calculateV1ItemPrice, askedRoom, planHas, takeLine, putLine, swapLine, flowPeek, HATCH, hexCode, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, getLiveDb, getLiveCategoryPool, roomHasLab, paneBlockHtml, askStage, compCardBg });      // 216번: paneBlockHtml · 220번: askStage · 228번: compCardBg(색으로 고르기 구성 카드)
 
     window.concierge = {
         // 저장 이미지가 화면 도록과 같은 조각보·쇼룸 시트를 그리도록 (80번, app.js buildTicketCanvases)
@@ -2094,11 +2112,13 @@
             // 119번: 집 전체 흐름에서는 구성만 정해 두고(원단은 ⑤에서) 다음으로
             if (ed && ed.flow) {
                 const t = state.roomsCart.find(r => r.id === state.editingRoomId);
+                if (t && t.colorFirst) { t.colorFirst = null; t.ownTaste = false; t.ownPres = null; t.ownTex = null; t.sheerFeel = null; t.blindWant = null; }      // 228번: 색으로 골랐다가 네 구성 칸으로 다시 고르면 색에서 채운 답을 비움(느낌·결·종류를 다시 물음)
                 if (t) { t.planComp = type; t.planPicked = true; t.compOk = true; }
                 saveOwnTaste(ed);
                 flowNext();
                 return;
             }
+            ed.colorFirst = null;      // 228번: 네 구성 칸으로 다시 고르면 색으로 고름 표시를 지움
             setCompItems(ed, type);
             state.pendingItemQueue = ed.items;
             state.currentItemIndex = 0;
@@ -2299,6 +2319,7 @@
                 roomTarget.ownPres = state.editingRoom.ownPres || null;
                 roomTarget.ownTex = state.editingRoom.ownTex || null;      // 이 공간만 다르게 (117번)
                 roomTarget.pointTech = state.editingRoom.pointTech || null;      // 포인트 기법 (120번)
+                roomTarget.colorFirst = state.editingRoom.colorFirst || null;      // 228번: 색으로 고름
                 roomTarget.roomType = state.editingRoom.roomType || roomTarget.roomType || null;
                 roomTarget.measuredColor = state.editingRoom.measuredColor || null;
                 roomTarget.colorSrc = state.editingRoom.colorSrc || null;
@@ -2387,7 +2408,7 @@
                     id: newRoomId(), name: r.name,
                     floorTone: r.floorTone || 'warm', wallTone: r.wallTone || 'cool',
                     lightLevel: r.lightLevel || 'mid', mood: r.mood || 'soft_warm', wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
-                    roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
+                    roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null, colorFirst: r.colorFirst || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
                     measuredColor: r.measuredColor || null,
                     planComp: r.planComp || null, planPicked: !!r.planPicked, compOk: !!r.compOk,      // 119번
                     altLine: r.altLine || null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번
@@ -2494,7 +2515,7 @@
         getRoomsForSave: function() {
             return state.roomsCart.map(r => ({          // 아직 상담 전인 공간도 (크기·벽·바닥 색을 먼저 담아 둠)
                 name: r.name, floorTone: r.floorTone, wallTone: r.wallTone, lightLevel: r.lightLevel, mood: r.mood, wantMood: r.wantMood || null, colorStrength: r.colorStrength || null, colorAccent: r.colorAccent || null,
-                roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
+                roomType: r.roomType || null, lightBlock: r.lightBlock || null, privacy: r.privacy || null, sheerFeel: r.sheerFeel || null, blindWant: r.blindWant || null, diagnosed: !!r.diagnosed, ownTaste: !!r.ownTaste, ownPres: r.ownPres || null, ownTex: r.ownTex || null, pointTech: r.pointTech || null, colorFirst: r.colorFirst || null,      // 이 공간만 다르게 (115번, 고객 화면을 다녀와도 남게)
                 measuredColor: r.measuredColor || null,
                 planComp: r.planComp || null, planPicked: !!r.planPicked, compOk: !!r.compOk,      // 119번: 집 전체 구성에서 정한 것 (상담 전 공간)
                 altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 167번

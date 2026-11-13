@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261273';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261274';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1800,6 +1800,106 @@ function seatDrape(room, feel) {
     try { const r = colorTechCounts(mc); house = r ? r.house : null; } catch (e) { house = null; }
     return { feel, house, dark: room.lightBlock === 'dark', seats, gaps, at };
 }
+// ==============================================================
+// 228번: 색으로 고르기 — 구성을 먼저 정하지 않고 색에서 출발해 모든 품목(겉지·속지·블라인드) 중 가까운 원단을 찾음 (11-13 사장님)
+//  색 칸 = 색 사전 이름 하나. 앞 묶음 = 이 집 벽–바닥 선에 가까운 색(스며들게 쪽, 밝은 → 진한) · 뒷 묶음 = 나머지(흐린 색 먼저, 색상 차례, 밝은 → 진한)
+//  구성 카드 = 그 색에 가장 가까운 원단 하나(색 차 CF_NEAR 안). 이중 커튼·겉지 커튼 = 겉지, 속지 커튼 = 속지, 블라인드 = 블라인드
+//  거름: 판매가·색값·손님 추천 숨김은 categoryPool, 겉지 "완전히 어둡게요"는 seatPoolColors(181번), 겉지는 빛 가림 표(SEAT_BLOCK)에서 음수인 원단도 뺌.
+//  "완전히 어둡게요"면 속지는 쓰지 않음(속지 커튼 카드 없음). 블라인드 종류 거름(blindKindPool)은 아직 종류를 안 골랐으니 쓰지 않음
+// ==============================================================
+const CF_NEAR = 10;      // 228번: 구성 카드 원단이 색 칸에서 이만큼(ΔE) 안일 때만 (14_색_원리 "10 아래 비슷". 11-13 시험 집 셋에서 6~12 사이 카드 수 차이가 작음)
+const CF_COMPS = [['double', 'drape'], ['drape_only', 'drape'], ['sheer_only', 'sheer'], ['blind_only', 'blind']];      // 구성 → 원단 겹 (색 차가 같을 때 이 차례)
+function colorFirstCols(room) {
+    const t = SEAT_BLOCK[room && room.lightBlock];
+    const drape = seatPoolColors('겉지', room).filter(c => !t || (t[blackoutLevel(c.f) || 'unknown'] || 0) >= 0);
+    const sheer = room && room.lightBlock === 'dark' ? [] : seatPoolColors('속지', room);
+    const blind = seatPoolColors('블라인드', room);
+    return { drape, sheer, blind };
+}
+// 색 하나(c: L·a·b)가 이 집 벽·바닥과 어떤 관계인지 — 지금 엔진 자리의 이유 문장을 빌리려고 나눔. → { feel, key, tech, house } (벽·바닥 색이 없으면 null)
+//  calm(스며들게: 벽–바닥 선 가까이 또는 벽과 색 차 15 아래, key light·mid·deep) · weight(무게감: 어두운 쪽보다 짙고 흐린 색, key warm·house·cool)
+//  point(포인트: seatPoint 후보와 같은 채도·또렷함, key = 기법) · none(어느 자리에도 안 듦: key strong = 채도가 높음 / other = 그 밖)
+function colorFirstSeat(mc, c, room) {
+    if (!mc || !seatLabOk(mc.wall) || !seatLabOk(mc.floor) || !c || typeof c.L !== 'number' || typeof c.a !== 'number' || typeof c.b !== 'number') return null;
+    let r = null;
+    try { r = colorTechCounts(mc); } catch (e) { r = null; }
+    const house = r ? r.house : null;
+    const w = mc.wall, fl = mc.floor, br = seatBridge(mc), C = Math.hypot(c.a, c.b);
+    const onLine = roomLinkDistance(c, Object.assign({}, mc, { bridge: br }), 'bridge') != null;
+    if (onLine || seatWallDE(w, c) < SEAT_CFG.pointDE[0]) {
+        return { feel: 'calm', key: c.L >= br.L + 4 ? 'light' : (c.L <= br.L - 4 ? 'deep' : 'mid'), tech: null, house };
+    }
+    const Lt = Math.max(32, Math.min(w.L, fl.L, 48) - 3);
+    if (c.L <= Lt + 6 && C <= 15) {      // seatWeight의 목표 밝기 근처 · 흐린 색
+        const ch = Math.hypot(br.a, br.b), hs = ch > 2 ? { a: br.a / ch * 6, b: br.b / ch * 6 } : { a: 0, b: 0 };
+        const T3 = [['warm', { a: 5, b: 12 }], ['house', hs], ['cool', { a: -2, b: -10 }]];
+        const key = T3.slice().sort((x, y) => Math.hypot(c.a - x[1].a, c.b - x[1].b) - Math.hypot(c.a - y[1].a, c.b - y[1].b))[0][0];
+        return { feel: 'weight', key, tech: null, house };
+    }
+    if (!r) return { feel: 'none', key: 'other', tech: null, house };
+    const T = colorTechCfg(), hue = x => (Math.atan2(x.b, x.a) * 180 / Math.PI + 360) % 360;
+    const hd = (x, y) => { const d = Math.abs(x - y) % 360; return d > 180 ? 360 - d : d; };
+    if (house === 'color') {
+        if (C > SEAT_CFG.pointCMax) return { feel: 'none', key: 'strong', tech: null, house };
+        if (!pointVivid(c, T)) return { feel: 'none', key: 'other', tech: null, house };
+        const dh = hd(hue(c), hue(r.ref)), refC = Math.hypot(r.ref.a, r.ref.b);
+        const tech = dh <= T.toneHue ? (C - refC >= T.satDC ? 'sat' : 'tint') : (dh < 97.5 ? 'analog' : (dh < 150 ? 'split' : 'comp'));
+        return { feel: 'point', key: tech, tech, house };
+    }
+    if (C > SEAT_CFG.grayCMax) return { feel: 'none', key: 'strong', tech: null, house };
+    const p = (seatPoint(mc, [Object.assign({ id: '_cf', color: '_cf' }, c)], room, true) || [])[0];      // 무채색·중성 집: seatPoint 후보 규칙 그대로(채도 12~40 · 또렷함 → 밝기 대비·웜·쿨·톤인톤·반대 온도)
+    if (p && p.tech) return { feel: 'point', key: p.tech, tech: p.tech, house };
+    return { feel: 'none', key: 'other', tech: null, house };
+}
+// 색 칸 하나의 구성 카드: 구성마다 가장 가까운 원단 하나 · 색이 가까운 순
+function colorFirstComps(cols, p) {
+    const best = list => {
+        let b = null;
+        list.forEach(c => { const d = colorDistance(c, p); if (d <= CF_NEAR && (!b || d < b.d)) b = { id: c.id, color: c.color, hex: c.hex, L: c.L, a: c.a, b: c.b, d }; });
+        return b;
+    };
+    const got = { drape: best(cols.drape), sheer: best(cols.sheer), blind: best(cols.blind) };
+    return CF_COMPS.map(([comp, kind], i) => got[kind] ? Object.assign({ comp, kind, i }, got[kind]) : null).filter(Boolean)
+        .sort((x, y) => x.d - y.d || x.i - y.i);
+}
+// room: 공간(measuredColor 벽·바닥 필요) → { chips: [{ name, hex, L, a, b, front, seat, link, comps }], at: 처음 짚인 칸 } · 벽·바닥 색이 없거나 칸이 없으면 null
+function colorFirstChips(room) {
+    const mc = room && room.measuredColor;
+    if (!mc || !seatLabOk(mc.wall) || !seatLabOk(mc.floor) || typeof proColorName !== 'function') return null;
+    const cols = colorFirstCols(room);
+    const groups = {};
+    [].concat(cols.drape, cols.sheer, cols.blind).forEach(c => {
+        const n = proColorName(c.L, c.a, c.b); if (!n || !n.ko) return;
+        (groups[n.ko] = groups[n.ko] || { name: n.ko, ref: n, items: [] }).items.push(c);
+    });
+    const mcB = Object.assign({}, mc, { bridge: seatBridge(mc) });
+    let chips = Object.keys(groups).map(k => {
+        const g = groups[k], rep = g.items.slice().sort((x, y) => colorDistance(x, g.ref) - colorDistance(y, g.ref))[0];      // 칸 색 = 그 이름 기준 색에 가장 가까운 실제 원단 색
+        const seat = colorFirstSeat(mc, rep, room);
+        return { name: g.name, hex: rep.hex || '#efece6', L: rep.L, a: rep.a, b: rep.b, seat, front: !!seat && seat.feel === 'calm', link: roomLinkDistance(rep, mcB, 'bridge'), comps: colorFirstComps(cols, rep) };
+    }).filter(x => x.comps.length);
+    if (!chips.length) return null;
+    const hue = x => (Math.atan2(x.b, x.a) * 180 / Math.PI + 360) % 360, gray = x => (Math.hypot(x.a, x.b) < 8 ? 1 : 0);
+    const front = chips.filter(x => x.front).sort((x, y) => y.L - x.L);
+    const back = chips.filter(x => !x.front).sort((x, y) => (gray(y) - gray(x)) || (gray(x) ? 0 : Math.floor(hue(x) / 30) - Math.floor(hue(y) / 30)) || y.L - x.L);      // 흐린 색 먼저, 그다음 색상 30°씩 · 같은 칸 안은 밝은 → 진한
+    chips = front.concat(back);
+    let at = 0, bd = Infinity;
+    chips.forEach((x, i) => { if (x.front && x.link != null && x.link < bd) { bd = x.link; at = i; } });      // 처음 짚인 칸 = 벽–바닥을 가장 고요하게 잇는 색
+    return { chips, at };
+}
+// 색으로 고른 겹의 원단 열림에 넣을 원단: 고른 원단 먼저, 그다음 같은 겹에서 그 색 가까운(CF_NEAR 안) 원단 — 원단마다 한 번, 가까운 순
+//  kind: 'drape' | 'sheer' | 'blind' · cf: 공간의 colorFirst(L·a·b · fabricId · colorName) → [{ id, fabric, color, hex, L, a, b, grain }]
+function colorFirstNear(room, kind, cf) {
+    if (!cf || typeof cf.L !== 'number') return [];
+    const cols = colorFirstCols(room)[kind] || [];
+    const best = {};
+    cols.forEach(c => { const d = colorDistance(c, cf); if (d <= CF_NEAR && (!best[c.id] || d < best[c.id].d)) best[c.id] = Object.assign({}, c, { d }); });
+    const mine = cols.find(c => c.id === cf.fabricId && c.color === cf.colorName);
+    if (mine) best[mine.id] = Object.assign({}, mine, { d: -1 });
+    return Object.keys(best).map(k => best[k]).sort((x, y) => x.d - y.d)
+        .map(c => ({ id: c.id, fabric: c.fabric, color: c.color, hex: c.hex, L: c.L, a: c.a, b: c.b, grain: kind === 'sheer' ? sheerGrain(c.f) : undefined }));
+}
+
 // 속지 빛 한 장의 네 장: 많이 비침 · 은은한 · 낮 가림 · 중지(거의 안 비침 원단). 장 이름은 안쪽 이름 — 손님 글은 189번
 const SHEER_CARDS = [['light', '많이 비침'], ['medium', '은은한'], ['day', '낮 가림'], ['heavy', '중지']];
 // 속지 결 셋: 린넨(소재 칸 linen) · 매끈(질감 smooth) · 결 있음(그 밖 — 부클 같은 도톰한 것도)

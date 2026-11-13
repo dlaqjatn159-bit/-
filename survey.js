@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261273';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261274';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -648,6 +648,7 @@ function renderSurvey() {
                         <button type="button" class="survey-opt ${curtainConfig === 'blind' ? 'on' : ''}" onclick="setRoomCurtainConfig(${room.id}, 'blind')">블라인드</button>
                     </div>
                 </div>
+                ${room.colorFirst && room.colorFirst.name ? `<div class="survey-row"><!-- 228번: 손님이 색으로 고른 공간 --><div class="k">색으로 고름</div><div class="survey-opts"><span class="survey-opt on">${String(room.colorFirst.name).replace(/[<>&"]/g, '')}</span></div></div>` : ''}
 
                 ${!roomKnown || roomGroups.has('sheer') ? `<div class="survey-row"><div class="k">속지 결</div>
                     <div class="survey-opts">
