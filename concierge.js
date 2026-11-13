@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261278';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261279';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -274,19 +274,25 @@
         }
     }
 
-    // 키패드는 기본으로 오른쪽 아래. 누른 입력칸을 가리게 되면 왼쪽 아래로 옮깁니다.
+    // 234번: 숫자판은 누른 칸 바로 아래, 칸 가운데에 맞춰 뜸(화면 밖으로 나가면 안쪽으로 밀어 넣음). 아래 자리가 모자라면 칸 바로 위.
+    //  큰 가로·세로 칸은 숫자 바로 아래(그 아래 −100 … +100 줄은 덮어도 됨 — 숫자판으로 넣는 동안은 안 씀)
+    //  좁은 화면(700 이하)은 예전처럼 아래에 가득. 열린 채 화면을 굴리거나 크기가 바뀌면 칸을 따라감(아래 두 줄)
     function positionKeypad(target) {
         const sheet = document.getElementById("v2VirtualKeypadSheet");
         const box = document.getElementById(`measureBox_${target}`);
         if (!sheet) return;
         sheet.classList.remove("at-left");
-        if (window.innerWidth <= 700 || !box) return;
-        const m = 24, w = sheet.offsetWidth, h = sheet.offsetHeight;
-        const r = box.getBoundingClientRect();
-        const hits = (left) => !(r.right < left || r.left > left + w || r.bottom < window.innerHeight - m - h || r.top > window.innerHeight - m);
-        const rightLeft = window.innerWidth - m - w;
-        if (hits(rightLeft) && !hits(m)) sheet.classList.add("at-left");
+        const st = sheet.style;
+        if (window.innerWidth <= 700 || !box) { st.left = st.top = st.right = st.bottom = ''; return; }
+        const m = 16, gap = 12, w = sheet.offsetWidth, h = sheet.offsetHeight, r = (box.querySelector('.msr-num') || box).getBoundingClientRect();
+        const left = Math.max(m, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - m - w));
+        let top = r.bottom + gap;
+        if (top + h > window.innerHeight - m) top = r.top - gap - h;
+        top = Math.max(m, Math.min(top, window.innerHeight - m - h));
+        st.right = 'auto'; st.bottom = 'auto'; st.left = Math.round(left) + 'px'; st.top = Math.round(top) + 'px';
     }
+    document.addEventListener('scroll', () => { if (state.keypadTarget) positionKeypad(state.keypadTarget); }, true);
+    window.addEventListener('resize', () => { if (state.keypadTarget) positionKeypad(state.keypadTarget); });
 
     function hideKeypadDirectly() {
         const sheet = document.getElementById("v2VirtualKeypadSheet");
@@ -934,6 +940,32 @@
     }
     function paneBoxHtml(target, label, val) {
         return `<div id="measureBox_${target}" class="measure-box pane-box" onclick="window.concierge.openKeypad('${target}')"><span class="pane-k">${label}</span><span id="displayVal_${target}" class="pane-v font-serif-kr${val ? '' : ' is-empty'}">${val || '—'}</span></div>`;
+    }
+    // 234번: 블라인드 여러 장으로 나누면 저절로 '부분'. 부분 가로 = 장 합계(손으로 넣은 부분 가로가 더 크면 그 값), 공간 전체 가로는 넘지 못함
+    //  ed.paneBase = 손으로 넣은 부분 가로(장 합계가 밀어내는 바닥). 저장하지 않는 값 — 저장 칸은 예전 그대로(sizeMode·spaceWidth·width·panes)
+    function paneFull(ed) { return Number(ed && ed.spaceWidth) || 0; }      // 0이면 전체 가로를 아직 안 넣음 → 막지 않음
+    function paneSum(ed, skip) {      // 장 가로 × 몇 장의 합 (skip 번째 줄은 빼고)
+        return (Array.isArray(ed && ed.panes) ? ed.panes : []).reduce((s, p, i) => i === skip ? s : s + (Number(p.w) || 0) * (parseInt(p.qty, 10) || 1), 0);
+    }
+    function paneToPart(ed) {      // 나누기를 누를 때: 지금 가로·세로는 공간 전체로 남기고, 부분 가로는 장 합계에서 시작(이미 '부분'이었으면 그 부분 가로가 바닥)
+        const wasPart = ed.sizeMode === 'part';
+        if (!wasPart) {
+            if (!ed.spaceWidth && ed.width) ed.spaceWidth = ed.width;
+            if (!ed.spaceHeight && ed.height) ed.spaceHeight = ed.height;
+            ed.sizeMode = 'part';
+            ed.partHeight = Number(ed.spaceHeight || ed.height) || 0; ed.height = ed.partHeight;
+            ed.partWidth = 0; ed.width = 0;
+        }
+        ed.paneBase = wasPart ? (Number(ed.partWidth != null ? ed.partWidth : ed.width) || 0) : 0;
+    }
+    function panePush(ed) {      // 장 숫자가 바뀐 뒤: 부분 가로 = max(바닥, 장 합계), 전체 가로를 넘지 않음 · 큰 가로 칸 숫자도 바로
+        if (!ed || ed.sizeMode !== 'part' || !Array.isArray(ed.panes)) return;
+        const full = paneFull(ed);
+        let v = Math.max(Number(ed.paneBase) || 0, paneSum(ed));
+        if (full > 0) v = Math.min(v, full);
+        ed.partWidth = v; ed.width = v;
+        const b = document.getElementById('displayVal_width');
+        if (b) b.textContent = v;
     }
     // 키패드로 숫자를 바꾼 뒤 그림 막대만 다시 (화면 전체를 다시 그리지 않음)
     function refreshPaneBar() {
@@ -2468,6 +2500,7 @@
             const ed = state.editingRoom; if (!ed) return;
             const first = Pricing.panesOf({ panes: ed.panes })[0];
             ed.panes = [{ w: 0, h: null, hand: first.hand, qty: 1 }, { w: 0, h: null, hand: Pricing.PANE_HAND_DEFAULT, qty: 1 }];
+            paneToPart(ed);      // 234번: 나누면 저절로 '부분'
             render(); window.concierge.openKeypad('pw-0');
         },
         addPane: function() {
@@ -2480,11 +2513,15 @@
             const ed = state.editingRoom; if (!ed || !Array.isArray(ed.panes)) return;
             ed.panes.splice(i, 1);
             if (!ed.panes.length) ed.panes = null;      // 마지막 줄까지 빼면 나누기 전(전체 크기 한 장)으로. 한 줄이 남으면 그 줄 그대로(같은 창 6장 등)
+            panePush(ed);      // 234번
             hideKeypadDirectly(); render();
         },
         paneQty: function(i, d) {
             const ed = state.editingRoom, p = ed && Array.isArray(ed.panes) && ed.panes[i]; if (!p) return;
+            const full = paneFull(ed);
+            if (d > 0 && full > 0 && paneSum(ed) + (Number(p.w) || 0) > full) return;      // 234번: 한 장 더해 전체 가로를 넘으면 안 더함
             p.qty = Math.max(1, Math.min(99, (p.qty || 1) + d));
+            panePush(ed);      // 234번
             hideKeypadDirectly(); render();
         },
         setPaneSameH: function(on) {
@@ -2569,7 +2606,7 @@
             else curVal = isPart ? (ed.partHeight != null ? ed.partHeight : ed.height) : (ed.spaceHeight != null ? ed.spaceHeight : ed.height);
             const v = Math.min(99999, Math.max(0, (parseInt(curVal, 10) || 0) + delta));
             if (target === 'width') {
-                if (isPart) { ed.partWidth = v; ed.width = v; }
+                if (isPart) { ed.partWidth = v; ed.width = v; ed.paneBase = v; }      // 234번
                 else { ed.spaceWidth = v; ed.width = v; }
             } else {
                 if (isPart) { ed.partHeight = v; ed.height = v; }
@@ -2614,10 +2651,13 @@
                     if (k === "C") pv = "0";
                     else if (k === "DEL") pv = pv.length > 1 ? pv.slice(0, -1) : "0";
                     else pv = pv === "0" ? k : (pv + k).slice(0, 4);
-                    prow[pt.key] = parseInt(pv, 10) || 0;
+                    const nv = parseInt(pv, 10) || 0, full = paneFull(ed0);
+                    if (pt.key === 'w' && k !== 'C' && k !== 'DEL' && full > 0 && paneSum(ed0, pt.i) + nv * (parseInt(prow.qty, 10) || 1) > full) return;      // 234번: 전체 가로를 넘는 숫자는 받지 않음(앞 숫자 그대로)
+                    prow[pt.key] = nv;
                     document.getElementById("v2KeypadValueDisplay").textContent = prow[pt.key];
                     const pb = document.getElementById(`displayVal_${state.keypadTarget}`);
                     if (pb) { pb.textContent = prow[pt.key] || '—'; pb.classList.toggle('is-empty', !prow[pt.key]); }
+                    panePush(ed0);      // 234번: 장 합계가 부분 가로를 밀어냄
                     refreshPaneBar();
                     return;
                 }
@@ -2635,7 +2675,7 @@
 
             const v = parseInt(val, 10);
             if (state.keypadTarget === 'width') {
-                if (isPart) { ed.partWidth = v; ed.width = v; }
+                if (isPart) { ed.partWidth = v; ed.width = v; ed.paneBase = v; }      // 234번: 손으로 넣은 부분 가로 = 장 합계가 밀어내는 바닥
                 else { ed.spaceWidth = v; ed.width = v; }
             } else {
                 if (isPart) { ed.partHeight = v; ed.height = v; }
