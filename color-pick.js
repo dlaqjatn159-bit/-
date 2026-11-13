@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261276';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261277';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -264,8 +264,9 @@
         const dots = (typeof seatPoolColors === 'function' ? seatPoolColors('겉지', room) : [])      // 세 자리를 고른 것과 같은 원단(빛 가림으로 거른 뒤)
             .filter(c => c.hex && !taken.has(String(c.hex).toUpperCase())).map(c => ({ hex: c.hex, L: c.L, b: c.b }));
         const ctx = cv.getContext('2d');
-        ctx.save(); ctx.scale(2, 2); ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, 900, 520);
-        const hits = (drawHouseMap(ctx, sp, '#fffdf9', { sel: 0, seats, dots }) || []).filter(q => typeof q.seat === 'number');
+        const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper-sheet').trim() || '#fbf9f5';      // 지도 종이 = 손님 화면 종이(디자인 토큰 정리 A, 232번)
+        ctx.save(); ctx.scale(2, 2); ctx.fillStyle = paper; ctx.fillRect(0, 0, 900, 520);
+        const hits = (drawHouseMap(ctx, sp, paper, { sel: 0, seats, dots }) || []).filter(q => typeof q.seat === 'number');
         ctx.restore();
         cv.addEventListener('click', e => {      // 세 자리 조각(둘레 16 넉넉히)을 누르면 그 색 한 장으로 (지도 좌표 900×520)
             const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * 900 / b.width, y = (e.clientY - b.top) * 520 / b.height;

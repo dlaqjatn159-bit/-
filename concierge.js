@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261276';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261277';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -792,7 +792,7 @@
     // 벽·바닥 색 조각: 잰 색이 있으면 그 색, 카드로 골랐으면 카드의 대표 색. 아직 모르면 빗금
     const FLOOR_SW = { warm: '#bfa384', cool: '#d3d6d8', neutral: '#ada398', deep: '#4f3a2d' };
     const WALL_SW = { warm: '#f3ece2', cool: '#e6ebf0', neutral: '#e0d9d0', deep: '#6b4a3a' };
-    const HATCH = 'repeating-linear-gradient(135deg, #fffdf9 0 6px, #efe7da 6px 12px)';
+    const HATCH = 'repeating-linear-gradient(135deg, var(--paper-sheet) 0 6px, #efe7da 6px 12px)';      // 232번: 밝은 줄 = 손님 화면 종이(디자인 토큰)
     const COMP_NAMES = { double: '이중 커튼', sheer_only: '속지 커튼', drape_only: '겉지 커튼', blind_only: '블라인드' };
     // 공간의 벽(part='wall') · 바닥(part='floor') 색: { hex, name, src: 'measured' | 'card' } 또는 null(아직 모름)
     // 잰 색의 이름: 자세한 이름(room-color.js colorName, 예: 라이트 베이지 · 내추럴 오크). 카드로 고른 색만 카드 이름(크림·아이보리 등)
