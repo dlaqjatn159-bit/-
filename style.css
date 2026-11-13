@@ -3328,6 +3328,10 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .fin-est-deposit { padding: 0.7rem 0 0; text-align: right; font-size: 15px; color: #6f5f4f; font-variant-numeric: tabular-nums; }
 .fin-est-deposit[hidden] { display: none; }
 
+/* 235번: 최종 제안 '공간의 색과 빛' — 띠 자리에 창가 그림(ticket.js houseSceneSvg). 칸이 그림과 같은 비율(960:150)이라 잘리지 않음, 종이와 같은 모양 */
+.jg-mb-pic { flex: 1; min-width: 0; aspect-ratio: 960 / 150; }
+.jg-mb-pic svg { display: block; width: 100%; height: 100%; }
+
 /* 234번: 숫자판은 누른 칸 바로 아래(모자라면 위)에 뜸 — 자리는 concierge.js positionKeypad가 left·top으로. 미끄러져 올라오지 않고 서서히 나타남
    위 오른쪽 = 한 글자 지우기(.keypad-back) · 오른쪽 아래 칸 = 입력 완료(.key-done, 주요 행동처럼 밑줄) */
 .keypad-sheet { transform: none; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--m-pick) ease, visibility 0s linear var(--m-pick); }

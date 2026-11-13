@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261279';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261280';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -311,22 +311,19 @@
         h += '<div class="fin-ed-logo font-serif-kr" data-staff-hold>' + redamLogoSVG() + '</div></footer>';
         h += '</section>';
 
-        // [공간의 색과 빛] 194번: 종이 장과 같은 띠 — 칸 이름 한 번 → 공간마다 이름 | 띠(벽 34 · 속지 22 · 겉지 22 · 바닥 22) → 띠 아래 품목마다 한 줄 → 총평 → 잰 값 한 줄
+        // [공간의 색과 빛] 235번: 종이 장과 같은 창가 그림 — 공간마다 이름 | 창가 그림(벽·바닥·창에 속지·겉지 또는 블라인드) → 그림 아래 품목마다 한 줄 → 총평 → 잰 값 한 줄
         if (showHouse) {
             const brief = (typeof houseBrief === 'function') ? houseBrief(sp) : [];
             const roomLines = (typeof houseRoomLines === 'function') ? houseRoomLines(sp) : [];
             const hasLine = sp.some(s => s.wall && s.floor);
             h += '<section class="jg-overview" id="finSecHouse">';
             h += '<div class="jg-sec-head"><h2 class="jg-sec-ttl font-serif-kr">공간의 색과 빛</h2></div>';
-            if (typeof houseMoodParts === 'function' && typeof HOUSE_MB_COLS !== 'undefined') {
-                // 칸 이름 한 번 (블라인드만인 공간은 그 줄 아래에 따로)
-                h += '<div class="jg-mb-row jg-mb-head"><span></span><div class="jg-mb-strip">' + HOUSE_MB_COLS.map(c => `<span style="flex:${c[1]}">${c[0]}</span>`).join('') + '</div></div>';
+            if (typeof houseSceneSvg === 'function') {
+                // 235번: 칸 이름 줄 없이 공간마다 이름 | 창가 그림(띠 자리) → 그림 아래 품목마다 한 줄. 종이(ticket.js planHouse)도 같은 그림
                 sp.forEach(s => {
-                    const mp = houseMoodParts(s), ln = roomLines.find(r => r.name === s.name);
+                    const ln = roomLines.find(r => r.name === s.name);
                     h += '<div class="jg-mb-room">';
-                    h += `<div class="jg-mb-row"><span class="jg-mb-name font-serif-kr">${esc(s.name)}</span><div class="jg-mb-strip">`
-                       + mp.parts.map(p => `<i style="flex:${p[1]}${p[0] ? ';background:' + p[0] : ''}"${p[0] ? '' : ' class="is-empty"'}></i>`).join('') + '</div></div>';
-                    if (mp.odd) h += '<div class="jg-mb-row jg-mb-key"><span></span><div class="jg-mb-strip">' + mp.parts.map(p => `<span style="flex:${p[1]}">${p[0] ? esc(p[2]) : ''}</span>`).join('') + '</div></div>';
+                    h += `<div class="jg-mb-row"><span class="jg-mb-name font-serif-kr">${esc(s.name)}</span><div class="jg-mb-pic">${houseSceneSvg(s)}</div></div>`;
                     if (ln && ln.parts && ln.parts.length) h += '<dl class="jg-mb-say">' + ln.parts.map(q => `<dt>${esc(q.k)}</dt><dd>${esc(q.text)}</dd>`).join('') + '</dl>';
                     h += '</div>';
                 });

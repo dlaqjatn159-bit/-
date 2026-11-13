@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261279';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261280';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -1438,8 +1438,8 @@ function houseRoomLines(sp) {
     return out;
 }
 // 공간의 색과 빛 장 (132번 → 141번 B-4 결정): 저장 이미지·인쇄·카톡 이미지는 사분면 지도 대신 무드보드
-//  공간마다 한 줄: 이름(F3 명조) | 색 띠 벽 → 속지 → 겉지 → 바닥(폭 34:22:22:22, 칸 사이 틈, 초세선 테두리) | 띠 아래 문장(F4, 옅게) → 집 전체 총평
-//  칸 이름은 맨 위 한 번만. 없는 품목은 칸을 비움(회색으로 채우지 않음). 블라인드만인 공간은 커튼 두 칸 자리를 블라인드 하나가 쓰고 그 줄에만 칸 이름
+//  235번(11-12 사장님 A형): 공간마다 이름(F3 명조, 그림 가운데 높이) | 창가 그림(띠 자리, 화면과 같은 비율) | 그림 아래 문장(F4, 옅게) → 집 전체 총평
+//  칸 이름 줄은 없음(그림이 대신 말함). 예전 띠(194번)의 HOUSE_MB_COLS · houseMoodParts는 남겨 두었지만 이제 안 씀
 //  화면(지도, 한 공간씩 진하게)과 순서만 같고 모양은 다름 — 80번 원칙의 의도한 예외(141번)
 const HOUSE_MB_COLS = [['벽', 34], ['속지', 22], ['겉지', 22], ['바닥', 22]];
 const HOUSE_MEASURED_NOTE = '벽·바닥 색은 상담 때 회색 카드와 함께 잰 값입니다.';      // 194번(E): 잰 값 한 줄 — 화면(final.js)과 종이가 같이 씀
@@ -1450,6 +1450,98 @@ function houseMoodParts(s) {
     const hasCurtain = s.fabs.some(x => x.k === '속지' || x.k === '겉지');
     if (!hasCurtain && s.fabs.some(x => x.k === '블라인드')) return { odd: true, parts: [[wall, 34, '벽'], [fab('블라인드'), 44, '블라인드'], [floor, 22, '바닥']] };
     return { odd: false, parts: [[wall, 34, '벽'], [fab('속지'), 22, '속지'], [fab('겉지'), 22, '겉지'], [floor, 22, '바닥']] };
+}
+// 235번: 공간의 색과 빛 — 띠 대신 창가 그림 (11-12 사장님 A형: 띠 자리에 넓은 그림, 글은 아래). 시안: 시안/공간의색과빛_창가그림_시안.html 의 A
+//  정면 그림 한 장: 벽이 바탕 · 아래 바닥 띠 · 가운데 창(유리) → 속지가 창을 덮어 비침 → 겉지 두 폭을 양옆으로 걷어 둠. 블라인드만인 공간은 창 안에 블라인드
+//  그림은 houseScene 하나(도형 목록)로 정하고, 화면은 houseSceneSvg(final.js), 종이는 drawHouseScene(planHouse)가 같은 도형을 그림 → 화면·종이 같은 모양
+//  색: 벽·바닥 = 잰 색(못 잰 곳은 무채색 #EFECE6 · #D8D2C8 — 색을 지어내지 않음), 원단 = 고른 원단 색. 커튼이 있는 공간은 블라인드를 그리지 않음(예전 띠와 같음)
+const HOUSE_SCENE_W = 960, HOUSE_SCENE_H = 150;      // 그림 비율 (화면은 이 비율로 폭에 맞추고, 종이도 같은 비율)
+function houseSceneColors(s) {
+    const okHex = h => /^#[0-9a-f]{6}$/i.test(h || '');
+    const fab = k => s.fabs.find(x => x.k === k && okHex(x.hex));
+    const hasCurtain = s.fabs.some(x => x.k === '속지' || x.k === '겉지');
+    const sh = fab('속지'), dr = fab('겉지'), bl = hasCurtain ? null : fab('블라인드');
+    const f = bl && typeof FABRIC_DB !== 'undefined' ? FABRIC_DB.find(x => x.id === bl.fabricId) : null;
+    return {
+        wall: s.wall ? s.wall.hex : '#EFECE6', floor: s.floor ? s.floor.hex : '#D8D2C8',
+        sheer: sh ? sh.hex : null, drape: dr ? dr.hex : null,
+        blind: bl ? bl.hex : null, blindKind: f && typeof blindKind === 'function' ? blindKind(f) : null
+    };
+}
+// 도형 목록 [{ x, y, w, h, fill, op, line }] — fill: '#hex' 또는 { v(세로면 true), stops: [[0~1, '#hex'], …] } · line: 테두리 굵기(속은 비움) · op: 투명도
+function houseScene(c, W, H) {
+    const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const hx = a => '#' + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+    const mix = (h, to, t) => { const a = rgb(h), b = rgb(to); return hx(a.map((v, i) => v + (b[i] - v) * t)); };
+    const shade = (h, t) => t >= 0 ? mix(h, '#ffffff', t) : mix(h, '#000000', -t);
+    const folds = (col, n, amp) => {      // 주름 결: 가로 방향으로 밝게·어둡게 번갈아
+        const stops = [];
+        for (let i = 0; i <= n * 8; i++) { const p = i / (n * 8), v = Math.sin(p * n * Math.PI * 2); stops.push([p, shade(col, v > 0 ? v * amp * 0.8 : v * amp)]); }
+        return { v: false, stops };
+    };
+    const floorH = Math.round(H * 0.17), fy = H - floorH, railY = Math.round(H * 0.09);
+    const winW = Math.round(W * (W / H > 3 ? 0.30 : 0.46)), wx1 = Math.round((W - winW) / 2), wx2 = wx1 + winW;
+    const wy1 = Math.round(H * 0.15), wy2 = fy - Math.round(H * 0.12), hemY = fy - 3;      // 커튼은 바닥 바로 위까지
+    const out = [
+        { x: 0, y: 0, w: W, h: fy, fill: { v: true, stops: [[0, shade(c.wall, -0.03)], [1, c.wall]] } },      // 벽
+        { x: 0, y: fy, w: W, h: floorH, fill: { v: true, stops: [[0, shade(c.floor, 0.06)], [1, shade(c.floor, -0.10)]] } },      // 바닥
+        { x: 0, y: fy - 4, w: W, h: 4, fill: shade(c.wall, -0.07) },      // 걸레받이
+        { x: wx1, y: wy1, w: winW, h: wy2 - wy1, fill: { v: true, stops: [[0, '#d6e2e8'], [1, '#eef2f2']] } },      // 유리
+        { x: wx1 + winW / 2 - 1, y: wy1, w: 2, h: wy2 - wy1, fill: shade(c.wall, -0.10) },      // 창 가운데 살
+        { x: wx1 - 3, y: wy1 - 3, w: winW + 6, h: wy2 - wy1 + 6, fill: shade(c.wall, -0.14), line: 3 }      // 창틀
+    ];
+    if (c.blind) {
+        const by2 = wy1 + Math.round((wy2 - wy1) * 0.72), n = Math.max(6, Math.round((by2 - wy1) / 7)), bh = (by2 - wy1) / n;
+        out.push({ x: wx1 - 4, y: wy1 - 5, w: winW + 8, h: 6, fill: shade(c.blind, -0.12) });      // 위 레일
+        if (c.blindKind === 'combi') {      // 콤비: 솔리드 · 쉬어 줄 번갈아
+            for (let i = 0; i < n; i++) out.push({ x: wx1, y: wy1 + bh * i, w: winW, h: bh + 0.3, fill: c.blind, op: i % 2 ? 0.55 : 1 });
+        } else {      // 롤 등: 한 면 · 우드·알루미늄은 날개 선
+            out.push({ x: wx1, y: wy1, w: winW, h: by2 - wy1, fill: c.blind });
+            if (c.blindKind === 'wood' || c.blindKind === 'alu') for (let i = 1; i < n; i++) out.push({ x: wx1, y: wy1 + bh * i, w: winW, h: 1, fill: shade(c.blind, -0.14) });
+        }
+        out.push({ x: wx1, y: by2, w: winW, h: 3, fill: shade(c.blind, -0.18) });      // 아래 바
+    } else if (c.sheer || c.drape) {
+        const s1 = wx1 - Math.round(winW * 0.20), s2 = wx2 + Math.round(winW * 0.20);
+        out.push({ x: s1 - 4, y: railY - 2, w: s2 - s1 + 8, h: 3, fill: shade(c.wall, -0.32), op: 0.6 });      // 레일
+        if (c.sheer) out.push({ x: s1, y: railY, w: s2 - s1, h: hemY - railY, fill: folds(c.sheer, Math.round(winW / 11), 0.05), op: 0.86 });      // 속지: 창을 덮어 비침
+        if (c.drape) {      // 겉지: 두 폭을 양옆으로 걷어 둠
+            const pw = Math.round(winW * 0.24), fd = folds(c.drape, 4, 0.10);
+            out.push({ x: s1 - 2, y: railY, w: pw, h: hemY - railY, fill: fd }, { x: s2 + 2 - pw, y: railY, w: pw, h: hemY - railY, fill: fd });
+        }
+    }
+    return out;
+}
+let houseSceneUid = 0;      // 화면에 그림이 여럿이어도 색 번짐(그라데이션) 이름이 겹치지 않게
+function houseSceneSvg(s) {      // 화면(final.js): 비율 960:150 그대로 — 칸(.jg-mb-pic)이 같은 비율이라 잘리지 않음
+    const W = HOUSE_SCENE_W, H = HOUSE_SCENE_H, id = 'hs' + (houseSceneUid++), n = v => +Number(v).toFixed(2);
+    let defs = '', body = '';
+    houseScene(houseSceneColors(s), W, H).forEach((p, i) => {
+        let fill = p.fill;
+        if (typeof fill !== 'string') {
+            defs += `<linearGradient id="${id}g${i}" x1="0" y1="0" x2="${fill.v ? 0 : 1}" y2="${fill.v ? 1 : 0}">` + fill.stops.map(st => `<stop offset="${(st[0] * 100).toFixed(2)}%" stop-color="${st[1]}"/>`).join('') + '</linearGradient>';
+            fill = `url(#${id}g${i})`;
+        }
+        const op = p.op != null ? ` opacity="${p.op}"` : '';
+        body += p.line ? `<rect x="${n(p.x)}" y="${n(p.y)}" width="${n(p.w)}" height="${n(p.h)}" fill="none" stroke="${fill}" stroke-width="${p.line}"${op}/>`
+            : `<rect x="${n(p.x)}" y="${n(p.y)}" width="${n(p.w)}" height="${n(p.h)}" fill="${fill}"${op}/>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${defs ? '<defs>' + defs + '</defs>' : ''}${body}</svg>`;
+}
+function drawHouseScene(c, s, X, Y, W, H) {      // 종이(planHouse): 같은 도형을 캔버스에
+    c.save();
+    c.beginPath(); c.rect(X, Y, W, H); c.clip();
+    houseScene(houseSceneColors(s), W, H).forEach(p => {
+        let fill = p.fill;
+        if (typeof fill !== 'string') {
+            const g = fill.v ? c.createLinearGradient(0, Y + p.y, 0, Y + p.y + p.h) : c.createLinearGradient(X + p.x, 0, X + p.x + p.w, 0);
+            fill.stops.forEach(st => g.addColorStop(st[0], st[1]));
+            fill = g;
+        }
+        c.globalAlpha = p.op != null ? p.op : 1;
+        if (p.line) { c.strokeStyle = fill; c.lineWidth = p.line; c.strokeRect(X + p.x, Y + p.y, p.w, p.h); }
+        else { c.fillStyle = fill; c.fillRect(X + p.x, Y + p.y, p.w, p.h); }
+    });
+    c.restore();
 }
 function planHouse(data) {
     const sp = houseSpacesOf(data), brief = houseBrief(sp), roomLines = houseRoomLines(sp);
@@ -1474,15 +1566,14 @@ function planHouse(data) {
         let x = SX;
         return parts.map(p => { const w = free * p[1] / tot, o = { x, w, hex: p[0], k: p[2] }; x += w + GAP; return o; });
     };
-    let y = TICKET_HEAD_Y + 24;
-    const headY = y + PAPER_F4, headCells = cells(HOUSE_MB_COLS.map(c => [null, c[1], c[0]]));
-    y = headY + 14;
-    const KEY_W = 64;      // 194번: 이름표 폭 (SX: key는 fKey·MUTED, SX + KEY_W: 글은 fBody·MUTED)
+    let y = TICKET_HEAD_Y + 34;      // 235번: 칸 이름 줄 없음(그림이 대신 말함)
+    const KEY_W = 92;      // 194번: 이름표 폭 (SX: key는 fKey·MUTED, SX + KEY_W: 글은 fBody·MUTED) · 235번: 64 → 92 ('블라인드' 네 글자가 글과 겹쳐서)
+    const PH = Math.round(SW * HOUSE_SCENE_H / HOUSE_SCENE_W);      // 235번: 창가 그림 높이 (화면과 같은 비율)
     const rows = sp.map(s => {
-        const mp = houseMoodParts(s), ln = roomLines.find(r => r.name === s.name);
-        const o = { s, odd: mp.odd, cells: cells(mp.parts), stripY: y };
-        o.nameY = y + 16 + PAPER_F3;
-        let ty = y + SH;
+        const ln = roomLines.find(r => r.name === s.name);
+        const o = { s, stripY: y };
+        o.nameY = y + Math.round(PH / 2 + PAPER_F3 * 0.35);      // 이름은 그림 가운데 높이 (화면 A형과 같음)
+        let ty = y + PH;
         if (o.odd) { o.keyY = ty + 8 + PAPER_F4 * 0.85; ty = o.keyY; }
         const lines = [];
         if (ln && ln.parts) {
@@ -1508,15 +1599,9 @@ function planHouse(data) {
         const t = drawWhy(c, data, W, false, '공간의 색과 빛');      // 65번
         t.hdr();
         c.textAlign = 'left';
-        c.font = fKey; c.fillStyle = MUTED; headCells.forEach(q => c.fillText(q.k, q.x, headY));
         rows.forEach(o => {
             c.font = fName; c.fillStyle = DARK; c.fillText(o.s.name, CX, o.nameY);
-            o.cells.forEach(q => {
-                if (!q.hex) return;      // 없는 품목·못 잰 색은 비워 둠
-                c.fillStyle = q.hex; c.fillRect(q.x, o.stripY, q.w, SH);
-                c.strokeStyle = 'rgba(35,28,22,0.14)'; c.lineWidth = PAPER_HL; c.strokeRect(q.x + PAPER_HL / 2, o.stripY + PAPER_HL / 2, q.w - PAPER_HL, SH - PAPER_HL);
-            });
-            if (o.odd) { c.font = fKey; c.fillStyle = MUTED; o.cells.forEach(q => { if (q.hex) c.fillText(q.k, q.x, o.keyY); }); }
+            drawHouseScene(c, o.s, SX, o.stripY, SW, PH);      // 235번: 띠 대신 창가 그림
             o.lines.forEach((ln, i) => {
                 const py = o.textY + i * LH4;
                 if (ln.key) { c.font = fKey; c.fillStyle = MUTED; c.fillText(ln.key, SX, py); }
