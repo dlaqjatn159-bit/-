@@ -624,11 +624,14 @@
                         <label class="staff-field"><span>견적서 유효기간 (일, 0이면 표시 안 함 · 기본 14)</span>
                             <input type="number" id="quoteValidDaysInput" step="1" min="0" max="365" inputmode="numeric" placeholder="14" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveQuoteValidDays(this.value)">
                         </label>
+                        <label class="staff-field"><span>계약금 없이 받는 작은 주문 기준 (원 — 합계가 이 금액 아래면 시공하는 날 한 번에. 비우면 제작 주문은 모두 계약금 50%)</span><!-- 230번 -->
+                            <input type="number" id="smallOrderLimitInput" step="10000" min="0" inputmode="numeric" placeholder="비어 있음" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none text-right" oninput="saveSmallOrderLimit(this.value)">
+                        </label>
                         <label class="staff-field"><span>결제 조건</span>
-                            <textarea id="ticketPayInput" rows="2" maxlength="300" placeholder="예: 계약금 ○○% 입금 후 제작 시작, 잔금은 시공 당일&#10;○○은행 000-000-000000 (예금주)" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('pay', this.value)"></textarea>
+                            <textarea id="ticketPayInput" rows="2" maxlength="300" placeholder="받는 방법만 적어 주세요 (계약금은 리담의 약속에 저절로 나옵니다)&#10;예: 카드 · 계좌 이체 ○○은행 000-000-000000 (예금주)" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('pay', this.value)"></textarea>
                         </label>
                         <label class="staff-field"><span>맞춤 제작 안내</span>
-                            <textarea id="ticketCustomInput" rows="2" maxlength="300" placeholder="예: 맞춤 제작 상품으로, 제작을 시작한 뒤에는 변경·취소가 어렵습니다." class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('custom', this.value)"></textarea>
+                            <textarea id="ticketCustomInput" rows="2" maxlength="300" placeholder="예: 창 크기에 맞춰 만드는 제품이라, 제작에 들어간 뒤에는 교환이 어렵습니다." class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('custom', this.value)"></textarea>
                         </label>
                         <label class="staff-field"><span>공급자 정보</span>
                             <textarea id="ticketSupplierInput" rows="2" maxlength="300" placeholder="예: Re.dam · 대표 ○○○ · 사업자등록번호 000-00-00000&#10;주소 · 연락처 010-0000-0000" class="w-full px-2.5 py-1.5 border rounded-xl text-xs font-semibold bg-slate-50 outline-none" oninput="saveTicketText('supplier', this.value)"></textarea>
@@ -872,27 +875,27 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="logo.js?v=20261274"></script> <!-- 150번: 새 글씨 로고 -->
-    <script src="pricing.js?v=20261274"></script>
-    <script src="costing.js?v=20261274"></script>
-    <script src="data.js?v=20261274"></script>
-    <script src="calculator.js?v=20261274"></script>
-    <script src="concierge.js?v=20261274"></script>
-    <script src="intro.js?v=20261274"></script>
-    <script src="fabric-pick.js?v=20261274"></script>
-    <script src="color-pick.js?v=20261274"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
-    <script src="space.js?v=20261274"></script>
-    <script src="final.js?v=20261274"></script>
-    <script src="app.js?v=20261274"></script>
-    <script src="more.js?v=20261274"></script>
-    <script src="survey.js?v=20261274"></script>
-    <script src="ticket.js?v=20261274"></script>
-    <script src="color-dict.js?v=20261274"></script>
-    <script src="fabrics.js?v=20261274"></script>
-    <script src="finder.js?v=20261274"></script>
-    <script src="settings.js?v=20261274"></script>
-    <script src="room-color.js?v=20261274"></script>
-    <script src="booking.js?v=20261274"></script> <!-- 202번: 시공 날짜 잡기 -->
+    <script src="logo.js?v=20261275"></script> <!-- 150번: 새 글씨 로고 -->
+    <script src="pricing.js?v=20261275"></script>
+    <script src="costing.js?v=20261275"></script>
+    <script src="data.js?v=20261275"></script>
+    <script src="calculator.js?v=20261275"></script>
+    <script src="concierge.js?v=20261275"></script>
+    <script src="intro.js?v=20261275"></script>
+    <script src="fabric-pick.js?v=20261275"></script>
+    <script src="color-pick.js?v=20261275"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
+    <script src="space.js?v=20261275"></script>
+    <script src="final.js?v=20261275"></script>
+    <script src="app.js?v=20261275"></script>
+    <script src="more.js?v=20261275"></script>
+    <script src="survey.js?v=20261275"></script>
+    <script src="ticket.js?v=20261275"></script>
+    <script src="color-dict.js?v=20261275"></script>
+    <script src="fabrics.js?v=20261275"></script>
+    <script src="finder.js?v=20261275"></script>
+    <script src="settings.js?v=20261275"></script>
+    <script src="room-color.js?v=20261275"></script>
+    <script src="booking.js?v=20261275"></script> <!-- 202번: 시공 날짜 잡기 -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

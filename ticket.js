@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261274';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261275';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -209,14 +209,30 @@ async function loadTicketPhotos(data) {
 // 해당 품목에만 붙는 안내 (87번): 소폭 이음 제작 커튼이 있으면 이음선 안내, 완전 암막 겉지가 있으면 빛샘 안내 — 각 한 번씩
 const SEAM_NOTE = '원단 폭이 좁은 제품은 폭을 이어 제작하므로, 커튼에 세로 이음선이 있습니다. 제작 과정상 자연스러운 것이며 불량이 아닙니다.';
 const LIGHT_LEAK_NOTE = '완전 암막 원단도 커튼 옆과 위로는 빛이 새어 들어올 수 있습니다. 원단 자체의 문제가 아니라 설치 구조상 생기는 현상입니다.';
-const HOTEL_FIT_NOTE = '호텔핏은 원단을 한 폭 더 넣어 주름을 깊고 풍성하게 만드는 리담의 마감입니다.';      // 136번
-// 리담의 약속 (159번, 11-08 사장님 결정): 견적서 그림·최종 제안 견적·카톡 글에 늘 나옴(설정 칸 아님). 글을 바꾸려면 번호를 새로
-const TICKET_PROMISE = [
-    '실물 견본을 창가에서 함께 확인한 뒤 주문합니다.',
-    '계약금 50%를 받은 뒤 제작에 들어갑니다.',
-    '제작은 보통 4~6일 걸립니다.',
-    '크기를 잘못 쟀거나 시공에 하자가 있으면 리담이 다시 만들어 시공합니다.'
-];
+const HOTEL_FIT_NOTE = '리담 핏은 원단을 한 폭 더 넣어 주름을 깊고 풍성하게 만드는 리담의 마감입니다.';      // 136번 · 230번: 호텔핏 → 리담 핏(11-10 결정)
+// 리담의 약속 (159번, 11-08 사장님 결정 → 230번, 11-13 계약금 결정): 견적서 그림·최종 제안 견적·카톡 글이 ticketData()에서 같이 받음. 글을 바꾸려면 번호를 새로
+const PROMISE_LINE = {
+    sample: '실물 견본을 함께 보고 나서 주문합니다.',
+    deposit: '계약금 50%를 받은 뒤 제작에 들어갑니다.',
+    cancel: '제작 전 취소는 계약금 전액을, 제작 뒤 취소는 이미 든 제작비를 뺀 금액을 돌려드립니다.',
+    once: '금액은 시공하는 날 한 번에 받습니다.',
+    days: '제작은 보통 4~6일 걸립니다.',
+    fix: '크기를 잘못 쟀거나 시공에 하자가 있으면 리담이 다시 만들어 시공합니다.',
+    fixInstall: '시공에 하자가 있으면 리담이 다시 시공합니다.'      // 230번 보완: 제작 없는 일(이전설치·수선)의 하자 줄
+};
+// 230번: 받는 길 셋 — 'deposit' 품목이 있고 합계가 작은 주문 기준 이상(기준이 비면 늘) · 'small' 품목이 있고 기준 아래 · 'none' 품목이 없음(이전설치·수선처럼 시공비만)
+//  실물 견본 품목이 섞이면(hasSample) 합계가 그 품목을 뺀 금액이라 늘 'deposit', 금액 줄은 안 그림. 계약금 = 합계 절반을 천 원 아래 버림, 잔금 = 합계 − 계약금
+function ticketPayPlan(roomList, totalText, hasSample) {
+    const made = (roomList || []).some(r => (r.curtains || []).length > 0);
+    const total = Number(String(totalText || '').replace(/[^0-9]/g, '')) || 0;
+    const limit = typeof loadSmallOrderLimit === 'function' ? loadSmallOrderLimit() : 0;
+    const P = PROMISE_LINE;
+    if (!made) return { kind: 'none', promise: [P.once, P.fixInstall], depositText: '' };
+    if (!hasSample && limit > 0 && total < limit) return { kind: 'small', promise: [P.sample, P.once, P.days, P.fix], depositText: '' };
+    const deposit = Math.floor(total * 0.5 / 1000) * 1000;
+    const depositText = (!hasSample && total > 0) ? `계약금(50%) ${deposit.toLocaleString()}원 · 시공 뒤 잔금 ${(total - deposit).toLocaleString()}원` : '';
+    return { kind: 'deposit', promise: [P.sample, P.deposit, P.cancel, P.days, P.fix], depositText };
+}
 function autoQuoteNotes(roomList) {
     let seam = false, leak = false, hotel = false;
     (roomList || []).forEach(r => (r.curtains || []).forEach(c => {
@@ -236,6 +252,9 @@ function ticketData() {
     // 161번: 실물 견본 품목(우드·색 못 잰 블라인드 등, 금액 0)이 있으면 합계가 그 품목을 뺀 금액임을 밝힘 — 저장 그림·최종 제안 화면·카톡 글이 같이 씀 · 커튼 견본은 종류 이름(속지·겉지)으로(211번)
     const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.blindKind ? s.name.replace(' (실물 상담)', '') : s.categoryType))];
     d.totalLabel = sampleNames.length ? '합계 금액 (시공비 포함 · 실물 견본 품목 제외)' : '합계 금액 (시공비 포함)';
+    const plan = ticketPayPlan(rooms, d.total, sampleNames.length > 0);      // 230번: 견적에 맞는 약속 줄 + 계약금·잔금 한 줄
+    d.promise = plan.promise.join('\n');
+    d.depositText = plan.depositText;
     if (sampleNames.length) {
         const nm = sampleNames.join('·');
         d.note = [d.note, `${nm}${houseJosa(nm, '은', '는')} 상담 때 실물 견본으로 고른 뒤 금액을 알려 드립니다.`].filter(Boolean).join('\n');
@@ -257,7 +276,7 @@ function ticketDataBase() {
                 const opts = [];
                 if (c.shapeFee > 0) opts.push('형상기억 포함');      // 158번
                 if (c.leadBand) opts.push('리드밴드');
-                if (c.hotelFit) opts.push('호텔핏(기본보다 한 폭 더)');      // 158번
+                if (c.hotelFit) opts.push('리담 핏(기본보다 한 폭 더)');      // 158번 · 230번: 리담 핏
                 const sampleOnly = !!(typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId));
                 return {
                     label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
@@ -293,7 +312,7 @@ function ticketDataBase() {
         vatLabel: globalVatOption === 'business' ? '부가세 (10%)' : '부가세',
         note: [loadTicketNote(), ...autoQuoteNotes(rooms)].filter(Boolean).join('\n'),      // 직원이 적은 안내 + 해당 품목 안내 (87번)
         pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'),
-        promise: TICKET_PROMISE.join('\n'),      // 159번: 리담의 약속 (한 줄에 하나)
+        promise: '', depositText: '',      // 159번: 리담의 약속 (한 줄에 하나) · 230번: ticketData()가 견적에 맞게 채움
         photos: {}
     };
 }
@@ -428,7 +447,7 @@ function drawTicket(ctx, data, W, slim) {
         ].filter(r => r.lines.length);
         const sup = paras(data.supplier, INFO_W);
         const rowH = n => n * INFO_LH + INFO_GAP;
-        const h = (data.install > 0 ? 76 : 0) + (data.vatText ? (data.install > 0 ? 52 : 76) : 0) + 96 + 54 + (/실물 견본/.test(data.totalLabel || '') ? 40 : 0) + rows.reduce((a, r) => a + rowH(r.lines.length), 0)
+        const h = (data.install > 0 ? 76 : 0) + (data.vatText ? (data.install > 0 ? 52 : 76) : 0) + 96 + 54 + (/실물 견본/.test(data.totalLabel || '') ? 40 : 0) + (data.depositText ? 56 : 0) + rows.reduce((a, r) => a + rowH(r.lines.length), 0)      // 230번: 계약금 줄
             + (sup.length ? 30 + rowH(sup.length) : 0) + 56;
         return { rows, sup, h };
     }
@@ -457,6 +476,7 @@ function drawTicket(ctx, data, W, slim) {
         text('원', RX, y, 'right', DARK);
         setFont(400, PAPER_F1, SERIF); text(data.total, RX - wonW - 8, y, 'right', DARK);      // 합계 숫자도 볼드 없이 400 명조로 단정하게 (39번)
         y += 54;
+        if (data.depositText) { setFont(400, PAPER_F4, SANS); text(data.depositText, RX, y, 'right', MUTED); y += 56; }      // 230번: 합계 바로 아래 오른쪽 작은 줄
         const infoRow = (name, lines, color) => {
             setFont(400, PAPER_F4, SANS); label(name, CX, y, 'left', 3);
             setFont(400, PAPER_F4, SANS);
@@ -2118,6 +2138,7 @@ function ticketKakaoText(data) {
     if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
     if (data.vatText) out.push(`${data.vatLabel || '부가세'} ${data.vatText}`);      // 132번
     out.push(`${data.totalLabel || '합계 금액 (시공비 포함)'} ${data.total}원`);      // 161번
+    if (data.depositText) out.push(data.depositText);      // 230번
     [['리담의 약속', data.promise], ['결제 조건', data.pay], ['안내', data.note]].forEach(([k, v]) => {      // 159번
         const t = String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         if (t.length) out.push('', `[${k}]`, ...t);

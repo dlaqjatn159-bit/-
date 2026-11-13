@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261274';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261275';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -204,8 +204,24 @@ function setQuoteValidOverride(v) {
 }
 const TICKET_TEXT_KEYS = { pay: 'redam_ticket_pay_v1', custom: 'redam_ticket_custom_v1', supplier: 'redam_ticket_supplier_v1' };
 const TICKET_TEXT_INPUTS = { pay: 'ticketPayInput', custom: 'ticketCustomInput', supplier: 'ticketSupplierInput' };
-function loadTicketText(k) { try { return (localStorage.getItem(TICKET_TEXT_KEYS[k]) || '').trim(); } catch (e) { return ''; } }
+// 230번: 11-07 비공개 팩의 옛 '맞춤 제작 안내'(제작 뒤 취소·환불 어려움)는 11-13 계약금 결정과 어긋남 → 저장된 글이 이 문장과 똑같을 때만 새 글로 바꿔 저장
+const CUSTOM_OLD_230 = '본 제품은 고객님의 창 크기에 맞춰 개별 제작되는 주문제작 상품으로, 제작이 시작된 후에는 취소·교환·환불이 어렵습니다.';
+const CUSTOM_NEW_230 = '창 크기에 맞춰 만드는 제품이라, 제작에 들어간 뒤에는 교환이 어렵습니다.';
+function loadTicketText(k) {
+    try {
+        const t = (localStorage.getItem(TICKET_TEXT_KEYS[k]) || '').trim();
+        if (k === 'custom' && t === CUSTOM_OLD_230) { localStorage.setItem(TICKET_TEXT_KEYS.custom, CUSTOM_NEW_230); return CUSTOM_NEW_230; }
+        return t;
+    } catch (e) { return ''; }
+}
 function saveTicketText(k, v) { if (!TICKET_TEXT_KEYS[k]) return; try { localStorage.setItem(TICKET_TEXT_KEYS[k], String(v || '').trim()); } catch (e) {} }
+// 230번: 계약금 없이 받는 작은 주문 기준(원). 가격 숫자라 코드에 적지 않고 이 기기에 저장 (비공개 팩으로 옮김). 비우면 0 = 제작 주문은 모두 계약금 50%
+const SMALL_ORDER_KEY = 'redam_small_order_limit_v1';
+function loadSmallOrderLimit() { try { const v = localStorage.getItem(SMALL_ORDER_KEY), n = Number(v); return (v !== null && v !== '' && Number.isFinite(n) && n > 0) ? Math.round(n) : 0; } catch (e) { return 0; } }
+function saveSmallOrderLimit(v) {
+    const n = Number(v);
+    try { if (v === '' || v === null || !Number.isFinite(n) || n <= 0) localStorage.removeItem(SMALL_ORDER_KEY); else localStorage.setItem(SMALL_ORDER_KEY, String(Math.round(n))); } catch (e) {}
+}
 // 빛 · 스탠드 금액 (131번): 이케아 가격과 구매·설치 대행비. 가격은 코드에 적지 않고 이 기기에 저장 (비공개 팩으로 옮김)
 const LIGHT_STAND_KEYS = { price: 'redam_light_stand_price_v1', fee: 'redam_light_stand_fee_v1' };
 function loadLightStand(k) { try { const v = localStorage.getItem(LIGHT_STAND_KEYS[k]), n = Number(v); return (v !== null && v !== '' && Number.isFinite(n) && n >= 0) ? Math.round(n) : 0; } catch (e) { return 0; } }
@@ -229,6 +245,7 @@ function initTicketNoteInput() {
     const fee = document.getElementById('defaultInstallFeeInput'); if (fee) fee.value = loadDefaultInstallFee();
     const vd = document.getElementById('quoteValidDaysInput'); if (vd) vd.value = loadQuoteValidDays();
     ['price', 'fee'].forEach(k => { const el = document.getElementById(k === 'price' ? 'lightStandPriceInput' : 'lightStandFeeInput'); if (el) el.value = loadLightStand(k) || ''; });      // 131번
+    const so = document.getElementById('smallOrderLimitInput'); if (so) so.value = loadSmallOrderLimit() || '';      // 230번
     initMultiplesInputs();
     renderOptionPriceSettings();
     renderPriceCurveSettings();
@@ -306,7 +323,8 @@ function optionGainUpdate(row) {
 function ticketTextsForPack() {
     const fee = storedDefaultInstallFee();          // 기본 시공비는 이 기기에서 정한 적이 있을 때만 팩에 담음
     return { note: loadTicketNote(), pay: loadTicketText('pay'), custom: loadTicketText('custom'), supplier: loadTicketText('supplier'), fee: fee === null ? undefined : fee, valid: loadQuoteValidDays(),
-        standPrice: loadLightStand('price') || undefined, standFee: loadLightStand('fee') || undefined };      // 131번
+        standPrice: loadLightStand('price') || undefined, standFee: loadLightStand('fee') || undefined,      // 131번
+        smallOrder: loadSmallOrderLimit() || undefined };      // 230번: 작은 주문 기준 (정한 적 있을 때만)
 }
 function applyTicketTextsFromPack(t) {
     if (!t || typeof t !== 'object') return;
@@ -315,6 +333,7 @@ function applyTicketTextsFromPack(t) {
     if (typeof t.fee === 'number' && Number.isFinite(t.fee) && t.fee >= 0) saveDefaultInstallFee(t.fee);
     if (typeof t.standPrice === 'number' && t.standPrice > 0) saveLightStand('price', t.standPrice);      // 131번
     if (typeof t.standFee === 'number' && t.standFee > 0) saveLightStand('fee', t.standFee);
+    if (typeof t.smallOrder === 'number' && t.smallOrder > 0) saveSmallOrderLimit(t.smallOrder);      // 230번
     Object.keys(TICKET_TEXT_KEYS).forEach(k => { if (typeof t[k] === 'string' && t[k].trim()) saveTicketText(k, t[k]); });
     initTicketNoteInput();
 }

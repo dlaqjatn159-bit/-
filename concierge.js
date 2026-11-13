@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261274';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261275';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -966,7 +966,7 @@
         };
         if (hasDrape) {
             h += row('shapeFee', '형상기억 가공', '주름을 열로 잡아 두어 더 가지런하게 떨어집니다');      // 212번: 손님이 넣기/빼기 (158번 사장님만 누르기에서 바꿈)
-            h += row('hotelFit', '호텔핏', '원단을 한 폭 더 넣어 주름이 깊고 풍성해집니다');
+            h += row('hotelFit', '리담 핏', '원단을 한 폭 더 넣어 주름이 깊고 풍성해집니다');      // 230번: 호텔핏 → 리담 핏
         }
         if (hasSheer) {
             const lead = !!room.leadBand;
@@ -2654,6 +2654,8 @@
             const totEl = document.getElementById('totalGrandPrice');
             const edTot = document.getElementById('finEdTotalNum');
             if (totEl && edTot) edTot.textContent = totEl.textContent;
+            const edDep = document.getElementById('finEdDeposit');      // 230번: 계약금 · 잔금도 새 합계로
+            if (edDep && typeof ticketData === 'function') { try { const dt = ticketData().depositText || ''; edDep.textContent = dt; edDep.hidden = !dt; } catch (e) {} }
             document.querySelectorAll('.fin-fee input, .fin-ed-fee-in').forEach(inp => {
                 if (inp !== document.activeElement) inp.value = state.installFee;
             });
