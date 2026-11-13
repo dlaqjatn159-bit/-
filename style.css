@@ -13,26 +13,27 @@
     --brand-indigo: #281c15;
 
     /* 화면 규칙표 (73번): 손님 화면은 이 값만 씀 */
-    --paper: #fbf9f5; --paper-sheet: #fffdf9;
-    --ink: #2b221a; --muted: #6f5f4f; --line: #e5dcd0;
-    --earth: #8a4a22; --on-band: #efe6da;
-    --t-xl: 48px; --t-title: 30px; --t-body: 20px; --t-base: 16px; --t-small: 14px;      /* 글자 사다리. 한 화면에 셋까지 */
-    --serif: 'Noto Serif KR', Georgia, serif;
-    --sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    /* 값은 tokens.css(디자인 토큰)에서 옴 — 숫자를 여기서 고치지 말고 redam-design 저장소에서 (231번) */
+    --paper: var(--rd-app-color-bg); --paper-sheet: var(--rd-app-color-sheet);
+    --ink: var(--rd-app-color-text); --muted: var(--rd-app-color-text-muted); --line: var(--rd-app-color-line);
+    --earth: var(--rd-common-point-base); --on-band: var(--rd-common-point-on-band);
+    --t-xl: var(--rd-app-type-question-xl); --t-title: var(--rd-app-type-question-title); --t-body: var(--rd-app-type-question-body); --t-base: var(--rd-app-type-question-base); --t-small: var(--rd-app-type-question-small);      /* 글자 사다리. 한 화면에 셋까지 */
+    --serif: var(--rd-app-font-serif);
+    --sans: var(--rd-app-font-sans);
     
-    --page-transition-duration: 0.45s;
-    --page-transition-ease: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --page-transition-duration: var(--rd-app-motion-page);
+    --page-transition-ease: var(--rd-app-motion-ease);
 
     /* 4막 색 한 장·띠 (187번): 189번 새 화면에서 씀. 지금은 쓰는 곳 없음(화면 안 바뀜) */
-    --t-hero: 72px;          /* 색 한 장의 색 이름 하나에만. 한 화면에 하나 */
-    --t-strip-name: 44px;    /* 열림·고른 뒤 띠의 원단 이름("넥스 4": 이름과 번호 같은 크기) */
-    --t-name: 22px;          /* 세 색 이름, 띠 안 색 이름 */
-    --t-why: 18px;           /* 색 한 장의 이유 한 줄 */
+    --t-hero: var(--rd-app-type-color-sheet-hero);          /* 색 한 장의 색 이름 하나에만. 한 화면에 하나 */
+    --t-strip-name: var(--rd-app-type-color-sheet-strip-name);    /* 열림·고른 뒤 띠의 원단 이름("넥스 4": 이름과 번호 같은 크기) */
+    --t-name: var(--rd-app-type-color-sheet-name);          /* 세 색 이름, 띠 안 색 이름 */
+    --t-why: var(--rd-app-type-color-sheet-why);           /* 색 한 장의 이유 한 줄 */
     /* 문 글자 30은 --t-title, 뒤로·다음·사실 한 줄 16은 --t-base 를 그대로 씀 */
-    --strip-w: 360px;        /* 왼쪽 세로 띠 폭(밝음 = 고르는 중). 고른 뒤 오른쪽으로 건너가 어두워짐 */
-    --strip-move: 0.85s;     /* 띠가 건너가며 어두워지는 시간(이동·색 모두 --page-transition-ease) */
-    --wall-frame-w: 88px;    /* 포인트 색 한 장에만: 양옆에 남는 잰 벽 색 폭 */
-    --floor-frame-h: 56px;   /* 포인트 색 한 장에만: 아래에 남는 잰 바닥 색 높이 */
+    --strip-w: var(--rd-app-size-strip-w);        /* 왼쪽 세로 띠 폭(밝음 = 고르는 중). 고른 뒤 오른쪽으로 건너가 어두워짐 */
+    --strip-move: var(--rd-app-motion-strip);     /* 띠가 건너가며 어두워지는 시간(이동·색 모두 --page-transition-ease) */
+    --wall-frame-w: var(--rd-app-size-wall-frame);    /* 포인트 색 한 장에만: 양옆에 남는 잰 벽 색 폭 */
+    --floor-frame-h: var(--rd-app-size-floor-frame);   /* 포인트 색 한 장에만: 아래에 남는 잰 바닥 색 높이 */
     /* 정해진 띠 색(Lab 밝기 24)은 CSS로 못 셈 → room-color.js RoomColor.doneBandHex */
 }
 
