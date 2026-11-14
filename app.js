@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261280';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261280';
+const REDAM_BUILD = '20261281';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -290,6 +290,8 @@ let quoteValidOverride = null;      // 이 상담만의 유효기간(일). null�
 let quoteDate = null;      // 견적을 처음 만든 날 'YYYY-MM-DD' — 상담에 저장, 불러와도 안 바뀜 (85번)
 let consultOutcome = null;      // { result: 'won'|'hold'|'lost', reasons: [], note: '', at: 시각 }
 let bookingPick = null;      // 시공 날짜 잡기에서 고른 시간 { start, minutes, travel, confirmed } (202번)
+let consultId = null;      // 237번: 상담 한 건의 번호(리담 서버가 같은 상담을 알아봄). 새 상담에서 처음 저장할 때 만들고, 불러오면 그 번호 그대로
+function ensureConsultId() { if (!consultId) consultId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); return consultId; }
 window.getBookingPick = () => bookingPick;
 window.setBookingPick = v => { bookingPick = v || null; saveDraftTick(); };
 const OUTCOME_LABEL = { won: '계약', hold: '생각해 보신다', lost: '안 됨' };
@@ -368,7 +370,7 @@ function startNewConsultationConfirmed() {
     if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
     archiveConsultation(collectConsultation(), Date.now());
     clearDraft();
-    consultOutcome = null; quoteDate = null; quoteValidOverride = null; bookingPick = null;
+    consultOutcome = null; quoteDate = null; quoteValidOverride = null; bookingPick = null; consultId = null;      // 237번: 새 상담은 새 번호
     const qv0 = document.getElementById('quoteValidOverrideInput'); if (qv0) qv0.value = '';
     initDefaultRooms();
     collapsedRooms.clear(); openCurtainDetails.clear();
@@ -629,6 +631,7 @@ function collectConsultation() {
     // 직원 화면: 직원 공간 목록 + 고객 화면에서 공간 추가만 하고 아직 상담 전인 공간
     const src = !window.concierge ? rooms : (appMode === 'staff' ? rooms.concat(window.concierge.getPendingRoomsForSave ? window.concierge.getPendingRoomsForSave() : []) : window.concierge.getRoomsForSave());
     return {
+        consultId: ensureConsultId(),      // 237번: 리담 서버가 같은 상담을 알아보는 번호
         name: ((document.getElementById('custName') || {}).value || '').trim(),
         phone: ((document.getElementById('custPhone') || {}).value || '').trim(),
         houseTaste: Object.assign({}, houseTaste),      // 우리 집 취향 (115번)
@@ -746,6 +749,7 @@ function applySnapshot(snap) {
     const qv1 = document.getElementById('quoteValidOverrideInput'); if (qv1) qv1.value = quoteValidOverride === null ? '' : quoteValidOverride;
     consultOutcome = (snap.outcome && OUTCOME_LABEL[snap.outcome.result]) ? snap.outcome : null;      // 84번
     bookingPick = (snap.bookingPick && Number.isFinite(snap.bookingPick.start)) ? snap.bookingPick : null;      // 202번
+    consultId = (typeof snap.consultId === 'string' && /^[\w-]{4,60}$/.test(snap.consultId)) ? snap.consultId : null;      // 237번: 옛 상담은 번호 없음 → 다음 저장 때 새로
     finderPicks = Array.isArray(snap.picks) ? snap.picks.filter(k => typeof k === 'string').slice(0, FINDER_PICK_MAX) : [];
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set('custName', snap.name || ''); set('expressCustName', snap.name || ''); set('surveyCustName', snap.name || '');
@@ -836,7 +840,7 @@ function editHistoryOutcome(id) {
         if (!t) return;
         t.snapshot.outcome = out; t.updatedAt = Date.now();
         saveHistory(list); renderHistory();
-        queueNotionLedger(t.snapshot, t.snapshot.quoteTotal || t.total);      // 201번: 옛 기록은 quoteTotal이 없어 기록 합계로
+        queueNotionLedger(t.snapshot, t.snapshot.quoteTotal || t.total, t.snapshot.consultId || t.id);      // 201번: 옛 기록은 quoteTotal이 없어 기록 합계로 · 237번: 번호 없는 옛 기록은 기록 번호로
     } });
 }
 
@@ -846,18 +850,42 @@ function deleteHistoryItem(id) {
     renderHistory();
 }
 
-// ---- 장부로 보내기 (201번): 견적 금액(계약이면 계약 금액도)을 노션 '손님 장부'의 같은 연락처 줄로 ----
-// 노션 열쇠는 앱 밖 구글 중계(Apps Script)가 가짐. 중계 주소·비밀 말은 코드에 적지 않고 이 기기에만 저장(백업 파일에 안 담음 — STORE_KEYS에 넣지 않음)
-// 보내는 것: 비밀 말 · 연락처(숫자만) · 견적서 합계 · 계약 여부. 원가·원단·이름은 보내지 않음. 알림은 직원 화면에서만
-const NOTION_LEDGER_KEY = 'redam_notion_ledger_v1', NOTION_LEDGER_QUEUE_KEY = 'redam_notion_ledger_queue_v1', NOTION_LEDGER_QUEUE_MAX = 50;
+// ---- 리담 서버 잇기 (237번, 옛 '장부로 보내기' 201번): 상담 한 건을 리담 서버로 → 서버가 손님 장부의 같은 연락처 줄에 견적 금액(계약이면 계약 금액도)·남는 돈 ----
+// 옛 구글 중계(Apps Script) 대신 리담 서버 문(/app/consult · /app/slots · /app/booking). 함수 이름은 booking.js·ticket.js·index.html이 부르는 그대로 둠
+// 서버 주소·기기 열쇠는 코드에 적지 않고 이 기기에만 저장(백업 파일에 안 담음 — STORE_KEYS에 넣지 않음). 열쇠는 상황판 › 견적 앱 › 태블릿 열쇠 만들기에서 복사
+// 보내는 것: 상담 통째(이름·연락처·공간·고른 원단·견적서 합계·남는 돈·결과) — 서버 '상담' 표에 쌓임. 원단별 원가는 상담에 없어 안 감. 알림은 직원 화면에서만
+const REDAM_SERVER_KEY = 'redam_server_v1', REDAM_SERVER_DEFAULT = 'https://srv.redam.kr';
+const REDAM_CONSULT_QUEUE_KEY = 'redam_consult_queue_v1', REDAM_CONSULT_QUEUE_MAX = 20;      // 못 보낸 상담(같은 상담은 마지막 것 하나)
+const NOTION_LEDGER_QUEUE_KEY = 'redam_notion_ledger_queue_v1';      // 옛 구글 중계(201번)로 못 보낸 금액 — 처음 열 때 서버 줄로 한 번 옮기고 더 안 씀(옛 주소·비밀 말 칸 redam_notion_ledger_v1은 그대로 둠)
 let __notionLedgerBusy = false;
-function notionLedgerRaw() { try { return JSON.parse(localStorage.getItem(NOTION_LEDGER_KEY)) || {}; } catch (e) { return {}; } }
-function notionLedgerRelay() {
-    const v = notionLedgerRaw(), url = String(v.url || '').trim(), secret = String(v.secret || '').trim();
-    return (/^https:\/\/script\.google\.com\//.test(url) && secret) ? { url, secret } : null;
+function redamServerRaw() { try { return JSON.parse(localStorage.getItem(REDAM_SERVER_KEY)) || {}; } catch (e) { return {}; } }
+function notionLedgerRelay() {      // 237번: 리담 서버 { url, key } 또는 null (booking.js도 부름)
+    const v = redamServerRaw(), url = String(v.url || REDAM_SERVER_DEFAULT).trim().replace(/\/+$/, ''), key = String(v.key || '').trim();
+    return (/^https?:\/\/[^\s/]+/.test(url) && /^rd_[A-Za-z0-9_-]{20,}$/.test(key)) ? { url, key } : null;
 }
-function notionLedgerQueue() { try { const q = JSON.parse(localStorage.getItem(NOTION_LEDGER_QUEUE_KEY)); return Array.isArray(q) ? q : []; } catch (e) { return []; } }
-function notionLedgerSaveQueue(q) { try { localStorage.setItem(NOTION_LEDGER_QUEUE_KEY, JSON.stringify(q.slice(-NOTION_LEDGER_QUEUE_MAX))); } catch (e) {} }
+function redamServerFetch(path, opts) {      // 237번: 서버 문 부르기 — 열쇠는 머리말로(주소창·기록에 안 남게)
+    const s = notionLedgerRelay();
+    if (!s) return Promise.reject(new Error('setup'));
+    const o = Object.assign({ cache: 'no-store' }, opts || {});
+    o.headers = Object.assign({ authorization: 'Bearer ' + s.key }, o.body ? { 'content-type': 'application/json' } : {}, o.headers || {});
+    return fetch(s.url + path, o);
+}
+window.redamServerFetch = redamServerFetch;
+function notionLedgerQueue() { try { const q = JSON.parse(localStorage.getItem(REDAM_CONSULT_QUEUE_KEY)); return Array.isArray(q) ? q : []; } catch (e) { return []; } }
+function notionLedgerSaveQueue(q) { try { localStorage.setItem(REDAM_CONSULT_QUEUE_KEY, JSON.stringify(q.slice(-REDAM_CONSULT_QUEUE_MAX))); } catch (e) {} }
+function migrateOldLedgerQueue() {      // 237번: 옛 구글 중계로 못 보내고 남은 금액 → 서버 줄로 한 번
+    let old = [];
+    try { old = JSON.parse(localStorage.getItem(NOTION_LEDGER_QUEUE_KEY)) || []; } catch (e) {}
+    if (!Array.isArray(old) || !old.length) return;
+    const q = notionLedgerQueue();
+    old.forEach(x => {
+        const phone = String((x && x.phone) || '').replace(/\D/g, '');
+        if (phone.length < 9 || q.some(y => y.id === 'old-' + phone)) return;
+        q.push({ id: 'old-' + phone, at: Number(x.at) || Date.now(), snapshot: { name: '', phone, rooms: [], quoteTotal: Number(x.quote) || null, marginTotal: (x.margin === null || x.margin === undefined) ? null : Number(x.margin), outcome: x.won ? { result: 'won' } : null } });
+    });
+    notionLedgerSaveQueue(q);
+    try { localStorage.removeItem(NOTION_LEDGER_QUEUE_KEY); } catch (e) {}
+}
 function notionLedgerToast(msg, kind) { if (appMode === 'staff') showToast(msg, kind || 'info'); }
 function notionLedgerTotalNow() {
     const el = document.getElementById('totalGrandPrice');
@@ -869,18 +897,16 @@ function notionLedgerMarginNow() {      // 201번 보완: 손해면 음수도 �
     return (typeof v === 'number' && Number.isFinite(v)) ? Math.round(v) : null;
 }
 // 견적서를 저장·복사·인쇄한 뒤, 상담 결과를 남긴 뒤 부름. snap이 없으면 지금 상담, total이 없으면 지금 화면의 최종 금액
-function queueNotionLedger(snap, total) {
-    if (!notionLedgerRelay()) return;                 // 설정 전엔 아무 일도 안 함
-    const s = snap || collectConsultation();
-    const phone = String(s.phone || '').replace(/\D/g, '');
+function queueNotionLedger(snap, total, id) {      // 237번: id = 상담 번호(없으면 그 상담의 consultId)
+    // 237번: 열쇠를 넣기 전에도 줄에 모아 둠(최근 20건) — 열쇠를 넣는 순간 보냄(앱이 바뀐 뒤 열쇠 넣기 전 상담이 사라지지 않게)
+    const s = Object.assign({}, snap || collectConsultation());
     const quote = Number(total || s.quoteTotal || notionLedgerTotalNow());
-    if (!(quote > 0)) return;
-    if (phone.length < 9) { notionLedgerToast('연락처가 없어 장부에 금액을 넣지 못했어요.', 'error'); return; }
-    const won = !!(s.outcome && s.outcome.result === 'won');
-    const q = notionLedgerQueue(), old = q.find(x => x.phone === phone);
-    const mt = s.marginTotal, margin = (mt !== null && mt !== undefined && Number.isFinite(Number(mt))) ? Math.round(Number(mt)) : null;      // 201번 보완: 모르면 null(장부 칸 그대로)
-    const item = { phone, quote: Math.round(quote), won: won || !!(old && old.won), margin, at: Date.now() };
-    notionLedgerSaveQueue(q.filter(x => x.phone !== phone).concat([item]));      // 같은 손님은 마지막 금액 하나만
+    if (quote > 0) s.quoteTotal = Math.round(quote);
+    const cid = String(id || s.consultId || '');
+    if (!/^[\w-]{4,60}$/.test(cid)) return;
+    if (!s.rooms) s.rooms = [];
+    const item = { id: cid, at: Date.now(), snapshot: s };
+    notionLedgerSaveQueue(notionLedgerQueue().filter(x => x.id !== cid).concat([item]));      // 같은 상담은 마지막 것 하나만
     flushNotionLedger();
 }
 async function flushNotionLedger() {
@@ -890,44 +916,49 @@ async function flushNotionLedger() {
     let sent = 0, kept = 0, setupBad = false;
     try {
         for (const item of notionLedgerQueue()) {
-            let res = null;
+            let res = null, status = 0;
             try {
-                // 머리말(headers)을 붙이지 않음: 구글 중계가 받는 단순한 요청이어야 미리 묻기 없이 감
-                const r = await fetch(relay.url, { method: 'POST', body: JSON.stringify({ secret: relay.secret, phone: item.phone, quote: item.quote, won: item.won, margin: item.margin }) });
+                const r = await redamServerFetch('/app/consult', { method: 'POST', body: JSON.stringify(item) });      // 237번
+                status = r.status;
                 res = await r.json();
             } catch (e) { res = null; }
-            if (!res) { kept++; continue; }                                                   // 인터넷·중계 문제: 남겨 두고 다음에
-            if (res.reason === 'secret' || res.reason === 'setup' || res.reason === 'error') { kept++; setupBad = true; continue; }
-            notionLedgerSaveQueue(notionLedgerQueue().filter(x => !(x.phone === item.phone && x.at === item.at)));      // 됨·못 찾음은 목록에서 뺌
+            if (status === 401 || status === 403 || status === 429) { kept++; setupBad = true; continue; }      // 열쇠·주소 문제: 남겨 두고 설정 확인 알림
+            if (!res || status >= 500) { kept++; continue; }                                                   // 인터넷·서버 문제: 남겨 두고 다음에
+            notionLedgerSaveQueue(notionLedgerQueue().filter(x => !(x.id === item.id && x.at === item.at)));      // 됨·못 찾음·틀림은 목록에서 뺌
+            const last4 = String((item.snapshot && item.snapshot.phone) || '').replace(/\D/g, '').slice(-4);
+            const quoted = Number(item.snapshot && item.snapshot.quoteTotal) > 0;
             if (res.ok) sent++;
-            else if (res.reason === 'not_found') notionLedgerToast(`장부에서 연락처 끝 ${item.phone.slice(-4)} 손님 줄을 못 찾았어요. 장부에 손님을 먼저 적고 견적서를 다시 저장해 주세요.`, 'error');
-            else if (res.reason === 'many') notionLedgerToast(`장부에 연락처 끝 ${item.phone.slice(-4)} 줄이 여럿이라 넣지 않았어요. 장부에서 직접 적어 주세요.`, 'error');
+            else if (res.reason === 'not_found' && quoted) notionLedgerToast(`장부에서 연락처 끝 ${last4} 손님 줄을 못 찾았어요. 장부에 손님을 먼저 적고 견적서를 다시 저장해 주세요.`, 'error');
+            else if (res.reason === 'many' && quoted) notionLedgerToast(`장부에 연락처 끝 ${last4} 줄이 여럿이라 넣지 않았어요. 장부에서 직접 적어 주세요.`, 'error');
+            else if (res.reason === 'no_phone' && quoted) notionLedgerToast('연락처가 없어 장부에 금액을 넣지 못했어요.', 'error');
         }
     } finally { __notionLedgerBusy = false; }
     if (sent) notionLedgerToast(`장부에 견적 금액을 넣었어요${sent > 1 ? ` (${sent}건)` : ''}.`, 'success');
-    if (setupBad) notionLedgerToast('장부 중계 설정을 확인해 주세요 (설정 › 장부로 보내기).', 'error');
-    else if (kept) notionLedgerToast(`장부에 못 보낸 금액 ${kept}건은 모아 두었다가 다음에 저절로 보냅니다.`, 'info');
+    if (setupBad) notionLedgerToast('리담 서버 열쇠를 확인해 주세요 (설정 › 리담 서버 잇기).', 'error');
+    else if (kept) notionLedgerToast(`서버에 못 보낸 상담 ${kept}건은 모아 두었다가 다음에 저절로 보냅니다.`, 'info');
     renderNotionLedgerStatus();
 }
-// 설정 칸 (직원 화면 › 설정 › 장부로 보내기)
+// 설정 칸 (직원 화면 › 설정 › 리담 서버 잇기, 237번 — 칸 id는 옛 이름 그대로)
 function saveNotionLedgerRelay() {
     const url = ((document.getElementById('notionLedgerUrlInput') || {}).value || '').trim();
-    const secret = ((document.getElementById('notionLedgerSecretInput') || {}).value || '').trim();
-    try { if (!url && !secret) localStorage.removeItem(NOTION_LEDGER_KEY); else localStorage.setItem(NOTION_LEDGER_KEY, JSON.stringify({ url, secret })); } catch (e) {}
+    const key = ((document.getElementById('notionLedgerSecretInput') || {}).value || '').trim();
+    try { if (!key && (!url || url === REDAM_SERVER_DEFAULT)) localStorage.removeItem(REDAM_SERVER_KEY); else localStorage.setItem(REDAM_SERVER_KEY, JSON.stringify({ url: url || REDAM_SERVER_DEFAULT, key })); } catch (e) {}
     renderNotionLedgerStatus();
+    if (notionLedgerRelay()) flushNotionLedger();
 }
 function initNotionLedgerInputs() {
-    const v = notionLedgerRaw();
+    migrateOldLedgerQueue();      // 237번
+    const v = redamServerRaw();
     const u = document.getElementById('notionLedgerUrlInput'), s = document.getElementById('notionLedgerSecretInput');
-    if (u) u.value = v.url || '';
-    if (s) s.value = v.secret || '';
+    if (u) u.value = v.url || REDAM_SERVER_DEFAULT;
+    if (s) s.value = v.key || '';
     renderNotionLedgerStatus();
 }
 function renderNotionLedgerStatus() {
     const el = document.getElementById('notionLedgerStatus');
     if (!el) return;
-    const on = !!notionLedgerRelay(), n = notionLedgerQueue().length, raw = notionLedgerRaw();
-    el.textContent = on ? ('켜짐' + (n ? ` · 보낼 것 ${n}건 남음` : '')) : ((raw.url || raw.secret) ? '꺼짐 — 중계 주소(https://script.google.com/…)와 비밀 말을 둘 다 넣어 주세요' : '꺼짐');
+    const on = !!notionLedgerRelay(), n = notionLedgerQueue().length, raw = redamServerRaw();
+    el.textContent = on ? ('켜짐' + (n ? ` · 보낼 것 ${n}건 남음` : '')) : ((raw.key ? '꺼짐 — 열쇠는 rd_로 시작하는 긴 글자예요. 상황판 › 견적 앱에서 복사해 붙여 넣어 주세요' : '꺼짐 — 상황판 › 견적 앱 › 태블릿 열쇠 만들기에서 복사해 붙여 넣어 주세요') + (n ? ` · 모아 둔 상담 ${n}건(열쇠를 넣으면 보냄)` : ''));
     el.className = 'text-[11px] font-bold ' + (on ? 'text-emerald-700' : 'text-slate-400');
 }
 

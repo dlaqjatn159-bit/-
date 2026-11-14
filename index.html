@@ -659,11 +659,11 @@
                     </div>
 
                     <div class="staff-set">
-                        <h2 class="font-serif-kr">장부로 보내기</h2>
-                        <p>견적서를 저장·카톡 복사·인쇄하거나 상담 결과를 남기면, 견적 금액(계약이면 계약 금액도)과 남는 돈(견적 요약의 예상 순이익)을 노션 '손님 장부'에서 같은 연락처 줄에 넣습니다. 원단별 원가는 보내지 않아요. 주소와 비밀 말은 이 기기에만 저장되고 백업 파일에는 담기지 않습니다.</p>
+                        <h2 class="font-serif-kr">리담 서버 잇기</h2>
+                        <p>견적서를 저장·카톡 복사·인쇄하거나 상담 결과를 남기면, 이 상담(공간·고른 원단·견적 금액)을 리담 서버로 보내고, 서버가 손님 장부의 같은 연락처 줄에 견적 금액(계약이면 계약 금액도)과 남는 돈(견적 요약의 예상 순이익)을 넣습니다. 시공 날짜 잡기도 서버를 씁니다. 원단별 원가는 보내지 않아요. 기기 열쇠는 상황판 › 견적 앱 › '태블릿 열쇠 만들기'에서 복사해 붙여 넣고, 이 기기에만 저장되어 백업 파일에는 담기지 않습니다.</p>
                         <div class="flex flex-wrap items-center gap-2">
-                            <input type="url" id="notionLedgerUrlInput" placeholder="중계 주소 (https://script.google.com/…)" autocomplete="off" class="w-72 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" oninput="saveNotionLedgerRelay()">
-                            <input type="password" id="notionLedgerSecretInput" placeholder="비밀 말" autocomplete="off" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" oninput="saveNotionLedgerRelay()">
+                            <input type="url" id="notionLedgerUrlInput" placeholder="서버 주소 (https://srv.redam.kr)" autocomplete="off" class="w-72 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" oninput="saveNotionLedgerRelay()">
+                            <input type="password" id="notionLedgerSecretInput" placeholder="기기 열쇠 (rd_…)" autocomplete="off" class="w-40 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" oninput="saveNotionLedgerRelay()">
                             <button type="button" onclick="flushNotionLedger()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm whitespace-nowrap">지금 보내기</button>
                             <span id="notionLedgerStatus" class="text-[11px] font-bold text-slate-400">꺼짐</span>
                         </div>
@@ -671,7 +671,7 @@
 
                     <div class="staff-set">
                         <h2 class="font-serif-kr">시공 날짜 잡기</h2>
-                        <p>견적서 다음 '시공 날짜'에서 손님이 날과 도착 시간을 고르고, 확정을 길게 누르면 장부 '시공일'에 들어갑니다. 장부의 시공일·상담일과 구글 기본 캘린더의 '바쁨' 일정을 피해서 보여 줍니다(이름·주소는 앱으로 오지 않아요). 장부로 보내기가 켜져 있어야 합니다.</p>
+                        <p>견적서 다음 '시공 날짜'에서 손님이 날과 도착 시간을 고르고, 확정을 길게 누르면 장부 '시공일'에 들어갑니다. 장부의 시공일·상담일과 구글 기본 캘린더의 '바쁨' 일정을 피해서 보여 줍니다(이름·주소는 앱으로 오지 않아요). 리담 서버 잇기가 켜져 있어야 합니다.</p>
                         <div class="flex flex-wrap items-center gap-2 text-xs">
                             <span class="text-slate-600 font-bold">준비 기간</span>
                             <input type="number" id="bookLeadInput" min="0" max="30" class="w-16 px-2.5 py-1.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none" onchange="window.redamBooking && window.redamBooking.saveSettings()">
@@ -875,27 +875,27 @@
     </div>
 
     <!-- 순서 중요: 계산 엔진 → 데이터 → 화면 -->
-    <script src="logo.js?v=20261280"></script> <!-- 150번: 새 글씨 로고 -->
-    <script src="pricing.js?v=20261280"></script>
-    <script src="costing.js?v=20261280"></script>
-    <script src="data.js?v=20261280"></script>
-    <script src="calculator.js?v=20261280"></script>
-    <script src="concierge.js?v=20261280"></script>
-    <script src="intro.js?v=20261280"></script>
-    <script src="fabric-pick.js?v=20261280"></script>
-    <script src="color-pick.js?v=20261280"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
-    <script src="space.js?v=20261280"></script>
-    <script src="final.js?v=20261280"></script>
-    <script src="app.js?v=20261280"></script>
-    <script src="more.js?v=20261280"></script>
-    <script src="survey.js?v=20261280"></script>
-    <script src="ticket.js?v=20261280"></script>
-    <script src="color-dict.js?v=20261280"></script>
-    <script src="fabrics.js?v=20261280"></script>
-    <script src="finder.js?v=20261280"></script>
-    <script src="settings.js?v=20261280"></script>
-    <script src="room-color.js?v=20261280"></script>
-    <script src="booking.js?v=20261280"></script> <!-- 202번: 시공 날짜 잡기 -->
+    <script src="logo.js?v=20261281"></script> <!-- 150번: 새 글씨 로고 -->
+    <script src="pricing.js?v=20261281"></script>
+    <script src="costing.js?v=20261281"></script>
+    <script src="data.js?v=20261281"></script>
+    <script src="calculator.js?v=20261281"></script>
+    <script src="concierge.js?v=20261281"></script>
+    <script src="intro.js?v=20261281"></script>
+    <script src="fabric-pick.js?v=20261281"></script>
+    <script src="color-pick.js?v=20261281"></script> <!-- 189번: 커튼 원단 고르기 새 화면 -->
+    <script src="space.js?v=20261281"></script>
+    <script src="final.js?v=20261281"></script>
+    <script src="app.js?v=20261281"></script>
+    <script src="more.js?v=20261281"></script>
+    <script src="survey.js?v=20261281"></script>
+    <script src="ticket.js?v=20261281"></script>
+    <script src="color-dict.js?v=20261281"></script>
+    <script src="fabrics.js?v=20261281"></script>
+    <script src="finder.js?v=20261281"></script>
+    <script src="settings.js?v=20261281"></script>
+    <script src="room-color.js?v=20261281"></script>
+    <script src="booking.js?v=20261281"></script> <!-- 202번: 시공 날짜 잡기 -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

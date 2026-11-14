@@ -4,7 +4,7 @@
    - 외부 도구(Tailwind·아이콘·글꼴 등): 처음 한 번 받아 저장해 두고 이후엔 저장본 사용
    ========================================================================== */
 // 앱 버전: 바꾸면 탭이 새 서비스 워커를 받아 앱 파일을 다시 받아 둠 (CACHE 이름은 그대로 — 바꾸면 미리 받아 둔 사진까지 지워짐)
-const BUILD = '20261280';
+const BUILD = '20261281';
 const CACHE = 'redam-app-v1';
 const SCOPE = self.registration.scope;
 
@@ -69,6 +69,7 @@ self.addEventListener('fetch', event => {
     if (req.method !== 'GET') return;
     const url = new URL(req.url);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+    if (req.headers.has('authorization') || url.hostname === 'srv.redam.kr') return;      // 237번: 리담 서버(빈 시간·팩)는 늘 네트워크로 — 저장본이 굳지 않게
     event.respondWith(url.origin === self.location.origin ? networkFirst(req) : cacheFirst(req));
 });
 

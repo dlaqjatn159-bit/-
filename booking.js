@@ -1,9 +1,9 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261280';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 시공 날짜 잡기 (작업목록 202번)
 //  - 견적서 다음 단계에서 고객이 편한 날짜와 도착 시간을 선택
-//  - 사장님이 확정(길게 누르기)하면 노션 손님 장부의 '시공일'에 등록
-//  - 중계를 통해 구글 기본 캘린더와 장부의 일정을 피해 빈 시간을 계산
+//  - 사장님이 확정(길게 누르기)하면 손님 장부의 '시공일'에 등록
+//  - 리담 서버(237번, 옛 구글 중계)를 통해 장부 일정과 사장님 캘린더의 바쁜 시간을 피해 빈 시간을 계산
 // ==============================================================
 (function () {
     const STORE_KEY = 'redam_booking_v1';
@@ -133,7 +133,7 @@
     async function fetchBusy(force) {
         const relay = window.notionLedgerRelay();
         if (!relay) {
-            fetchErrorMsg = '중계 설정 확인 (설정 › 장부로 보내기)';
+            fetchErrorMsg = '서버 설정 확인 (설정 › 리담 서버 잇기)';
             return null;
         }
         const now = Date.now();
@@ -142,25 +142,16 @@
         }
 
         const settings = loadSettings();
-        const payload = {
-            secret: relay.secret,
-            action: 'busy',
-            days: 22,
-            personal: settings.blockPersonal
-        };
 
         try {
-            const res = await fetch(relay.url, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
+            const res = await window.redamServerFetch('/app/slots?days=22&personal=' + (settings.blockPersonal ? '1' : '0'));      // 237번: 리담 서버
             if (!res.ok) {
-                fetchErrorMsg = '중계 설정 확인 (설정 › 장부로 보내기)';
+                fetchErrorMsg = '서버 설정 확인 (설정 › 리담 서버 잇기)';
                 return null;
             }
             const data = await res.json();
             if (!data || !data.ok || !Array.isArray(data.busy)) {
-                fetchErrorMsg = '중계 설정 확인 (설정 › 장부로 보내기)';
+                fetchErrorMsg = '서버 설정 확인 (설정 › 리담 서버 잇기)';
                 return null;
             }
             cacheBusy = data.busy;
@@ -505,7 +496,7 @@
         if (state.isBooking) return;
         const relay = window.notionLedgerRelay();
         if (!relay) {
-            state.staffMsg = '중계 설정 확인';
+            state.staffMsg = '서버 설정 확인';
             renderStaffBarOnly();
             return;
         }
@@ -529,9 +520,7 @@
             btn.innerHTML = '<span class="bk-hold-label">확정하는 중…</span>';
         }
 
-        const payload = {
-            secret: relay.secret,
-            action: 'book',
+        const payload = {      // 237번: 리담 서버 /app/booking (열쇠는 머리말로)
             phone,
             start: pick.start,
             minutes: pick.minutes,
@@ -542,7 +531,7 @@
         if (replace) payload.replace = true;
 
         try {
-            const res = await fetch(relay.url, {
+            const res = await window.redamServerFetch('/app/booking', {
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
@@ -587,10 +576,10 @@
                 state.staffMsg = '연락처를 먼저 적어 주세요';
             } else if (reason === 'time') {
                 state.staffMsg = '지난 시간이에요';
-            } else if (reason === 'secret' || reason === 'setup' || reason === 'error') {
-                state.staffMsg = '중계 설정 확인';
+            } else if (reason === 'secret' || reason === 'setup' || reason === 'error' || reason === 'origin') {
+                state.staffMsg = '서버 설정 확인';
             } else {
-                state.staffMsg = '중계 설정 확인';
+                state.staffMsg = '서버 설정 확인';
             }
             if (btn) btn.textContent = '확정 (길게 누르기)';
             renderStaffBarOnly();
