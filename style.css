@@ -1586,7 +1586,22 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .jg-c.is-new { animation: jg-sew 0.9s ease-out; }
 @keyframes jg-sew { from { opacity: 0.15; } to { opacity: 1; } }
 .jg-cv-dot { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50% !important; background: var(--earth); }
-.dos-jogak { position: relative; width: 100%; max-width: 240px; aspect-ratio: 16 / 10; margin: 1.4rem 0 0.4rem; }
+/* 246번: 중심 화면 왼쪽 창가 장면 (결정 #282 B '빛 하나') — 조각보 자리 그대로 240px · 16:10. 자리·색은 space.js sceneLook */
+.dos-scene { position: relative; width: 100%; max-width: 240px; aspect-ratio: 16 / 10; margin: 1.4rem 0 0.4rem; overflow: hidden; isolation: isolate; background: var(--paper-sheet); }
+.dsc-p { position: absolute; display: block; pointer-events: none; transition: left .95s cubic-bezier(.6,0,.2,1), top .95s cubic-bezier(.6,0,.2,1), width .95s cubic-bezier(.6,0,.2,1), height .95s cubic-bezier(.6,0,.2,1), background-color var(--rd-app-motion-fill, .7s) ease, opacity .6s ease, box-shadow .7s ease; }
+.dsc-wall, .dsc-glow { z-index: 1; }
+.dsc-glass, .dsc-floor { z-index: 2; }
+.dsc-sill, .dsc-patch { z-index: 3; }
+.dsc-sheer, .dsc-blind { z-index: 4; }
+.dsc-drapeL, .dsc-drapeR { z-index: 5; background-image: repeating-linear-gradient(90deg, rgba(42,34,26,0.10) 0, rgba(42,34,26,0) 3.5px, rgba(255,255,255,0.10) 6.5px, rgba(42,34,26,0) 9.5px, rgba(42,34,26,0.10) 13px); }
+.dsc-sheer { background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0) 0, rgba(255,255,255,0.22) 7px, rgba(255,255,255,0) 11px, rgba(42,34,26,0.035) 15.5px, rgba(255,255,255,0) 20px); }
+.dsc-rod, .dsc-head { z-index: 6; }
+.dsc-sofaBack, .dsc-sofaSeat { z-index: 7; }
+.dsc-sofaBack { border-radius: 5px 5px 2px 2px; }
+.dsc-sofaSeat { border-radius: 3px; }
+.dsc-shade { z-index: 8; }
+.dsc-patch { clip-path: polygon(16% 0, 84% 0, 100% 100%, 0 100%); }
+@media (prefers-reduced-motion: reduce) { .dsc-p { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .jg-c { transition: none; } .jg-c.is-new { animation: none; } }
 .jg-group { display: flex; gap: 6px; min-width: 0; min-height: 0; }
 .jg-group.is-row { flex-direction: row; }

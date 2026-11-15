@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261287';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261288';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -211,6 +211,73 @@
             ['tex', has('drape') && r.ownTaste ? r.ownTex : null]
         ].filter(([k, v]) => v && ANSWER_SAY[k][v] && (!keys || keys.includes(k))).map(([k, v]) => ({ key: k, text: ANSWER_SAY[k][v] }));
     }
+    // ---- 246번: 중심 화면 왼쪽 창가 장면 (결정 #282 B '빛 하나') — 작은 조각보 자리. 지금 고른 공간 하나를 그림 ----
+    //  조각 자리는 시안 해보기_창가장면_1116_시안.html PIECES 그대로([왼, 위, 폭, 높이] %). 방은 살짝 가라앉히고 창 하나에만 빛
+    //  못 잰 벽·바닥은 빗금(아직 모름), 가구 색이 없으면 소파 없음. 원단을 고르기 전 = 맨 창(봉·레일만) → 고르면 속지가 닫히고 겉지가 펼쳐지고 블라인드가 내려옴
+    //  같은 공간에서 모습이 바뀌면 지난 모습에서 움직여 감(자리 0.95초 · 색 0.7초), 공간을 바꾸면 움직임 없이 바로
+    const SCENE_KEYS = ['wall', 'glow', 'glass', 'sill', 'floor', 'patch', 'blind', 'sheer', 'drapeL', 'drapeR', 'rod', 'head', 'sofaBack', 'sofaSeat', 'shade'];
+    const SCENE_STRIPES = 'repeating-linear-gradient(180deg, rgba(255,255,255,0) 0 5px, rgba(255,255,255,0.42) 5px 9px)';      // 블라인드 줄(솔리드 · 쉬어)
+    let sceneMemo = null;      // { roomId, look } — 지난번에 그린 모습 (같은 공간이면 여기서부터 움직임)
+    function sceneShade(hex, dl) {      // 밝기만 dl만큼 (Lab L)
+        const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''), RC = window.RoomColor;
+        if (!m || !RC || !RC.rgbToLab || !RC.labToHex) return hex;
+        const l = RC.rgbToLab(parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16));
+        return RC.labToHex(l.L + dl, l.a, l.b);
+    }
+    function sceneLook(r) {
+        const wallP = roomPart(r, 'wall'), floorP = roomPart(r, 'floor');
+        const wall = wallP && wallP.hex, floor = floorP && floorP.hex;
+        const furs = (r.measuredColor && Array.isArray(r.measuredColor.furniture)) ? r.measuredColor.furniture.filter(f => f && f.stay !== false && (f.hex || typeof f.L === 'number')) : [];
+        const fur = furs.length ? (furs[0].hex || (window.RoomColor ? RoomColor.labToHex(furs[0].L, furs[0].a, furs[0].b) : null)) : null;
+        const items = r.isConfigured ? (r.curtains || []) : [];
+        const has = k => r.isConfigured ? items.some(c => c.presetType === k) : planHas(r, k);      // 고르기 전엔 정한 구성으로 봉·레일만
+        const itemOf = k => items.find(c => c.presetType === k) || null;
+        const fillOf = c => (!c || !c.fabricId || (typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId))) ? null : colorFillOf(c.fabricId, c.colorName);
+        const fab = c => { const f = fillOf(c); return f ? { c: f } : { img: HATCH }; };      // 색을 모르면 빗금
+        const sheer = itemOf('sheer'), drape = itemOf('drape'), blind = itemOf('blind');
+        const filtered = !!(sheer || blind);      // 창을 덮는 속지·블라인드가 있으면 빛이 걸러짐
+        const P = (rect, o) => Object.assign({ r: rect, o: 1, c: '', img: '', sh: '' }, o || {});
+        const rodC = wall ? sceneShade(wall, -28) : '#9a9087';
+        const blindFill = blind ? fillOf(blind) : null;
+        return {
+            wall: P([0, 0, 100, 75], wall ? { c: wall } : { img: HATCH }),
+            glow: P([8, -14, 96, 104], { img: `radial-gradient(ellipse 46% 48% at 50% 48%, rgba(255,252,243,${filtered ? 0.4 : 0.55}) 0%, rgba(255,252,243,0) 100%)` }),
+            glass: P([37, 11, 38, 56], { c: '#FFFDF7', img: 'radial-gradient(ellipse 70% 60% at 50% 42%, #FFFFFF 0%, #FFFCF4 45%, #F3EEE4 100%)', sh: `0 0 70px 30px rgba(255,251,240,${filtered ? 0.45 : 0.7})` }),
+            sill: P([35, 66.4, 42, 1.4], { c: wall ? sceneShade(wall, 3) : '#f3efe8' }),
+            floor: P([0, 75, 100, 25], floor ? { c: floor } : { img: HATCH }),
+            patch: P([30, 75, 58, 25], { img: `linear-gradient(180deg, rgba(255,250,236,${filtered ? 0.32 : 0.5}) 0%, rgba(255,250,236,0) 100%)` }),
+            blind: P([37, 11, 38, blind ? 40 : 0], blind ? (blindFill ? { c: blindFill, img: SCENE_STRIPES } : { img: HATCH }) : { o: 0 }),
+            sheer: P(sheer ? (drape ? [38, 9, 36, 66] : [30, 7, 52, 69]) : (has('drape') ? [38, 9, 0, 66] : [30, 7, 0, 69]), sheer ? Object.assign(fab(sheer), { o: 0.78 }) : { o: 0 }),
+            drapeL: P(drape ? [30, 7, 10, 69] : [30, 7, 0, 69], drape ? fab(drape) : { o: 0 }),
+            drapeR: P(drape ? [72, 7, 10, 69] : [82, 7, 0, 69], drape ? fab(drape) : { o: 0 }),
+            rod: P([28, 6, 56, 0.9], { c: rodC, o: (has('sheer') || has('drape')) ? 1 : 0 }),
+            head: P([36, 9.6, 40, 1.8], { c: blindFill ? sceneShade(blindFill, -12) : rodC, o: has('blind') ? 1 : 0 }),
+            sofaBack: P([-4, 63, 33, 11], fur ? { c: sceneShade(fur, -4) } : { o: 0 }),
+            sofaSeat: P([-4, 70, 35, 11], fur ? { c: fur } : { o: 0 }),
+            shade: P([0, 0, 100, 100], { img: 'radial-gradient(ellipse 75% 85% at 56% 42%, rgba(60,44,30,0) 0%, rgba(60,44,30,0) 45%, rgba(60,44,30,0.10) 75%, rgba(60,44,30,0.22) 100%)' })
+        };
+    }
+    function sceneStyle(p) {
+        return `left:${p.r[0]}%;top:${p.r[1]}%;width:${p.r[2]}%;height:${p.r[3]}%;opacity:${p.o};background-color:${p.c || 'transparent'};`
+            + (p.img ? `background-image:${p.img};` : '') + (p.sh ? `box-shadow:${p.sh};` : '');      // 빈 background-image면 CSS의 주름 무늬가 보임
+    }
+    function sceneSettle(look) {      // 지난 모습으로 그린 뒤 지금 모습으로 바꿈 → CSS 움직임
+        const box = document.getElementById('dosScene');
+        if (!box) return;
+        void box.offsetWidth;      // 지난 모습을 한 번 계산시킨 뒤에 바꿔야 움직임이 생김
+        box.querySelectorAll('[data-k]').forEach(el => { const p = look[el.dataset.k]; if (p) el.setAttribute('style', sceneStyle(p)); });
+    }
+    function sceneHtml(r) {
+        if (!r) return '';
+        const now = sceneLook(r);
+        const same = !!(sceneMemo && sceneMemo.roomId === r.id);      // 공간을 바꾸면 움직임 없이 바로
+        const from = same ? sceneMemo.look : now;
+        sceneMemo = { roomId: r.id, look: now };
+        if (same && JSON.stringify(from) !== JSON.stringify(now)) requestAnimationFrame(() => sceneSettle(now));      // 화면을 다 넣은 뒤(render의 innerHTML 다음)
+        return '<div class="dos-scene" id="dosScene" aria-hidden="true">'
+            + SCENE_KEYS.map(k => `<i class="dsc-p dsc-${k}" data-k="${k}" style="${sceneStyle(from[k])}"></i>`).join('') + '</div>';
+    }
+
     // ---- 중심 화면(1-Space): 왼쪽 여백 기둥(집 전체 호흡·공간 목차·액션) + 오른쪽 '한 공간씩 크게 보기' 작업대 (+ 전체 한눈에 전환, 77번) ----
     function spaceHtml(currentCust) {
         spaceEntries = (typeof finderEntries === 'function') ? finderEntries() : [];
@@ -260,8 +327,8 @@
         let h = `<div class="dos-stage"><div class="dos-sheet${isAllMode ? ' is-all-mode' : ' is-single-mode'}">`;
         h += '<div class="dos-left">';
         h += '<div class="dos-top font-serif-kr"><h1 data-staff-hold>' + redamLogoSVG() + '</h1></div>'; // 42번: 빛과 공간 제거
-        // 134번: 상담 중 조각보 — 재고 고를 때마다 채워지고, 다 찬 것이 그대로 최종 제안 표지
-        if (list.length && typeof cz.jogakboMiniHtml === 'function') h += `<div class="dos-jogak">${cz.jogakboMiniHtml()}</div>`;
+        // 246번: 상담 중 조각보 자리에 지금 고른 공간의 창가 장면(결정 #282 B). 최종 제안 표지 조각보는 그대로(final.js)
+        if (list.length) h += sceneHtml(list.find(r => r.id === state.activeSpaceId) || list[0]);
         // 133번(재검토 A3): 로고 아래 "○○ 고객님의 공간" 이름표는 뺌 — 레이아웃이 설명하게
         // 161번: 담은 품목이 모두 실물 견본(우드·색 못 잰 블라인드)이면 "찾았습니다"라 하지 않음
         const allSample = doneN && list.filter(r => r.isConfigured).every(r => (r.curtains || []).length && r.curtains.every(c => typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId)));
