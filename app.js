@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261282';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261281';
+const REDAM_BUILD = '20261282';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -380,6 +380,7 @@ function startNewConsultationConfirmed() {
     globalVatOption = 'consumer';
     globalLightStand = false;      // 131번
     globalLineLight = { price: 0, fee: 0 }; lineLightInputsSync();      // 146번
+    globalMove = { count: 0, unit: null }; moveInputsSync();      // 241번
     const lt0 = document.getElementById('expressLightStand'); if (lt0) lt0.value = '';
     const fee = document.getElementById('expressInstallFee'); if (fee) fee.value = globalInstallFee;
     const vat = document.getElementById('expressVatOption'); if (vat) vat.value = globalVatOption;
@@ -652,6 +653,7 @@ function collectConsultation() {
         vat: globalVatOption,
         lightStand: !!globalLightStand,      // 견적서 빛 줄 (131번)
         lineLight: (globalLineLight.price || globalLineLight.fee) ? { price: globalLineLight.price, fee: globalLineLight.fee } : undefined,      // 146번
+        move: globalMove.count > 0 ? { count: globalMove.count, unit: moveOf().unit || null } : undefined,      // 241번: 이전설치 창 수 · 창당 단가
         jogakboSeed: window.getJogakboSeed(),      // 조각보 모양 고정 (79번)
         picks: finderPicks.slice(),         // 원단 찾기에서 별표한 후보 색 (상담 기록에서 다시 열면 그대로)
         quoteDate: quoteDate || null, quoteValid: quoteValidOverride,      // 견적 날짜 (85번)
@@ -743,6 +745,8 @@ function applySnapshot(snap) {
     globalLightStand = !!snap.lightStand;      // 131번 (옛 상담은 넣지 않음)
     globalLineLight = { price: Number(snap.lineLight && snap.lineLight.price) || 0, fee: Number(snap.lineLight && snap.lineLight.fee) || 0 };      // 146번
     lineLightInputsSync();
+    globalMove = { count: Math.max(0, parseInt(snap.move && snap.move.count, 10) || 0), unit: (snap.move && Number(snap.move.unit) > 0) ? Number(snap.move.unit) : null };      // 241번 (옛 상담은 없음)
+    moveInputsSync();
     jogakboSeed = (Number.isInteger(snap.jogakboSeed) && snap.jogakboSeed > 0) ? snap.jogakboSeed : newJogakboSeed();      // 옛 상담은 새 번호 (79번)
     quoteDate = /^\d{4}-\d{2}-\d{2}$/.test(snap.quoteDate || '') ? snap.quoteDate : null;      // 옛 상담은 처음 견적을 만들 때 정함 (85번)
     quoteValidOverride = (Number.isFinite(snap.quoteValid) && snap.quoteValid >= 0) ? Math.min(365, Math.round(snap.quoteValid)) : null;
@@ -1052,6 +1056,16 @@ function updateGlobalLineLight(k, v) {
 function lineLightInputsSync() {
     const el = document.getElementById('expressLinePrice'); if (el) el.value = globalLineLight.price || '';      // 설치 포함 한 칸
 }
+// 이전설치 창 수 (241번): 이 상담만. 창당 단가는 설정 값을 처음 넣을 때 상담에 적어 둠(나중에 설정을 바꿔도 이 견적은 그대로). 비우면 견적서에 안 나옴
+function updateGlobalMove(v) {
+    const n = Math.max(0, Math.min(99, parseInt(v, 10) || 0));
+    globalMove = { count: n, unit: n > 0 ? ((globalMove.unit > 0 ? globalMove.unit : moveUnitPrice()) || null) : null };
+    calculateAll();
+    if (typeof saveDraftTick === 'function') saveDraftTick();
+}
+function moveInputsSync() {
+    const el = document.getElementById('expressMoveCount'); if (el) el.value = globalMove.count || '';
+}
 // 견적서 빛 줄 켜고 끄기 (131번): 금액은 설정 › 견적서 고정 문구
 function updateGlobalLightStand(val) {
     globalLightStand = !!val;
@@ -1143,6 +1157,23 @@ function toggleHotelFit(roomId, curtainId) {
     c.hotelFit = !c.hotelFit;
     renderRooms();
     calculateAll();
+}
+
+// 우드 블라인드 옵션 (241번): 리본끈(woodRibbon) · 35mm 슬랫(wood35). 켤 때 지금 설정 단가를 품목에 적어 둠(옛 품목은 rates에 칸이 없어서)
+function toggleWoodOption(roomId, curtainId, key) {
+    if (key !== 'woodRibbon' && key !== 'wood35') return;
+    const room = rooms.find(r => r.id === roomId);
+    const c = room && room.curtains.find(item => item.id === curtainId);
+    if (!c) return;
+    c[key] = !c[key];
+    if (c[key]) {
+        const now = optionRatesNow(c.installType || 'none');
+        c.rates = Object.assign({}, c.rates || now, { [key]: now[key] });
+        c.rates.cost = Object.assign({}, (c.rates && c.rates.cost) || now.cost, { [key]: now.cost[key] });
+    }
+    renderRooms();
+    calculateAll();
+    if (typeof saveDraftTick === 'function') saveDraftTick();
 }
 
 function addCurtainToRoom(roomId, presetType = "") {
@@ -1574,6 +1605,9 @@ function renderRooms() {
                         ${colorSelect}
                         ${isBlind && blindStripeMm(curFab) ? `<div class="text-[10px] text-slate-400 mt-0.5">줄 폭 참고: 솔리드 ${blindStripeMm(curFab).solid}mm · 쉬어 ${blindStripeMm(curFab).sheer}mm</div>` : ''}
                     </div>
+                    ${(isBlind && curFab && curFab.blindKind === 'wood') ? `<div class="grid grid-cols-2 gap-1.5 sm:gap-2"><!-- 241번: 우드 옵션 -->
+                        ${[['woodRibbon', '리본끈'], ['wood35', '35mm 슬랫']].map(([k, nm]) => `<button type="button" onclick="toggleWoodOption(${room.id}, ${c.id}, '${k}')" class="staff-toggle w-full border rounded-lg transition flex items-center justify-center gap-1 ${c[k] ? 'is-on' : ''}"><span class="w-3 text-center">${c[k] ? '✓' : '+'}</span><span>${nm}</span></button>`).join('')}
+                    </div>` : ''}
 
                     ${isBlind ? '' : `
                     <details class="curtain-more" ${openCurtainDetails.has(c.id) ? 'open' : ''} ontoggle="setCurtainDetailsOpen(${c.id}, this.open)">
@@ -1742,6 +1776,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                         shapeFee: isBlind ? 0 : (c.shapeFee || 0),
                         leadBand: isBlind ? false : Boolean(c.leadBand),
                         hotelFit: isBlind ? false : Boolean(c.hotelFit),
+                        woodRibbon: isBlind && !!c.woodRibbon, wood35: isBlind && !!c.wood35,      // 241번
                         colorName: c.colorName || '',
                         pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
                         baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)

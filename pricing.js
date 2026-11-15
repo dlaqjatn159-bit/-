@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261282';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -110,6 +110,9 @@
             pieces = pcs.map(p => ({ w: p.w, h: p.h, hand: p.hand, row: p.row, hebe: hebeOf(p.w / 100, p.h / 100) }));
             appliedHebe = pieces.length > 1 ? Math.round(pieces.reduce((s, p) => s + p.hebe, 0) * 100) / 100 : pieces[0].hebe;
             fabricSellingCost = pieces.reduce((s, p) => s + Math.round(p.hebe * (fab.price || 0)), 0);
+            // 241번: 우드 옵션(리본끈 · 35mm 슬랫) — 헤베당 판매가 × 손님 헤베. 단가는 품목 rates(설정에서 옮겨 적은 값, 코드에 숫자 없음). 우드가 아니면 꺼짐
+            const woodAdd = (fab.blindKind === 'wood' && r) ? ((c.woodRibbon ? rn(r.woodRibbon) : 0) + (c.wood35 ? rn(r.wood35) : 0)) : 0;
+            if (woodAdd > 0) fabricSellingCost += pieces.reduce((s, p) => s + Math.round(p.hebe * woodAdd), 0);
             qtyText = pieces.length > 1
                 ? `${pieces.length}장 · 합 ${appliedHebe.toFixed(2)}m² (${appliedHebe}헤베)`
                 : `${appliedHebe.toFixed(2)}m² (${appliedHebe}헤베)`;

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261282';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 원가 계산 엔진  (costing.js)  ※ 직원 모드 전용
    - 이 파일에는 금액(숫자 상수)이 없습니다. 모든 원가 규칙은 "비공개 팩"에서 읽어옵니다.
@@ -43,11 +43,17 @@
             const h = rule.hebe || rules.hebeDefault;
             // 216번: 여러 장이면 장마다 따로 (공장 최저 헤베·최저 높이가 장마다). 한 장이면 예전과 같은 셈
             const pcs = (Array.isArray(q.pieces) && q.pieces.length) ? q.pieces : [{ widthM: q.widthM, heightM: q.heightM }];
+            // 241번: 원단별 공장 최소 면적 · 최저 높이(단가표 '공장최소' · '공장최저높이(m)' 칸 → 원가 줄 pv.minHebe · pv.minHeight, 0 = 최저 높이 없음). 칸이 없으면 예전대로(최소 2.0 · 공급처 규칙 높이)
+            const minHebe = pv.minHebe > 0 ? pv.minHebe : 2.0;
+            const minH = (typeof pv.minHeight === 'number' && pv.minHeight >= 0) ? pv.minHeight : h.minHeight;
+            // 241번: 우드 옵션(리본끈 · 35mm 슬랫) 원가 — 헤베당 × 공장 헤베, 가공비에 더함. 원가는 품목 rates.cost에 옮겨 적은 값
+            const woodAdd = (fab && fab.blindKind === 'wood') ? ((c.woodRibbon && has(rc.woodRibbon) ? rc.woodRibbon : 0) + (c.wood35 && has(rc.wood35) ? rc.wood35 : 0)) : 0;
             pcs.forEach(p => {
-                const heightForCalc = h.minHeight ? Math.max(h.minHeight, p.heightM) : p.heightM;
-                const fh = Math.max(2.0, Math.round(p.widthM * heightForCalc * h.roundTo) / h.roundTo);
+                const heightForCalc = minH ? Math.max(minH, p.heightM) : p.heightM;
+                const fh = Math.max(minHebe, Math.round(p.widthM * heightForCalc * h.roundTo) / h.roundTo);
                 factoryHebe += fh;
                 fabricSupplyCost += Math.round(fh * cost * (h.costMult || 1));
+                if (woodAdd) laborCost += Math.round(fh * woodAdd);
             });
             if (pcs.length > 1) factoryHebe = Math.round(factoryHebe * 100) / 100;
         } else {

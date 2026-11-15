@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261282';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -117,7 +117,23 @@ function priceCurve() {
     const c = storedOptionPrices().curve || {};
     const pts = (Array.isArray(c.pts) ? c.pts : []).filter(q => Array.isArray(q) && q[0] > 0 && q[1] > 0);
     const blind = (typeof c.blind === 'number' && c.blind > 0) ? c.blind : 0;
-    return { pts, blind, ok: pts.length >= 2 };
+    const wood = (typeof c.wood === 'number' && c.wood > 0) ? c.wood : 0;      // 241번: 우드 블라인드 배수 (비면 블라인드 배수)
+    return { pts, blind, wood, ok: pts.length >= 2 };
+}
+function blindMultOf(fab, cv) { return (fab && fab.blindKind === 'wood' && cv.wood) ? cv.wood : cv.blind; }      // 241번: 블라인드 원단 하나의 배수
+// 241번: 우드 옵션(리본끈 woodRibbon · 35mm 슬랫 wood35) 헤베당 원가 · 판매가 — 숫자는 이 기기 · 비공개 팩(prices.woodRibbon · prices.cost.woodRibbon …)에만
+//  판매가 칸이 비면 원가 × 1.1 × 우드 배수(비면 블라인드 배수), 천 원 올림 — 원단 판매가와 같은 셈
+function woodOptionCost(k) { const n = optNum((storedOptionPrices().cost || {})[k]); return n === null ? 0 : n; }
+function woodOptionSale(k) {
+    const n = optNum(storedOptionPrices()[k]);
+    if (n !== null) return n;
+    const cost = woodOptionCost(k), cv = priceCurve(), m = cv.wood || cv.blind;
+    return (cost > 0 && m > 0) ? Math.ceil(cost * 1.1 * m / 1000) * 1000 : 0;
+}
+// 241번: 품목에 켠 우드 옵션 이름 (견적서 · 발주서). 우드 원단이 아니면 빈 목록
+function woodOptList(c) {
+    const f = c && Array.isArray(FABRIC_DB) ? FABRIC_DB.find(x => x.id === c.fabricId) : null;
+    return (f && f.blindKind === 'wood') ? [c.woodRibbon ? '리본끈' : '', c.wood35 ? '35mm 슬랫' : ''].filter(Boolean) : [];
 }
 function savePriceCurve(curve) {
     const o = storedOptionPrices();
@@ -131,8 +147,9 @@ function curvePrice(fab, pv) {
     const cv = priceCurve();
     if (!fab || !pv || !(pv.cost > 0)) return null;
     if (fab.calcType === 'hebe') {
-        if (!cv.blind) return null;
-        return Math.ceil(pv.cost * 1.1 * cv.blind / 1000) * 1000;
+        const bm = blindMultOf(fab, cv);      // 241번: 우드는 우드 배수
+        if (!bm) return null;
+        return Math.ceil(pv.cost * 1.1 * bm / 1000) * 1000;
     }
     const st = curveStd(fab, pv, cv);
     if (!st) return null;
@@ -143,7 +160,7 @@ function curvePrice(fab, pv) {
 function curveMultOf(fab, pv) {
     const cv = priceCurve();
     if (!fab || !pv || !(pv.cost > 0)) return 0;
-    if (fab.calcType === 'hebe') return cv.blind || 0;
+    if (fab.calcType === 'hebe') return blindMultOf(fab, cv) || 0;      // 241번
     const st = curveStd(fab, pv, cv);
     return st ? st.mult : 0;
 }
@@ -164,7 +181,7 @@ function curveStd(fab, pv, cv) {
 // [판매가 다시 계산] (109번): 지금 원가로 엑셀 칸이 빈 원단 판매가를 곡선으로. 미리 목록을 보여 주고 되돌리기 단계에 넣음
 function recalcCurvePrices() {
     const cv = priceCurve();
-    if (!cv.ok && !cv.blind) { showToast('먼저 판매가 곡선의 점을 넣어 주세요.', 'error'); return; }
+    if (!cv.ok && !cv.blind && !cv.wood) { showToast('먼저 판매가 곡선의 점을 넣어 주세요.', 'error'); return; }      // 241번: 우드 배수
     if (!Costing.state.rules) { showToast("먼저 '비공개 팩'을 불러와 주세요. (원가 규칙이 필요합니다)", 'error'); return; }
     const changes = [], manual = [], skipped = [];
     (FABRIC_DB || []).forEach(f => {
@@ -199,13 +216,16 @@ function optionRatesNow(installType) {
     return {
         shapeW: p.shapeW, shapeY: p.shapeY, shapeH: p.shapeH, shapeHW: p.shapeHW, shapeHY: p.shapeHY,
         leadW: p.leadW, leadY: p.leadY, panelBase: p.panelBase, panelStep: p.panelStep,
-        cost: { shapeW: k.shapeW, shapeY: k.shapeY, shapeHW: k.shapeHW, shapeHY: k.shapeHY, panelBase: k.panelBase, panelStep: k.panelStep, hw: installType === 'none' ? 0 : (k.rail[installType] ?? k.rail.rail) }
+        woodRibbon: woodOptionSale('woodRibbon'), wood35: woodOptionSale('wood35'),      // 241번: 우드 옵션 헤베당 판매가
+        cost: { shapeW: k.shapeW, shapeY: k.shapeY, shapeHW: k.shapeHW, shapeHY: k.shapeHY, panelBase: k.panelBase, panelStep: k.panelStep, hw: installType === 'none' ? 0 : (k.rail[installType] ?? k.rail.rail),
+            woodRibbon: woodOptionCost('woodRibbon'), wood35: woodOptionCost('wood35') }      // 241번: 우드 옵션 헤베당 원가
     };
 }
 
 let globalInstallFee = loadDefaultInstallFee();
 let globalVatOption = "consumer";
 let globalLineLight = { price: 0, fee: 0 };      // 146번: 이 상담의 라인조명(COB) 금액·설치 시공비 (가격은 코드에 적지 않고 상담에 저장)
+let globalMove = { count: 0, unit: null };      // 241번: 이 상담의 이전설치 창 수 · 창당 단가(처음 넣을 때 설정 값을 적어 둠)
 let globalLightStand = false;      // 이 상담 견적서에 빛(스탠드: 이케아 가격 + 구매·설치 대행비)을 넣을지 (131번)
 
 let currentMainTrack = 'curation';
@@ -2904,7 +2924,7 @@ function buildFabricRecords(dataRows, rules) {
         const priceSet = price > 0;      // 엑셀에 직접 적힌 판매 단가 = 사장님이 정한 예외 (109번)
         if (price <= 0) {
             // 109번: 판매가 곡선이 있으면 기준 창으로 곡선 판매가, 없으면 예전 공식
-            const cp = curvePrice({ id: uid, name, calcType: detected.calcType, specCm: (detected.calcType === 'hebe') ? 0 : parseSpecToCm(specRaw, name), categoryType: catRaw || null }, { supplier, cost, labor });
+            const cp = curvePrice({ id: uid, name, calcType: detected.calcType, specCm: (detected.calcType === 'hebe') ? 0 : parseSpecToCm(specRaw, name), categoryType: catRaw || null, blindKind: detectBlindKind(noteRaw) }, { supplier, cost, labor });      // 241번: 우드 배수가 듣게 종류도
             price = cp !== null ? cp : Costing.derivePrice(cost, labor, detected.calcType, rules);
             priceDerived++;
         }
@@ -2927,7 +2947,12 @@ function buildFabricRecords(dataRows, rules) {
         };
         fabObj.manual = { tone: !!fabObj.tone, mood: !!fabObj.mood, density: !!fabObj.density, texture: !!fabObj.texture };      // 엑셀에 직접 적힌 값인지 기록 (자동 추정 구분용)
         fabrics.push(autoTagFabricAttributes(fabObj));
-        costs[uid] = { supplier, cost, labor };
+        const pvRow = { supplier, cost, labor };
+        // 241번: 공장 최소 면적(㎡) · 최저 높이(m, 0 = 없음) — 칸에 값이 있을 때만 (원가 줄이라 비공개 팩에만)
+        const minHebeRaw = getCol(['공장최소', '공장최소면적', '최소헤베']), minHRaw = getCol(['공장최저높이m', '공장최저높이']);
+        if (minHebeRaw !== '' && Number(minHebeRaw) > 0) pvRow.minHebe = Number(minHebeRaw);
+        if (minHRaw !== '' && Number.isFinite(Number(minHRaw)) && Number(minHRaw) >= 0) pvRow.minHeight = Number(minHRaw);
+        costs[uid] = pvRow;
     }
     return { fabrics, costs, priceDerived, fabricOnlySkipped };
 }

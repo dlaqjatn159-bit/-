@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261282';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -239,6 +239,13 @@ function lightStandOf() {
     const sp = standOn ? price : 0, sf = standOn ? fee : 0;
     return { on: standOn || (lp + lf) > 0, standOn, asked: !!globalLightStand, price: sp, fee: sf, linePrice: lp, lineFee: lf, total: sp + sf + lp + lf };
 }
+// 241번: 이전설치 — 이 상담의 창 수 × 창당 단가(설정 › 가공·부자재 단가, 코드에 숫자 없음). 제작 품목이 아니라 공장 발주서 · 원가에 안 나가고 계약금도 안 걸림(결정 #261)
+function moveUnitPrice() { const n = optNum(storedOptionPrices().moveUnit); return n === null ? 0 : n; }
+function moveOf() {
+    const n = Math.max(0, Math.min(99, parseInt(globalMove && globalMove.count, 10) || 0));
+    const unit = (globalMove && globalMove.unit > 0) ? globalMove.unit : moveUnitPrice();
+    return { on: n > 0 && unit > 0, asked: n > 0, count: n, unit, total: (n > 0 && unit > 0) ? n * unit : 0 };
+}
 function initTicketNoteInput() {
     const el = document.getElementById('ticketNoteInput'); if (el) el.value = loadTicketNote();
     Object.keys(TICKET_TEXT_INPUTS).forEach(k => { const t = document.getElementById(TICKET_TEXT_INPUTS[k]); if (t) t.value = loadTicketText(k); });
@@ -262,7 +269,8 @@ function renderPriceCurveSettings() {
         h += `<div class="opt-row" data-curve-row><span class="opt-name">점 ${i + 1}</span><label><em>폭당 매입</em>${inp('x', q[0], 1000)}<i>원</i></label><label><em>배수</em>${inp('m', q[1], 0.05)}<i>배</i></label><span></span></div>`;
     }
     h += '</div><div class="opt-group"><h3>블라인드 <small>헤베당 원가 × 1.1 × 배수</small></h3>';
-    h += `<div class="opt-row"><span class="opt-name">배수</span><label><em>배수</em>${inp('b', cv.blind, 0.05)}<i>배</i></label><span></span><span></span></div></div>`;
+    h += `<div class="opt-row"><span class="opt-name">배수</span><label><em>배수</em>${inp('b', cv.blind, 0.05)}<i>배</i></label><span></span><span></span></div>`;
+    h += `<div class="opt-row"><span class="opt-name">우드 배수</span><label><em>배수</em>${inp('w', cv.wood, 0.05)}<i>배</i></label><span class="opt-same">비우면 블라인드 배수</span><span></span></div></div>`;      // 241번
     box.innerHTML = h;
     if (!box.dataset.wired) {
         box.dataset.wired = '1';
@@ -273,8 +281,8 @@ function renderPriceCurveSettings() {
                 const x = num(r.querySelector('[data-curve="x"]')), m = num(r.querySelector('[data-curve="m"]'));
                 if (x && m) out.push([Math.round(x), m]);
             });
-            const b = num(box.querySelector('[data-curve="b"]'));
-            savePriceCurve({ pts: out, blind: b });
+            const b = num(box.querySelector('[data-curve="b"]')), w = num(box.querySelector('[data-curve="w"]'));
+            savePriceCurve({ pts: out, blind: b, wood: w });      // 241번: 우드 배수
         });
     }
 }
@@ -296,6 +304,10 @@ function renderOptionPriceSettings() {
     h += '<div class="opt-group"><h3>리드밴드 <small>폭당 원단은 폭 수, 마당 원단은 마 수만큼</small></h3>' + row('폭당', p.leadW, 'leadW') + row('마당', p.leadY, 'leadY') + '</div>';
     h += '<div class="opt-group"><h3>레일·봉 <small>자당 (30cm)</small></h3>' + HW_TYPES.map(t => row(HW_NAMES[t], p.rail[t], 'rail.' + t, k.rail[t], 'cost.rail.' + t)).join('') + '</div>';
     h += '<div class="opt-group"><h3>패널 가공비 <small>기본 + 90cm 넘는 30cm마다</small></h3>' + row('기본', p.panelBase, 'panelBase', k.panelBase, 'cost.panelBase') + row('30cm마다', p.panelStep, 'panelStep', k.panelStep, 'cost.panelStep') + '</div>';
+    // 241번: 우드 블라인드 옵션(헤베당, 판매가를 비우면 원가 × 1.1 × 우드 배수) · 이전설치(창당, 원가 없음)
+    const so = storedOptionPrices(), wc = x => woodOptionCost(x) || null;
+    h += '<div class="opt-group"><h3>우드 블라인드 옵션 <small>헤베당 · 판매가를 비우면 원가 × 1.1 × 우드 배수</small></h3>' + row('리본끈', optNum(so.woodRibbon), 'woodRibbon', wc('woodRibbon'), 'cost.woodRibbon') + row('35mm 슬랫', optNum(so.wood35), 'wood35', wc('wood35'), 'cost.wood35') + '</div>';
+    h += `<div class="opt-group"><h3>이전설치 <small>창당 · 기존 커튼·블라인드를 떼어 다시 다는 일</small></h3><div class="opt-row"><span class="opt-name">창당</span><label><em>판매가</em>${inp('moveUnit', optNum(so.moveUnit))}<i>원</i></label><span class="opt-same">원가 없음</span><span></span></div></div>`;
     box.innerHTML = h;
     box.querySelectorAll('[data-row]').forEach(optionGainUpdate);
     if (!box.dataset.wired) {

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261282';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -113,7 +113,14 @@ function calculateAll() {
     }
     const lightWarn = document.getElementById('summaryLightWarn');
     if (lightWarn) { lightWarn.hidden = !(light.asked && !light.standOn); lightWarn.textContent = '빛 스탠드 금액이 설정에 없어 견적서에 넣지 못했어요. 설정 › 견적서 고정 문구에서 넣어 주세요.'; }
-    const t = Pricing.totals(grandSubtotal + light.total, globalInstallFee, globalVatOption);
+    // 241번: 이전설치 줄 — 창 수 × 창당 단가. 원가 없음(남는 돈에 그대로). 창 수를 넣었는데 단가가 없으면 그 줄에 알림
+    const move = (typeof moveOf === 'function') ? moveOf() : { on: false, asked: false, count: 0, total: 0 };
+    if (summaryListContainer && move.asked) {
+        summaryListContainer.innerHTML += move.on
+            ? `<div class="staff-sum-line"><span>이전설치 ${move.count}창</span><span>${move.total.toLocaleString()}원</span></div>`
+            : `<div class="staff-sum-line"><span>이전설치 ${move.count}창 — 설정 › 가공·부자재 단가에 창당 단가가 없어요</span><span>0원</span></div>`;
+    }
+    const t = Pricing.totals(grandSubtotal + light.total + move.total, globalInstallFee, globalVatOption);
     const sellingPrice = t.sellingPrice;
     const vatAmount = t.vatAmount;
     const finalPrice = t.finalPrice;
@@ -224,6 +231,7 @@ function docTotals() {
     let sum = 0;
     rooms.forEach(r => r.curtains.forEach(c => { if (c.calc) sum += c.calc.curtainSubtotal || 0; }));
     if (typeof lightStandOf === 'function') sum += lightStandOf().total;      // 131번
+    if (typeof moveOf === 'function') sum += moveOf().total;      // 241번
     return Pricing.totals(sum, globalInstallFee, globalVatOption);
 }
 
@@ -256,7 +264,7 @@ function docOrderRows(dateStr, custName) {
             const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
             const fabDisplayName = docFabName(calc, fab, true, c);
             const qtyVal = calc.calcType === 'hebe' ? calc.appliedHebe : (calc.calcType === 'width' ? calc.numWidths : calc.totalYards);
-            const optText = `${c.shapeFee > 0 ? '형상 ' : ''}${c.leadBand ? '리드밴드' : ''}`.trim() || '기본';
+            const optText = [c.shapeFee > 0 ? '형상' : '', c.leadBand ? '리드밴드' : '', ...woodOptList(c)].filter(Boolean).join(' ') || '기본';      // 241번: 우드 옵션
             const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
 
             // 216번: 블라인드는 장마다 한 줄 + 손잡이. 금액은 첫 줄에 품목 금액(나머지 장은 빈칸 — 합계가 맞게)
@@ -301,6 +309,7 @@ function generateDoc(type) {
             const optionsList = [];
             if (c.shapeFee > 0) optionsList.push("형상기억");
             if (c.leadBand) optionsList.push("리드밴드");
+            optionsList.push(...woodOptList(c));      // 241번: 리본끈 · 35mm 슬랫
             const optionsStr = optionsList.length > 0 ? optionsList.join(', ') : '기본';
             const gapStr = (calc.floorGapVal > 0 ? `+${calc.floorGapVal}` : calc.floorGapVal) + "cm";
             const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당 완제품' : (calc.isSeamless ? '대폭 무이음' : '소폭 이음제작'));      // 216번: 블라인드가 "소폭 이음제작"으로 나오던 것
@@ -333,6 +342,7 @@ function generateDoc(type) {
             docOrderRows(dateStr, custName).forEach(row => rows.push(row.join('\t')));
 
             if (typeof lightStandOf === 'function' && lightStandOf().on) rows.push([...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "빛 (조명·설치)", lightStandOf().total].join('\t'));      // 131번
+            if (typeof moveOf === 'function' && moveOf().on) rows.push([...Array(DOC_ORDER_HEADERS.length - 2).fill(""), `이전설치 ${moveOf().count}창`, moveOf().total].join('\t'));      // 241번
             rows.push([...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "전체 시공비", globalInstallFee].join('\t'));
             rows.push([...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "최종 금액", finalPriceVal].join('\t'));
             textarea.value = rows.join('\n');
@@ -382,6 +392,7 @@ function downloadCsvFile() {
     docOrderRows(dateStr, custName).forEach(row => { csvContent += row.map(escapeCsv).join(',') + '\r\n'; });      // 시트와 한 곳에서 (130-1번)
 
     if (typeof lightStandOf === 'function' && lightStandOf().on) csvContent += [...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "빛 (조명·설치)", lightStandOf().total].map(escapeCsv).join(',') + '\r\n';      // 131번
+    if (typeof moveOf === 'function' && moveOf().on) csvContent += [...Array(DOC_ORDER_HEADERS.length - 2).fill(""), `이전설치 ${moveOf().count}창`, moveOf().total].map(escapeCsv).join(',') + '\r\n';      // 241번
     csvContent += [...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "전체 시공비", globalInstallFee].map(escapeCsv).join(',') + '\r\n';
     csvContent += [...Array(DOC_ORDER_HEADERS.length - 2).fill(""), "최종 금액", finalPrice].map(escapeCsv).join(',') + '\r\n';
 

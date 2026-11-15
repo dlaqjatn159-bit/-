@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261281';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261282';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -69,7 +69,7 @@ function ticketBookName(c) {
 // 손님이 가져가는 글(견적서·이유 카드·우리 집 색)의 원단 표기 (61번): 책자·원단 이름·색 번호 대신 "색 이름 · 재질"
 //  예: 그레이지 · 결 있는 질감 · 생활암막 / 아이보리 · 콤비 블라인드 · 암막. 원단 이름은 직원 화면과 고객 화면 최종 제안에만
 const PLAIN_TEXTURE_WORDS = { smooth: '매끈한 질감', natural: '짜임이 보이는 질감', cozy: '포근한 질감' };
-const PLAIN_BLIND_WORDS = { combi: '콤비 블라인드', roll: '롤스크린', print: '프린트 블라인드' };
+const PLAIN_BLIND_WORDS = { combi: '콤비 블라인드', roll: '롤스크린', print: '프린트 블라인드', wood: '우드 블라인드' };      // 241번: 우드
 // 견적서 품목 이름 (208번, 11-09 사장님): 색·종류 먼저 — "베이지 콤비 블라인드" · "아이보리 커튼". 책자 이름·번호는 ticketEstSub로 뒤에 작게
 //  색 이름은 손님 화면과 같은 custColorName(182번). 색 이름이 없으면(실물 견본 등) 지금처럼 책자 이름 + 번호(147번)
 // 223번: 색 이름이 없으면 책자 이름 대신 종류 낱말만("커튼" · "콤비 블라인드"). 실물 상담 품목은 그 이름
@@ -168,6 +168,7 @@ function fabricToneFill(fabricId, colorName) {
     const f = Pricing.pickFabric(FABRIC_DB, fabricId);
     if (!f) return '#d9cdbb';
     const col = colorName ? fabricColorOf(f.id, colorName) : null;
+    if (f.blindKind === 'wood' && !(col && col.tone)) return '#efe8dd';      // 241번: 우드는 짐작한 톤 색을 칠하지 않음(실물 책자로 고름) — 잰 색이 생기면 그 색
     return FABRIC_TONE_FILL[(col && col.tone) || f.tone] || '#d9cdbb';
 }
 // 견적서 원단 칸(사진이 없을 때)의 색 (35번): 잰 색(색상코드)이 있으면 그 색, 없으면 톤 대표색 (고객 화면 concierge colorFillOf와 같은 순서)
@@ -222,15 +223,18 @@ const PROMISE_LINE = {
 };
 // 230번: 받는 길 셋 — 'deposit' 품목이 있고 합계가 작은 주문 기준 이상(기준이 비면 늘) · 'small' 품목이 있고 기준 아래 · 'none' 품목이 없음(이전설치·수선처럼 시공비만)
 //  실물 견본 품목이 섞이면(hasSample) 합계가 그 품목을 뺀 금액이라 늘 'deposit', 금액 줄은 안 그림. 계약금 = 합계 절반을 천 원 아래 버림, 잔금 = 합계 − 계약금
-function ticketPayPlan(roomList, totalText, hasSample) {
+// 241번(결정 #261): moveShare = 합계 안의 이전설치 몫 — 계약금 · 작은 주문 기준은 제작 몫(합계 − 이전설치)으로, 잔금은 합계에서
+function ticketPayPlan(roomList, totalText, hasSample, moveShare) {
     const made = (roomList || []).some(r => (r.curtains || []).length > 0);
-    const total = Number(String(totalText || '').replace(/[^0-9]/g, '')) || 0;
+    const all = Number(String(totalText || '').replace(/[^0-9]/g, '')) || 0;
+    const ms = Math.max(0, Math.round(Number(moveShare) || 0));
+    const total = Math.max(0, all - ms);
     const limit = typeof loadSmallOrderLimit === 'function' ? loadSmallOrderLimit() : 0;
     const P = PROMISE_LINE;
     if (!made) return { kind: 'none', promise: [P.once, P.fixInstall], depositText: '' };
     if (!hasSample && limit > 0 && total < limit) return { kind: 'small', promise: [P.sample, P.once, P.days, P.fix], depositText: '' };
     const deposit = Math.floor(total * 0.5 / 1000) * 1000;
-    const depositText = (!hasSample && total > 0) ? `계약금(50%) ${deposit.toLocaleString()}원 · 시공 뒤 잔금 ${(total - deposit).toLocaleString()}원` : '';
+    const depositText = (!hasSample && total > 0) ? `계약금(${ms > 0 ? '제작 몫 ' : ''}50%) ${deposit.toLocaleString()}원 · 시공 뒤 잔금 ${(all - deposit).toLocaleString()}원` : '';      // 241번: 이전설치 몫은 잔금에
     return { kind: 'deposit', promise: [P.sample, P.deposit, P.cancel, P.days, P.fix], depositText };
 }
 function autoQuoteNotes(roomList) {
@@ -249,10 +253,11 @@ function ticketData() {
     calculateAll();
     const d = ticketDataBase();
     d.light = ticketLightOf(d);      // 131번: 견적서 빛 묶음 (넣지 않으면 null)
+    d.move = ticketMoveOf();      // 241번: 견적서 이전설치 묶음 (넣지 않으면 null)
     // 161번: 실물 견본 품목(우드·색 못 잰 블라인드 등, 금액 0)이 있으면 합계가 그 품목을 뺀 금액임을 밝힘 — 저장 그림·최종 제안 화면·카톡 글이 같이 씀 · 커튼 견본은 종류 이름(속지·겉지)으로(211번)
     const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.blindKind ? s.name.replace(' (실물 상담)', '') : s.categoryType))];
     d.totalLabel = sampleNames.length ? '합계 금액 (시공비 포함 · 실물 견본 품목 제외)' : '합계 금액 (시공비 포함)';
-    const plan = ticketPayPlan(rooms, d.total, sampleNames.length > 0);      // 230번: 견적에 맞는 약속 줄 + 계약금·잔금 한 줄
+    const plan = ticketPayPlan(rooms, d.total, sampleNames.length > 0, d.move ? Math.round(d.move.total * (globalVatOption === 'business' ? 1.1 : 1)) : 0);      // 230번: 견적에 맞는 약속 줄 + 계약금·잔금 한 줄 · 241번: 이전설치 몫(부가세 포함)은 계약금에서 뺌
     d.promise = plan.promise.join('\n');
     d.depositText = plan.depositText;
     if (sampleNames.length) {
@@ -277,6 +282,7 @@ function ticketDataBase() {
                 if (c.shapeFee > 0) opts.push('형상기억 포함');      // 158번
                 if (c.leadBand) opts.push('리드밴드');
                 if (c.hotelFit) opts.push('리담 핏(기본보다 한 폭 더)');      // 158번 · 230번: 리담 핏
+                if (typeof woodOptList === 'function') opts.push(...woodOptList(c));      // 241번: 리본끈 · 35mm 슬랫
                 const sampleOnly = !!(typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId));
                 return {
                     label: c.label, kind: ticketKindLabel(c), meta: opts.join(' · '),      // 원단 이름 옆 작은 글자: 추가한 옵션만 (책자 이름은 넣지 않음)
@@ -513,7 +519,7 @@ function planTicket(data, s, slim) {
     const W = PAPER_W, PAGE_H = 1e6, GAP = slim ? 16 : 34, BOTTOM = 80;      // 쪽 나눔 없음: 장 높이는 내용만큼 (75번)
     const probe = document.createElement('canvas').getContext('2d');
     const T = drawTicket(probe, data, W, slim);
-    const layouts = data.rooms.map(r => T.layoutRoom(r)).concat(data.light ? [T.layoutRoom(data.light)] : []);      // 131번: 빛 묶음은 맨 뒤
+    const layouts = data.rooms.map(r => T.layoutRoom(r)).concat(data.light ? [T.layoutRoom(data.light)] : []).concat(data.move ? [T.layoutRoom(data.move)] : []);      // 131번: 빛 묶음은 맨 뒤 · 241번: 이전설치는 그 뒤
     const F = T.layoutFooter();
     const pages = [];
     let cur = { items: [], y: T.START_Y };
@@ -1950,6 +1956,14 @@ function ticketLightOf(data) {
     ].filter(it => it.price > 0).map(it => Object.assign({ sampleOnly: false, photoKey: '', fabricId: '', colorName: '', opts: [] }, it));
     return { name: '빛', total: L.total, sampleOnly: false, items, k, isLight: true };
 }
+// 견적서 이전설치 묶음 (241번): 빛 묶음과 같은 모양 { name, total, items } — 창 수와 창당 단가가 있을 때만. isLight = 원단 칸 대신 fill 색(final.js)
+function ticketMoveOf() {
+    const M = (typeof moveOf === 'function') ? moveOf() : null;
+    if (!M || !M.on) return null;
+    const items = [{ kind: '', name: '기존 커튼·블라인드 이전설치', bookName: '기존 커튼·블라인드 이전설치', meta: `창당 ${M.unit.toLocaleString()}원`, size: `${M.count}창`, price: M.total, fill: '#efe8dd' }]
+        .map(it => Object.assign({ sampleOnly: false, photoKey: '', fabricId: '', colorName: '', opts: [] }, it));
+    return { name: '이전설치', total: M.total, sampleOnly: false, items, isLight: true, isMove: true };
+}
 // [이 집의 밤] 저장 이미지 한 장 (어두운 바탕: #2B221A · 글씨 #EFE6DA · 흐린 글 #C4B6A3 · 색온도 #FFC489)
 function buildNightCanvas(data, pr, N) {
     if (!N) return null;
@@ -2218,6 +2232,10 @@ function ticketKakaoText(data) {
     if (data.light) {      // 131번
         out.push('', `■ 빛 ${won(data.light.total)}`);
         data.light.items.forEach(it => out.push(`· ${[it.kind, it.name].filter(Boolean).join(' · ')}`, `  ${[it.size, it.meta, won(it.price)].filter(Boolean).join(' · ')}`));
+    }
+    if (data.move) {      // 241번
+        out.push('', `■ 이전설치 ${won(data.move.total)}`);
+        data.move.items.forEach(it => out.push(`· ${it.name}`, `  ${[it.size, it.meta, won(it.price)].filter(Boolean).join(' · ')}`));
     }
     out.push('');
     if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
