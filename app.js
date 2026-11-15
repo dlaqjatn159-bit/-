@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261283';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261284';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261283';
+const REDAM_BUILD = '20261284';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -855,7 +855,6 @@ function deleteHistoryItem(id) {
 }
 
 // ---- 리담 서버 잇기 (237번, 옛 '장부로 보내기' 201번): 상담 한 건을 리담 서버로 → 서버가 손님 장부의 같은 연락처 줄에 견적 금액(계약이면 계약 금액도)·남는 돈 ----
-// (242번) 앱 올리기는 리담 서버의 버튼이 함(결정 #266) — 이 줄은 그 첫 시험으로 더한 주석
 // 옛 구글 중계(Apps Script) 대신 리담 서버 문(/app/consult · /app/slots · /app/booking). 함수 이름은 booking.js·ticket.js·index.html이 부르는 그대로 둠
 // 서버 주소·기기 열쇠는 코드에 적지 않고 이 기기에만 저장(백업 파일에 안 담음 — STORE_KEYS에 넣지 않음). 열쇠는 상황판 › 견적 앱 › 태블릿 열쇠 만들기에서 복사
 // 보내는 것: 상담 통째(이름·연락처·공간·고른 원단·견적서 합계·남는 돈·결과) — 서버 '상담' 표에 쌓임. 원단별 원가는 상담에 없어 안 감. 알림은 직원 화면에서만
