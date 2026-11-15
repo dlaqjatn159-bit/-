@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261285';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261286';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -99,14 +99,29 @@ function copyToClipboard() {
 }
 
 // 직원 화면의 "견적서" 창: 저장·인쇄되는 이미지를 그대로 미리 보여 줌 (고객 화면 제안서와 같은 디자인)
-async function openTicketModal() {
+// 244번: mode 'full'(전체 제안, 지금 그대로) · 'contract'(계약 장, 상담 결과 '계약'일 때). 창 아래 저장 · 카톡 글 · 인쇄가 ticketExportMode를 따름
+let ticketExportMode = 'full';
+function paintTicketModeRow() {
+    [['ticketModeFull', 'full'], ['ticketModeContract', 'contract']].forEach(([id, m]) => {
+        const b = document.getElementById(id); if (!b) return;
+        const on = ticketExportMode === m;
+        b.classList.toggle('bg-[#2b221a]', on); b.classList.toggle('text-white', on); b.classList.toggle('border-[#2b221a]', on);
+        b.classList.toggle('bg-stone-100', !on); b.classList.toggle('text-stone-700', !on); b.classList.toggle('border-stone-300', !on);
+    });
+}
+async function openTicketModal(mode) {
+    ticketExportMode = mode === 'contract' ? 'contract' : 'full';
     calculateAll();
+    paintTicketModeRow();
     const box = document.getElementById('ticketPreview');
     document.getElementById('ticketModal').classList.remove('hidden');
     if (!box) return;
-    box.innerHTML = '<p class="text-xs text-stone-500 py-10 text-center">견적서 만드는 중...</p>';
+    const contract = ticketExportMode === 'contract';
+    const why = contract ? ticketContractWhy() : '';
+    if (why) { box.innerHTML = `<p class="text-xs text-stone-600 py-10 px-4 text-center">${why}</p>`; return; }
+    box.innerHTML = `<p class="text-xs text-stone-500 py-10 text-center">${contract ? '계약 장' : '견적서'} 만드는 중...</p>`;
     try {
-        const { canvases } = await makeTicketBlobs({ type: 'image/jpeg' });
+        const { canvases } = await makeTicketBlobs({ type: 'image/jpeg', contract });
         box.innerHTML = '';
         canvases.forEach(c => {
             const img = document.createElement('img');
@@ -122,6 +137,7 @@ async function openTicketModal() {
 }
 
 function closeTicketModal() {
+    ticketExportMode = 'full';      // 244번
     document.getElementById('ticketModal').classList.add('hidden');
 }
 

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261285';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261286';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261285';
+const REDAM_BUILD = '20261286';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -288,20 +288,25 @@ function formatPhone(v) {
 // 상담 결과 (84번): 계약 / 보류 / 안 됨(+이유). 상담 기록과 같이 저장되고 고객 화면·견적서에는 나오지 않음
 let quoteValidOverride = null;      // 이 상담만의 유효기간(일). null이면 설정 값 (85번)
 let quoteDate = null;      // 견적을 처음 만든 날 'YYYY-MM-DD' — 상담에 저장, 불러와도 안 바뀜 (85번)
-let consultOutcome = null;      // { result: 'won'|'hold'|'lost', reasons: [], note: '', at: 시각 }
+let consultOutcome = null;      // { result: 'won'|'hold'|'lost', reasons: [], note: '', at: 시각 } · 244번: 계약이면 agreed(받기로 한 금액) · listAt(그때 견적 합계). 깎은 뒤 남는 돈은 서버가 셈
 let bookingPick = null;      // 시공 날짜 잡기에서 고른 시간 { start, minutes, travel, confirmed } (202번)
 let consultId = null;      // 237번: 상담 한 건의 번호(리담 서버가 같은 상담을 알아봄). 새 상담에서 처음 저장할 때 만들고, 불러오면 그 번호 그대로
 function ensureConsultId() { if (!consultId) consultId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); return consultId; }
 window.getBookingPick = () => bookingPick;
 window.setBookingPick = v => { bookingPick = v || null; saveDraftTick(); };
+window.redamAgreedNow = () => {      // 244번: 지금 상담 결과가 '계약'이면 { agreed, listAt, at } — ticket.js 계약 장 · 계약금 줄이 부름
+    const o = consultOutcome;
+    return (o && o.result === 'won' && Number(o.agreed) > 0) ? { agreed: Math.round(Number(o.agreed)), listAt: Math.round(Number(o.listAt) || 0), at: o.at || Date.now() } : null;
+};
 const OUTCOME_LABEL = { won: '계약', hold: '생각해 보신다', lost: '안 됨' };
 const OUTCOME_REASONS = ['가격', '다른 업체', '시기 미룸', '색·디자인', '연락 끊김', '기타'];
 function outcomeText(o) {
     if (!o || !OUTCOME_LABEL[o.result]) return '';
     const why = o.result === 'lost' ? [].concat(o.reasons || [], o.note ? ['"' + o.note + '"'] : []).join(' · ') : '';
-    return OUTCOME_LABEL[o.result] + (why ? ' — ' + why : '');
+    const amt = (o.result === 'won' && Number(o.agreed) > 0) ? ' · ' + Number(o.agreed).toLocaleString() + '원' : '';      // 244번: 받기로 한 금액
+    return OUTCOME_LABEL[o.result] + amt + (why ? ' — ' + why : '');
 }
-// 결과 고르기 창. opts: { initial, skipLabel, onSave(outcome), onSkip() }
+// 결과 고르기 창. opts: { initial, skipLabel, onSave(outcome), onSkip() } · 244번: listTotal(견적 합계) · margin(견적 그대로 남는 돈, 없으면 null) · vat
 function openOutcomeDialog(opts) {
     const old = document.getElementById('outcomeDialog'); if (old) old.remove();
     const cur = opts.initial || {};
@@ -313,6 +318,11 @@ function openOutcomeDialog(opts) {
         <h3>상담 결과</h3>
         <p class="outcome-sub">이 기록은 직원 화면에만 남고, 손님 화면·견적서에는 나오지 않습니다.</p>
         <div class="outcome-row" data-grp="result">${Object.keys(OUTCOME_LABEL).map(k => `<button type="button" data-v="${k}">${OUTCOME_LABEL[k]}</button>`).join('')}</div>
+        <div class="outcome-won" hidden>
+            <p class="outcome-sub">받기로 한 금액 — 견적 합계 그대로면 손대지 않고, 깎아 드렸으면 고쳐 주세요</p>
+            <input type="text" class="outcome-note outcome-agreed" inputmode="numeric" autocomplete="off" aria-label="받기로 한 금액">
+            <p class="outcome-sub outcome-margin"></p>
+        </div>
         <div class="outcome-why" hidden>
             <p class="outcome-sub">안 된 이유 (여러 개 고를 수 있어요)</p>
             <div class="outcome-row" data-grp="reason">${OUTCOME_REASONS.map(r => `<button type="button" data-v="${r}">${r}</button>`).join('')}</div>
@@ -324,11 +334,27 @@ function openOutcomeDialog(opts) {
             <button type="button" data-act="save" class="primary">저장</button>
         </div></div>`;
     document.body.appendChild(wrap);
-    const note = wrap.querySelector('.outcome-note'); note.value = cur.note || '';
+    const note = wrap.querySelector('.outcome-why .outcome-note'); note.value = cur.note || '';      // 244번: 금액 칸도 같은 모양(outcome-note)이라 안 된 이유 쪽으로 좁힘
+    // 244번: 계약 — 받기로 한 금액(처음엔 견적 합계, 지난번 값은 그때 견적 합계가 같을 때만) · 남는 돈 미리 보기(직원 화면, 원가 있을 때만)
+    const list = Math.round(Number(opts.listTotal) || 0);
+    const margin0 = (typeof opts.margin === 'number' && Number.isFinite(opts.margin)) ? Math.round(opts.margin) : null;
+    const agreedIn = wrap.querySelector('.outcome-agreed'), marginP = wrap.querySelector('.outcome-margin');
+    const agreedNum = () => Number(String(agreedIn.value || '').replace(/[^0-9]/g, '')) || 0;
+    const marginAfter = n => margin0 === null ? null : margin0 - Math.round((list - n) / (opts.vat === 'business' ? 1.1 : 1));      // 깎은 만큼(부가세 붙는 견적이면 부가세 뺀 몫) 덜 남음
+    const paintAgreed = () => {
+        const n = agreedNum();
+        agreedIn.value = n ? n.toLocaleString() : '';
+        const m = n ? marginAfter(n) : null;
+        marginP.textContent = (n && n < list ? `견적 합계보다 ${(list - n).toLocaleString()}원 적게` : '') + (n && n < list && m !== null ? ' · ' : '') + (m === null ? '' : `남는 돈 ${m.toLocaleString()}원`);
+    };
+    agreedIn.value = String((Number(cur.agreed) > 0 && Math.round(Number(cur.listAt) || 0) === list) ? cur.agreed : (list || ''));
+    agreedIn.addEventListener('input', paintAgreed);
+    paintAgreed();
     const paint = () => {
         wrap.querySelectorAll('[data-grp="result"] button').forEach(b => b.classList.toggle('on', b.dataset.v === result));
         wrap.querySelectorAll('[data-grp="reason"] button').forEach(b => b.classList.toggle('on', reasons.has(b.dataset.v)));
         wrap.querySelector('.outcome-why').hidden = result !== 'lost';
+        wrap.querySelector('.outcome-won').hidden = result !== 'won' || !list;      // 244번: 견적 합계가 없으면 칸 없음
     };
     const close = () => wrap.remove();
     wrap.addEventListener('click', e => {
@@ -342,6 +368,11 @@ function openOutcomeDialog(opts) {
         else if (b.dataset.act === 'save') {
             if (!result) { showToast('결과를 하나 골라 주세요.', 'error'); return; }
             const out = { result, reasons: result === 'lost' ? OUTCOME_REASONS.filter(r => reasons.has(r)) : [], note: result === 'lost' ? note.value.trim() : '', at: Date.now() };
+            if (result === 'won' && list > 0) {      // 244번: 받기로 한 금액 — 견적 합계보다 많을 수 없음
+                const n = agreedNum();
+                if (!n || n > list) { showToast(`받기로 한 금액을 견적 합계(${list.toLocaleString()}원) 안에서 넣어 주세요.`, 'error'); return; }
+                out.agreed = n; out.listAt = list;
+            }
             close(); opts.onSave && opts.onSave(out);
         }
     });
@@ -350,18 +381,82 @@ function openOutcomeDialog(opts) {
 // [상담 끝내기]: 지금 상담의 결과를 남김 (새 상담을 누를 때 다시 묻지 않음)
 function endConsultation() {
     if (collectConsultation().rooms.length === 0) { showToast('남길 상담이 없습니다.', 'info'); return; }
-    openOutcomeDialog({ initial: consultOutcome, onSave: out => {
+    openOutcomeDialog({ initial: consultOutcome, listTotal: notionLedgerTotalNow(), margin: notionLedgerMarginNow(), vat: globalVatOption, onSave: out => {      // 244번: 받기로 한 금액 칸의 견적 합계 · 남는 돈
         consultOutcome = out; saveDraftTick();
         queueNotionLedger();      // 201번
         showToast('상담 결과를 남겼습니다: ' + outcomeText(out), 'info');
+        if (out.result === 'won' && out.agreed > 0 && typeof openTicketModal === 'function') openTicketModal('contract');      // 244번: 계약이면 바로 계약 장
     } });
 }
 
+// 244번: 최종 제안 막대의 [계약] — 직원 화면을 열지 않고 계약 금액(견적 합계가 미리 들어감, 깎았으면 고침) → 계약 장을 이 창에 띄우고 저장 · 카톡 글 · 인쇄
+//  손님 앞에서 여는 창이라 남는 돈은 안 보임. 상담 결과가 '계약'(받기로 한 금액 함께)으로 남고 서버 장부로 감. 이미 계약을 남겼고 견적이 그대로면 바로 계약 장
+function openContractPanel() {
+    const old = document.getElementById('contractPanel'); if (old) old.remove();
+    calculateAll();
+    const list = notionLedgerTotalNow() || 0;
+    if (!list) { showToast('견적 합계가 없어 계약 장을 만들 수 없어요.', 'error'); return; }
+    const a = window.redamAgreedNow();
+    const ready = !!(a && a.listAt === list);
+    const title = typeof CONTRACT_TITLE === 'string' ? CONTRACT_TITLE : '계약 장';
+    const wrap = document.createElement('div');
+    wrap.id = 'contractPanel'; wrap.className = 'outcome-dialog';
+    wrap.innerHTML = `<div class="outcome-card" role="dialog" aria-label="계약" style="max-width:34rem">
+        <h3>계약 금액</h3>
+        <div class="ctr-form"${ready ? ' hidden' : ''}>
+            <p class="outcome-sub">견적 합계 ${list.toLocaleString()}원 · 다르게 정하셨으면 고쳐 주세요</p>
+            <input type="text" class="outcome-note ctr-amt" inputmode="numeric" autocomplete="off" aria-label="계약 금액">
+            <div class="outcome-acts"><button type="button" data-act="cancel">닫기</button><button type="button" data-act="make" class="primary">${title} 만들기</button></div>
+        </div>
+        <div class="ctr-sheet"${ready ? '' : ' hidden'}>
+            <div class="ctr-img" style="max-height:60vh; overflow-y:auto; margin:0.5rem 0;"></div>
+            <div class="outcome-acts" style="flex-wrap:wrap"><button type="button" data-act="edit">금액 고치기</button><button type="button" data-act="kakao">카톡 글 복사</button><button type="button" data-act="print">인쇄</button><button type="button" data-act="save" class="primary">저장</button><button type="button" data-act="cancel">닫기</button></div>
+        </div></div>`;
+    document.body.appendChild(wrap);
+    const amt = wrap.querySelector('.ctr-amt');
+    const num = () => Number(String(amt.value || '').replace(/[^0-9]/g, '')) || 0;
+    amt.value = (ready ? a.agreed : list).toLocaleString();
+    amt.addEventListener('input', () => { const n = num(); amt.value = n ? n.toLocaleString() : ''; });
+    const showSheet = async () => {
+        wrap.querySelector('.ctr-form').hidden = true; wrap.querySelector('.ctr-sheet').hidden = false;
+        const box = wrap.querySelector('.ctr-img');
+        const why = ticketContractWhy();
+        if (why) { box.innerHTML = `<p class="outcome-sub">${why}</p>`; return; }
+        box.innerHTML = `<p class="outcome-sub">${title} 만드는 중...</p>`;
+        try {
+            const { canvases } = await makeTicketBlobs({ canvasOnly: true, contract: true });
+            box.innerHTML = '';
+            const img = new Image(); img.alt = title; img.src = canvases[0].toDataURL('image/jpeg', 0.9);
+            img.style.cssText = 'display:block; box-sizing:border-box; width:100%; height:auto; border:1px solid #e5dcd0;';
+            box.appendChild(img);
+        } catch (err) { console.error(err); box.innerHTML = `<p class="outcome-sub">${title}을 만들지 못했습니다.</p>`; }
+    };
+    wrap.addEventListener('click', e => {
+        if (e.target === wrap) return wrap.remove();
+        const b = e.target.closest('button'); if (!b) return;
+        const act = b.dataset.act;
+        if (act === 'cancel') wrap.remove();
+        else if (act === 'edit') { wrap.querySelector('.ctr-sheet').hidden = true; wrap.querySelector('.ctr-form').hidden = false; }
+        else if (act === 'make') {
+            const n = num();
+            if (!n || n > list) { showToast(`계약 금액을 견적 합계(${list.toLocaleString()}원) 안에서 넣어 주세요.`, 'error'); return; }
+            consultOutcome = { result: 'won', reasons: [], note: '', at: Date.now(), agreed: n, listAt: list };
+            saveDraftTick(); queueNotionLedger();
+            const edDep = document.getElementById('finEdDeposit');      // 최종 제안 화면의 계약금 줄도 바로(깎았으면 빠짐)
+            if (edDep) { try { const dt = ticketData().depositText || ''; edDep.textContent = dt; edDep.hidden = !dt; } catch (err) {} }
+            showSheet();
+        }
+        else if (act === 'save') saveTicketImage('contract');
+        else if (act === 'kakao') copyTicketText('contract');
+        else if (act === 'print') printTicket('contract');
+    });
+    if (ready) showSheet();
+}
 // 새 상담 시작: 이전 고객의 입력을 전부 비움
 function startNewConsultation() {
     if (finderGate(startNewConsultation)) return;
     if (!consultOutcome && collectConsultation().rooms.length > 0) {      // 결과를 안 남긴 상담이면 먼저 물음 (건너뛰기 가능)
-        openOutcomeDialog({ skipLabel: '건너뛰고 새 상담', onSave: out => { consultOutcome = out; saveDraftTick(); queueNotionLedger(); startNewConsultationConfirmed(); }, onSkip: startNewConsultationConfirmed });
+        openOutcomeDialog({ skipLabel: '건너뛰고 새 상담', listTotal: notionLedgerTotalNow(), margin: notionLedgerMarginNow(), vat: globalVatOption, onSave: out => { consultOutcome = out; saveDraftTick(); queueNotionLedger(); startNewConsultationConfirmed(); }, onSkip: startNewConsultationConfirmed });
         return;
     }
     startNewConsultationConfirmed();
@@ -839,7 +934,7 @@ function loadHistoryItem(id) {
 function editHistoryOutcome(id) {
     const item = loadHistory().find(h => h.id === id);
     if (!item) return;
-    openOutcomeDialog({ initial: item.snapshot.outcome, onSave: out => {
+    openOutcomeDialog({ initial: item.snapshot.outcome, listTotal: item.snapshot.quoteTotal || item.total, margin: item.snapshot.marginTotal, vat: item.snapshot.vat, onSave: out => {      // 244번
         const list = loadHistory(), t = list.find(h => h.id === id);
         if (!t) return;
         t.snapshot.outcome = out; t.updatedAt = Date.now();

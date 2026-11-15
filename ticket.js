@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261285';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261286';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -237,6 +237,105 @@ function ticketPayPlan(roomList, totalText, hasSample, moveShare) {
     const depositText = (!hasSample && total > 0) ? `계약금(${ms > 0 ? '제작 몫 ' : ''}50%) ${deposit.toLocaleString()}원 · 시공 뒤 잔금 ${(all - deposit).toLocaleString()}원` : '';      // 241번: 이전설치 몫은 잔금에
     return { kind: 'deposit', promise: [P.sample, P.deposit, P.cancel, P.days, P.fix], depositText };
 }
+// 244번(결정 #264): 계약 장 — 계약하는 날 한 장. 받는 분 · 계약한 날 → 계약 금액 → 계약금 · 잔금(작은 주문 · 시공비만이면 '한 번에' 한 줄) → 리담의 약속 한 줄
+//  '할인'·'정가' 말 없음 — 정가와의 차이는 견적서와 나란히 볼 때만 보임. 종이 · 글자 사다리는 견적서와 같음(PAPER_K · PAPER_F1~4). 글을 바꾸려면 번호를 새로
+const CONTRACT_TITLE = '계약 안내';
+const CONTRACT_HINT = { deposit: '제작 전에 받습니다', balance: '시공하는 날 받습니다' };
+function ticketContractOf(d, plan, hasSample, moveShare) {
+    const a = typeof window.redamAgreedNow === 'function' ? window.redamAgreedNow() : null;      // app.js: 상담 결과 '계약'의 { agreed, listAt, at } 또는 null
+    if (!a) return { ok: false, why: 'none', cut: false };
+    const list = Number(String(d.total || '').replace(/[^0-9]/g, '')) || 0;
+    const cut = a.agreed < list;
+    if (a.listAt !== list) return { ok: false, why: 'stale', cut };      // 계약을 남긴 뒤 견적이 바뀜 → 받기로 한 금액을 다시 확인
+    if (hasSample) return { ok: false, why: 'sample', cut };      // 실물 견본 품목 금액이 아직 없음
+    const total = a.agreed, base = { ok: true, cut, kind: plan.kind, total, at: a.at };
+    if (plan.kind !== 'deposit') return base;      // 작은 주문 · 시공비만: 시공하는 날 한 번에
+    const deposit = Math.floor(Math.max(0, total - Math.max(0, Math.round(Number(moveShare) || 0))) * 0.5 / 1000) * 1000;      // 결정 #261: 이전설치 몫 빼고 절반, 천 원 아래 버림
+    return Object.assign(base, { deposit, balance: total - deposit });
+}
+function ticketContractWhy(c) {      // 직원 화면에 보이는 '계약 장을 못 만드는 까닭' — 만들 수 있으면 ''
+    c = c || ticketData().contract;
+    if (c && c.ok) return '';
+    return ({
+        none: '상담 결과를 "계약"으로 남기면 계약 장이 생깁니다 (상담 끝내기).',
+        stale: '계약을 남긴 뒤 견적이 바뀌었어요. 상담 끝내기에서 받기로 한 금액을 다시 확인해 주세요.',
+        sample: '실물 견본 품목 금액이 아직 없어요. 견본을 고르고 금액을 넣은 뒤 계약 장을 만들 수 있습니다.'
+    })[c && c.why] || '계약 장을 만들 수 없어요.';
+}
+function ticketContractText(data) {      // 카톡 글: 받을 금액만(결정 #262)
+    data = data || ticketData();
+    const c = data.contract, won = n => `${Number(n || 0).toLocaleString()}원`;
+    const custName = (document.getElementById('custName').value || '').trim();
+    const out = [`[Re.dam] ${custName ? custName + ' 고객님 ' : ''}${CONTRACT_TITLE} · ${localYmd(new Date(c.at)).replace(/-/g, '.')}`, '', `계약 금액 ${won(c.total)}`];
+    if (c.kind === 'deposit') out.push(`계약금 ${won(c.deposit)} (${CONTRACT_HINT.deposit})`, `잔금 ${won(c.balance)} (${CONTRACT_HINT.balance})`, '', '[리담의 약속]', PROMISE_LINE.cancel);
+    else out.push(PROMISE_LINE.once);
+    return out.join('\n');
+}
+function buildContractCanvas(data, pr) {
+    const c = data && data.contract;
+    if (!c || !c.ok) return null;
+    pr = pr || 1;
+    const SERIF = '"Noto Serif KR","Nanum Myeongjo",Batang,serif';
+    const SANS = 'Pretendard,"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    const DARK = '#2b221a', MUTED = '#6f5f4f', LINE = '#e5dcd0';
+    const s = PAPER_K, W = PAPER_W, CX = TICKET_PAD, RX = W - TICKET_PAD, HEAD_Y = TICKET_HEAD_Y, INFO_X = CX + 190, INFO_LH = 32;
+    const wrapWords = (cx, str, maxW) => {      // 띄어쓰기 단위로 줄 나눔
+        const out = []; let cur = '';
+        String(str || '').split(' ').forEach(w => { const t = cur ? cur + ' ' + w : w; if (cur && cx.measureText(t).width > maxW) { out.push(cur); cur = w; } else cur = t; });
+        if (cur) out.push(cur);
+        return out;
+    };
+    const probe = document.createElement('canvas').getContext('2d');
+    probe.font = `400 ${PAPER_F4}px ${SANS}`;
+    const promise = c.kind === 'deposit' ? wrapWords(probe, PROMISE_LINE.cancel, RX - INFO_X) : [];
+    const H = Math.ceil(HEAD_Y + 132 + (c.kind === 'deposit' ? 208 : 66) + (promise.length ? 48 + promise.length * INFO_LH : 0) + 80);
+    const canvas = document.createElement('canvas');
+    canvas.width = TICKET_W * pr; canvas.height = Math.round(H * s * pr);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(s * pr, s * pr);
+    ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, W, H);      // 견적서와 같은 종이 색
+    ctx.textBaseline = 'alphabetic';
+    const canSpace = 'letterSpacing' in ctx;
+    const font = (size, fam) => { ctx.font = `400 ${size}px ${fam}`; };
+    const text = (str, x, y, align, color, gap) => {
+        if (gap && canSpace) ctx.letterSpacing = gap + 'px';
+        ctx.textAlign = align; ctx.fillStyle = color;
+        ctx.fillText(str, x + ((gap && canSpace && align === 'right') ? gap : 0), y);
+        if (gap && canSpace) ctx.letterSpacing = '0px';
+    };
+    const hline = (y, color, lw) => { ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(CX, y); ctx.lineTo(RX, y); ctx.stroke(); };
+    const won = (n, y, big) => {      // 오른쪽 끝 "1,500,000원" — 숫자는 명조, '원'은 한 칸 작게(견적서 합계와 같은 짝)
+        font(big ? PAPER_F3 : PAPER_F4, SERIF); const ww = ctx.measureText('원').width; text('원', RX, y, 'right', DARK);
+        font(big ? PAPER_F1 : PAPER_F2, SERIF); text(Number(n).toLocaleString(), RX - ww - 6, y, 'right', DARK);
+    };
+    // 머리글: 견적서와 같은 자리(로고 · 제목 · 받는 분 · 날짜)
+    drawRedamLogo(ctx, CX, 112, PAPER_F1, DARK, '#8a4a22', 'left');
+    font(PAPER_F2, SERIF); text(CONTRACT_TITLE, RX, 108, 'right', DARK, 5);
+    font(PAPER_F3, SERIF); text(data.recipient || '', CX, 154, 'left', MUTED);
+    font(PAPER_F4, SANS); text(localYmd(new Date(c.at)).replace(/-/g, '.'), RX, 154, 'right', MUTED, 2);
+    hline(HEAD_Y, DARK, 1);
+    let y = HEAD_Y + 110;
+    font(PAPER_F3, SANS); text('계약 금액', CX, y - 6, 'left', DARK);
+    won(c.total, y, true);
+    y += 22; hline(y, LINE, 0.6);
+    if (c.kind === 'deposit') {
+        [['계약금', c.deposit, CONTRACT_HINT.deposit], ['잔금', c.balance, CONTRACT_HINT.balance]].forEach(([k, n, hint]) => {
+            font(PAPER_F3, SANS); text(k, CX, y + 52, 'left', DARK);
+            font(PAPER_F4, SANS); text(hint, CX, y + 84, 'left', MUTED);
+            won(n, y + 62, false);
+            y += 104; hline(y, LINE, 0.6);
+        });
+    } else {
+        font(PAPER_F4, SANS); text(PROMISE_LINE.once, CX, y + 44, 'left', MUTED);
+        y += 66;
+    }
+    if (promise.length) {
+        y += 48;
+        font(PAPER_F4, SANS); text('리담의 약속', CX, y, 'left', MUTED, 3);
+        promise.forEach((ln, i) => text(ln, INFO_X, y + i * INFO_LH, 'left', MUTED));
+    }
+    return canvas;
+}
 function autoQuoteNotes(roomList) {
     let seam = false, leak = false, hotel = false;
     (roomList || []).forEach(r => (r.curtains || []).forEach(c => {
@@ -257,9 +356,13 @@ function ticketData() {
     // 161번: 실물 견본 품목(우드·색 못 잰 블라인드 등, 금액 0)이 있으면 합계가 그 품목을 뺀 금액임을 밝힘 — 저장 그림·최종 제안 화면·카톡 글이 같이 씀 · 커튼 견본은 종류 이름(속지·겉지)으로(211번)
     const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.blindKind ? s.name.replace(' (실물 상담)', '') : s.categoryType))];
     d.totalLabel = sampleNames.length ? '합계 금액 (시공비 포함 · 실물 견본 품목 제외)' : '합계 금액 (시공비 포함)';
-    const plan = ticketPayPlan(rooms, d.total, sampleNames.length > 0, d.move ? Math.round(d.move.total * (globalVatOption === 'business' ? 1.1 : 1)) : 0);      // 230번: 견적에 맞는 약속 줄 + 계약금·잔금 한 줄 · 241번: 이전설치 몫(부가세 포함)은 계약금에서 뺌
+    const moveShare = d.move ? Math.round(d.move.total * (globalVatOption === 'business' ? 1.1 : 1)) : 0;      // 241번: 이전설치 몫(부가세 포함)은 계약금에서 뺌
+    const plan = ticketPayPlan(rooms, d.total, sampleNames.length > 0, moveShare);      // 230번: 견적에 맞는 약속 줄 + 계약금·잔금 한 줄
     d.promise = plan.promise.join('\n');
     d.depositText = plan.depositText;
+    // 244번(결정 #264): 받기로 한 금액이 합계보다 적으면(깎아 드린 날) 견적서 · 최종 제안 · 카톡 글의 계약금 · 잔금 줄을 뺌(약속 문장은 그대로). 계약 장 숫자는 d.contract
+    d.contract = ticketContractOf(d, plan, sampleNames.length > 0, moveShare);
+    if (d.contract.cut) d.depositText = '';
     if (sampleNames.length) {
         const nm = sampleNames.join('·');
         d.note = [d.note, `${nm}${houseJosa(nm, '은', '는')} 상담 때 실물 견본으로 고른 뒤 금액을 알려 드립니다.`].filter(Boolean).join('\n');
@@ -2144,16 +2247,17 @@ async function makeTicketBlobs(opts) {
         }
     } catch (e) {}
     const data = await loadTicketPhotos(ticketData());
-    const canvases = buildTicketCanvases(opts, data);
+    const canvases = opts.contract ? [buildContractCanvas(data, opts.pixelRatio || 1)].filter(Boolean) : buildTicketCanvases(opts, data);      // 244번: 계약 장은 한 장
+    if (!canvases.length) throw new Error('계약 장을 만들 수 없음');
     if (opts.canvasOnly) return { canvases, blobs: [], type: null, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0, nightAt: canvases.nightAt };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)
     const type = opts.type || 'image/png';
     const blobs = await Promise.all(canvases.map(c => new Promise(res => c.toBlob(res, type, 0.95))));
     return { canvases, blobs, type, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0 };
 }
 // 파일 이름. asciiOnly는 휴대폰 공유 창이 한글 이름을 못 읽는 경우를 피하기 위한 영문 이름
-function ticketFileNames(count, ext, asciiOnly) {
+function ticketFileNames(count, ext, asciiOnly, contract) {      // 244번: contract면 계약 장 이름
     const custName = (document.getElementById('custName').value || "").trim();
-    const base = asciiOnly ? 'redam_quote' : `${custName ? custName + '_' : ''}맞춤견적서`;
+    const base = asciiOnly ? (contract ? 'redam_contract' : 'redam_quote') : `${custName ? custName + '_' : ''}${contract ? '계약안내' : '맞춤견적서'}`;
     return Array.from({ length: count }, (_, i) => `${base}${count > 1 ? '_' + (i + 1) : ''}.${ext}`);
 }
 function saveBlobAsFile(blob, name) {
@@ -2191,18 +2295,20 @@ function joinTicketCanvases(canvases) {
 // 견적서 저장: 예전 "카톡용"과 "고화질" 저장을 하나로 합침.
 // 선명한 JPG로 갤러리에 저장 → 카카오톡에서 사진으로 보내면 됨 (탭에서 공유 창이 끝없이 로딩돼 "공유" 대신 "저장")
 let __saveBusy = false;
-async function saveTicketImage() {
+async function saveTicketImage(mode) {
+    const contract = mode === 'contract';      // 244번: 견적서 창 '계약 장'에서 부를 때만. 손님 화면 '견적서 저장'은 늘 전체 제안
     if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
-    if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 견적서를 저장할까요?')) return;      // 163번: 직원 화면에서만 묻기
+    if (contract) { const why = ticketContractWhy(); if (why) { showToast(why, 'error'); return; } }
+    else if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 견적서를 저장할까요?')) return;      // 163번: 직원 화면에서만 묻기
     if (__saveBusy) return;          // 연타해도 여러 번 저장되지 않게
     __saveBusy = true;
-    showToast("견적서 만드는 중...", "info");
+    showToast(contract ? "계약 장 만드는 중..." : "견적서 만드는 중...", "info");
     try {
-        const { canvases } = await makeTicketBlobs({ canvasOnly: true });
+        const { canvases } = await makeTicketBlobs({ canvasOnly: true, contract });
         const one = joinTicketCanvases(canvases);      // 여러 쪽도 긴 한 장으로 (68번)
         const blob = await new Promise(res => one.toBlob(res, 'image/jpeg', 0.95));
         if (!blob) throw new Error('견적서 그림을 만들지 못함');
-        saveBlobAsFile(blob, ticketFileNames(1, 'jpg', false)[0]);
+        saveBlobAsFile(blob, ticketFileNames(1, 'jpg', false, contract)[0]);      // 244번
         showToast("한 장으로 저장했어요. 카카오톡 → 사진(갤러리)에서 골라 보내 주세요.", "success");
         if (typeof queueNotionLedger === 'function') queueNotionLedger();      // 201번
     } catch (err) {
@@ -2249,10 +2355,12 @@ function ticketKakaoText(data) {
     out.push('', '자세한 제안서는 이미지로 함께 보내 드립니다.');      // 144번: 손님에게는 저장 이미지(JPG)를 보냄
     return out.join('\n');
 }
-async function copyTicketText() {
+async function copyTicketText(mode) {
+    const contract = mode === 'contract';      // 244번
     let txt = '';
     if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
-    try { txt = ticketKakaoText(); } catch (err) { console.error(err); showToast("글을 만들지 못했습니다.", "error"); return; }
+    if (contract) { const why = ticketContractWhy(); if (why) { showToast(why, 'error'); return; } }
+    try { txt = contract ? ticketContractText() : ticketKakaoText(); } catch (err) { console.error(err); showToast("글을 만들지 못했습니다.", "error"); return; }
     // 숨은 글상자로 먼저 복사 (누른 순간에 바로 해야 됨 — 기다린 뒤엔 막히는 창이 있음). 안 되면 클립보드로
     let ok = false;
     const ta = document.createElement('textarea');
@@ -2262,13 +2370,13 @@ async function copyTicketText() {
     document.body.removeChild(ta);
     if (!ok) { try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(txt); ok = true; } } catch (e) {} }
     // 163번: 직원 화면에서는 복사한 뒤 빈칸·크기 문제를 알림(창을 먼저 띄우면 복사가 막힐 수 있어 뒤에). 공급자는 카톡 글에 없어 빼고 봄
-    const gaps = (ok && typeof quoteGaps === 'function' && typeof appMode !== 'undefined' && appMode === 'staff') ? quoteGaps(false) : [];
+    const gaps = (ok && !contract && typeof quoteGaps === 'function' && typeof appMode !== 'undefined' && appMode === 'staff') ? quoteGaps(false) : [];      // 244번
     showToast(ok ? (gaps.length ? `카톡 글을 복사했어요. 다만 ${gaps.join(' · ')}.` : "카톡 글을 복사했어요. 카카오톡 대화창에 붙여 넣어 주세요.") : "복사하지 못했습니다.", (ok && !gaps.length) ? "success" : "error");
     if (ok && typeof queueNotionLedger === 'function') queueNotionLedger();      // 201번
 }
 
-async function preparePrintSheet() {
-    const { canvases } = await makeTicketBlobs();
+async function preparePrintSheet(opts) {
+    const { canvases } = await makeTicketBlobs(opts);      // 244번: 계약 장이면 { contract: true }
     const sheet = document.getElementById('printSheet');
     sheet.innerHTML = '';
     for (const canvas of canvases) {
@@ -2332,16 +2440,18 @@ let __printFrame = null;
 function removePrintFrame() {
     if (__printFrame) { try { __printFrame.remove(); } catch (e) {} __printFrame = null; }
 }
-async function printTicket() {
+async function printTicket(mode) {
+    const contract = mode === 'contract';      // 244번
     if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
-    if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 인쇄할까요?')) return;      // 163번: 직원 화면에서만 묻기
+    if (contract) { const why = ticketContractWhy(); if (why) { showToast(why, 'error'); return; } }
+    else if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 인쇄할까요?')) return;      // 163번: 직원 화면에서만 묻기
     let canvases;
-    try { ({ canvases } = await makeTicketBlobs()); }
+    try { ({ canvases } = await makeTicketBlobs({ contract })); }
     catch (err) { console.error(err); showToast("견적서 인쇄 준비 중 오류가 발생했습니다.", "error"); return; }
     if (typeof queueNotionLedger === 'function') queueNotionLedger();      // 201번
     const prevTitle = document.title;
     const custName = (document.getElementById('custName').value || '').trim();
-    const title = `${custName ? custName + '_' : ''}맞춤견적서`;      // PDF 기본 파일명
+    const title = `${custName ? custName + '_' : ''}${contract ? '계약안내' : '맞춤견적서'}`;      // PDF 기본 파일명 · 244번
     let done = false;
     const finish = () => { if (done) return; done = true; document.title = prevTitle; };      // 인쇄 창이 아직 인쇄물을 만드는 중일 수 있어 창(iframe)은 바로 지우지 않음
     try {
@@ -2376,7 +2486,7 @@ async function printTicket() {
         removePrintFrame();
     }
     // 예전 방식 (비상용)
-    await preparePrintSheet();
+    await preparePrintSheet({ contract });      // 244번
     document.title = title;
     window.addEventListener('afterprint', () => { document.title = prevTitle; }, { once: true });
     isolatePrintSheet();

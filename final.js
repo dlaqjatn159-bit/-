@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261285';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261286';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -297,6 +297,7 @@
         const night = (typeof houseNightOf === 'function') ? houseNightOf(data) : null;      // 131번
         if (night) h += '<button type="button" data-sec="finSecNight" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">공간의 밤</button>';
         if (window.redamBooking && window.redamBooking.ready()) h += '<button type="button" onclick="window.redamBooking.open()">시공 날짜</button>';      // 202번
+        if (configuredRooms.length) h += '<button type="button" onclick="openContractPanel()">계약</button>';      // 244번: 직원 화면을 열지 않고 계약 금액 → 계약 장(app.js)
         h += '<button type="button" class="is-save" onclick="window.concierge.saveQuote()">견적서 저장</button>';
         h += '</nav></div>';
 
