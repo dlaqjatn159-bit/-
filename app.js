@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261286';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261287';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261286';
+const REDAM_BUILD = '20261287';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -971,6 +971,72 @@ function redamServerFetch(path, opts) {      // 237번: 서버 문 부르기 —
     return fetch(s.url + path, o);
 }
 window.redamServerFetch = redamServerFetch;
+// ---- 245번: 폰에서 보낸 사진 · 폰에서 잰 크기 (리담 서버 /app/visit) ----
+// 손님 연락처가 번호 전체가 되면 한 번 물어봄 → 이 손님(진행 중인 일 한 건)의 사진 목록 · 실측. 결과는 메모리에만(사진은 기기에 안 남김)
+// 열쇠가 없거나 인터넷이 없으면 조용히 없음(지금 화면 그대로). 연락처가 바뀌면 앞 손님 것은 바로 버리고, 읽는 쪽(now)도 번호가 같을 때만 줌
+// 쓰는 곳: concierge.js(연락처 칸 · 중심 화면 · 1.5 '폰에서 잰 크기' 칩) · room-color.js(색 재기 '○○에서 보냄 n' 단추). 바뀌면 document에 'redam-visit'
+const redamVisit = (() => {
+    let cur = null, busy = '', askedAt = 0, timer = 0;
+    const thumbs = new Map();      // 사진 id → 작은 그림 blob 주소 (원본은 부른 쪽이 쓰고 바로 버림)
+    const phoneNow = () => String(((document.getElementById('custPhone') || {}).value) || '').replace(/\D/g, '');
+    const fullPhone = p => p.startsWith('010') ? p.length === 11 : /^0\d{8,10}$/.test(p);
+    const tell = () => setTimeout(() => { try { document.dispatchEvent(new CustomEvent('redam-visit')); } catch (e) {} }, 0);      // 다음 틈에(그리는 도중에 또 그리지 않게)
+    function drop() { cur = null; thumbs.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} }); thumbs.clear(); }
+    function shape(phone, r) {
+        const own = (r && r.ok && Array.isArray(r.사진)) ? r.사진 : [];
+        const today = (r && Array.isArray(r.사진_오늘)) ? r.사진_오늘 : [];
+        const photos = (own.length ? own : today).filter(p => p && Number(p.id) > 0).slice(0, 80);      // 서버가 최신부터 줌
+        const cnt = {};
+        photos.forEach(p => { if (p.기기) cnt[p.기기] = (cnt[p.기기] || 0) + 1; });
+        const device = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || '';      // 여러 기기면 가장 많은 것
+        const measures = ((r && r.ok && Array.isArray(r.실측)) ? r.실측 : []).filter(m => m && String(m.이름 || '').trim());
+        return { phone, today: !own.length, photos, device, measures };
+    }
+    function ask() {
+        const phone = phoneNow();
+        if (cur && cur.phone !== phone) { drop(); tell(); }      // 다른 손님: 앞 손님 것은 바로 버림
+        clearTimeout(timer);
+        if (!fullPhone(phone) || !notionLedgerRelay() || navigator.onLine === false) return;
+        if (busy === phone || (cur && cur.phone === phone && Date.now() - askedAt < 60e3)) return;      // 같은 번호는 1분 안에 다시 안 물음
+        timer = setTimeout(async () => {      // 치는 도중엔 기다렸다가
+            if (phoneNow() !== phone) return;
+            busy = phone; askedAt = Date.now();
+            let v = null;
+            try {
+                const res = await redamServerFetch('/app/visit', { method: 'POST', body: JSON.stringify({ phone }) });
+                if (res.ok) v = shape(phone, await res.json());
+            } catch (e) { v = null; }
+            busy = '';
+            if (!v || phoneNow() !== phone) return;      // 못 물어봄 · 그사이 번호가 바뀜: 있던 것 그대로
+            const before = cur ? JSON.stringify(cur) : '';
+            if (cur && cur.phone !== phone) drop();
+            cur = v;
+            if (JSON.stringify(cur) !== before) tell();
+        }, 300);
+    }
+    function now() { return (cur && cur.phone === phoneNow()) ? cur : null; }
+    function label() {      // 색 재기 단추 이름: "S25 엣지에서 보냄 3" · "오늘 S25 엣지에서 보냄 3" (기기를 모르면 "보낸 사진 3"). 0장이면 ''
+        const c = now();
+        if (!c || !c.photos.length) return '';
+        return (c.today ? '오늘 ' : '') + (c.device ? c.device + '에서 보냄 ' : '보낸 사진 ') + c.photos.length;
+    }
+    function image(id, small) {      // 그림 하나 → blob 주소. small: 작은 그림(기억해 둠) / 아니면 원본(부른 쪽이 다 쓰고 URL.revokeObjectURL)
+        const c = now(), key = Number(id), p = c && c.photos.find(x => Number(x.id) === key);
+        if (!p) return Promise.reject(new Error('none'));
+        if (small && thumbs.has(key)) return Promise.resolve(thumbs.get(key));
+        return redamServerFetch('/app/file?id=' + key + (small && p.작은 ? '&small=1' : ''))
+            .then(r => { if (!r.ok) throw new Error('file ' + r.status); return r.blob(); })
+            .then(b => {
+                const u = URL.createObjectURL(b);
+                if (!small) return u;
+                if (cur !== c) { URL.revokeObjectURL(u); throw new Error('stale'); }      // 그사이 손님이 바뀜
+                thumbs.set(key, u);
+                return u;
+            });
+    }
+    return { ask, now, label, image };
+})();
+window.redamVisit = redamVisit;
 function notionLedgerQueue() { try { const q = JSON.parse(localStorage.getItem(REDAM_CONSULT_QUEUE_KEY)); return Array.isArray(q) ? q : []; } catch (e) { return []; } }
 function notionLedgerSaveQueue(q) { try { localStorage.setItem(REDAM_CONSULT_QUEUE_KEY, JSON.stringify(q.slice(-REDAM_CONSULT_QUEUE_MAX))); } catch (e) {} }
 function migrateOldLedgerQueue() {      // 237번: 옛 구글 중계로 못 보내고 남은 금액 → 서버 줄로 한 번

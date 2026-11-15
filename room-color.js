@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261286';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261287';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -260,7 +260,7 @@
     }
 
     // ---- 사진 ----
-    function loadImage(src, which) {
+    function loadImage(src, which, fileId) {      // 245번: fileId = 리담 서버 사진 id(폰에서 보낸 사진일 때만, 아니면 비움)
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
@@ -271,6 +271,7 @@
                 cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, cv.width, cv.height);
                 cv.className = 'rc-photo';
                 st.photos[which] = cv;
+                st.fileIds = st.fileIds || [null, null]; st.fileIds[which] = Number(fileId) > 0 ? Number(fileId) : null;      // 245번
                 st.view = which;
                 // 벽 사진: 그 사진의 핀은 비우고 ④ 벽을 찍게 / 첫 사진: 처음부터 다시
                 dropPins(which);
@@ -292,6 +293,7 @@
     }
     function removeWallPhoto() {
         st.photos[1] = null;
+        if (st.fileIds) st.fileIds[1] = null;      // 245번
         dropPins(1);
         st.view = 0;
         render();
@@ -435,6 +437,7 @@
         if (typeof old.bridgeK === 'number') mc.bridgeK = old.bridgeK;      // 다시 재도 밀기 막대로 정한 비율은 그대로
         mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor, mc.bridgeK) : null;
         if (old.furniture && old.furniture.length) mc.furniture = old.furniture;      // 가구는 따로 찍으니(66번) 벽·바닥을 다시 재도 그대로
+        if (st.fileIds && st.fileIds[0]) mc.photoFileId = st.fileIds[0];      // 245번: 이 색을 잰 카드 사진
         room.measuredColor = mc;
         // 중심 화면 색 출처: 직원 화면에서 다시 쟀으면 "이 공간에서 잰 색"(한쪽만 쟀으면 출처는 비우고 부분별로 적음). 잰 부분은 카드 표시를 지움
         room.colorSrc = mc.wall && mc.floor ? 'measured' : null;
@@ -476,6 +479,7 @@
         }
         h += '<div class="rc-tool-btns">';
         h += `<label class="staff-btn">${cv ? '사진 바꾸기' : '사진 불러오기'}<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, ${st.view})"></label>`;
+        h += phoneBtnHtml('staff-btn', st.view);      // 245번
         if (st.photos[0]) {
             h += st.photos[1]
                 ? '<button type="button" class="staff-btn" onclick="RoomColor.removeWall()">벽 사진 빼기</button>'
@@ -483,6 +487,7 @@
         }
         h += '</div></div>';
 
+        h += phoneStripHtml();      // 245번
         if (cv) {
             h += `<div class="rc-canvas-wrap" id="rcCanvasWrap" style="aspect-ratio:${cv.width} / ${cv.height};width:min(100%, calc(52vh * ${(cv.width / cv.height).toFixed(4)}))">`;      // 세로 사진도 화면 안에
             STEPS.forEach((s2, i) => {
@@ -501,6 +506,7 @@
             h += `<p class="font-serif-kr">${SHOOT_GUIDE}</p>`;
             h += `<p class="rc-empty-sub">${SHOOT_CARD} 카드는 손에서 떼 주세요(손 그림자가 지지 않게). 사진은 저장되지 않아요.</p>`;
             h += '<label class="staff-btn rc-empty-btn">사진 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
+            h += phoneBtnHtml('staff-btn rc-empty-btn', 0);      // 245번
             h += '</div>';
         }
         h += '<div class="rc-steps">';
@@ -562,6 +568,7 @@
             wrap.prepend(cv);
             wrap.onpointerdown = onTap;
         }
+        fillPhoneThumbs(ov);      // 245번
     }
 
     // 누를 자리 순서: 직원 화면은 넷 다, 고객 화면은 고를 부분만 (예: 벽만 다시 재면 회색 카드 · 흰 카드 · 벽)
@@ -625,6 +632,7 @@
         const mc = { wall: res.wall ? packColor(res.wall, 'wall') : null, floor: res.floor ? packColor(res.floor, 'floor') : null, shadow: Math.round(res.shadow * 10) / 10, at: Date.now() };
         if (typeof k === 'number') mc.bridgeK = k;
         mc.bridge = mc.wall && mc.floor ? bridgeOf(mc.wall, mc.floor, mc.bridgeK) : null;
+        if (st && st.fileIds && st.fileIds[0]) mc.photoFileId = st.fileIds[0];      // 245번: 이 색을 잰 카드 사진(서버가 그 집 · 공간 · 잰 색과 이어 둠)
         return mc;
     }
     // 바닥·벽을 다 찍은 뒤 나오는 이어주는 색 막대 (30번): 직원 화면 공간 카드 막대와 같은 모양·같은 값(bridgeK). 밀면 색 칸만 바뀜
@@ -668,11 +676,14 @@
         } else {
             h += `<div class="cm-empty"><p class="font-serif-kr">${furOnly ? SHOOT_FUR : SHOOT_GUIDE}</p><p class="cm-note">${furOnly ? SHOOT_FUR_SUB : SHOOT_CARD}</p>`;
             h += '<label class="cm-go font-serif-kr">사진 찍기 · 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
+            h += phoneBtnHtml('cm-skip', 0);      // 245번: 폰에서 보낸 사진
+            h += phoneStripHtml();      // 245번: 사진이 없을 땐 단추 바로 밑에 작은 그림 줄
             h += '<p class="cm-note">사진은 저장되지 않습니다</p></div>';
         }
         h += '</div>';
         // 오른쪽: 차례 목록 → 결과
         h += '<div class="cm-side">';
+        if (cv) h += phoneStripHtml();      // 245번: 사진이 있을 땐 오른쪽 맨 위(사진 바꾸기)
         // 133번(재검토 A3): 위 "거실 · 색" 머리말은 뺌 (공간 이름은 왼쪽 위 뒤로 가기에)
         const doneTitle = furOnly ? (st.furKind ? '가구 색을 찾았습니다' : '어떤 가구인가요?') : '이 공간의 색을 찾았습니다';      // 133번(재검토 A7): 리담의 말은 "~습니다"
         h += `<h2 class="cm-title font-serif-kr">${done ? doneTitle : (cv ? (keys[st.active] ? `사진에서 ${CUST_ASK[keys[st.active]]}` : '사진을 눌러 주세요') : '먼저 사진을 찍어 주세요')}</h2>`;
@@ -715,11 +726,13 @@
         h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">지금은 못 재요 · 상담 때 카드로</button>' : '<span></span>';
         if (cv && Object.values(st.pins).some(ps => ps.length)) h += '<button type="button" class="cm-skip" onclick="RoomColor.undo()">방금 것 지우기</button>';
         if (cv) h += '<label class="cm-skip">사진 바꾸기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
+        if (cv) h += phoneBtnHtml('cm-skip', 0);      // 245번
         if (done && !res.cardsSwapped && !(furOnly && !st.furKind) && (furOnly || matReady(res))) h += `<button type="button" class="cm-go font-serif-kr" onclick="RoomColor.finishCustomer()">${esc(o.doneLabel || '담기')}</button>`;
         h += '</div></div></div>';
         ov.innerHTML = h;
         const wrap = document.getElementById('cmWrap');
         if (wrap && cv) { wrap.prepend(cv); wrap.onpointerdown = onTap; }
+        fillPhoneThumbs(ov);      // 245번
     }
     // 가구 따로 찍기 (66번): 고객 화면 모양을 그대로 쓰고 자리만 회색 카드 · 흰 카드 · 가구. opts: { name, onDone(가구 하나), onCancel? }
     //  직원 화면에서도 같은 화면 (사진 한 장에 가구 하나, 그 사진의 카드로만 보정)
@@ -793,10 +806,59 @@
         return Math.max(2, Math.ceil(((widthCm || 340) * 2) / unit));
     }
 
+    // ---- 245번: 폰에서 보낸 사진 (리담 서버, app.js window.redamVisit) ----
+    //  단추 이름 = "S25 엣지에서 보냄 3"(이 손님 사진) · "오늘 S25 엣지에서 보냄 3"(아직 안 붙은 오늘 사진). 0장이면 단추 없음
+    //  누르면 작은 그림 줄(최신이 앞, 가로로 넘김) → 하나 누르면 원본을 받아 사진 불러오기와 같은 길(loadImage)로. 사진은 기기에 안 남김
+    function phoneBtnHtml(cls, which) {
+        const lb = window.redamVisit ? window.redamVisit.label() : '';
+        if (!lb || !st) return '';
+        const on = !!(st.phone && st.phone.open && st.phone.which === which);
+        return `<button type="button" class="${cls}${on ? ' on' : ''}" aria-expanded="${on}" onclick="RoomColor.phoneOpen(${which})">${esc(lb)}</button>`;
+    }
+    function phoneStripHtml() {
+        const v = window.redamVisit && window.redamVisit.now();
+        if (!st || !st.phone || !st.phone.open || !v || !v.photos.length) return '';
+        const hm = p => { const t = Date.parse(p.찍은때 || p.받은때 || ''); return isNaN(t) ? '' : new Date(t).toTimeString().slice(0, 5); };      // 찍은 시각 14:05
+        return '<div class="ph-strip">' + v.photos.map(p =>
+            `<button type="button" class="ph-th" onclick="RoomColor.phonePick(${Number(p.id)})"${st.phone.busy ? ' disabled' : ''}>`
+            + (p.작은 ? `<img data-fid="${Number(p.id)}" alt="${esc(hm(p))}">` : `<span>${esc(hm(p) || '사진')}</span>`)      // 작은 그림이 없으면 시각만(원본은 고를 때 한 장만)
+            + '</button>').join('') + '</div>';
+    }
+    function fillPhoneThumbs(ov) {
+        if (!ov || !window.redamVisit) return;
+        ov.querySelectorAll('.ph-strip img[data-fid]').forEach(img => {
+            window.redamVisit.image(img.dataset.fid, true).then(u => { if (img.isConnected) img.src = u; }).catch(() => {});
+        });
+    }
+    function phoneOpen(which) {      // 같은 단추를 다시 누르면 닫힘
+        if (!st) return;
+        const was = !!(st.phone && st.phone.open && st.phone.which === which);
+        st.phone = { open: !was, which, busy: false };
+        if (st.cust) renderCust(); else render();
+    }
+    function phonePick(id) {
+        if (!st || !st.phone || st.phone.busy || !window.redamVisit) return;
+        const s0 = st, which = st.phone.which;
+        st.phone.busy = true;
+        if (st.cust) renderCust(); else render();
+        window.redamVisit.image(id, false).then(u => {
+            if (st !== s0) { URL.revokeObjectURL(u); return; }      // 그사이 창을 닫음
+            st.phone = null;      // 줄은 닫음 (loadImage가 다시 그림)
+            return loadImage(u, which, id).catch(() => alert('사진을 열지 못했어요. 다른 사진으로 해 주세요.')).finally(() => URL.revokeObjectURL(u));
+        }).catch(() => {
+            if (st !== s0) return;
+            if (st.phone) st.phone.busy = false;
+            if (st.cust) renderCust(); else render();
+            alert('사진을 받지 못했어요. 인터넷을 확인하시거나 사진 불러오기로 해 주세요.');
+        });
+    }
+    document.addEventListener('redam-visit', () => { if (!st) return; if (st.cust) renderCust(); else render(); });      // 늦게 온 사진 목록 · 손님이 바뀌면 단추를 다시
+
     window.RoomColor = {
         roomMiniSvg, miniWidthCount,
         open(roomId) {
             st = { roomId, photos: [null, null], view: 0, active: 0, pins: {}, seq: 0 };
+            if (window.redamVisit) window.redamVisit.ask();      // 245번: 폰에서 보낸 사진 목록을 한 번 더
             let ov = document.getElementById('roomColorOverlay');
             if (!ov) {
                 ov = document.createElement('div');
@@ -851,6 +913,7 @@
             const parts = opts.parts === 'wall' ? ['wall'] : (opts.parts === 'floor' ? ['floor'] : ['floor', 'wall']);
             st = { roomId: null, photos: [null, null], view: 0, active: 0, pins: {}, seq: 0, cust: opts, keys: ['gray', 'white'].concat(parts),
                    custK: typeof opts.bridgeK === 'number' ? opts.bridgeK : null };      // 막대 처음 값 (없으면 기본)
+            if (window.redamVisit) window.redamVisit.ask();      // 245번
             let ov = document.getElementById('roomColorCust');
             if (!ov) {
                 ov = document.createElement('div');
@@ -891,6 +954,7 @@
             o.onDone(mc);
         },
         file: onFile,
+        phoneOpen, phonePick,      // 245번: 폰에서 보낸 사진 단추 · 작은 그림 고르기
         matPick, glossPick,      // 재료·광택 버튼 (113번)
         matLabel(part, k) { const e = (MAT_KINDS[part] || []).find(x => x[0] === k); return e ? e[1] : ''; },      // 재료 이름 (상담란이 씀, 115번)
         removeWall: removeWallPhoto,

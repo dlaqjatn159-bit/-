@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261286';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261287';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -293,6 +293,7 @@
     }
     document.addEventListener('scroll', () => { if (state.keypadTarget) positionKeypad(state.keypadTarget); }, true);
     window.addEventListener('resize', () => { if (state.keypadTarget) positionKeypad(state.keypadTarget); });
+    document.addEventListener('redam-visit', () => { if (state.step === "1.5-Room-Type") render(); });      // 245번: 폰에서 잰 크기가 늦게 오면 칩을 그림
 
     function hideKeypadDirectly() {
         const sheet = document.getElementById("v2VirtualKeypadSheet");
@@ -938,6 +939,54 @@
             + `<button type="button" class="r-quiet" onclick="window.concierge.setPaneSameH(${!sameH})">${sameH ? '높이 따로 넣기' : '높이 같이'}</button></div></div>`;
         return h;
     }
+    // 245번: 폰에서 잰 크기(리담 서버 실측, app.js window.redamVisit) — 1.5 공간 종류 위 칩. 칩이나 같은 이름의 공간 단추를 누르면 1.6 크기에 미리 채움
+    //  실측 한 공간 = { 이름, 종류, 창: [{ w, h, side: '좌'|'우'|'' }], 전체: { w, h } | null } (cm). 앱 크기는 cm 정수라 소수는 버림(창틀 안 블라인드가 커지지 않게)
+    const ROOM_KINDS = ['거실', '안방', '작은방', '아이방', '서재', '주방', '알파룸', '드레스룸', '베란다'];      // 1.5 단추와 같은 말
+    const cmInt = v => Math.max(0, Math.floor(Number(v) || 0));
+    function phoneMeasures() { const v = window.redamVisit && window.redamVisit.now(); return (v && Array.isArray(v.measures)) ? v.measures : []; }
+    function phoneWins(m) { return (Array.isArray(m && m.창) ? m.창 : []).map(w => ({ w: cmInt(w.w), h: cmInt(w.h), side: w.side })).filter(w => w.w > 0 && w.h > 0); }
+    function phoneSizeText(m) {      // 칩 글: 창 하나 "240 × 230" · 여럿 "420 × 230 · 3장"(가로 합 × 가장 큰 세로) · 전체만 그 크기
+        const ws = phoneWins(m);
+        if (ws.length > 1) return `${ws.reduce((s, w) => s + w.w, 0)} × ${Math.max(...ws.map(w => w.h))} · ${ws.length}장`;
+        const w = ws[0] || (m.전체 && cmInt(m.전체.w) > 0 ? { w: cmInt(m.전체.w), h: cmInt(m.전체.h) } : null);
+        return w ? `${w.w} × ${w.h}` : '';
+    }
+    function phoneSizeChipsHtml() {
+        const list = phoneMeasures();
+        if (!list.length) return '';
+        const used = new Set(state.roomsCart.map(r => r.name));      // 이미 담은 공간(같은 이름)은 ✓ 흐리게 · 못 누름
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        return '<div class="ask-house ph-sizes"><span class="ask-house-k">폰에서 잰 크기</span><div class="fur-chips">'
+            + list.map((m, i) => used.has(m.이름)
+                ? `<button type="button" class="ph-done" disabled>✓ ${esc(m.이름)} ${phoneSizeText(m)}</button>`
+                : `<button type="button" onclick="window.concierge.choosePhoneSize(${i})">${esc(m.이름)} ${phoneSizeText(m)}</button>`).join('')
+            + '</div></div>';
+    }
+    function applyPhoneSize(d, m) {      // 공간 추가 그림(state.editingRoom)에 크기를 넣음 — 그대로 고칠 수 있음
+        const hand = s => s === '좌' ? 'L' : (s === '우' ? 'R' : Pricing.PANE_HAND_DEFAULT);
+        const ws = phoneWins(m);
+        const full = (m.전체 && cmInt(m.전체.w) > 0) ? { w: cmInt(m.전체.w), h: cmInt(m.전체.h) } : null;
+        if (!ws.length && !full) return;
+        if (ws.length > 1) {      // 창 여럿 = 한 품목 여러 장(216번), 저절로 '부분'(234번)
+            const sum = ws.reduce((s, w) => s + w.w, 0), maxH = Math.max(...ws.map(w => w.h)), sameH = ws.every(w => w.h === ws[0].h);
+            d.panes = ws.map(w => ({ w: w.w, h: sameH ? null : w.h, hand: hand(w.side), qty: 1 }));
+            d.sizeMode = 'part';
+            d.spaceWidth = full ? Math.max(full.w, sum) : sum; d.spaceHeight = (full && full.h) ? full.h : maxH;
+            d.partWidth = sum; d.partHeight = maxH; d.width = sum; d.height = maxH; d.paneBase = 0;
+        } else if (ws.length === 1 && full) {      // 창 하나 + 전체(괄호) = '부분'
+            const w = ws[0];
+            d.sizeMode = 'part';
+            d.spaceWidth = full.w; d.spaceHeight = full.h || w.h;
+            d.partWidth = w.w; d.partHeight = w.h; d.width = w.w; d.height = w.h;
+            if (hand(w.side) !== Pricing.PANE_HAND_DEFAULT) d.panes = [{ w: null, h: null, hand: hand(w.side), qty: 1 }];      // 나누기 전 한 장, 손잡이만
+        } else {      // 창 하나 · 전체만 = '전체'
+            const w = ws[0] || full;
+            d.sizeMode = 'full';
+            d.spaceWidth = w.w; d.spaceHeight = w.h; d.width = w.w; d.height = w.h;
+            if (ws[0] && hand(ws[0].side) !== Pricing.PANE_HAND_DEFAULT) d.panes = [{ w: null, h: null, hand: hand(ws[0].side), qty: 1 }];
+        }
+        d.phoneSize = true;      // 1.6 "폰에서 잰 값" (저장하지 않는 그림 칸)
+    }
     function paneBoxHtml(target, label, val) {
         return `<div id="measureBox_${target}" class="measure-box pane-box" onclick="window.concierge.openKeypad('${target}')"><span class="pane-k">${label}</span><span id="displayVal_${target}" class="pane-v font-serif-kr${val ? '' : ' is-empty'}">${val || '—'}</span></div>`;
     }
@@ -1130,6 +1179,7 @@
 
             // [Step 1.5: 9종 공간 선택] (151번)
             case "1.5-Room-Type":
+                if (window.redamVisit) window.redamVisit.ask();      // 245번
                 html += askStage('어느 공간의 창인가요?', '', [
                     { label: '거실', on: "window.concierge.chooseRoomType('거실')" },
                     { label: '안방', on: "window.concierge.chooseRoomType('안방')" },      // 151번: '방'을 셋으로
@@ -1140,7 +1190,7 @@
                     { label: '알파룸', on: "window.concierge.chooseRoomType('알파룸')" },
                     { label: '드레스룸', on: "window.concierge.chooseRoomType('드레스룸')" },
                     { label: '베란다', on: "window.concierge.chooseRoomType('베란다')" }
-                ]);
+                ], { top: phoneSizeChipsHtml() });      // 245번: '폰에서 잰 크기' 칩
                 break;
 
             // [공간 추가 ② 크기] 실측 화면 모양 (옵션은 원단을 고른 뒤 마무리에서)
@@ -1160,6 +1210,7 @@
                 if (isPart && ((d.spaceWidth || d.width) > 0 || (d.spaceHeight || d.height) > 0)) {
                     html += `<p class="msr-space-ref font-serif-kr">공간 전체 크기: <b>${d.spaceWidth || d.width || 0} × ${d.spaceHeight || d.height || 0}cm</b></p>`;
                 }
+                if (d.phoneSize) html += '<p class="msr-space-ref font-serif-kr">폰에서 잰 값</p>';      // 245번
                 html += '<div class="msr-grid">' +
                     msrBoxHtml('width', '가로', curW) +
                     msrBoxHtml('height', '세로', curH) +
@@ -1455,6 +1506,7 @@
             // [Step 1: 중심 화면] 처음부터 끝까지 쓰는 화면 (금액·시공비 없음). 시작과 끝이 같은 모양: 빈 띠·빈 칸으로 시작해 상담할수록 채워짐
             // 평평한 바탕 · 가는 선 · 명조 글자 · 각진 색 칸 · 밑줄 글자 버튼 (둥근 카드·그림자·색 버튼 없음)
             case "1-Space":
+                if (window.redamVisit) window.redamVisit.ask();      // 245번: 불러온 상담 · 직원 화면에서 넣은 번호도 (같은 번호는 1분 안에 다시 안 물음)
                 html += spaceHtml(currentCust);
                 break;
 
@@ -1644,18 +1696,28 @@
         },
         // ---- 공간 추가: 공간 종류 → 크기 → 색 (사실은 먼저 채우고, 취향은 공간 안에서 고객이 고름) ----
         // 다 마칠 때까지는 공간 목록에 넣지 않음 (중간에 뒤로 나가면 아무것도 남지 않음)
-        chooseRoomType: function(selectedName) {
+        chooseRoomType: function(selectedName, baseName) {
             // 151번: 이름을 고친 공간이 있어도 겹치지 않게, 안 쓰인 가장 작은 번호 (안방 → 안방 2 → 안방 3)
+            // 245번: baseName = 폰에서 잰 공간 이름(아들방 등, 칩에서 옴). 없으면 종류 이름 그대로
             const usedNames = new Set(state.roomsCart.map(r => r.name));
-            let displayName = selectedName, nameNo = 2;
-            while (usedNames.has(displayName)) displayName = `${selectedName} ${nameNo++}`;
+            const base = String(baseName || selectedName).trim() || selectedName;
+            let displayName = base, nameNo = 2;
+            while (usedNames.has(displayName)) displayName = `${base} ${nameNo++}`;
             state.editingRoomId = null;
             state.editingRoom = {
                 name: displayName, roomType: selectedName, addDraft: true,
                 sizeMode: 'full', spaceWidth: 0, spaceHeight: 0, partWidth: 0, partHeight: 0,
                 width: 0, height: 0, items: [], windowDir: []
             }; // 41번, 43번
+            const pm = phoneMeasures().find(m => m.이름 === displayName);      // 245번: 같은 이름의 폰 실측이 있으면 크기를 미리 채움(보고 고치기만)
+            if (pm) applyPhoneSize(state.editingRoom, pm);
             goToStep("1.6-Add-Size");
+        },
+        choosePhoneSize: function(i) {      // 245번: '폰에서 잰 크기' 칩 — 그 이름으로 공간, 종류는 실측의 '앱에서 고를 종류'(없으면 이름에서 짐작, 그래도 없으면 작은방)
+            const m = phoneMeasures()[i];
+            if (!m) return;
+            const kind = ROOM_KINDS.includes(m.종류) ? m.종류 : (ROOM_KINDS.find(t => String(m.이름).includes(t)) || '작은방');
+            window.concierge.chooseRoomType(kind, m.이름);
         },
         // 크기 다음 색: 집 기본 색이 아직 없으면 색 재기, 있으면 "앞 공간과 같나요?"
         addRoomColor: function() {
@@ -2417,6 +2479,7 @@
             input.value = v;
             const el = document.getElementById('custPhone');
             if (el) el.value = v;
+            if (window.redamVisit) window.redamVisit.ask();      // 245번: 번호 전체가 되면 폰에서 보낸 사진 · 잰 크기를 한 번 받아 둠
         },
         deleteRoom: function(roomId) {
             const room = state.roomsCart.find(r => r.id === roomId);
