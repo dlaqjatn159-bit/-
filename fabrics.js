@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261290';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261291';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabrics.js — 직원 화면 › 원단: 원단 분류(톤·분위기) 편집·원단 색상 관리·되돌리기/중복 정리 버튼·원단 사진 확인·기기 사진 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -360,7 +360,8 @@ async function importDevicePhotos(event) {
 // 사진을 넣거나 지운 뒤: 원단 찾기·고객 화면이 기억해 둔 사진 주소를 잊고 다시 찾게
 function forgetPhotoLookups() {
     if (window.concierge && window.concierge.forgetPhotos) window.concierge.forgetPhotos();
-    refreshFinderPhotos();
+    // 249번: 앱을 여는 중엔 finder.js가 아직 없을 수 있음(그때는 고칠 카드도 없음)
+    if (typeof refreshFinderPhotos === 'function') refreshFinderPhotos();
 }
 // 기기 사진 표시: "기기에 있는 사진 ○장 · ○MB" + 원단별 목록(색 번호를 누르면 그 사진만 지움)
 function renderDevicePhotos() {
