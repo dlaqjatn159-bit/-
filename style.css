@@ -24,6 +24,7 @@
     --line-ink: var(--rd-app-color-line-ink); --line-joint: var(--rd-app-color-line-joint);
     --lh-tight: var(--rd-app-line-height-tight); --lh-title: var(--rd-app-line-height-title); --lh-body: var(--rd-app-line-height-body); --lh-long: var(--rd-app-line-height-long);
     --m-press: var(--rd-app-motion-press); --m-pick: var(--rd-app-motion-pick);
+    --m-attach: var(--rd-app-motion-attach); --m-interrupt: var(--rd-app-motion-interrupt);      /* 247번: 붙음 0.2초 · 끼어듦 0.35초 (결정 #317) */
     
     --page-transition-duration: var(--rd-app-motion-page);
     --page-transition-ease: var(--rd-app-motion-ease);
@@ -170,12 +171,27 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     overflow: hidden;
 }
 
+/* 247번: 곡선 하나 — 튕김 없는 스프링. 지원하지 않는 브라우저는 지금 곡선 그대로 (결정 #317) */
+@supports (animation-timing-function: linear(0, 1)) { :root { --page-transition-ease: var(--rd-app-motion-spring); } }
 .stage-transition {
     animation: cleanFade var(--page-transition-duration) var(--page-transition-ease) forwards;
 }
 /* 140번: 고른 뒤 넘어가기 전, 지금 화면을 서서히 걷음 */
-.stage-transition.is-leaving { animation: pageLeave var(--m-pick) ease forwards; pointer-events: none; }
-@keyframes pageLeave { from { opacity: 1; } to { opacity: 0; } }
+/* 247번: 앞으로 가면 오른쪽에서, 뒤로 가면 왼쪽에서 조금만 들어옴 (결정 #317) */
+.stage-transition.go-next { animation-name: pageInNext; }
+.stage-transition.go-back { animation-name: pageInBack; }
+.stage-transition.is-leaving { animation: pageLeave var(--m-attach) var(--page-transition-ease) forwards; pointer-events: none; }
+@keyframes pageLeave { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-14px); } }
+@keyframes pageInNext { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pageInBack { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+/* 247번: 끼어드는 창은 제자리에서 0.35초에 나타남 (결정 #317) */
+.pin-overlay, .outcome-dialog, .survey-modal-overlay, .rc-overlay, .finder-show-ask { animation: interruptIn var(--m-interrupt) var(--page-transition-ease) both; }
+@keyframes interruptIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+    .stage-transition.go-next, .stage-transition.go-back { animation-name: cleanFade; }
+    @keyframes pageLeave { from { opacity: 1; } to { opacity: 0; } }
+    .pin-overlay, .outcome-dialog, .survey-modal-overlay, .rc-overlay, .finder-show-ask { animation: none; }
+}
 
 @keyframes cleanFade {
     from { opacity: 0; transform: scale(0.995); }
@@ -936,8 +952,8 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .finder-card.is-open .finder-chev { transform: rotate(180deg); color: var(--brand-dark); background: #fffdf9; }
 /* 정보판: 카드 크기는 그대로, 색 칸 자리만 아래에서 올라와 덮음 → 다른 카드가 밀리지 않음 */
 .finder-info { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; flex-direction: column; height: calc(12rem + 1px); background: #fffdf9; border-bottom: 1px solid var(--brand-border);
-    transform: translateY(100%); opacity: 0; visibility: hidden; transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease, visibility 0s linear 0.28s; }
-.finder-card.is-open .finder-info { border-bottom-color: #bfae99; box-shadow: 0 1px 0 #bfae99; transform: none; opacity: 1; visibility: visible; transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease; }
+    transform: translateY(100%); opacity: 0; visibility: hidden; transition: transform var(--m-press) var(--page-transition-ease), opacity var(--m-press) ease, visibility 0s linear var(--m-press); }
+.finder-card.is-open .finder-info { border-bottom-color: #bfae99; box-shadow: 0 1px 0 #bfae99; transform: none; opacity: 1; visibility: visible; transition: transform var(--m-attach) var(--page-transition-ease), opacity var(--m-attach) ease; }
 .finder-tags { display: flex; flex: 1; flex-wrap: wrap; align-content: flex-start; gap: 0.25rem; overflow: auto; padding: 0.65rem 0.7rem 0.5rem; }
 .finder-tags .staff-chip { font-size: 0.7rem; }
 .finder-tags .staff-chip.is-unset { background: transparent; border: 1px dashed var(--brand-border); opacity: 0.75; }
@@ -3349,8 +3365,8 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 
 /* 234번: 숫자판은 누른 칸 바로 아래(모자라면 위)에 뜸 — 자리는 concierge.js positionKeypad가 left·top으로. 미끄러져 올라오지 않고 서서히 나타남
    위 오른쪽 = 한 글자 지우기(.keypad-back) · 오른쪽 아래 칸 = 입력 완료(.key-done, 주요 행동처럼 밑줄) */
-.keypad-sheet { transform: none; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--m-pick) ease, visibility 0s linear var(--m-pick); }
-.keypad-sheet.active { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: opacity var(--m-pick) ease; }
+.keypad-sheet { transform: none; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--m-press) ease, visibility 0s linear var(--m-press); }      /* 247번: 나올 때 0.2초 · 닫힐 때 0.15초 */
+.keypad-sheet.active { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: opacity var(--m-attach) ease; }
 .keypad-back { padding: 10px 4px; margin-bottom: 0.3rem; border: 0; background: none; cursor: pointer; font-size: 22px; line-height: 1; color: var(--ink); }
 .keypad-back:active { color: var(--muted); }
 .key-btn.key-done { font-weight: 600; color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261288';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261289';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -51,6 +51,9 @@
     const PICK_LEAVE_MS = 200;      // 140번: 고른 뒤 지금 화면이 걷히는 시간
     // 137번: 한 번 누르면 고름 — 점 + 나머지 옅게 → PICK_PAUSE_MS 뒤 넘어감. 머무는 동안 다른 것을 누르면 그것으로 바뀌고 시간이 다시 시작
     let pickTimer = null;
+    // 247번: 화면 넘김 방향 (결정 #317). goToStep이 'next', 되돌아가는 길이 'back'을 적고 render가 한 번 쓰고 지움. 아래 화면은 방향 없이 지금처럼
+    let pageDir = null;
+    const PAGE_TURN_SKIP = ["0-Start", "0-Welcome", "7-Final-Dossier"];
     function pickThenGo(el, group, sel, fn) {
         clearTimeout(pickTimer);
         group.querySelectorAll(sel).forEach(x => { x.classList.remove('is-picked'); x.removeAttribute('aria-pressed'); });
@@ -311,6 +314,7 @@
             stepHistory.push({ step: state.step, idx: state.currentItemIndex, room: state.editingRoom, roomId: state.editingRoomId });      // 119번: 집 전체로 넘어가면 공간이 바뀌므로 그때의 공간도 같이 적어 둠
         }
         state.step = nextStep;
+        if (pageDir !== 'back') pageDir = 'next';      // 247번
         introWant = (pushHistory !== false || !!fwd) && PHOTO_INTRO_STEPS.includes(nextStep);      // 사진 화면 앞 안내 장면은 앞으로 갈 때만 (뒤로 오면 건너뜀, 73번)
         updatePrevButtonVisibility();
         render();
@@ -322,6 +326,7 @@
         if (mc) { mc[part] = null; mc.bridge = null; if (!mc.wall && !mc.floor && !hasFurniture(mc)) ed.measuredColor = null; }      // 가구 색(37번)은 남김
         ed.cardParts = Object.assign({}, ed.cardParts, { [part]: true });      // 카드로 고른 부분 (벽·바닥 따로)
         ed.colorSrc = null;           // 잰 색과 카드가 섞이면 "벽은 잰 색 · 바닥은 카드로"처럼 따로 적음
+        pageDir = 'back';      // 247번
         if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "1-Space-Edit") stepHistory.pop();
         goToStep("1-Space-Edit", false);
     }
@@ -338,6 +343,7 @@
     }
     // 중심 화면으로 돌아감: 그 뒤에 쌓인 단계(수정하기 등)는 뒤로 가기 목록에서 지움
     function backToSpace() {
+        pageDir = 'back';      // 247번
         while (stepHistory.length && stepHistory[stepHistory.length - 1].step !== "1-Space") stepHistory.pop();
         if (stepHistory.length) stepHistory.pop();
         goToStep("1-Space", false);
@@ -367,6 +373,7 @@
                 state.editingRoom = prev.room; state.editingRoomId = prev.roomId;
                 if (prev.room && prev.room.items && prev.room.items.length) state.pendingItemQueue = prev.room.items;
             }
+            pageDir = 'back';      // 247번
             goToStep(prev.step, false);
         }
     }
@@ -1526,6 +1533,9 @@
 
         html += '</div>';
         main.innerHTML = html;
+        // 247번: 앞뒤 방향 표시. 앱을 켠 첫 그림 · 사진 화면(143번) · 첫 화면 · 최종 제안은 지금처럼
+        if (pageDir && lastRenderedStep !== null && !PHOTO_STEPS.includes(state.step) && !PAGE_TURN_SKIP.includes(state.step) && main.firstElementChild) main.firstElementChild.classList.add(pageDir === 'back' ? 'go-back' : 'go-next');
+        pageDir = null;
         lastRenderedStep = state.step;
         // 뒤로 가기 · 사진 화면 (73번): 사진 띠 이름은 모두 같은 크기 → 가장 긴 이름이 들어가도록 띠 높이만 맞춤. 앞으로 왔으면 안내 장면부터
         const photo = PHOTO_STEPS.includes(state.step);

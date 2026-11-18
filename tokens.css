@@ -34,7 +34,9 @@
   --rd-shadow-night-front: -6px -6px 18px 0px #2B221A14; /** 최종 제안 견본 겹침(앞 장)의 그늘 */
   --rd-shadow-site-card: 0px 1px 2px 0px #2A27230F, 0px 16px 40px 0px #2A272314; /** 사이트 첫 화면 카드 그늘(가장 많이 보인 모양) */
   --rd-duration-quick: 0.15s; /** 누를 때 색·밑줄이 바뀌는 시간(0.12·0.16을 여기로, 정리 J) */
+  --rd-duration-attach: 0.2s; /** 누른 자리에 붙어 나오는 시간. 메뉴·고르기 칸·숫자판·정보판(결정 #317) */
   --rd-duration-pick: 0.25s; /** 고르면 점이 붙고 이만큼 뒤 다음 화면(11-02, 137번). 점이 나타나는 시간도 이것(0.2·0.3을 여기로, 정리 J) */
+  --rd-duration-interrupt: 0.35s; /** 끼어드는 창이 나타나는 시간. 확인창·경고·안내(결정 #317) */
   --rd-duration-page: 0.45s; /** 앱 화면 넘어가는 시간 */
   --rd-duration-fill: 0.7s; /** 조각보 칸이 채워지는 시간 */
   --rd-duration-site-reveal: 0.8s; /** 사이트 글·사진이 떠오르는 시간 */
@@ -43,6 +45,7 @@
   --rd-duration-logo-intro: 3.3s; /** 사이트 첫 화면 로고 모션 */
   --rd-easing-page: cubic-bezier(0.2, 0.9, 0.3, 1); /** 앱 화면 전환·띠 이동 곡선 */
   --rd-easing-site: cubic-bezier(0.22, 0.61, 0.36, 1); /** 사이트 떠오름 곡선 */
+  --rd-easing-spring: linear(0, 0.0271, 0.0923, 0.1772, 0.2699, 0.3627, 0.451, 0.5322, 0.6051, 0.6694, 0.7253, 0.7733, 0.8143, 0.8489, 0.878, 0.9023, 0.9225, 0.9392, 0.953, 0.9644, 0.9737, 0.9813, 0.9875, 0.9926, 0.9967, 1); /** 튕김 없는 스프링 곡선 하나(결정 #317) */
   --rd-font-family-serif: 'Noto Serif KR', Georgia, serif; /** 명조. 앱·사이트·종이 공통 제목과 이름 */
   --rd-font-family-sans-app: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; /** 앱 고딕(Pretendard). 1단에서는 사이트와 다른 그대로 둠. 주의: 앱이 글꼴 파일을 불러오지 않아 실제로는 기기 기본 고딕으로 보임(후보 K) */
   --rd-font-family-sans-site: 'Noto Sans KR', sans-serif; /** 사이트·블로그 카드 고딕(Noto Sans KR) */
@@ -244,10 +247,13 @@
   --rd-app-motion-pick: var(--rd-duration-pick); /** 고르면 0.25초 뒤 다음 */
   --rd-app-motion-dot: var(--rd-duration-pick); /** 점이 서서히 나타나는 시간 — 고르기와 같은 0.25초(정리 J, 11-13) */
   --rd-app-motion-press: var(--rd-duration-quick); /** 누를 때 바뀌는 시간 */
+  --rd-app-motion-attach: var(--rd-duration-attach); /** 누른 자리에 붙어 나옴(결정 #317) */
+  --rd-app-motion-interrupt: var(--rd-duration-interrupt); /** 끼어드는 창(결정 #317) */
   --rd-app-motion-page: var(--rd-duration-page); /** 화면 넘김 */
   --rd-app-motion-strip: var(--rd-duration-strip); /** 띠가 건너가며 어두워짐 */
   --rd-app-motion-fill: var(--rd-duration-fill); /** 조각보 칸 채움 */
   --rd-app-motion-ease: var(--rd-easing-page); /** 화면·띠 곡선 */
+  --rd-app-motion-spring: var(--rd-easing-spring); /** 튕김 없는 스프링. 지원하는 브라우저에서 화면·창·띠 곡선(결정 #317) */
   --rd-app-shadow-night-front: var(--rd-shadow-night-front); /** 최종 제안 견본 겹침 그늘 */
   --rd-site-color-dark: var(--rd-common-settled-ground); /** 어두운 띠·맨 아래 바탕 · 명함 뒤 · 블로그 어두운 카드 */
   --rd-site-color-on-dark: var(--rd-common-settled-text); /** 어둠 위 글자 · 어둠 위 밝은 단추 면 */
