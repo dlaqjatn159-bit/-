@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261289';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261290';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1046,14 +1046,15 @@
         const hasSheer = room.items.some(i => i.presetType === 'sheer');
         const hasDrape = room.items.some(i => i.presetType === 'drape');
         let h = '<div class="fo-list" id="finishOpts">';
-        const row = (key, name, say) => {
-            const on = !!room[key];
+        const row = (key, name, say, locked) => {      // 248번: locked면 켜진 채 [빼기] 없음
+            const on = !!locked || !!room[key];
             return `<div class="fo-row${on ? ' on' : ''}"><span class="fo-nm font-serif-kr">${name}</span>`
-                + `<button type="button" class="fo-act" data-k="${key}" aria-label="${name} ${on ? '빼기' : '넣기'}" onclick="window.concierge.toggleFinishOpt('${key}')">${on ? '빼기' : '넣기'}</button>`
+                + (locked ? '' : `<button type="button" class="fo-act" data-k="${key}" aria-label="${name} ${on ? '빼기' : '넣기'}" onclick="window.concierge.toggleFinishOpt('${key}')">${on ? '빼기' : '넣기'}</button>`)
                 + `<p class="fo-say">${say}</p></div>`;
         };
         if (hasDrape) {
-            h += row('shapeFee', '형상기억 가공', '주름을 열로 잡아 두어 더 가지런하게 떨어집니다');      // 212번: 손님이 넣기/빼기 (158번 사장님만 누르기에서 바꿈)
+            const shapeLocked = room.items.filter(i => i.presetType === 'drape').every(i => window.Pricing.shapeAlways(window.Pricing.pickFabric(FABRIC_DB, i.fabricId)));      // 248번: 겉지가 모두 늘 형상인 원단이면 뺄 수 없음
+            h += row('shapeFee', '형상기억 가공', '주름을 열로 잡아 두어 더 가지런하게 떨어집니다', shapeLocked);      // 212번: 손님이 넣기/빼기 (158번 사장님만 누르기에서 바꿈)
             h += row('hotelFit', '리담 핏', '원단을 한 폭 더 넣어 주름이 깊고 풍성해집니다');      // 230번: 호텔핏 → 리담 핏
         }
         if (hasSheer) {

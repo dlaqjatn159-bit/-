@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261289';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261290';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -382,7 +382,7 @@ function ticketDataBase() {
             const items = r.curtains.map(c => {
                 const calc = c.calc || {};
                 const opts = [];
-                if (c.shapeFee > 0) opts.push('형상기억 포함');      // 158번
+                if (Pricing.shapeOn(c, FABRIC_DB)) opts.push('형상기억 포함');      // 158번 · 248번
                 if (c.leadBand) opts.push('리드밴드');
                 if (c.hotelFit) opts.push('리담 핏(기본보다 한 폭 더)');      // 158번 · 230번: 리담 핏
                 if (typeof woodOptList === 'function') opts.push(...woodOptList(c));      // 241번: 리본끈 · 35mm 슬랫

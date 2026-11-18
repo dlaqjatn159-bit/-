@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261289';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261290';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -264,7 +264,7 @@ function docOrderRows(dateStr, custName) {
             const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
             const fabDisplayName = docFabName(calc, fab, true, c);
             const qtyVal = calc.calcType === 'hebe' ? calc.appliedHebe : (calc.calcType === 'width' ? calc.numWidths : calc.totalYards);
-            const optText = [c.shapeFee > 0 ? '형상' : '', c.leadBand ? '리드밴드' : '', ...woodOptList(c)].filter(Boolean).join(' ') || '기본';      // 241번: 우드 옵션
+            const optText = [Pricing.shapeOn(c, FABRIC_DB) ? '형상' : '', c.leadBand ? '리드밴드' : '', ...woodOptList(c)].filter(Boolean).join(' ') || '기본';      // 241번: 우드 옵션 · 248번
             const methodDesc = calc.calcType === 'hebe' ? '블라인드' : (calc.calcType === 'width' ? '폭당완제품' : (calc.isSeamless ? '대폭무이음' : '소폭이음'));
 
             // 216번: 블라인드는 장마다 한 줄 + 손잡이. 금액은 첫 줄에 품목 금액(나머지 장은 빈칸 — 합계가 맞게)
@@ -307,7 +307,7 @@ function generateDoc(type) {
             const fab = FABRIC_DB.find(f => f.id === c.fabricId) || {};
             const fabDisplayName = docFabName(calc, fab, isFactory, c);
             const optionsList = [];
-            if (c.shapeFee > 0) optionsList.push("형상기억");
+            if (Pricing.shapeOn(c, FABRIC_DB)) optionsList.push("형상기억");      // 248번
             if (c.leadBand) optionsList.push("리드밴드");
             optionsList.push(...woodOptList(c));      // 241번: 리본끈 · 35mm 슬랫
             const optionsStr = optionsList.length > 0 ? optionsList.join(', ') : '기본';

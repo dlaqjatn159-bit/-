@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261289';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261290';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -169,7 +169,7 @@ function curveStd(fab, pv, cv) {
     if (!cv.ok || typeof Costing === 'undefined' || !Costing.state.rules) return null;
     const rates = optionRatesNow('rail');
     const c = { width: 300, height: 235, pleat: 2, pleatType: '', installType: 'rail', floorGap: 0, hotelFit: false, leadBand: false, shapeFee: 0, hwPrice: hwPriceOf('rail'), rates };      // 139번: 밑단 기본 시접
-    const unitFab = Object.assign({}, fab, { price: 1, extra: null });
+    const unitFab = Object.assign({}, fab, { price: 1, extra: null, noShapeAlways: true });      // 248번: 기준 창은 형상기억 끔 그대로
     const pr = Pricing.priceItem(c, unitFab);
     const k = Costing.costItem(c, unitFab, pr, pv);
     if (!k) return null;

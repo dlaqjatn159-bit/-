@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261289';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261290';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -23,6 +23,22 @@
         const e = fab && fab.extra;
         if (e && typeof e[kind] === 'number') return e[kind];
         return (fab && fab.price) || 0;
+    }
+
+    // 248번: 형상이 들어간 채로만 들어오는 원단(결정 #321) — 고르면 형상기억이 늘 들어감. 금액은 품목의 형상기억 단가(rates) 그대로
+    const SHAPE_ALWAYS_NAMES = ['보브'];
+    function shapeAlways(fab) {
+        return !!fab && !fab.noShapeAlways && fab.calcType === 'width' && SHAPE_ALWAYS_NAMES.includes(String(fab.name || '').trim());
+    }
+    // 248번: 끌 수 없는 품목인가. rates가 없는 예전 저장본과 패널(형상기억 금액 없음)은 뺌
+    function shapeLocked(c, db) {
+        if (!c || !c.rates) return false;
+        if (c.pleat === 'panel' || c.pleatType === '패널' || c.pleatType === '판넬') return false;
+        return shapeAlways(pickFabric(db, c.fabricId));
+    }
+    // 248번: 이 품목에 형상기억이 들어가는가 (견적서 · 발주서 · 화면 글자가 같이 씀)
+    function shapeOn(c, db) {
+        return !!c && (c.shapeFee > 0 || shapeLocked(c, db));
     }
 
     function pickFabric(db, fabricId) {
@@ -186,7 +202,7 @@
 
         // 형상기억: rates가 있으면 폭당·마당 따로 + 제작 높이가 기준 이상이면 단위마다 추가 (패널·블라인드는 없음)
         let extraShapeFee = 0, shapeUnits = 0, shapeHigh = false;
-        if (fab.calcType !== 'hebe' && c.shapeFee > 0) {
+        if (fab.calcType !== 'hebe' && (c.shapeFee > 0 || (r && shapeAlways(fab)))) {      // 248번: 늘 형상인 원단은 꺼져 있어도 들어감 (패널은 아래에서 빠짐)
             if (r) {
                 if (!isPanel) {
                     shapeUnits = byWidth ? numWidths : totalYards;
@@ -223,7 +239,7 @@
         return { sellingPrice, vatAmount, finalPrice: sellingPrice + vatAmount };
     }
 
-    const api = { priceItem, totals, pickFabric, heightDeduction, panesOf, panePieces, cleanPanes, paneSplit, PANE_HAND_DEFAULT };      // 216번: 장 셈 도우미
+    const api = { priceItem, totals, pickFabric, heightDeduction, panesOf, panePieces, cleanPanes, paneSplit, PANE_HAND_DEFAULT, shapeAlways, shapeLocked, shapeOn };      // 216번: 장 셈 도우미 · 248번: 형상기억
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.Pricing = api;
 })(typeof window !== 'undefined' ? window : globalThis);

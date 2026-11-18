@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261289';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261290';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -298,7 +298,7 @@
         const itemHtml = (r, c, i, mode, no) => {
             const live = mode === 'one' || mode === 'cur';
             const opts = [];
-            if (c.shapeFee > 0) opts.push('형상기억');
+            if (window.Pricing.shapeOn(c, FABRIC_DB)) opts.push('형상기억');      // 248번
             if (c.leadBand) opts.push('리드밴드');
             if (c.hotelFit) opts.push('리담 핏');      // 230번
             const tones = c.presetType === 'blind' ? null : toneNeighbors(c);
