@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261291';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261292';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 원가 계산 엔진  (costing.js)  ※ 직원 모드 전용
    - 이 파일에는 금액(숫자 상수)이 없습니다. 모든 원가 규칙은 "비공개 팩"에서 읽어옵니다.
@@ -57,7 +57,7 @@
             });
             if (pcs.length > 1) factoryHebe = Math.round(factoryHebe * 100) / 100;
         } else {
-            const yards = q.totalYards, widths = q.numWidths;
+            const yards = q.costYards > 0 ? q.costYards : q.totalYards, widths = q.numWidths;      // 250번: 대폭 무이음은 원장 마 수로
             if (q.isPanel) {
                 const pf = has(rc.panelBase) ? { base: rc.panelBase, perExtraUnit: has(rc.panelStep) ? rc.panelStep : 0 } : rules.panelFactory;
                 const panelFactoryCost = pf.base + (q.panelExtraUnits * pf.perExtraUnit);

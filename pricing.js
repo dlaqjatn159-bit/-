@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261291';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261292';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -110,6 +110,7 @@
 
         let fabricSellingCost = 0, hwSellingTotal = 0, leadBandCost = 0;
         let qtyText = '', numWidths = 0, totalYards = 0, appliedHebe = 0;
+        let costYards = 0;      // 250번: 원가용 마 수(대폭 무이음만, 0이면 원가도 판매 마 수로)
         let pieces = null;      // 216번: 블라인드 장마다 [{ w, h, hand, row, hebe }] — 발주서가 씀
         let isSeamless = false, isPanel = false, panelExtraUnits = 0;
         let actualH = height;
@@ -174,6 +175,8 @@
                         const extraYards = c.hotelFit ? 2 : 0;
                         const baseYards = Math.ceil((totalW + 30) / 90) || 1;
                         totalYards = baseYards + extraYards;
+                        // 250번: 원가는 공장 원장대로 — 대폭은 (가로×주름 + 10) ÷ 90을 반 마 올림 (판매가 마 수는 위 그대로)
+                        if (isWideFabric) costYards = Math.ceil((totalW + 10) / 90 * 2 - 1e-9) / 2 + extraYards;
                         numWidths = Math.ceil(totalW / 150) || 1;
                         fabricSellingCost = (baseYards * (fab.price || 0)) + (extraYards * extraUnit(fab, 'ys'));
                         qtyText = c.hotelFit
@@ -217,7 +220,7 @@
         const rawSubtotal = fabricSellingCost + extraShapeFee + leadBandCost + hwSellingTotal;
         const curtainSubtotal = Math.ceil(rawSubtotal / 1000) * 1000;
 
-        Object.assign(q, { isPanel, panelExtraUnits, isSheer, isWideFabric, numWidths, totalYards, numJa, calcType: fab.calcType, shapeUnits, shapeHigh });
+        Object.assign(q, { isPanel, panelExtraUnits, isSheer, isWideFabric, numWidths, totalYards, costYards, numJa, calcType: fab.calcType, shapeUnits, shapeHigh });
 
         return {
             fabName: fab.name, fabBook: fab.book, calcType: fab.calcType,

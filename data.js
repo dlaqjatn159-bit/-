@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261291';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261292';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -171,7 +171,8 @@ function curveStd(fab, pv, cv) {
     const c = { width: 300, height: 235, pleat: 2, pleatType: '', installType: 'rail', floorGap: 0, hotelFit: false, leadBand: false, shapeFee: 0, hwPrice: hwPriceOf('rail'), rates };      // 139번: 밑단 기본 시접
     const unitFab = Object.assign({}, fab, { price: 1, extra: null, noShapeAlways: true });      // 248번: 기준 창은 형상기억 끔 그대로
     const pr = Pricing.priceItem(c, unitFab);
-    const k = Costing.costItem(c, unitFab, pr, pv);
+    // 250번: 판매가 곡선은 판매 마 수로 셈하던 원가 그대로 (원장 마 수로 바뀐 원가가 판매가를 끌어내리지 않게)
+    const k = Costing.costItem(c, unitFab, Object.assign({}, pr, { q: Object.assign({}, pr.q, { costYards: 0 }) }), pv);
     if (!k) return null;
     const buy = (k.curtainCostTotal - k.leadBandCost) * 1.1;
     const units = fab.calcType === 'width' ? pr.numWidths : pr.totalYards;
