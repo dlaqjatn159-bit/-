@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261296';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -215,13 +215,13 @@ function quoteGaps(withSupplier) {
 }
 // 직원 화면에서만 확인 창(손님 화면엔 띄우지 않음). 같은 내용으로 한 번 [확인]하면 다시 묻지 않음
 let __gapsOkKey = '';
-function confirmQuoteGaps(ask) {
+async function confirmQuoteGaps(ask) {      // 254번: 앱 안의 창(askConfirm)을 기다림 — 부르는 쪽은 await
     if (typeof appMode === 'undefined' || appMode !== 'staff') return true;
     const g = quoteGaps(true);
     if (!g.length) return true;
     const key = g.join('|');
     if (key === __gapsOkKey) return true;
-    const ok = confirm(`확인해 주세요.\n\n• ${g.join('\n• ')}\n\n결제 조건·공급자 정보는 설정 › 견적서 고정 문구에서 적습니다.\n${ask}`);
+    const ok = await askConfirm(`확인해 주세요.\n\n• ${g.join('\n• ')}\n\n결제 조건·공급자 정보는 설정 › 견적서 고정 문구에서 적습니다.\n${ask}`);
     if (ok) __gapsOkKey = key;
     return ok;
 }

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261296';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -180,7 +180,7 @@ function curveStd(fab, pv, cv) {
     return { buy, units, pr, mult: Costing.curveMult(cv.pts, buy / 4), rail: pr.numJa * c.hwPrice };
 }
 // [판매가 다시 계산] (109번): 지금 원가로 엑셀 칸이 빈 원단 판매가를 곡선으로. 미리 목록을 보여 주고 되돌리기 단계에 넣음
-function recalcCurvePrices() {
+async function recalcCurvePrices() {      // 254번
     const cv = priceCurve();
     if (!cv.ok && !cv.blind && !cv.wood) { showToast('먼저 판매가 곡선의 점을 넣어 주세요.', 'error'); return; }      // 241번: 우드 배수
     if (!Costing.state.rules) { showToast("먼저 '비공개 팩'을 불러와 주세요. (원가 규칙이 필요합니다)", 'error'); return; }
@@ -200,7 +200,7 @@ function recalcCurvePrices() {
     const more = changes.length > 40 ? `\n… 외 ${changes.length - 40}개` : '';
     const manMsg = manual.length ? `\n\n엑셀 판매 단가 칸에 직접 값이 있어 그대로 두는 원단 ${manual.length}개:\n${manual.slice(0, 15).map(f => '• ' + f.name).join('\n')}${manual.length > 15 ? `\n… 외 ${manual.length - 15}개` : ''}` : '';
     const skipMsg = skipped.length ? `\n\n원가가 없어 셀 수 없는 원단 ${skipped.length}개는 그대로 둡니다.` : '';
-    const ok = confirm(
+    const ok = await askConfirm(
         `[판매가 다시 계산]\n\n지금 원가와 판매가 곡선으로 ${changes.length}개 원단의 판매 단가가 바뀝니다.\n\n${lines}${more}${manMsg}${skipMsg}\n\n` +
         `이미 만든 견적 금액은 그대로입니다. 바꾸기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n[확인]: 바꿉니다.\n[취소]: 그대로 둡니다.`
     );
@@ -2495,7 +2495,7 @@ function saveUndoSnapshot(sourceName) {
     }
 }
 
-function restoreUndoSnapshot() {
+async function restoreUndoSnapshot() {      // 254번
     try {
         const stack = loadUndoStack();
         if (stack.length === 0) {
@@ -2508,7 +2508,7 @@ function restoreUndoSnapshot() {
         const colorCount = (s.colors && typeof s.colors === 'object') ? Object.keys(s.colors).length : 0;
         const remainCount = stack.length - 1;
 
-        const ok = confirm(
+        const ok = await askConfirm(
             `'${s.source || '불러오기'}' 직전 상태(${timeStr} 보관)로 되돌릴까요?\n\n` +
             `• 복원될 원단: ${fabCount}개\n` +
             `• 복원될 색상 원단: ${colorCount}개\n` +
@@ -2586,12 +2586,12 @@ function remapFabricRefs(obj, idMap) {
     walk(obj);
     return n;
 }
-function cleanDuplicateFabrics() {
+async function cleanDuplicateFabrics() {      // 254번
     const dups = findDuplicateFabrics();
     if (dups.length === 0) { showToast('정리할 중복 원단이 없습니다.', 'info'); return; }
     const lines = dups.slice(0, 25).map(d => `• ${d.oldF.book} ${d.oldF.name}  (${d.oldId} → ${d.newId})`).join('\n');
     const more = dups.length > 25 ? `\n… 외 ${dups.length - 25}개` : '';
-    const ok = confirm(
+    const ok = await askConfirm(
         `[중복 원단 정리]\n\n` +
         `예전 ID로 한 번 더 들어간 원단 ${dups.length}개를 찾았습니다. (지금 원단 ${FABRIC_DB.length}개 → 정리 후 ${FABRIC_DB.length - dups.length}개)\n\n` +
         `${lines}${more}\n\n` +
@@ -2599,7 +2599,7 @@ function cleanDuplicateFabrics() {
         `진행 중인 상담과 상담 기록의 원단도 새 ID로 바꿔 둡니다.\n` +
         `지우기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n` +
         `[확인]: 정리합니다.\n[취소]: 그대로 둡니다.`
-    );
+    , { danger: true });      // 254번: 지우는 창 — '취소'가 진한 단추
     if (!ok) return;
     saveUndoSnapshot('중복 원단 정리');
     const refs = mergeFabricPairs(dups);
@@ -2726,7 +2726,7 @@ function findSamboCombiPairs() {
 function finderColorCount() {
     try { return finderColorTotal(finderEntries()); } catch (e) { return null; }
 }
-function mergeSamboCombiBlinds() {
+async function mergeSamboCombiBlinds() {      // 254번
     const { pairs, unsure } = findSamboCombiPairs();
     if (pairs.length === 0) { showToast(unsure.length ? `합칠 블라인드가 없습니다. 확인 필요 ${unsure.length}개: ${unsure.join(', ')}` : '합칠 블라인드가 없습니다.', 'info'); return; }
     // 정리 후 색 수: 합친 모양을 잠깐 만들어 세어 보고 바로 되돌림 (이름으로 색을 빌려 오던 원단의 변화까지 같이 셈)
@@ -2756,7 +2756,7 @@ function mergeSamboCombiBlinds() {
     const lines = pairs.slice(0, 45).map(d => `• ${d.oldF.name} → ${d.newF.name}`).join('\n');
     const more = pairs.length > 45 ? `\n… 외 ${pairs.length - 45}개` : '';
     const unsureMsg = unsure.length ? `\n\n확인 필요(짝이 둘 이상이라 건너뜀) ${unsure.length}개:\n${unsure.map(u => '• ' + u).join('\n')}` : '';
-    const ok = confirm(
+    const ok = await askConfirm(
         `[삼보텍스·한글 이름 블라인드 합치기]\n\n` +
         `같은 블라인드(콤비·롤스크린)가 삼보텍스(영어 이름)와 한글 이름으로 2장씩 있는 것 ${pairs.length}쌍을 찾았습니다.\n` +
         `지워질 원단 ${pairs.length}개 · 원단 ${FABRIC_DB.length}개 → ${FABRIC_DB.length - pairs.length}개` + (before != null && after != null ? ` · 색 ${before}색 → ${after}색` : '') + `\n\n` +
@@ -2766,7 +2766,7 @@ function mergeSamboCombiBlinds() {
         `진행 중인 상담과 상담 기록의 원단도 한글 이름 원단으로 바꿔 둡니다.\n` +
         `지우기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n` +
         `[확인]: 합칩니다.\n[취소]: 그대로 둡니다.`
-    );
+    , { danger: true });      // 254번: 지우는 창 — '취소'가 진한 단추
     if (!ok) return;
     saveUndoSnapshot('삼보텍스·한글 이름 블라인드 합치기');
     const refs = mergeFabricPairs(pairs, {
@@ -2808,14 +2808,14 @@ function findFabricOnlyRows() {
     });
     return { drop, keep };
 }
-function removeFabricOnlyRows() {
+async function removeFabricOnlyRows() {      // 254번
     const { drop, keep } = findFabricOnlyRows();
     const keepMsg = keep.length ? `\n\n확인 필요(빼지 않음) ${keep.length}개:\n${keep.map(k => `• ${k.f.book} ${k.f.name} — ${k.why}`).join('\n')}` : '';
     if (drop.length === 0) { showToast(keep.length ? `뺄 줄이 없습니다. 확인 필요 ${keep.length}개: ${keep.map(k => k.f.name).join(', ')}` : '"원단만 시킬때" 줄이 없습니다.', 'info'); return; }
     const before = finderColorCount();
     const lines = drop.slice(0, 45).map(f => `• ${f.book} ${f.name}`).join('\n');
     const more = drop.length > 45 ? `\n… 외 ${drop.length - 45}개` : '';
-    const ok = confirm(
+    const ok = await askConfirm(
         `["원단만 시킬때" 줄 빼기]\n\n` +
         `단가표 비고에 "원단만 시킬때"가 붙은 원단 ${drop.length}개를 앱 원단 목록에서 뺍니다. (원단 ${FABRIC_DB.length}개 → ${FABRIC_DB.length - drop.length}개)\n` +
         `이 원단들은 고객 화면·찾기·추천에 원래 나오지 않았고, 가격은 엑셀 단가표에서 확인하시면 됩니다.\n\n` +
@@ -2823,7 +2823,7 @@ function removeFabricOnlyRows() {
         `원단과 함께 그 원단의 원가·색·분류도 지웁니다. 짝인 일반 원단(폭당 또는 마당)은 그대로입니다.\n` +
         `빼기 전 상태는 자동으로 보관되어 [되돌리기]로 돌아갈 수 있습니다.\n\n` +
         `[확인]: 뺍니다.\n[취소]: 그대로 둡니다.`
-    );
+    , { danger: true });      // 254번: 지우는 창 — '취소'가 진한 단추
     if (!ok) return;
     saveUndoSnapshot('"원단만 시킬때" 줄 빼기');
     const ids = new Set(drop.map(f => f.id));
@@ -2969,7 +2969,7 @@ function warnIfQuoteFabricsMissing() {
 }
 
 // 가져오기 결과를 실제로 적용
-function applyImportedRows(dataRows, sourceName) {
+async function applyImportedRows(dataRows, sourceName) {      // 254번
     if (!Costing.state.rules) {
         showToast("먼저 '비공개 팩'을 불러와 주세요. (원가 규칙이 필요합니다)", "error");
         return 0;
@@ -2987,7 +2987,7 @@ function applyImportedRows(dataRows, sourceName) {
 
     let isMerged = false;
     if (curCount > 0) {
-        const choice = confirm(
+        const choice = await askConfirm(
             `[단가표 불러오기 방식 선택]\n\n` +
             `• 현재 등록된 원단: ${curCount}개\n` +
             `• 새 파일의 원단: ${newCount}개${emptyMsg}\n\n` +
@@ -3003,13 +3003,13 @@ function applyImportedRows(dataRows, sourceName) {
             Costing.setPrivate({ rules: Costing.state.rules, costs: Object.assign({}, Costing.state.costs, res.costs) });
         } else {
             const missingCount = FABRIC_DB.filter(oldF => !res.fabrics.some(newF => newF.id === oldF.id)).length;
-            const confirmReplace = confirm(
+            const confirmReplace = await askConfirm(
                 `⚠️ 정말 통째로 바꾸시겠습니까?\n\n` +
                 `기존 원단 ${missingCount}개가 목록에서 완전히 빠집니다.\n` +
                 `(진행 중인 견적이 끊어질 수 있습니다)\n\n` +
                 `[확인]: 기존 원단을 모두 지우고 교체합니다.\n` +
                 `[취소]: 작업을 취소합니다.`
-            );
+            , { danger: true });      // 254번: 지우는 창 — '취소'가 진한 단추
             if (!confirmReplace) {
                 showToast("단가표 교체를 취소했습니다.", "info");
                 return 0;
@@ -3043,12 +3043,12 @@ function handleFabricFileUpload(event) {
     if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
         if (typeof XLSX === 'undefined') { showToast("엑셀 읽기 도구를 불러오지 못했습니다. 인터넷 연결을 확인하거나 CSV로 저장해 올려주세요.", "error"); event.target.value = ''; return; }
         const reader = new FileReader();
-        reader.onload = function (e) {
+        reader.onload = async function (e) {      // 254번: 단가표 창을 기다림
             try {
                 const wb = XLSX.read(e.target.result, { type: 'array' });
                 const sheetName = wb.SheetNames.find(n => n.includes('통합')) || wb.SheetNames[0];
                 const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '', raw: false });
-                applyImportedRows(rows, `${file.name} · ${sheetName}`);
+                await applyImportedRows(rows, `${file.name} · ${sheetName}`);
             } catch (err) {
                 showToast("엑셀 파일을 읽지 못했습니다: " + err.message, "error");
             }

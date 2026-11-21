@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261296';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -2299,7 +2299,7 @@ async function saveTicketImage(mode) {
     const contract = mode === 'contract';      // 244번: 견적서 창 '계약 장'에서 부를 때만. 손님 화면 '견적서 저장'은 늘 전체 제안
     if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
     if (contract) { const why = ticketContractWhy(); if (why) { showToast(why, 'error'); return; } }
-    else if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 견적서를 저장할까요?')) return;      // 163번: 직원 화면에서만 묻기
+    else if (typeof confirmQuoteGaps === 'function' && !(await confirmQuoteGaps('그대로 견적서를 저장할까요?'))) return;      // 163번: 직원 화면에서만 묻기 · 254번 await
     if (__saveBusy) return;          // 연타해도 여러 번 저장되지 않게
     __saveBusy = true;
     showToast(contract ? "계약 장 만드는 중..." : "견적서 만드는 중...", "info");
@@ -2444,7 +2444,7 @@ async function printTicket(mode) {
     const contract = mode === 'contract';      // 244번
     if (typeof blockIfNoFabric === 'function' && blockIfNoFabric()) return;      // 126번
     if (contract) { const why = ticketContractWhy(); if (why) { showToast(why, 'error'); return; } }
-    else if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 인쇄할까요?')) return;      // 163번: 직원 화면에서만 묻기
+    else if (typeof confirmQuoteGaps === 'function' && !(await confirmQuoteGaps('그대로 인쇄할까요?'))) return;      // 163번: 직원 화면에서만 묻기 · 254번 await
     let canvases;
     try { ({ canvases } = await makeTicketBlobs({ contract })); }
     catch (err) { console.error(err); showToast("견적서 인쇄 준비 중 오류가 발생했습니다.", "error"); return; }

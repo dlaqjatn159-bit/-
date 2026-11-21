@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261296';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261295';
+const REDAM_BUILD = '20261296';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -217,8 +217,8 @@ function exitStaffMode(toastMsg, goToProposal) {
 }
 
 // 직원 화면에서 만든 견적을 고객에게 그대로 보여주기
-function presentToCustomer() {
-    if (typeof confirmQuoteGaps === 'function' && !confirmQuoteGaps('그대로 고객에게 보여 줄까요?')) return;      // 163번: 손님에게 건네기 전, 직원 화면에서
+async function presentToCustomer() {      // 254번
+    if (typeof confirmQuoteGaps === 'function' && !(await confirmQuoteGaps('그대로 고객에게 보여 줄까요?'))) return;      // 163번: 손님에게 건네기 전, 직원 화면에서 · 254번 await
     exitStaffMode(null, true);
 }
 
