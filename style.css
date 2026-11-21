@@ -25,6 +25,7 @@
     --lh-tight: var(--rd-app-line-height-tight); --lh-title: var(--rd-app-line-height-title); --lh-body: var(--rd-app-line-height-body); --lh-long: var(--rd-app-line-height-long);
     --m-press: var(--rd-app-motion-press); --m-pick: var(--rd-app-motion-pick);
     --m-attach: var(--rd-app-motion-attach); --m-interrupt: var(--rd-app-motion-interrupt);      /* 247번: 붙음 0.2초 · 끼어듦 0.35초 (결정 #317) */
+    --m-fill: var(--rd-app-motion-fill);      /* 252번: 채움 0.7초 (결정 #317) */
     
     --page-transition-duration: var(--rd-app-motion-page);
     --page-transition-ease: var(--rd-app-motion-ease);
@@ -299,7 +300,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     inset: 0;
     background-size: cover;
     background-position: center;
-    transition: transform 0.5s ease;
+    transition: transform var(--page-transition-duration) ease;      /* 252번 */
 }
 
 .bookmark-gradient {
@@ -617,7 +618,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .pin-actions button {
     padding: 0.85rem; border-radius: 0; font-weight: 600; font-size: 0.9rem; cursor: pointer;
     border: 1px solid #2b221a; background: #fff; color: var(--brand-dark);
-    transition: background-color 0.15s, color 0.15s;
+    transition: background-color var(--m-press), color var(--m-press);
 }
 .pin-actions button:hover { background: #f4ede2; }
 .pin-actions button.primary { background: #2b221a; border-color: #2b221a; color: #fffdf9; }
@@ -936,7 +937,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .finder-sw-tag { position: absolute; left: 0.5rem; bottom: 0.45rem; padding: 1px 7px; border-radius: 999px; background: rgba(43, 34, 26, 0.55); font-size: 0.66rem; color: #fff; }
 .finder-sw-dots { position: absolute; left: 0; right: 0; bottom: 0.45rem; display: flex; justify-content: center; gap: 2px; pointer-events: none; }
 .finder-sw-dots button { display: grid; place-items: center; width: 22px; height: 18px; pointer-events: auto; }
-.finder-sw-dots i { display: block; width: 6px; height: 6px; border-radius: 50%; background: rgba(43, 34, 26, 0.25); transition: background 0.2s, width 0.2s; }
+.finder-sw-dots i { display: block; width: 6px; height: 6px; border-radius: 50%; background: rgba(43, 34, 26, 0.25); transition: background var(--m-attach), width var(--m-attach); }
 .finder-sw-dots button[aria-current="true"] i { width: 14px; border-radius: 3px; background: rgba(43, 34, 26, 0.7); }
 .finder-cur { position: absolute; top: 0.5rem; left: 0.5rem; z-index: 2; padding: 2px 8px; border-radius: 999px; background: var(--brand-accent); font-size: 0.68rem; font-weight: 700; color: #fff; }
 .finder-card .finder-star { z-index: 2; width: 2.2rem; height: 2.2rem; }
@@ -945,7 +946,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 .finder-head-txt { display: grid; flex: 1; gap: 0.1rem; min-width: 0; }
 .finder-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.92rem; font-weight: 700; color: var(--brand-dark); }
 .finder-meta { font-size: 0.74rem; line-height: 1.4; color: var(--brand-muted); word-break: keep-all; }
-.finder-chev { display: grid; flex: none; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; color: var(--brand-muted); transition: transform 0.25s ease, background 0.2s; }
+.finder-chev { display: grid; flex: none; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; color: var(--brand-muted); transition: transform var(--m-pick) ease, background var(--m-attach); }
 .finder-chev svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
 /* 정보판이 열리면 이름 줄과 경계를 또렷하게: 사이에 짙은 선, 이름 줄은 옅은 살구빛 바탕 */
 .finder-card.is-open .finder-head { background: var(--brand-light); }
@@ -1070,7 +1071,7 @@ input[type="text"].staff-curtain-name { font-size: 0.9rem; font-weight: 600; }
 
 /* 원단 사진 (photos 폴더에 파일이 있을 때만 보임) */
 .fabric-photo {
-    transition: transform 0.5s ease;
+    transition: transform var(--page-transition-duration) ease;      /* 252번 */
     position: absolute;
     inset: 0;
     width: 100%;
@@ -1392,7 +1393,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .dos-lead small { display: block; margin-top: 0.55rem; font-family: Pretendard, sans-serif; font-size: 0.85rem; font-weight: 400; line-height: var(--lh-body); letter-spacing: 0; color: #6f5f4f; word-break: keep-all; }
 /* 공간 전체 색 띠 + 아래 공간 이름 */
 .dos-house { margin: 0 0 1.8rem; border-top: 1px solid #e5dcd0; }
-.dos-house-strip i { flex: 1; transition: background-color 0.45s ease; }
+.dos-house-strip i { flex: 1; transition: background-color var(--page-transition-duration) ease; }
 .dos-house-cap { display: flex; margin-top: 0.35rem; font-size: 0.73rem; color: #6f5f4f; }
 .dos-house-cap span { flex: 1; text-align: center; }
 /* 이 집의 기본 벽·바닥·잇는 색 (조용한 기준선, 40-1) */
@@ -1424,7 +1425,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .dos-wf .dos-t { margin-top: 0.1rem; padding-left: 2.65rem; }
 /* 공간 색 띠 (43번): 3단 창가 입면 띠 (1단: 벽·원단·벽, 2단: 바닥 쪽 벽 베이스, 3단: 바닥) */
 .arch-layer-box .arch-mid-window { display: flex; flex: 1; height: 38px; }
-.arch-layer-box .arch-mid-window > div { position: relative; display: flex; align-items: center; justify-content: center; padding-bottom: 0; transition: background-color 0.45s ease; }
+.arch-layer-box .arch-mid-window > div { position: relative; display: flex; align-items: center; justify-content: center; padding-bottom: 0; transition: background-color var(--page-transition-duration) ease; }
 .arch-layer-box .arch-mid-window > div span { font-size: 0.68rem; font-weight: 400; letter-spacing: 0.04em; color: rgba(43, 34, 26, 0.58); }
 .arch-layer-box .arch-mid-window > div.is-dark span { color: rgba(255, 255, 255, 0.85); }
 .arch-layer-box .arch-wall-base { height: 11px; flex: none; }
@@ -1444,8 +1445,8 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .dos-why.is-muted { color: #6f5f4f; }
 .dos-room > .dos-why + .dos-item { margin-top: 0.2rem; }
 /* 방금 원단을 고른 공간: 띠 칸은 왼쪽에서 오른쪽으로, 원단 조각은 아래에서 위로 0.7초 */
-.dos-house-strip .fill-in, .arch-mid-window .fill-in { animation: dosFillIn 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: left; }
-.dos-sw.fill-in { animation: dosFillUp 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: bottom; }
+.dos-house-strip .fill-in, .arch-mid-window .fill-in { animation: dosFillIn var(--m-fill) cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: left; }
+.dos-sw.fill-in { animation: dosFillUp var(--m-fill) cubic-bezier(0.2, 0.9, 0.3, 1) both; transform-origin: bottom; }
 @keyframes dosFillIn { from { transform: scaleX(0); } }
 @keyframes dosFillUp { from { transform: scaleY(0); } }
 @media (prefers-reduced-motion: reduce) { .dos-house-strip .fill-in, .arch-mid-window .fill-in, .dos-sw.fill-in { animation: none; } }
@@ -1598,7 +1599,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .jg-canvas { width: 100%; aspect-ratio: 16 / 10; max-height: calc(100dvh - 300px); position: relative; background: var(--paper-sheet); }
 /* 134번: 조각보 칸 — 16×10 종이를 무작위로 나눈 칸(%)에 색을 칠함. 표지·중심 화면 같이 씀 */
 .jg-cv { position: absolute; inset: 0; }
-.jg-c { position: absolute; outline: 0.5px solid var(--line-ink); outline-offset: -0.5px; transition: background-color 0.7s; }
+.jg-c { position: absolute; outline: 0.5px solid var(--line-ink); outline-offset: -0.5px; transition: background-color var(--m-fill); }
 .jg-c.is-new { animation: jg-sew 0.9s ease-out; }
 @keyframes jg-sew { from { opacity: 0.15; } to { opacity: 1; } }
 .jg-cv-dot { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50% !important; background: var(--earth); }
@@ -1912,22 +1913,22 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .bookmark-stage .fab-panel .fabric-photo:not([src]) { visibility: hidden; }
 
 /* 140번(B-6): 원단 고르는 한 화면 — 아래 줄은 다 고르면 사라지고, 첫 칸은 그때 "원단 보기"가 나타남 */
-.fab-seek-stage .fab-seek-sub { transition: opacity 0.35s ease; }
+.fab-seek-stage .fab-seek-sub { transition: opacity var(--m-pick) ease; }
 .fab-seek-stage .fab-seek-sub.is-gone { opacity: 0; }
-.fab-seek-stage .fab-seek-go { opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+.fab-seek-stage .fab-seek-go { opacity: 0; pointer-events: none; transition: opacity var(--m-pick) ease; }
 .fab-seek-stage.is-done .fab-seek-go { opacity: 1; pointer-events: auto; }
 .fab-seek-stage .fab-seek-found { justify-content: center; }
 /* 원단 하나가 준비될 때마다 그 원단 색 조각이 하나씩 나타남 */
 .fab-seek-found { display: flex; gap: 14px; min-height: 30px; margin-top: 26px; }
-.fab-seek-found i { display: block; width: 22px; height: 30px; box-shadow: inset 0 0 0 1px var(--line-ink); opacity: 0; transform: translateY(6px); transition: opacity 0.35s ease, transform 0.35s ease; }
+.fab-seek-found i { display: block; width: 22px; height: 30px; box-shadow: inset 0 0 0 1px var(--line-ink); opacity: 0; transform: translateY(6px); transition: opacity var(--m-pick) ease, transform var(--m-pick) ease; }
 .fab-seek-found i.on { opacity: 1; transform: none; }
 /* 움직임 줄이기: 색 조각은 서서히 나타나기만 */
 @media (prefers-reduced-motion: reduce) {
-    .fab-seek-found i { transition: opacity 0.35s ease; transform: none; }
+    .fab-seek-found i { transition: opacity var(--m-pick) ease; transform: none; }
 }
 
 /* 분위기 칸 넓히기 (22-2): 첫 터치는 넓어지기만, 한 번 더 누르면 선택 */
-.bookmark-canvas.has-expand { transition: grid-template-columns 0.35s ease; }
+.bookmark-canvas.has-expand { transition: grid-template-columns var(--m-pick) ease; }
 .bookmark-card .expand-hint { display: none; position: absolute; left: 0; right: 0; bottom: calc(var(--band-h, 205px) + 1rem); z-index: 14; text-align: center; font-size: 0.85rem; color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55); pointer-events: none; }
 .bookmark-card.is-expanded .expand-hint { display: block; }
 
@@ -2042,7 +2043,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 #trackCurationSection:has(.fin-ed) #v2TopActs { display: none; }
 /* 부품 ② 진행 표시: 화면 맨 위 가는 선(2px), 짙은 갈색이 차오름 (133번: 흙빛은 점에만) */
 .r-prog { position: absolute; left: 0; right: 0; top: 0; z-index: 45; height: 2px; background: var(--line); pointer-events: none; }
-.r-prog i { display: block; height: 100%; background: var(--ink); transition: width 0.45s ease; }
+.r-prog i { display: block; height: 100%; background: var(--ink); transition: width var(--page-transition-duration) ease; }
 .bookmark-stage > .r-prog { background: rgba(251, 249, 245, 0.35); }
 .step-dots, .ask-dots, .step-head { display: none !important; }
 /* 부품 ③ 주요 행동: 짙은 갈색 글자 + 밑줄 1px, 한 화면에 하나 (133번: 흙빛 없음) */
@@ -2618,7 +2619,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     border: none;
     cursor: pointer;
     font-family: inherit;
-    transition: color 0.15s;
+    transition: color var(--m-press);
 }
 .survey-opt::after {
     content: "";
@@ -2628,7 +2629,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     bottom: 6px;
     height: 2px;
     background: transparent;
-    transition: background 0.15s;
+    transition: background var(--m-press);
 }
 .survey-opt.on {
     color: #8a4a22;
@@ -2724,7 +2725,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     border: 1px solid #e7dac7;
     padding: 3px 8px;
     border-radius: 6px;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .survey-room h2 .size-btn:hover {
     background: #f4ede2;
@@ -2746,7 +2747,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     padding: 4px 8px;
     border-radius: 8px;
     border: 1px solid transparent;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .survey-chip:hover {
     background: #faf6f0;
@@ -2769,7 +2770,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     padding: 3px 6px;
     border-radius: 8px;
     border: 1px solid transparent;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .survey-colors-bundle:hover {
     background: #faf6f0;
@@ -2785,7 +2786,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .survey-empty-chip:hover {
     color: #8a4a22;
@@ -2820,7 +2821,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     font-size: 19px;
     color: #6f5f4f;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .survey-addroom:hover {
     color: #2b221a;
@@ -2925,7 +2926,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     font-size: 12px;
     color: #2b221a;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .survey-rec-pill:hover {
     border-color: #8a4a22;
@@ -3005,7 +3006,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     font-weight: 600;
     color: #2b221a;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .q-dir:hover {
     border-color: #8a4a22;
@@ -3048,7 +3049,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     font-weight: 600;
     color: #2b221a;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--m-press);
 }
 .q-why-chip:hover {
     border-color: #8a4a22;
