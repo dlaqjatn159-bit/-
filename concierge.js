@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261294';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -2492,10 +2492,10 @@
             if (el) el.value = v;
             if (window.redamVisit) window.redamVisit.ask();      // 245번: 번호 전체가 되면 폰에서 보낸 사진 · 잰 크기를 한 번 받아 둠
         },
-        deleteRoom: function(roomId) {
+        deleteRoom: async function(roomId) {      // 253번
             const room = state.roomsCart.find(r => r.id === roomId);
             if (!room) return;
-            if (!confirm(`'${room.name}' 공간을 삭제할까요?`)) return;
+            if (!(await askConfirm(`'${room.name}' 공간을 삭제할까요?`, { danger: true }))) return;
             state.roomsCart = state.roomsCart.filter(r => r.id !== roomId);
             syncToV1MasterRooms();
             if (state.step === "1-Space-Edit") { state.editingRoom = null; backToSpace(); return; }     // 수정하기 화면의 "이 공간 삭제"

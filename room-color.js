@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261294';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -289,7 +289,7 @@
         input.value = '';
         if (!file || !st) return;
         const url = URL.createObjectURL(file);
-        loadImage(url, which).catch(() => alert('사진을 열지 못했어요. 다른 사진으로 해 주세요.')).finally(() => URL.revokeObjectURL(url));
+        loadImage(url, which).catch(() => { showNotice('사진을 열지 못했어요. 다른 사진으로 해 주세요.'); }).finally(() => URL.revokeObjectURL(url));
     }
     function removeWallPhoto() {
         st.photos[1] = null;
@@ -844,12 +844,12 @@
         window.redamVisit.image(id, false).then(u => {
             if (st !== s0) { URL.revokeObjectURL(u); return; }      // 그사이 창을 닫음
             st.phone = null;      // 줄은 닫음 (loadImage가 다시 그림)
-            return loadImage(u, which, id).catch(() => alert('사진을 열지 못했어요. 다른 사진으로 해 주세요.')).finally(() => URL.revokeObjectURL(u));
+            return loadImage(u, which, id).catch(() => { showNotice('사진을 열지 못했어요. 다른 사진으로 해 주세요.'); }).finally(() => URL.revokeObjectURL(u));
         }).catch(() => {
             if (st !== s0) return;
             if (st.phone) st.phone.busy = false;
             if (st.cust) renderCust(); else render();
-            alert('사진을 받지 못했어요. 인터넷을 확인하시거나 사진 불러오기로 해 주세요.');
+            showNotice('사진을 받지 못했어요. 인터넷을 확인하시거나 사진 불러오기로 해 주세요.');      // 253번
         });
     }
     document.addEventListener('redam-visit', () => { if (!st) return; if (st.cust) renderCust(); else render(); });      // 늦게 온 사진 목록 · 손님이 바뀌면 단추를 다시

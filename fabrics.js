@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261294';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabrics.js — 직원 화면 › 원단: 원단 분류(톤·분위기) 편집·원단 색상 관리·되돌리기/중복 정리 버튼·원단 사진 확인·기기 사진 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -402,7 +402,7 @@ async function removeDevicePhoto(key) {
 }
 async function clearDevicePhotos() {
     const n = DevicePhotos.keys().length;
-    if (!n || !confirm(`기기에 넣은 원단 사진 ${n}장을 모두 지울까요?\n(PC·탭에 있는 사진 파일은 그대로예요. 다시 넣으려면 "사진 불러오기")`)) return;
+    if (!n || !(await askConfirm(`기기에 넣은 원단 사진 ${n}장을 모두 지울까요?\n(PC·탭에 있는 사진 파일은 그대로예요. 다시 넣으려면 "사진 불러오기")`, { danger: true }))) return;
     try { await DevicePhotos.clearAll(); } catch (e) { showToast('지우지 못했어요: ' + e.message, 'error'); return; }
     forgetPhotoLookups();
     renderDevicePhotos();

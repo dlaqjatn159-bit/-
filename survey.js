@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261294';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -335,12 +335,12 @@ function roomCurtainConfig(room) {
 const CURTAIN_CONFIG_GROUPS = { both: ['drape', 'sheer'], drape: ['drape'], sheer: ['sheer'], blind: ['blind'] };
 
 // 구성 버튼: 빠진 종류는 견적란 "품목 추가"와 같은 방법으로 더하고, 남는 줄은 사장님께 묻고 나서만 지움 (115번 고침)
-function setRoomCurtainConfig(roomId, cfg) {
+async function setRoomCurtainConfig(roomId, cfg) {      // 253번
     const room = rooms.find(r => r.id === roomId);
     const want = CURTAIN_CONFIG_GROUPS[cfg];
     if (!room || !want) return;
     const extra = room.curtains.filter(c => !want.includes(curtainGroupOf(c)));
-    if (extra.length && !confirm(`${extra.map(c => c.label).join(', ')} 줄을 지웁니다. 고른 원단도 함께 지워집니다. 계속할까요?`)) return;
+    if (extra.length && !(await askConfirm(`${extra.map(c => c.label).join(', ')} 줄을 지웁니다. 고른 원단도 함께 지워집니다. 계속할까요?`, { danger: true }))) return;
     room.curtains = room.curtains.filter(c => want.includes(curtainGroupOf(c)));
     want.forEach(k => {
         if (room.curtains.some(c => curtainGroupOf(c) === k)) return;
@@ -411,7 +411,7 @@ function closeSurveySizeModal() {
     const modal = document.getElementById('surveySizeModal');
     if (modal) modal.classList.add('hidden');
 }
-function saveSurveySizeModal() {
+async function saveSurveySizeModal() {      // 253번
     if (surveySizeEditingRoomId == null) return;
     const room = rooms.find(r => r.id === surveySizeEditingRoomId);
     if (!room) { closeSurveySizeModal(); return; }
@@ -429,7 +429,7 @@ function saveSurveySizeModal() {
     const w = Math.max(10, rawW);
     const h = Math.max(10, rawH);
     // 163번: 50~800cm 밖이면 한 번 묻기(3600·36 같은 잘못 넣기)
-    if ((sizeOutOfRange(w) || sizeOutOfRange(h)) && !confirm(`${w} × ${h} cm — ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖입니다. 이대로 저장할까요?`)) return;
+    if ((sizeOutOfRange(w) || sizeOutOfRange(h)) && !(await askConfirm(`${w} × ${h} cm — ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖입니다. 이대로 저장할까요?`))) return;
     // 공간 크기를 따라가던 줄(예전 크기와 같은 줄)만 새 크기로. 창이 여럿이라 크기가 다른 줄은 그대로 (115번 고침)
     const oldW = room.width || (room.curtains[0] && room.curtains[0].width);
     const oldH = room.height || (room.curtains[0] && room.curtains[0].height);

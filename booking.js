@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261294';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 시공 날짜 잡기 (작업목록 202번)
 //  - 견적서 다음 단계에서 고객이 편한 날짜와 도착 시간을 선택
@@ -555,7 +555,7 @@
                 if (h > 12) h -= 12;
                 const m = String(atDate.getMinutes()).padStart(2, '0');
                 const atStr = `${atDate.getMonth() + 1}월 ${atDate.getDate()}일 ${isPm ? '오후' : '오전'} ${h}:${m}`;
-                if (confirm(`장부에 이미 시공일(${atStr})이 있습니다. 새 시간으로 바꿀까요?`)) {
+                if (await askConfirm(`장부에 이미 시공일(${atStr})이 있습니다. 새 시간으로 바꿀까요?`)) {      // 253번
                     confirmBooking(true);
                     return;
                 }

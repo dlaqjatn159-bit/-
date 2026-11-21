@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261294';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261295';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261294';
+const REDAM_BUILD = '20261295';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -461,8 +461,8 @@ function startNewConsultation() {
     }
     startNewConsultationConfirmed();
 }
-function startNewConsultationConfirmed() {
-    if (!confirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)')) return;
+async function startNewConsultationConfirmed() {      // 253번
+    if (!(await askConfirm('현재 견적과 고객 입력을 모두 지우고 새 상담을 시작할까요?\n(지금 상담은 "상담 이력"에 보관됩니다)', { danger: true }))) return;
     archiveConsultation(collectConsultation(), Date.now());
     clearDraft();
     consultOutcome = null; quoteDate = null; quoteValidOverride = null; bookingPick = null; consultId = null;      // 237번: 새 상담은 새 번호
@@ -914,11 +914,11 @@ function renderHistory() {
     }).join('');
 }
 
-function loadHistoryItem(id) {
+async function loadHistoryItem(id) {      // 253번
     const list = loadHistory();
     const item = list.find(h => h.id === id);
     if (!item) return;
-    if (!confirm('이 상담을 불러옵니다. 지금 작성 중인 상담은 이력에 보관됩니다.\n(현재 단가표 기준으로 금액을 다시 계산합니다)')) return;
+    if (!(await askConfirm('이 상담을 불러옵니다. 지금 작성 중인 상담은 이력에 보관됩니다.\n(현재 단가표 기준으로 금액을 다시 계산합니다)'))) return;
     archiveConsultation(collectConsultation(), Date.now());
     saveHistory(loadHistory().filter(h => h.id !== id));       // 불러온 상담은 "진행 중"이 되므로 이력에서 이동
     applySnapshot(item.snapshot);
@@ -943,8 +943,8 @@ function editHistoryOutcome(id) {
     } });
 }
 
-function deleteHistoryItem(id) {
-    if (!confirm('이 상담 기록을 삭제할까요?')) return;
+async function deleteHistoryItem(id) {      // 253번
+    if (!(await askConfirm('이 상담 기록을 삭제할까요?', { danger: true }))) return;
     saveHistory(loadHistory().filter(h => h.id !== id));
     renderHistory();
 }
@@ -1160,8 +1160,8 @@ function updatePrivateStatus() {
     const legacyBtn = document.getElementById('legacyPurgeBtn');
     if (legacyBtn) legacyBtn.style.display = hasLegacyData() ? '' : 'none';
 }
-function purgeLegacyDataConfirm() {
-    if (!confirm('구버전 앱이 남긴 데이터(원가 포함)를 이 기기에서 삭제합니다. 계속할까요?')) return;
+async function purgeLegacyDataConfirm() {      // 253번
+    if (!(await askConfirm('구버전 앱이 남긴 데이터(원가 포함)를 이 기기에서 삭제합니다. 계속할까요?', { danger: true }))) return;
     purgeLegacyData();
     updatePrivateStatus();
     showToast('구버전 데이터를 삭제했습니다.');
@@ -1293,9 +1293,9 @@ function addRoom() {
     showToast(`[${newRoom.name}] 공간이 추가되었습니다.`);
 }
 
-function removeRoom(roomId) {
+async function removeRoom(roomId) {      // 253번
     const room = rooms.find(r => r.id === roomId);
-    if (!room || !confirm(`'${room.name}' 공간을 삭제할까요?`)) return;
+    if (!room || !(await askConfirm(`'${room.name}' 공간을 삭제할까요?`, { danger: true }))) return;
     rooms = rooms.filter(r => r.id !== roomId);
     collapsedRooms.delete(roomId);
     renderRooms();
@@ -1878,6 +1878,47 @@ function renderRooms() {
 // 원단 목록 표·견적서 창·설정 칸(안내 문구·유효 기간·배수·판매가 곡선·가공 단가)은 settings.js로 옮김 (130-2)
 
 // 견적서 이미지 그리기·이유 카드·우리 집 색·저장 이미지·인쇄는 ticket.js로 옮김 (130-2)
+
+// 253번: 브라우저 확인창 대신 앱 안의 끼어드는 창 (결정 #317 — 나타남 0.35초 · 닫힘 0.25초)
+// askConfirm(글, { danger }) → 확인 true · 취소 false (Promise). showNotice(글) → 확인 단추 하나 (Promise)
+// danger: 지우는 창 — '취소'가 진한 단추 · 처음 초점도 '취소'에(253번 보완 11-22). Esc · 창 밖 누르기 = 취소
+function askDialog(msg, opts = {}) {
+    const old = document.getElementById('askDialog');
+    if (old && old.__done) old.__done(false);
+    return new Promise(resolve => {
+        const wrap = document.createElement('div');
+        wrap.id = 'askDialog'; wrap.className = 'outcome-dialog ask-dialog';
+        wrap.innerHTML = `<div class="outcome-card" role="alertdialog" aria-modal="true" aria-describedby="askDialogMsg">
+            <p class="ask-dialog-msg" id="askDialogMsg"></p>
+            <div class="outcome-acts">${opts.notice ? '' : `<button type="button" data-act="no"${opts.danger ? ' class="primary"' : ''}>취소</button>`}<button type="button" data-act="yes"${opts.danger ? '' : ' class="primary"'}>확인</button></div></div>`;
+        wrap.querySelector('.ask-dialog-msg').textContent = String(msg);
+        let done = false;
+        const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(!!opts.notice); } };
+        function finish(v) {
+            if (done) return;
+            done = true; wrap.id = '';
+            document.removeEventListener('keydown', onKey, true);
+            resolve(v);      // 답은 바로 (닫히는 움직임을 기다리지 않음)
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduce) { wrap.remove(); return; }
+            wrap.classList.add('is-closing');
+            wrap.addEventListener('animationend', () => wrap.remove(), { once: true });
+            setTimeout(() => wrap.remove(), 400);      // 움직임이 끝나지 않아도 창이 남지 않게
+        }
+        wrap.__done = finish;
+        document.addEventListener('keydown', onKey, true);
+        wrap.addEventListener('click', e => {
+            const b = e.target.closest('button[data-act]');
+            if (b) { finish(b.dataset.act === 'yes'); return; }
+            if (e.target === wrap) finish(!!opts.notice);
+        });
+        document.body.appendChild(wrap);
+        const first = wrap.querySelector(opts.danger ? '[data-act="no"]' : '[data-act="yes"]') || wrap.querySelector('[data-act="yes"]');
+        setTimeout(() => { if (first) first.focus(); }, 0);
+    });
+}
+function askConfirm(msg, opts = {}) { return askDialog(msg, { danger: !!opts.danger }); }
+function showNotice(msg) { return askDialog(msg, { notice: true }); }
 
 function showToast(msg, type = "success") {
     const toast = document.getElementById('toast');
