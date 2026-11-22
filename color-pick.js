@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261296';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261297';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -57,9 +57,9 @@
         point: w => `${w} 모두 선에서 벗어난 쪽이라, 창 쪽의 포인트가 됩니다.`
     };
     const MAP_LEAD = '선은 이 공간의 벽 색과 바닥 색을 잇습니다. 커튼이 선 가까이 있으면 벽과 바닥을 자연스럽게 잇고, 선에서 멀어지면 무게나 포인트가 됩니다.';
-    const SCENE_PHOTO = 'photos/scene/window_view.jpg';      // 속지 빛 한 장 바탕 (예시 창밖 사진)
-    const SHEER_BLUR = { light: 3, medium: 10, day: 18, heavy: 26 };          // 창밖이 흐려지는 정도(px)
-    const SHEER_VEIL = { light: 0.3, medium: 0.58, day: 0.78, heavy: 0.88 };  // 원단 색이 덮는 정도
+    const SCENE_PHOTO = 'photos/scene/window_apt.jpg';      // 속지 빛 한 장 바탕 (예시 창밖 사진 · 256번: 맞은편 아파트 동, 결정 #361)
+    const SHEER_BLUR = { light: 2, medium: 7, day: 14, heavy: 40 };          // 창밖이 흐려지는 정도(px) · 256번: 또렷 → 창 줄 형태 → 덩어리 → 안 보임
+    const SHEER_VEIL = { light: 0.22, medium: 0.48, day: 0.66, heavy: 0.97 };  // 원단 색이 덮는 정도 · 256번: 중지는 창밖이 안 보이게
     const SWIPE_PX = 80;      // 사진을 이만큼 밀면 다음 원단
     const PUSH_MS = 1100;     // 속지 → 겉지 전환(띠가 되밀기)
     const ARROW = '<svg width="34" height="14" viewBox="0 0 34 14" aria-hidden="true"><path d="M0 7h32m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.25"></path></svg>';
@@ -180,6 +180,7 @@
         return (r.house === 'color' ? WHY.point : WHY.pointGray)[x.tech] || WHY.point[x.tech] || WHY.pointGray[x.tech] || '';
     }
     const door = (txt, on, extra) => `<button type="button" class="cp-door" onclick="${on}"${extra || ''}>${esc(txt)}${ARROW}</button>`;
+    const doorTxtOf = x => { const f0 = x.fabrics[0] || {}, n = x.fabrics.length; return n === 1 ? fabName(f0.id, f0.color) : `원단 ${n}가지 보기`; };      // 문 글자: 원단이 하나면 그 원단 이름 (256번: 한 곳으로 모음)
 
     // ---- 그리기 ----
     function html() {
@@ -223,19 +224,20 @@
         }
         const names = r.list.length > 1 ? `<div class="cp-names">${r.list.map((y, i) =>
             `<button type="button" class="${i === s.seat ? 'is-on' : ''}" onclick="concierge.cpSeat(${i})">${esc(seatName(r, y))}</button>`).join('')}</div>` : '';      // 한 장뿐이면 이름 줄 없음
-        const f0 = x.fabrics[0] || {};
-        const n = x.fabrics.length;
-        const doorTxt = n === 1 ? fabName(f0.id, f0.color) : `원단 ${n}가지 보기`;      // 원단이 하나면 그 원단 이름
+        const doorTxt = doorTxtOf(x);      // 원단이 하나면 그 원단 이름
         // 190번: 겉지 자리가 둘 이상이면 이유 한 줄 아래 작은 글 "왜 이 셋인가요"(두 장이면 "왜 이 둘인가요") → 지도. 한 장·속지는 없음
         const mapLink = r.kind === 'drape' && r.list.length > 1 ? `<button type="button" class="cp-map-link" onclick="concierge.cpMap()">${r.list.length === 2 ? '왜 이 둘인가요' : '왜 이 셋인가요'}</button>` : '';
         const say = `<div class="cp-say"><h1 class="cp-hero">${esc(seatName(r, x))}</h1><p class="cp-why">${esc(whyOf(r, x))}</p>${mapLink}</div>`;      // 222번: 209번 "딱 맞는 ○○ 원단은 아직 없습니다" 한 줄 없앰(11-12 사장님)
-        if (r.kind === 'sheer') {
-            const tint = f0.hex || '#efece6';
-            return `<div class="cp-stage cp-sheet" style="background:${tint};color:var(--ink)">
-                <img class="cp-scene" src="${SCENE_PHOTO}" alt="" style="filter:blur(${SHEER_BLUR[x.key] || 10}px)">
-                <i class="cp-veil" style="background:${tint};opacity:${SHEER_VEIL[x.key] || 0.6}"></i>
-                ${names}${say}<div class="cp-door-at">${door(doorTxt, 'concierge.cpOpen()')}</div>
-                <span class="cp-honest">${HONEST_SCENE}</span></div>`;
+        if (r.kind === 'sheer') {      // 256번: 창 하나에 속지 폭을 나란히(C안, 결정 #361) — 같은 창밖이 폭마다 다르게 비침 · 고른 폭이 넓어짐 · 글자는 아래 종이 띠 · 큰 이름은 폭 이름과 겹쳐 뺌
+            const at = Math.min(s.seat, r.list.length - 1);
+            const panes = r.list.map((y, i) => { const tint = (y.fabrics[0] || {}).hex || '#efece6';      // 덮는 색 = 그 폭의 첫 원단 색
+                return `<div class="cp-pane${i === at ? ' is-on' : ''}" data-i="${i}" onclick="concierge.cpSeat(${i})"><img class="cp-scene" src="${SCENE_PHOTO}" alt="" style="filter:blur(${SHEER_BLUR[y.key] || 10}px)"><i class="cp-veil" style="background:${tint};opacity:${SHEER_VEIL[y.key] || 0.6}"></i></div>`; }).join('');
+            const tabs = r.list.map((y, i) => `<button type="button" class="${i === at ? 'is-on' : ''}" data-i="${i}" onclick="concierge.cpSeat(${i})">${esc(seatName(r, y))}</button>`).join('');
+            return `<div class="cp-stage cp-sheet" style="background:var(--paper);color:var(--ink)">
+                <div class="cp-win">${panes}</div>
+                <div class="cp-band"><div class="cp-win-names">${tabs}</div>
+                    <div class="cp-say"><p class="cp-why">${esc(whyOf(r, x))}</p></div><div class="cp-door-at">${door(doorTxt, 'concierge.cpOpen()')}</div>
+                    <span class="cp-honest">${HONEST_SCENE}</span></div></div>`;
         }
         const col = inkOn(x.hex);
         if (r.feel !== 'point') return `<div class="cp-stage cp-sheet" style="background:${x.hex};color:${col}">${names}${say}<div class="cp-door-at">${door(doorTxt, 'concierge.cpOpen()')}</div></div>`;
@@ -332,7 +334,7 @@
     function after() {
         const btn = document.getElementById('v2FloatingPrevBtn');
         const stage = document.querySelector('.cp-stage');
-        if (btn) { btn.classList.toggle('is-cp', !!stage); btn.style.color = ''; }
+        if (btn) { btn.classList.toggle('is-cp', !!stage); btn.classList.toggle('is-win', !!(stage && stage.querySelector('.cp-win'))); btn.style.color = ''; }      // 256번: 속지 폭(창밖 사진) 위에서는 ← 에 종이 바탕
         if (!stage || stage.classList.contains('cf-stage')) return;      // 228번: 색으로 고르기 두 장면은 cfAfter가 맡음
         const s = cp(), r = result(cur());
         // 뒤로(왼쪽 위 한 곳): 색 면 위에서는 그 면의 글자색. 열림에서는 "← 그 장 이름"(누르면 한 장으로)
@@ -420,7 +422,16 @@
         setTimeout(() => { if (ghost.isConnected) ghost.remove(); }, PUSH_MS + 300);
     }
     Object.assign(window.concierge, {
-        cpSeat: i => { const s = cp(); s.seat = i; s.fab = 0; s.alt = null; rerender(); },
+        cpSeat: i => {
+            const s = cp(); s.seat = i; s.fab = 0; s.alt = null;
+            const stage = document.querySelector('.cp-stage'), win = stage && stage.querySelector('.cp-win'), r = result(cur()), x = r && r.list[i];
+            if (!win || !x) { rerender(); return; }
+            // 256번: 속지 폭은 화면을 다시 그리지 않고 그 자리에서 바꿈 — 고른 폭이 0.25초 동안 넓어지게
+            stage.querySelectorAll('.cp-pane, .cp-win-names button').forEach(el => el.classList.toggle('is-on', Number(el.dataset.i) === i));
+            stage.querySelector('.cp-why').textContent = whyOf(r, x);
+            stage.querySelector('.cp-door-at').innerHTML = door(doorTxtOf(x), 'concierge.cpOpen()');
+            x.fabrics.slice(0, 6).forEach(f => cz.findPhoto(f.id, f.color));      // 다음 화면(열림) 사진을 미리 받아 둠 — after()와 같음
+        },
         cpOpen: () => { const s = cp(); s.view = 'open'; s.alt = null; rerender(); },
         cpMap: () => { const s = cp(); s.view = 'map'; rerender(); },      // 190번: 왜 이 셋인가요
         cpFab: i => { const s = cp(); s.fab = i; s.alt = null; rerender(); },
