@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261297';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261298';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -18,6 +18,9 @@ function calculateAll() {
 
     let noFabCount = 0;      // 원단을 못 찾은 품목 수 (126번)
     let zeroPriceCount = 0;      // 172번: 판매가가 빈(0원) 원단을 쓴 품목 수
+    // 255번: 이을 수 없는 원단(보브)의 한계 높이(설정 › 가공·부자재 단가, 비면 0 = 알림 없음)와 그 높이를 넘는 품목 수
+    const noSeamMaxH = (typeof storedOptionPrices === 'function') ? (Number(storedOptionPrices().noSeamMaxH) || 0) : 0;
+    let noSeamHighCount = 0;
     const summaryListContainer = document.getElementById('summaryRoomList');
     if (summaryListContainer) summaryListContainer.innerHTML = '';
 
@@ -29,6 +32,7 @@ function calculateAll() {
             const p = Pricing.priceItem(c, fab);
             if (p.noFabric) noFabCount++;
             if (fab && !fab.sampleOnly && !(Number(fab.price) > 0)) zeroPriceCount++;      // 172번 (실물 견본 품목은 0원이 정상이라 세지 않음)
+            if (noSeamMaxH > 0 && p.q && p.q.noSeam && !p.q.isPanel && p.actualCurtainHeight > noSeamMaxH) noSeamHighCount++;      // 255번
             const cost = (staff && fab) ? Costing.costItem(c, fab, p) : null;
 
             c.calc = {
@@ -104,6 +108,13 @@ function calculateAll() {
     if (zeroEl) {
         zeroEl.hidden = zeroPriceCount === 0;
         zeroEl.textContent = zeroPriceCount ? `판매가가 비어 있는 원단 ${zeroPriceCount}개 — 견적서에 0원으로 나갑니다. 판매가를 넣거나 다른 원단을 골라 주세요.` : '';
+    }
+
+    // 255번: 이을 수 없는 원단이 한계 높이를 넘으면 경고 (직원 화면 견적 요약)
+    const noSeamEl = document.getElementById('summaryNoSeamHigh');
+    if (noSeamEl) {
+        noSeamEl.hidden = noSeamHighCount === 0;
+        noSeamEl.textContent = noSeamHighCount ? `이을 수 없는 원단(보브)인데 제작 높이가 ${noSeamMaxH}cm를 넘는 품목 ${noSeamHighCount}개 — 만들 수 있는지 공장에 확인해 주세요.` : '';
     }
 
     // 131번: 빛(스탠드) 줄 — 이케아 가격 + 대행비를 품목 합에 더함. 켰는데 금액이 없으면 직원 화면에 알림

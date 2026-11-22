@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261297';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['costing.js']='20261298';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 원가 계산 엔진  (costing.js)  ※ 직원 모드 전용
    - 이 파일에는 금액(숫자 상수)이 없습니다. 모든 원가 규칙은 "비공개 팩"에서 읽어옵니다.
@@ -8,6 +8,7 @@
     'use strict';
 
     const state = { enabled: false, rules: null, costs: {} };
+    const TALL_BASE_CM = 270;      // 255번: 폭당 원단 한 폭의 기본 길이 3마(길이 — 금액 아님)
 
     function setPrivate(pack) {
         state.rules = (pack && pack.rules) || null;
@@ -73,6 +74,16 @@
                 } else {
                     fabricSupplyCost = widths * cost;
                     laborCost = widths * laborUnit;
+                }
+                // 255번(결정 #343): 소폭 겉지는 폭당 기본값 그대로(짧아도 안 내림). 제작 높이 + 시접이 3마를 넘으면 넘친 원단만큼 폭당에 더하고 천 원 반올림
+                //  수공(tallLabor) · 시접(tallHem)은 품목 rates.cost에 옮겨 적은 설정 값 — 수공 칸이 비면 꺼짐. 대폭 · 속지 · 이을 수 없는 원단(보브)은 뺌
+                if (widths > 0 && has(rc.tallLabor) && has(rc.tallHem) && !q.isWideFabric && !q.isSheer && !q.noSeam) {
+                    const over = (Number(priced.actualCurtainHeight) || 0) + rc.tallHem - TALL_BASE_CM;
+                    const perWidth = (fabricSupplyCost + laborCost) / widths;
+                    if (over > 0 && perWidth > rc.tallLabor) {
+                        const tallPerWidth = Math.round((perWidth + over * (perWidth - rc.tallLabor) / TALL_BASE_CM) / 1000) * 1000;
+                        fabricSupplyCost = Math.round(fabricSupplyCost + widths * (tallPerWidth - perWidth));
+                    }
                 }
             } else {
                 if (rule.fixedLabor) {

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261297';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261298';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -99,6 +99,8 @@ function optionCosts() {
     out.panelBase = optNum(s.panelBase) !== null ? s.panelBase : (typeof pf.base === 'number' ? pf.base : null);
     out.panelStep = optNum(s.panelStep) !== null ? s.panelStep : (typeof pf.perExtraUnit === 'number' ? pf.perExtraUnit : null);
     ['shapeW', 'shapeY', 'shapeHW', 'shapeHY'].forEach(k => { out[k] = optNum(s[k]) !== null ? s[k] : 0; });
+    out.tallLabor = optNum(s.tallLabor);      // 255번: 소폭 겉지 높이 웃돈의 폭당 수공 — 비면 null(웃돈 끔)
+    out.tallHem = optNum(s.tallHem) !== null ? s.tallHem : 30;      // 255번: 시접 cm — 처음 값 30(길이, 금액 아님)
     return out;
 }
 // 설정 칸 하나 저장 (path 예: 'shapeW', 'rail.rod25', 'cost.rail.rail_2line'). 비우면 처음 값으로
@@ -168,6 +170,7 @@ function curveMultOf(fab, pv) {
 function curveStd(fab, pv, cv) {
     if (!cv.ok || typeof Costing === 'undefined' || !Costing.state.rules) return null;
     const rates = optionRatesNow('rail');
+    rates.cost.tallLabor = null;      // 255번: 판매가 곡선의 기준 원가에는 높이 웃돈을 넣지 않음 (판매가는 그대로)
     const c = { width: 300, height: 235, pleat: 2, pleatType: '', installType: 'rail', floorGap: 0, hotelFit: false, leadBand: false, shapeFee: 0, hwPrice: hwPriceOf('rail'), rates };      // 139번: 밑단 기본 시접
     const unitFab = Object.assign({}, fab, { price: 1, extra: null, noShapeAlways: true });      // 248번: 기준 창은 형상기억 끔 그대로
     const pr = Pricing.priceItem(c, unitFab);
@@ -219,7 +222,8 @@ function optionRatesNow(installType) {
         leadW: p.leadW, leadY: p.leadY, panelBase: p.panelBase, panelStep: p.panelStep,
         woodRibbon: woodOptionSale('woodRibbon'), wood35: woodOptionSale('wood35'),      // 241번: 우드 옵션 헤베당 판매가
         cost: { shapeW: k.shapeW, shapeY: k.shapeY, shapeHW: k.shapeHW, shapeHY: k.shapeHY, panelBase: k.panelBase, panelStep: k.panelStep, hw: installType === 'none' ? 0 : (k.rail[installType] ?? k.rail.rail),
-            woodRibbon: woodOptionCost('woodRibbon'), wood35: woodOptionCost('wood35') }      // 241번: 우드 옵션 헤베당 원가
+            woodRibbon: woodOptionCost('woodRibbon'), wood35: woodOptionCost('wood35'),      // 241번: 우드 옵션 헤베당 원가
+            tallLabor: k.tallLabor, tallHem: k.tallHem }      // 255번: 소폭 겉지 높이 웃돈(원가만)
     };
 }
 

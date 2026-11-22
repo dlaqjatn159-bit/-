@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261297';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261298';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -25,6 +25,11 @@
         return (fab && fab.price) || 0;
     }
 
+    // 255번: 완제품으로 들어와 이을 수 없는 원단(결정 #343) — 높이 웃돈 원가가 붙지 않고, 한계 높이를 넘으면 직원 화면 견적 요약에 알림
+    const NO_SEAM_NAMES = ['보브'];
+    function noSeamFab(fab) {
+        return !!fab && fab.calcType === 'width' && NO_SEAM_NAMES.includes(String(fab.name || '').trim());
+    }
     // 248번: 형상이 들어간 채로만 들어오는 원단(결정 #321) — 고르면 형상기억이 늘 들어감. 금액은 품목의 형상기억 단가(rates) 그대로
     const SHAPE_ALWAYS_NAMES = ['보브'];
     function shapeAlways(fab) {
@@ -220,7 +225,7 @@
         const rawSubtotal = fabricSellingCost + extraShapeFee + leadBandCost + hwSellingTotal;
         const curtainSubtotal = Math.ceil(rawSubtotal / 1000) * 1000;
 
-        Object.assign(q, { isPanel, panelExtraUnits, isSheer, isWideFabric, numWidths, totalYards, costYards, numJa, calcType: fab.calcType, shapeUnits, shapeHigh });
+        Object.assign(q, { isPanel, panelExtraUnits, isSheer, isWideFabric, numWidths, totalYards, costYards, numJa, calcType: fab.calcType, shapeUnits, shapeHigh, noSeam: noSeamFab(fab) });      // 255번: noSeam
 
         return {
             fabName: fab.name, fabBook: fab.book, calcType: fab.calcType,
@@ -242,7 +247,7 @@
         return { sellingPrice, vatAmount, finalPrice: sellingPrice + vatAmount };
     }
 
-    const api = { priceItem, totals, pickFabric, heightDeduction, panesOf, panePieces, cleanPanes, paneSplit, PANE_HAND_DEFAULT, shapeAlways, shapeLocked, shapeOn };      // 216번: 장 셈 도우미 · 248번: 형상기억
+    const api = { priceItem, totals, pickFabric, heightDeduction, panesOf, panePieces, cleanPanes, paneSplit, PANE_HAND_DEFAULT, shapeAlways, shapeLocked, shapeOn, noSeamFab };      // 216번: 장 셈 도우미 · 248번: 형상기억
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.Pricing = api;
 })(typeof window !== 'undefined' ? window : globalThis);
