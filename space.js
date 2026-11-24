@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261299';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261300';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -377,7 +377,7 @@
             const boxH = isAllMode ? 54 : 84, floorH = isAllMode ? 11 : 16, aboveH = boxH - floorH;
             h += `<section class="dos-room${isAllMode ? '' : ' is-hero'}">`;
             h += `<div class="dos-rhead font-serif-kr"><span class="dos-rname">${esc(r.name)}${metaParts ? `<small class="dos-rmeta">${esc(metaParts)}</small>` : ''}</span>` // 41번: 이중커튼 삭제, 크기를 남향 옆으로
-                + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured && !r.altLine ? `<button type="button" class="dos-redit" onclick="window.concierge.addAltLine(${r.id})">+ 다른 구성 더하기</button>` : ''}<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></div>`;      // 151번: 상담 전 공간에도
+                + `<span class="dos-rhead-r">${(window.RoomColor && RoomColor.openFurniture && furCount(r) < RoomColor.FUR_MAX) ? `<button type="button" class="dos-redit" onclick="window.concierge.addFurniture(${r.id})">+ 가구</button>` : ''}${r.isConfigured && !r.altLine ? `<button type="button" class="dos-redit" onclick="window.concierge.addAltLine(${r.id})">+ 다른 구성 더하기</button>` : ''}${size && window.RedamRoom3D ? `<button type="button" class="dos-redit" onclick="window.concierge.openRoom3D(${r.id})">입체 방</button>` : ''}<button type="button" class="dos-redit" onclick="window.concierge.editRoom(${r.id})">수정하기</button></span></div>`;      // 151번: 상담 전 공간에도
             if (!isAllMode) h += paneChipsHtml(r);      // 216번: 블라인드 장 크기 — 누르면 손잡이 좌 ↔ 우
             const says = answerSay(r, r.altLine ? ['lightBlock', 'privacy'] : null);      // 166번: 손님 답 한 줄 — 낱말마다 그 질문으로 고치기 · 170번: 두 줄 공간은 공간 답(빛·시선)만
             if (says.length) h += `<div class="dos-rsay font-serif-kr">${says.map(s => `<button type="button" onclick="window.concierge.fixAnswer(${r.id}, '${s.key}')">${esc(s.text)}</button>`).join('<i aria-hidden="true">·</i>')}</div>`;
@@ -601,6 +601,58 @@
         return h;
     }
 
+    // ---- 258번: 입체 방(room3d.js) — 공간 화면의 '입체 방' 단추로 엶. 돌려받은 것 가운데 품목에 쓰는 것은 손으로 바꾼 가로 · 세로(cm 차이)와 속지 리드밴드뿐, 나머지는 r.room3d에만 ----
+    function room3dFabricOf(c) {      // 품목 하나 → 입체 방에 걸 원단 { 이름, 색, 비침, 블라인드 종류, 콤비 띠(m) }
+        if (!c || !c.fabricId) return null;
+        const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;      // 실물 견본(아직 안 고른 원단) — 이름만, 색은 '아직 모름' 빗금(211번), '잘 모르겠어요'는 종류를 묶지 않음
+        if (sf) return { name: sf.name, hex: null, density: null, blindKind: c.fabricId === '_sample_any' ? null : (sf.blindKind || null), band: null };
+        const f = getLiveDb().find(x => x.id === c.fabricId) || null;
+        const st = (f && typeof blindStripeMm === 'function') ? blindStripeMm(f) : null;      // 콤비 띠 폭 "85/60mm" (59번)
+        return { name: shortFabName(c.fabricId, c.colorName) || (f && f.name) || '', hex: colorFillOf(c.fabricId, c.colorName), density: (f && f.density) || null,
+            blindKind: (f && typeof blindKind === 'function') ? blindKind(f) : null, band: st ? [st.solid / 1000, st.sheer / 1000] : null };
+    }
+    function room3dMeasure(r) {      // 폰에서 잰 공간 가운데 이름이 같은 것(1.5 '폰에서 잰 크기'와 같은 짝, 245번)
+        const v = window.redamVisit && window.redamVisit.now();
+        return ((v && Array.isArray(v.measures)) ? v.measures : []).find(m => m && m.이름 === r.name) || null;
+    }
+    function openRoom3D(roomId) {
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !window.RedamRoom3D || window.RedamRoom3D.isOpen()) return;
+        window.RedamRoom3D.open({ room: r, items: r.isConfigured ? r.curtains : [], measure: room3dMeasure(r), fabricOf: room3dFabricOf, onClose: res => room3dDone(roomId, res) });
+    }
+    function room3dDone(roomId, res) {      // 입체 방을 닫으면 — 완료(done)면 품목에 넣고 금액을 다시 셈, 아니면 room3d만 남김
+        const r = state.roomsCart.find(x => x.id === roomId);
+        if (!r || !res) return;
+        if (res.pack) r.room3d = res.pack;      // 창 · 커튼박스 · 가구 · 고른 모양(주름 · 겉지 밑단 · 블라인드 줄 · 다는 곳 · 등) — 금액과 무관, 저장 · 불러오기에 같이 다님
+        let touched = false;
+        if (res.done && res.layers) {
+            // 크기 — 앱의 '수정하기' 저장(saveRoomEdit)과 같은 길: 공간 크기(r.width · height, 전체로 잰 공간이면 spaceWidth · Height도)를 바꾸고 공간의 모든 품목에 같은 크기
+            const pick = ['drape', 'sheer', 'blind'].map(k => ({ k, L: res.layers[k], c: r.curtains.find(x => x.presetType === k) })).find(o => o.L && o.c && (o.L.dw || o.L.dh));
+            const split = pick && pick.k === 'blind' && Pricing.paneSplit(pick.c.panes);      // 장마다 가로를 따로 넣었거나 여러 장인 블라인드 — 금액은 장 크기로 셈하고 앱의 크기 고치기도 장 크기를 바꾸지 않으니 넣지 않음
+            if (pick && !split) {
+                const W = Math.max(10, Math.round((Number(pick.c.width) || Number(r.width) || 0) + (pick.L.dw || 0)));
+                const H = Math.max(10, Math.round((Number(pick.c.height) || Number(r.height) || 0) + (pick.L.dh || 0)));
+                r.width = W; r.height = H;
+                if (r.sizeMode !== 'part') { r.spaceWidth = W; r.spaceHeight = H; }
+                r.curtains.forEach(c => { c.width = W; c.height = H; });
+                touched = true;
+            }
+            const L = res.layers.sheer, cs = L && r.curtains.find(x => x.presetType === 'sheer');
+            if (cs && typeof L.leadBand === 'boolean' && !!cs.leadBand !== L.leadBand) { cs.leadBand = L.leadBand; touched = true; }      // 139번과 같은 칸 — 겉지 품목에는 넣지 않음
+            if (touched) {
+                r.curtains.forEach(c => { c.calc = calculateV1ItemPrice(c); });
+                r.subtotal = r.curtains.reduce((s, x) => s + ((x.calc && x.calc.curtainSubtotal) || 0), 0);
+            }
+            if (r.room3d && window.RedamRoom3D.resign) window.RedamRoom3D.resign(r.room3d, r, r.isConfigured ? r.curtains : []);      // 바뀐 크기를 '그대로'로 — 다음에 열면 이어서
+        }
+        syncToV1MasterRooms();
+        if (typeof saveDraftTick === 'function') saveDraftTick();      // 입체 방에서 한 일은 길어서 — 3초 저장을 기다리지 않고 바로 남김
+        const go = res.goFabric, idx = (go && go !== 'blind') ? r.curtains.findIndex(x => x.presetType === go) : -1;
+        if (state.step === "1-Space") render();
+        if (touched) spaceToast(`${r.name}: 입체 방에서 바꾼 것을 넣었습니다`);
+        if (idx >= 0 && typeof openSpaceMore === 'function') openSpaceMore(r.id, idx);      // 원단 바꾸기 — 겉지 · 속지는 더 보기(원단 고르기), 블라인드는 공간 화면에 머문다
+    }
+    window.concierge.openRoom3D = openRoom3D;      // 258번: 공간 머리의 '입체 방' 단추
     Object.assign(cz, { shortFabName, swapCurtain, spaceToast, spaceHtml, spaceEditHtml, restoreCurtains });      // concierge.js가 부름 (165번: restoreCurtains)
     Object.assign(window.concierge, {
         swapCurtain: function(roomId, idx, fabricId, color, why) { swapCurtain(roomId, idx, fabricId, color, false, why); },

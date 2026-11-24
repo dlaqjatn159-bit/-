@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261299';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261300';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -58,8 +58,8 @@
     };
     const MAP_LEAD = '선은 이 공간의 벽 색과 바닥 색을 잇습니다. 커튼이 선 가까이 있으면 벽과 바닥을 자연스럽게 잇고, 선에서 멀어지면 무게나 포인트가 됩니다.';
     const SCENE_PHOTO = 'photos/scene/window_apt.jpg';      // 속지 빛 한 장 바탕 (예시 창밖 사진 · 256번: 맞은편 아파트 동, 결정 #361)
-    const SHEER_BLUR = { light: 2, medium: 7, day: 14, heavy: 40 };          // 창밖이 흐려지는 정도(px) · 256번: 또렷 → 창 줄 형태 → 덩어리 → 안 보임
-    const SHEER_VEIL = { light: 0.22, medium: 0.48, day: 0.66, heavy: 0.97 };  // 원단 색이 덮는 정도 · 256번: 중지는 창밖이 안 보이게
+    const SHEER_BLUR = { light: 2, medium: 7, day: 20, heavy: 40 };          // 창밖이 흐려지는 정도(px) · 256번: 또렷 → 창 줄 형태 → 덩어리 → 안 보임
+    const SHEER_VEIL = { light: 0.22, medium: 0.48, day: 0.78, heavy: 0.97 };  // 원단 색이 덮는 정도 · 256번: 중지는 창밖이 안 보이게
     const SWIPE_PX = 80;      // 사진을 이만큼 밀면 다음 원단
     const PUSH_MS = 1100;     // 속지 → 겉지 전환(띠가 되밀기)
     const ARROW = '<svg width="34" height="14" viewBox="0 0 34 14" aria-hidden="true"><path d="M0 7h32m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.25"></path></svg>';

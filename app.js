@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261299';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261300';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,9 +22,9 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261299';
+const REDAM_BUILD = '20261300';
 function checkFileVersions() {
-    const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'booking.js'];
+    const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'room3d.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
     const old = expected.filter(f => reg[f] !== REDAM_BUILD);
     if (old.length === 0) return;
@@ -121,6 +121,7 @@ function handleBack() {
     if (appMode === 'staff' && staffLocked) return false;                          // 잠긴 상태: 아무것도 안 함
     if (window.concierge && window.concierge.isSeeking && window.concierge.isSeeking()) return false;     // "찾는 중" 화면은 끝날 때까지 기다림
     if (document.getElementById('bookPanel') && window.redamBooking) { window.redamBooking.close(); return false; }      // 203번: 시공 날짜 잡기 = ← 견적서와 같음
+    if (window.RedamRoom3D && window.RedamRoom3D.isOpen()) { window.RedamRoom3D.back(); return false; }      // 258번: 입체 방 = 머리의 '뒤로'와 같음(측정에서 누르면 닫힘)
     if (visible('roomColorOverlay')) { RoomColor.close(); return false; }
     if (visible('roomColorCust')) { RoomColor.cancelCustomer(); return false; }        // 고객 화면 색 재기 = ← 와 같음
     if (visible('spaceMore')) { if (spaceMore && spaceMore.sheet) { spaceMore.sheet = null; renderSpaceMore(); } else closeSpaceMore(); return false; }     // 중심 화면 › 더 보기
@@ -614,7 +615,7 @@ document.addEventListener('contextmenu', ev => { if (ev.target.closest && ev.tar
         const n = e.touches.length;
         if (n === 1) { cancel(); firstAt = Date.now(); return; }
         const together = (e.changedTouches.length === 2) || (Date.now() - firstAt <= 300);
-        if (n !== 2 || timer || !together || appMode === 'staff' || pinOpen()) { cancel(); return; }
+        if (n !== 2 || timer || !together || appMode === 'staff' || pinOpen() || (window.RedamRoom3D && window.RedamRoom3D.isOpen())) { cancel(); return; }      // 258번: 입체 방에서는 PIN을 열지 않음
         starts = {};
         for (const t of e.touches) starts[t.identifier] = { x: t.clientX, y: t.clientY };
         timer = setTimeout(() => {
@@ -741,6 +742,7 @@ function collectConsultation() {
             techGaps: (typeof colorTechGaps === 'function' && r.measuredColor) ? colorTechGaps(r.measuredColor) : null,      // 후보 0인 색 기법 (96번, 원단 들일 근거 · 화면엔 안 씀)
             pointWant: (typeof pointWantRecord === 'function' && r.measuredColor) ? pointWantRecord(r) : null,      // 포인트 원하는 자리와 실제 얼굴의 비틂 (195번, 구색 신호 · 화면엔 안 씀)
             panes: r.panes || null,      // 216번 (품목의 panes는 아래 curtains 통째 복사에 들어감)
+            room3d: r.room3d || null,      // 258번: 입체 방(창 · 박스 · 가구 · 고른 모양) — 금액과 무관
             width: r.width || null, height: r.height || null, spaceWidth: r.spaceWidth || null, spaceHeight: r.spaceHeight || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),      // 중심 화면: 공간 추가 때 정한 크기·색 출처
             curtains: r.curtains.map(c => { const copy = Object.assign({}, c); delete copy.calc; return copy; })
         })),
@@ -1959,6 +1961,7 @@ window.syncFromExternalRooms = function(newRooms, newInstallFee) {
                 measuredColor: r.measuredColor || null,
                 altLine: r.altLine ? JSON.parse(JSON.stringify(r.altLine)) : null, lineNo: r.lineNo || 1, pickPending: !!r.pickPending, altBuilding: !!r.altBuilding,      // 둘째 줄 후보 (169번: 직원 화면을 다녀와도 남게)
                 panes: r.panes ? JSON.parse(JSON.stringify(r.panes)) : null,      // 216번
+                room3d: r.room3d || null,      // 258번: 입체 방
                 width: r.width || null, height: r.height || null, spaceWidth: Number(r.spaceWidth) || null, spaceHeight: Number(r.spaceHeight) || null, sizeMode: r.sizeMode || null, colorSrc: r.colorSrc || null, cardParts: r.cardParts || null, linkDir: r.linkDir || null, windowDir: windowDirOf(r.windowDir),
                 curtains: r.curtains.map((c, cIdx) => {
                     const isBlind = c.presetType === "blind";
