@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261301';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261302';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -1689,7 +1689,7 @@
   function unpack(s) {
     var o = JSON.parse(s), k;
     glideId++; GT = null; P = o.P || null;
-    for (k in o.R) R[k] = o.R[k]; WINS.length = 0; o.WINS.forEach(function (w) { WINS.push(w); }); S.wsel = 0; S.csel = 0; o.boxes.forEach(function (b, i) { var t = BOXES[i]; t.tk++; t.on = b.on; t.k = b.on ? 1 : 0; t.h = b.h; t.d = b.d; t.len = b.len == null ? null : b.len; t.at = b.at == null ? null : b.at; }); for (k in o.C) C[k] = o.C[k]; for (k in o.A) A[k] = o.A[k]; SLID++; SLV = C.slit; HEMID++; HEMV = C.lead ? 0 : 1; DHEMV = C.dlead ? 0 : 1;
+    for (k in o.R) if (o.R[k] !== null && isFinite(o.R[k])) R[k] = o.R[k]; WINS.length = 0; o.WINS.forEach(function (w) { WINS.push(w); }); S.wsel = 0; S.csel = 0; o.boxes.forEach(function (b, i) { var t = BOXES[i]; t.tk++; t.on = b.on; t.k = b.on ? 1 : 0; t.h = b.h; t.d = b.d; t.len = b.len == null ? null : b.len; t.at = b.at == null ? null : b.at; }); for (k in o.C) C[k] = o.C[k]; for (k in o.A) A[k] = o.A[k]; SLID++; SLV = C.slit; HEMID++; HEMV = C.lead ? 0 : 1; DHEMV = C.dlead ? 0 : 1;
     RISE.k = A.room ? 1 : 0; GLS.k = A.win ? 1 : 0;
     ['wall', 'floor', 'seq', 'items'].forEach(function (key) { S[key] = o[key] === undefined ? null : o[key]; });
     DELTA = o.DELTA ? JSON.parse(JSON.stringify(o.DELTA)) : {};      // 258번: 손으로 바꾼 크기(cm) — 되돌리기도 따라간다
@@ -2209,7 +2209,7 @@
   // ───── 258번: 앱과 잇는 곳 — 손으로 바꾼 크기 세기 · 뒤로 · 끝내기 · 열고 닫기 ─────
   function sizeNow() { var bl = kindNow() === 'blind', b = bl ? BB() : CB(); return { k: bl ? 'blind' : 'cur', w: cm(bl ? b.w : b.cw), h: cm(b.len) }; }
   function track(a) {      // 손잡이 · 1 cm 단추로 바꾼 만큼만 센다(창 크기를 고쳐서 저절로 바뀐 것은 세지 않는다)
-    var b = sizeNow(), d; if (a.k !== b.k || (a.w === b.w && a.h === b.h)) return;
+    var b = sizeNow(), d; if (a.k !== b.k || (a.w === b.w && a.h === b.h) || !isFinite(a.w) || !isFinite(a.h) || !isFinite(b.w) || !isFinite(b.h)) return;      // 262번: 숫자가 깨진 값은 견적 차이에 안 넣는다
     d = DELTA[a.k] || (DELTA[a.k] = { w: 0, h: 0 }); d.w += b.w - a.w; d.h += b.h - a.h;
   }
   function goBack() {
@@ -2289,7 +2289,7 @@
     }
   }
   function settled() { return ALIVE && !!SCN.tex && !tweens.length && !raf; }      // 멈춘 그림: 창밖 사진을 받았고 움직임이 다 끝났는지
-  function snap() {      // 그린 그 자리에서 바로 읽는다(그리는 판을 붙잡아 두지 않음) — 비어 있는 곳은 종이색으로
+  function snapShot() {      // 그린 그 자리에서 바로 읽는다(그리는 판을 붙잡아 두지 않음) — 비어 있는 곳은 종이색으로 (262번: 1 cm 맞추는 snap과 이름이 겹쳐 손잡이가 NaN이 되던 것)
     frame(performance.now());
     var c = document.createElement('canvas'), g; c.width = canvas.width; c.height = canvas.height; g = c.getContext('2d');
     g.fillStyle = getComputedStyle(root).getPropertyValue('--bg').trim() || '#fbf9f5'; g.fillRect(0, 0, c.width, c.height); g.drawImage(canvas, 0, 0);
@@ -2394,7 +2394,7 @@
       l2s: function (wall, x, y, z) { WG[wall].updateMatrixWorld(); var q = L2W(wall, x, y, z).clone().project(cam), r = stage.getBoundingClientRect(); return { x: r.left + (q.x * 0.5 + 0.5) * r.width, y: r.top + (-q.y * 0.5 + 0.5) * r.height }; } };
   }
   DEF = pack(true);
-  return { settled: settled, snap: snap, start: start, stop: stop, back: goBack, finish: finish, key: onKey, blur: nudgeStop, alive: function () { return ALIVE; }, info: info, peek: peek };
+  return { settled: settled, snap: snapShot, start: start, stop: stop, back: goBack, finish: finish, key: onKey, blur: nudgeStop, alive: function () { return ALIVE; }, info: info, peek: peek };
   }      // makeEngine 끝
 
   // ───────── 앱 → 입체 방: 받은 값 읽기(258번) — 크기는 폰 실측 → 앱의 크기 → 기본값(측정에서 확인) 순 ─────────
