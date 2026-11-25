@@ -1,13 +1,44 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261303';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261304';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
 //  그림 엔진 three.js r128은 처음 열 때만 불러온다(cdnjs). 그리는 판(WebGL)은 한 번 만들어 다시 쓰고, 닫으면 그리기를 멈추고 화면에서 뗀다. 닫혀 있는 동안 document에 다는 귀는 없다.
 //  열기: RedamRoom3D.open({ room, items, measure, fabricOf, onClose }) — onClose({ done, pack, sizes, layers, view, goFabric })
+//  263번: open({ …, build: true }) = 공간 추가에서 공간을 짓는다(결정 #410 · 시안 2판, 화면 확인 #34) — 폰에서 잰 값도 '확인 전'으로 깔아 측정에서 하나씩 확인하며 짓고
+//   (점 → 선 → 바닥 → 벽 → 창 → 박스 → 방향(빛이 처음 듦) → 색 → 가구), 측정이 끝나면 선택으로 가지 않고 닫으며 onClose({ done: false, pack, built })
+//   built = { room: { w, d, h }, wins: [{ w, h, sill, wall, x, n }], box: [...], dir: ['남'], wall: '#hex'|null, floor: '#hex'|null } (cm, sizesOut과 같은 꼴 · 색은 폰에서 잰 색을 확인한 것만)
+//   색 질문은 폰에서 벽 · 바닥 색을 둘 다 잰 공간만 — 아니면 건너뛰고 앱의 색 단계가 잰다. 창밖은 언제나 납작한 그림 층(결정 #409)
 (function () {
   'use strict';
   var THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-  var SCENE_URL = 'photos/scene/window_apt.jpg';      // 창밖 — 비침 고르기와 같은 사진 한 장(256번)
+  var SCENE_URL = 'photos/scene/window_apt.jpg';      // 창밖 — 비침 고르기와 같은 사진 한 장(256번) · 263번부터 입체 방은 아래 그림 층을 씀(비침 고르기는 사진 그대로)
+  // 263번: 창밖은 사진 대신 납작한 그림 세 겹 — 옅은 하늘 · 먼 건물 띠 · 가까운 나무 줄(결정 #409). 사진과 같은 크기(1264 × 848)로 그려 아래 창밖 처리를 그대로 탄다
+  var FLATSCN = null;
+  function flatScene() {
+    if (FLATSCN) return FLATSCN;
+    var W = 1264, H = 848, c = document.createElement('canvas'), g, i, x, h, seed = 7;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    c.width = W; c.height = H; g = c.getContext('2d');
+    var sky = g.createLinearGradient(0, 0, 0, H * 0.62); sky.addColorStop(0, '#dfe6ea'); sky.addColorStop(1, '#eef0ee');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#d3d9dc';      // 먼 건물 띠 — 하늘보다 조금 짙게, 모양만
+    for (x = -20; x < W; x += 40 + rnd() * 70) { h = 70 + rnd() * 120; g.fillRect(x, 430 - h, 34 + rnd() * 60, h + 40); }
+    g.fillRect(0, 430, W, 60);
+    g.fillStyle = '#dcd8d1';      // 가까운 아파트 — 납작한 면과 옅은 창 줄
+    for (i = 0; i < 3; i++) {
+      x = 60 + i * 430 + rnd() * 40; var bw = 300 + rnd() * 60, top = 300 + rnd() * 50;
+      g.fillStyle = '#dcd8d1'; g.fillRect(x, top, bw, 420);
+      g.fillStyle = 'rgba(120,128,132,0.16)';
+      for (var y = top + 24; y < 690; y += 42) for (var wx = x + 18; wx < x + bw - 30; wx += 48) g.fillRect(wx, y, 30, 20);
+    }
+    g.fillStyle = '#a9b4a3';      // 가까운 나무 줄 — 둥근 덩어리를 이어서
+    for (x = -40; x < W + 40; x += 46) { g.beginPath(); g.arc(x, 650 + rnd() * 30, 60 + rnd() * 30, 0, Math.PI * 2); g.fill(); }
+    g.fillRect(0, 680, W, H - 680);
+    g.fillStyle = '#98a595';
+    for (x = -10; x < W + 40; x += 64) { g.beginPath(); g.arc(x, 740 + rnd() * 30, 56 + rnd() * 24, 0, Math.PI * 2); g.fill(); }
+    g.fillRect(0, 770, W, H - 770);
+    return (FLATSCN = c);
+  }
   var CSS = `/* 입체 방(258번) — 모든 모양은 .r3d 안에서만. 색 · 글꼴은 앱 토큰(tokens.css)을 쓴다 */
 .r3d { position: fixed; inset: 0; z-index: 250; display: block; margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 17px; line-height: 1.5; text-align: left; letter-spacing: normal; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; overflow: hidden; overscroll-behavior: contain; color-scheme: light; --bg: var(--rd-app-color-bg, #fbf9f5); --text: var(--rd-app-color-text, #2b221a); --muted: var(--rd-app-color-text-muted, #6f5f4f); --ink14: var(--rd-app-color-line-ink, rgba(43, 34, 26, 0.14)); --ink45: var(--rd-app-color-line-joint, rgba(43, 34, 26, 0.45)); --point: var(--rd-common-point-base, #8a4a22); --serif: var(--rd-font-family-serif, 'Noto Serif KR', Georgia, serif); --sans: var(--rd-app-font-sans, Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif); --hatch: repeating-linear-gradient(135deg, rgba(43, 34, 26, 0.18) 0 1px, rgba(43, 34, 26, 0) 1px 7px); }
 .r3d, .r3d * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,6 +54,7 @@
 .r3d .steps .act { position: relative; padding: 0 20px; }
 .r3d .steps .act.on::before { position: absolute; left: 4px; top: 50%; margin: -4px 0 0; }
 .r3d .steps .rule { width: 20px; height: 1px; background: var(--ink45); flex: none; }
+.r3d .app[data-build="1"] .steps .rule, .r3d .app[data-build="1"] .steps [data-step="cur"] { display: none; }      /* 263번: 공간 짓기에는 '선택'이 없다 */
 .r3d .tools { margin-left: auto; display: flex; align-items: center; gap: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; padding-left: 16px; }
 .r3d .tools::-webkit-scrollbar { display: none; }
 .r3d .tool { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex: none; border-radius: 50%; }
@@ -232,14 +264,14 @@
   var GUEST_TOP = '<div class="gtop" id="r3d-gtop"><button type="button" class="gb gback" data-g="back">← 마무리로</button><span class="gsp"></span>'
     + '<button type="button" class="gb" data-g="day">낮</button><button type="button" class="gb" data-g="night">밤</button>'
     + '<button type="button" class="gb" data-g="open">걷기</button><button type="button" class="gb" data-g="close">치기</button></div>'
-    + '<p class="gnote">창밖은 예시 사진입니다.</p>';
+    + '<p class="gnote">창밖은 그림입니다.</p>';      // 263번: 창밖이 그림 층(결정 #409의 문장)
   var STILL = 0;      // 260번: 멈춘 그림을 그리는 중이면 그 차례 번호(0 = 아님)
   function ensureStyle() { if (styled) return; var s = document.createElement('style'); s.id = 'r3d-style'; s.textContent = CSS; document.head.appendChild(s); styled = true; }
   function ensureRoot() {
     if (ROOT) return ROOT;
     ROOT = document.createElement('div'); ROOT.className = 'r3d'; ROOT.setAttribute('role', 'dialog'); ROOT.setAttribute('aria-modal', 'true'); ROOT.setAttribute('aria-label', '입체 방');
     ROOT.innerHTML = MARKUP;
-    ROOT.style.setProperty('--scn', 'url(' + SCENE_URL + ')');
+    ROOT.style.setProperty('--scn', 'url(' + flatScene().toDataURL('image/png') + ')');      // 263번: 장의 작은 그림도 같은 그림 층
     ROOT.querySelector('#r3d-stage').insertAdjacentHTML('beforeend', GUEST_TOP);      // 260번: 손님용 머리 줄 · 창밖 한 줄
     ROOT.querySelector('#r3d-app').insertAdjacentHTML('beforeend', '<div class="gband" id="r3d-gband"></div>');      // 260번: 손님용 아래 띠      // 장의 비침 작은 그림이 같은 사진을 쓴다
     ROOT.querySelector('.r3d-close').addEventListener('click', function () { close(); });
@@ -426,6 +458,8 @@
   var S = { step: 'measure', q: null, wall: null, floor: null, items: [], seq: 0, cand: null, candName: null, fabric: null, settled: false, sel: null, view: 'top', hideFur: false, night: false, wsel: 0, csel: 0, part: 'drape', cmp: true, dtex: null, stex: null, fv: null, kopen: false };      // kopen: 장 머리의 '구성 바꾸기'가 펼쳐져 있는지      // fv: 열려 있는 원단 화면({ kind 겉지 · 속지, view sheet 비침 네 폭 · open 원단 사진, lv 비침 단계, i 보는 원단 })      // wsel: 고른 창(블라인드면 고른 블라인드) · csel: 고른 커튼 한 벌
   var V = { t: 0, az: 0.62, el: 0.6, yaw: 0, rad: 0, h: 0, hy: 0, s: 0 };          // t: 0 위에서 내려다봄 → 1 눈높이 · h: 0 → 1 밑단 보기 · hy: 밑단 둘레로 돈 각 · s: 0 → 1 속커튼 볼 때 창 앞으로 다가감
   var RISE = { k: 0 }, GLS = { k: 0 };                            // 벽이 서는 정도 · 창이 뚫리는 정도
+  var FL = { w: 1, d: 1 }, SUNK = { k: 1 }, PATCH0 = 0, BUILD = false, BLD = false, BLDC = false;      // 263번: FL 바닥이 가로 · 세로로 펴진 정도(점 → 선 → 바닥) · SUNK 창으로 드는 빛(방향을 확인하면 0 → 1) · BUILD 공간 크기를 짓는 중 · BLD 공간 추가에서 짓기(build) · BLDC 폰에서 벽 · 바닥 색을 둘 다 잼
+  var BMS = 0;      // 263번: 짓기에서 움직임 한 번 900 ms(0.6 ~ 1초, 결정 #410) — 0이면 예전 빠르기
   var SHARES = {}, ZONE = 0, sharesDirty = true, UNDO = [];
   // 공간들 — 폰에서 재 온 공간이 공간 화면에 미리 떠 있다(아직 안 한 모양). 공간 추가는 폰에서 안 잰 공간에만. LIVE: 지금 편집기에 열린 공간(공간 화면이면 -1)
   var SI = 0, LIVE = -1, DEF = null;      // 258번: 공간 화면은 앱의 것 — 여기서는 열린 공간 하나(LIVE 0 = 열림)
@@ -475,6 +509,7 @@
     if (k === 'dtex') return !dr || (HOUSE.dtex != null && HOUSE.dtexAt !== SI);
     if (k === 'stex') return !sh || (HOUSE.stex != null && HOUSE.stexAt !== SI);
     if (k === 'bkind') return kd !== 'blind';
+    if (k === 'color' && BLD && !BLDC) return true;      // 263번: 폰 색이 없거나 한쪽만이면 입체 방에서 묻지 않음 — 앱의 색 단계(사진으로 재기 · '○○과 같아요')가 잰다
     return false;
   }
   function askList() { return []; }
@@ -534,7 +569,7 @@
   // EY · HZ: 눈높이(m)와 그 높이가 놓이는 사진 줄 · YAW: 눈높이에서 옆으로 돌려 볼 때 한 걸음 옮겨 선 것처럼(m) · HAZE: 먼 풍경의 뿌연 정도 · KB: 비침 흐림(px)을 사진 칸으로 · OFF: 다른 벽의 창이 보는 자리(사진 칸)
   var SCN = { img: new Image(), tile: null, tex: null, btex: {}, TH: 1, PX: 460, E0: 6, D: 40, EZ: [5, 9], LX: 0.3, LY: 0.12, EY: 1.3, HZ: 270, YAW: 1.2, HAZE: 0.2, KB: 2.3, OFF: [0, 632, 1264, -632], TOP: 520, BOT: 320, W: 1264, H: 848 };
   SCN.img.onload = function () { sceneBuild(); if (LIVE >= 0) { for (var k in POOL) if (POOL[k].kind === 'set') POOL[k].asig = ''; paintSheer(); invalidate(); } };
-  SCN.img.src = SCENE_URL;      // 258번: 앱의 사진 파일 그대로(시안은 글자로 묻어 두었다) — 장의 작은 그림(--scn)은 root에 걸어 둔다
+  SCN.img = flatScene(); sceneBuild();      // 263번: 사진을 받지 않고 그림 층으로 바로 — (옛) 258번: 앱의 사진 파일 그대로(시안은 글자로 묻어 두었다) — 장의 작은 그림(--scn)은 root에 걸어 둔다
   function scnTex(c) { var t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); return t; }
   function sceneBuild() {      // 사진 한 장 → 위로 하늘 · 아래로 나무를 이어 붙이고, 옆으로 뒤집어 이어 끝이 없게(두 장 폭 — 이음매가 이어진다), 먼 풍경처럼 아주 조금 뿌옇게
     var W = SCN.W, th = SCN.TOP + SCN.H + SCN.BOT, yb = SCN.TOP + SCN.H, t1 = document.createElement('canvas'), c = document.createElement('canvas'), g, k;
@@ -888,7 +923,7 @@
   function quadPush(P, Cc, I, a, b, c, d, k) { var n = P.length / 3; P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], d[0], d[1], d[2]); Cc.push(k, k, k, k, k, k, k, k, k, k, k, k); I.push(n, n + 1, n + 2, n, n + 2, n + 3); }
   function quadPush4(P, Cc, I, a, b, c, d, ka, kb, kc, kd) { var n = P.length / 3; P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], d[0], d[1], d[2]); Cc.push(ka, ka, ka, kb, kb, kb, kc, kc, kc, kd, kd, kd); I.push(n, n + 1, n + 2, n, n + 2, n + 3); }      // 꼭짓점마다 밝기가 다른 네모
   // 살에 번지는 빛(19판, 11-25 사장님: 화이트 우드가 예쁜 까닭) — 조명 계산 없이 살 한 장의 폭을 따라 밝기만 달리 칠한다. 낮에만, 창 방향 세기만큼, 기울기에 따라(반쯤일 때 가장 넓게)
-  function glowNow() { return S.night ? 0 : sun().p; }
+  function glowNow() { return S.night ? 0 : sun().p * SUNK.k; }      // 263번
   function slatGlow(SL, t) {      // 살 윗면을 폭을 따라 나눈 띠 — [자리 0(방 쪽 끝) → 1(창 쪽 끝) 둘, 밝기 둘]. 닫힌 살의 한가운데는 늘 고른 색 그대로(1)
     var gl = glowNow(), G = SL.glow[0] * gl * (0.7 + 0.3 * Math.sin(Math.PI * t)), sh = SL.glow[1] * gl * (1 - 0.6 * t), m1 = 1 + G * 0.3 * t, m2 = 1 + G * (0.3 + 0.35 * t);
     if (gl < 0.01) return [[0, 1, 1, 1]];
@@ -1257,7 +1292,7 @@
     settleFur(it);
     for (var n = 0; x == null && n < 5 && S.items.some(function (o) { return Math.hypot(o.x - it.x, o.z - it.z) < 0.25; }); n++) { it.z += 0.6; it.x += it.x > 0 ? -0.3 : 0.3; it.wall = null; settleFur(it); }
     S.items.push(it); it.grow = 0.001;
-    tween(450, function (k) { it.grow = Math.max(0.001, k); if (it.g) it.g.scale.y = it.grow; }, function () { it.grow = null; });
+    tween(BMS || 450, function (k) { it.grow = Math.max(0.001, k); if (it.g) it.g.scale.y = it.grow; }, function () { it.grow = null; });      // 263번: 짓기는 0.9초
     return it;
   }
 
@@ -1314,7 +1349,7 @@
     SHMATS.forEach(function (m) { tint(m, sheerHex(), anim); });
     tickMat.color.set(S.night ? 0xffffff : INK); tickMat.opacity = S.night ? 0.26 : 0.2;
     var open = bl ? blOpen() : dr ? C.open : 1;      // 블라인드는 내려 있어도 살이 누우면 · 띠가 겹치면 빛이 든다(18판)
-    patchMat.opacity = S.night || fh == null ? 0 : (0.18 + 0.34 * open) * (sh ? 1 - 0.55 * LVA[lvNow()] * (1 - 0.8 * C.sopen) : 1) * sun().p * GLS.k;      // 바닥에 드는 빛 — 낮에만, 걷은 만큼, 창 방향만큼, 속커튼이 비치는 만큼
+    PATCH0 = S.night || (fh == null && !BLD) ? 0 : (0.18 + 0.34 * open) * (sh ? 1 - 0.55 * LVA[lvNow()] * (1 - 0.8 * C.sopen) : 1) * sun().p * GLS.k; patchMat.opacity = PATCH0 * SUNK.k;      // 263번: 짓기에서는 바닥 색을 칠하기 전(빗금)에도 빛이 든다 — 방향을 확인한 만큼(SUNK)      // 바닥에 드는 빛 — 낮에만, 걷은 만큼, 창 방향만큼, 속커튼이 비치는 만큼
     for (key in POOL) {
       o = POOL[key];
       if (o.kind === 'glass') o.m.visible = o.g.visible = o.t.visible = o.live && gon;
@@ -1510,6 +1545,7 @@
     else { ent = []; (pv ? P.win : ws.map(function (w) { return [w.w, w.top - w.sill, w.sill]; })).forEach(function (r) { ent.push(r[0], r[1], r[2]); }); }
     NUM = { key: k, buf: '', ent: ent, seq: !pv && !answered(k), map: k === 'win' ? ent.filter(function (v, i) { return i % 3 === 0; }).map(function (v, r) { return A.win ? r : null; }) : null };
     NUM.i = NUM.seq ? 0 : -1;
+    NUM.sub = k === 'room' && BUILD && !answered(k) && !NUM.seq ? 0 : null;      // 263번: 짓기에서 폰 값을 확인할 때도 가로 · 세로 · 높이를 하나씩(다음 한 번에 한 칸)
     if (k === 'win') NUM.ns = pv ? P.win.map(function (r) { return r[3] || null; }) : ws.map(function (w) { return w.n || null; });      // 창짝 수 — 폰에서 고른 값(넷째 칸)이 있으면 따라온다
   }
   function placeWins(list) {      // 자리를 모르는 창은 창 벽에 놓아 둔다 — 자리는 방에서 끌어 맞춘다(옆 벽으로도)
@@ -1588,7 +1624,7 @@
     for (r = 0; r < rows; r++) {
       h += '<div class="frow">';
       for (i = 0; i < n; i++) {
-        j = r * n + i; on = j === NUM.i; v = on && NUM.buf ? NUM.buf : cm(NUM.ent[j]); soft = on ? !NUM.buf : NUM.seq && j > NUM.i;
+        j = r * n + i; on = j === NUM.i; v = on && NUM.buf ? NUM.buf : cm(NUM.ent[j]); soft = on ? !NUM.buf : (NUM.seq && j > NUM.i) || (NUM.sub != null && j > NUM.sub);      // 263번: 아직 확인하지 않은 칸은 옅게
         h += '<button type="button" class="fld' + (on ? ' on' : '') + (r ? ' bare' : '') + '" data-fld="' + j + '"' + (r ? ' aria-label="' + names[i] + '"' : '') + '>' + (r ? '' : '<span class="sub">' + names[i] + '</span>') + '<span class="num' + (soft ? ' soft' : '') + '">' + v + '</span></button>';
       }
       if (NUM.key === 'win' && rows > 1 && NUM.i < 0) h += '<button type="button" class="act" data-winrm="' + r + '"><span>빼기</span></button>';
@@ -1840,6 +1876,7 @@
       var t = tweens[i], k = Math.min(1, (now - t.t0) / t.dur);
       t.fn(ease(k)); if (k >= 1) { tweens.splice(i, 1); if (t.done) t.done(); }
     }
+    scene.scale.set(FL.w, 1, FL.d);      // 263번: 점 → 선(가로) → 바닥(세로) — 짓기 밖에서는 늘 1
     updateCam(); updateOver(); renderer.render(scene, cam);
     if (LAMPV[0] < 0.999 || LAMPV[1] < 0.999 || LAMPV[2] < 0.999) { renderer.autoClear = false; renderer.render(lampScene, lampCam); renderer.autoClear = true; }      // 실내등 — 방이 그려진 자리에만 등 색을 곱한다(19판)
     if (tweens.length) invalidate();
@@ -1890,6 +1927,7 @@
   // 순서 옮기기 — 머리의 순서 · 뒤로 · 다음으로 옮기면 보는 자리도 따라간다(측정은 위에서, 선택은 눈높이)
   function goStep(st, nav, q) {
     if (!canStep(st)) return;
+    if (BLD && st === 'cur') return;      // 263번: 짓기에는 선택이 없다(측정이 끝나면 닫힘)
     var into = st === 'cur' && S.step !== 'cur';
     S.step = st; S.kopen = false; if (st !== 'measure') S.sel = null;
     S.q = q || firstOpen(st);
@@ -1907,11 +1945,12 @@
       if (nx) { S.q = nx; render(); } else if (fresh) { S.q = null; nextStep(); } else { S.q = null; render(); }
     }, CALM ? 0 : 320);
   }
-  function nextStep() { var si = STEPS.indexOf(S.step); if (si >= 0 && si < STEPS.length - 1) goStep(STEPS[si + 1], true); }
+  function nextStep() { if (BLD && S.step === 'measure') { builtEnd(); return; } var si = STEPS.indexOf(S.step); if (si >= 0 && si < STEPS.length - 1) goStep(STEPS[si + 1], true); }      // 263번: 짓기는 측정 끝 = 닫기
   function setBox(i, on) {
     var bq = BOXES[i]; if (bq.on === on) return;
     bq.on = on; var a = bq.k, b = on ? 1 : 0, id = ++bq.tk;
-    tween(520, function (k) { if (bq.tk !== id) return; bq.k = a + (b - a) * k; layout(); }, function () { if (bq.tk !== id) return; sharesDirty = true; render(); });
+    tween(BMS || 520, function (k) { if (bq.tk !== id) return; bq.k = a + (b - a) * k; layout(); }      // 263번: 짓기는 0.9초
+     , function () { if (bq.tk !== id) return; sharesDirty = true; render(); });
   }
   function pickOpt(k, v) {
     var fresh = !answered(k), d, i, opp = { '동': '서', '서': '동', '남': '북', '북': '남' };
@@ -1927,7 +1966,7 @@
     else if (k === 'dir') {      // 둘까지 — 마주 보는 쪽은 함께 고를 수 없다
       d = (A.dir || (P && P.dir) || []).slice(); i = d.indexOf(v);
       if (i >= 0) d.splice(i, 1); else { d = d.filter(function (x) { return x !== opp[v]; }); d.push(v); if (d.length > 2) d.shift(); }
-      A.dir = d; layout(); render(); return;
+      A.dir = d; layout(); render(); if (SUNK.k < 0.001 && d.length) sunIn(); return;      // 263번: 처음 고르면 빛이 든다
     }
     else if (k === 'dtex' || k === 'stex') { HOUSE[k] = v; if (HOUSE[k + 'At'] == null) HOUSE[k + 'At'] = SI; }      // 질감은 집에 한 번 — 물은 공간을 적어 둔다
     else if (k === 'feel') { A.feel = v; S.cand = null; S.candName = null; S.fabric = null; S.settled = false; }
@@ -1935,13 +1974,18 @@
     sharesDirty = true; render(); advance(fresh);
   }
   var BEAT = false;      // 색이 박자에 맞춰 들어가는 동안
+  function sunIn() {      // 263번: 창으로 빛이 든다 — 1.1초 (짓기 밖에서는 SUNK가 늘 1이라 아무것도 안 함)
+    if (SUNK.k > 0.999) return;
+    var a = SUNK.k; tween(1100, function (t) { SUNK.k = a + (1 - a) * t; patchMat.opacity = PATCH0 * SUNK.k; }, function () { SUNK.k = 1; sharesDirty = true; render(); });
+  }
   function panelNext() {
     var k = S.q, nx;
+    if (isNum(k) && NUM.key === k && NUM.sub != null && NUM.sub < 2 && NUM.i < 0) { buildSub(NUM.sub); NUM.sub++; paintPanel(); return; }      // 263번: 다음 한 번에 한 칸 — 가로 → 세로, 높이에서 벽이 선다
     if (isNum(k) && NUM.key === k) { if (k !== 'box' || NUM.pick.every(function (p) { return p != null; })) finishNum(); return; }
     if (BEAT) return;
     if (k && pre(k)) {      // 폰에서 잰 값을 그대로 받는다
       keep();
-      if (k === 'dir') { A.dir = P.dir.slice(); layout(); }
+      if (k === 'dir') { A.dir = P.dir.slice(); layout(); sunIn(); }      // 263번: 확인하면 빛이 든다
       else if (k === 'color') {      // 벽이 먼저, 이어서 바닥 — 우리 집 색이 들어가는 것이 보이게 두 박자로
         var si0 = SESSION, wait = CALM ? 0 : 420;
         BEAT = true; S.wall = P.wall; sharesDirty = true; render();
@@ -1953,18 +1997,24 @@
         return;
       }
     }
-    if (k === 'dir' && A.dir == null) { keep(); A.dir = []; }
+    if (k === 'dir' && A.dir == null) { keep(); A.dir = []; sunIn(); }      // 263번
     if (k === 'fur' && !A.fur) { keep(); A.fur = true; }
     if (k && !answered(k)) return;      // 답이 있어야 넘어간다
     nx = firstOpen(S.step);
     if (nx) { S.q = nx; sharesDirty = true; render(); } else { S.q = null; sharesDirty = true; render(); nextStep(); }
   }
+  function buildSub(j) {      // 263번: 공간 크기 한 칸을 확인 — 가로면 점이 선으로, 세로면 선이 바닥으로 펴진다
+    var e = NUM.ent, a, key = j === 0 ? 'w' : 'd';
+    if (j === 0) R.W = e[0] = clamp(e[0], 1.5, RMAX[0]); else R.D = e[1] = clamp(e[1], 1.0, RMAX[1]);
+    layout(); a = FL[key]; tween(BMS, function (t) { FL[key] = a + (1 - a) * t; });
+  }
   function finishNum() {      // 숫자 물음을 닫는다 — 방이 그 크기로 부드럽게 바뀐다
     var key = NUM.key, first = !answered(key), from;
     keep(); from = glideStart(); applyNum(); NUM.key = null;
     if (key === 'box') A.box = NUM.pick.indexOf('y') >= 0 ? 'y' : 'n'; else A[key] = true;
-    if (first && key === 'room') tween(700, function (t) { RISE.k = t; }, function () { RISE.k = 1; });
-    if (first && key === 'win') tween(450, function (t) { GLS.k = t; layout(); paintRoom(false); }, function () { GLS.k = 1; layout(); paintRoom(false); });      // 창이 벽을 뚫고 올라온다
+    if (first && key === 'room') { var fw = FL.w, fd = FL.d; tween(BMS || 700, function (t) { RISE.k = t; FL.w = fw + (1 - fw) * t; FL.d = fd + (1 - fd) * t; }, function () { RISE.k = 1; FL.w = FL.d = 1; }); }      // 263번: 짓기는 0.9초 · 못 펴진 바닥도 함께
+    if (first && key === 'win') tween(BMS || 450, function (t) {      // 263번: 짓기는 0.9초
+      GLS.k = t; layout(); paintRoom(false); }, function () { GLS.k = 1; layout(); paintRoom(false); });      // 창이 벽을 뚫고 올라온다
     S.q = firstOpen(S.step);
     refit(); glideGo(from); sharesDirty = true; render();
   }
@@ -1974,8 +2024,10 @@
     if (k !== 'go') { if (NUM.buf.length < 5) NUM.buf += k; paintPanel(); return; }
     if (NUM.buf) { var v = +NUM.buf; if (v >= (NUM.key === 'room' && NUM.i < 2 ? 2000 : 1000)) v /= 10; NUM.ent[NUM.i] = v / 100; }      // 공간 가로 · 세로는 10 m를 넘기도 해서 2000부터 mm로 본다
     NUM.buf = '';
+    if (!NUM.seq && NUM.key === 'room' && NUM.sub != null && NUM.i < NUM.sub) { var fr = glideStart(); if (NUM.i === 0) R.W = NUM.ent[0] = clamp(NUM.ent[0], 1.5, RMAX[0]); else R.D = NUM.ent[1] = clamp(NUM.ent[1], 1.0, RMAX[1]); glideGo(fr); }      // 263번: 이미 지은 칸을 고치면 바로 그 크기로
     if (!NUM.seq) { NUM.i = -1; paintPanel(); return; }      // 한 칸만 고친 것 — 확인으로 돌아간다
     NUM.i++;
+    if (NUM.key === 'room' && BUILD && !answered('room') && NUM.i <= 2) buildSub(NUM.i - 1);      // 263번: 칸마다 적는 공간 — 적은 칸만큼 바닥이 펴진다
     if (NUM.i >= NUM.ent.length) finishNum(); else paintPanel();
   }
 
@@ -2307,21 +2359,32 @@
     if (go) res.goFabric = go;
     var cb = ONFIN; ONFIN = null; if (cb) cb(res);
   }
+  function builtEnd() {      // 263번: 짓기를 마침 — 선택으로 가지 않고 닫으며 지은 값을 돌려준다(앱이 폰 실측과 같은 꼴로 바꿔 공간을 만든다). 지은 방은 pack으로(공간의 room3d)
+    if (!ALIVE) return;
+    if (NUDGE) { clearTimeout(NUDGE.t); NUDGE = null; } if (drag) endDrag(); restoreOpen();
+    var o = JSON.parse(pack(true)), z = sizesOut();
+    o.v = 1; o.sig = SIG; o.msig = MSIG; o.seed = SEED; o.wallHex = surfHex('wall'); o.floorHex = surfHex('floor'); o.DELTA = {}; o.step = 'measure'; o.q = null;
+    var res = { done: false, pack: o, built: { room: z.room, wins: z.wins, box: z.box, dir: (A.dir || []).slice(),
+      wall: BLDC && S.wall === 0 ? surfHex('wall') : null, floor: BLDC && S.floor === 0 ? surfHex('floor') : null } };      // 색은 폰에서 잰 색을 확인한 것만(견본으로 바꾼 것은 잰 색이 아니라 넣지 않음)
+    var cb = ONFIN; ONFIN = null; if (cb) cb(res);
+  }
   function hexIdx(k, hx) { if (!hx) return null; hx = String(hx).toLowerCase(); for (var i = 0; i < SURFS[k].length; i++) if (String(SURFS[k][i].hex).toLowerCase() === hx) return i; return null; }
   function applyInput(I) {      // 새로 지을 때 — 폰에서 잰 값(확인된 것) · 앱의 크기와 기본값(측정에서 확인)
     var list, gs, u, z;
     R.W = I.room[0]; R.D = I.room[1]; R.H = I.room[2];
-    if (I.roomOk) A.room = true; else P.room = I.room.slice();
+    var B2 = !!I.build;      // 263번: 공간 추가에서 짓기 — 폰 값도 P(확인 전)로, 측정에서 하나씩 확인하며 짓는다 · 폰 실측이 없는 공간은 깔지 않고 칸마다 적는다(결정 #410-3)
+    if (I.roomOk && !B2) A.room = true; else if (!I.blank) P.room = I.room.slice();
     list = I.wins.map(function (r) { return { w: Math.max(WMIN, r[0]), sill: r[2], top: Math.min(R.H - 0.03, r[2] + r[1]), x: null, wall: null, n: r[3] || null }; });
     placeWins(list); WINS.length = 0; list.forEach(function (q) { WINS.push(q); });
-    if (I.winsOk) A.win = true; else P.win = I.wins.map(function (r) { return r.slice(); });
-    if (I.box === 'n') { if (I.roomOk) A.box = 'n'; else P.box = 'n'; }
+    if (I.winsOk && !B2) A.win = true; else if (!I.blank) P.win = I.wins.map(function (r) { return r.slice(); });      // 263번
+    if (I.box === 'n') { if (I.roomOk && !B2) A.box = 'n'; else P.box = 'n'; }      // 263번
     else if (I.box) {
-      if (I.roomOk) { wallsUsed().forEach(function (i) { var b = BOXES[i]; b.on = true; b.k = 1; b.h = clamp(I.box.top - R.H, 0.03, 0.4); b.d = clamp(I.box.d, 0.06, 0.4); b.len = I.box.len != null && i === 0 && I.box.len < wlen(i) - 0.005 ? clamp(I.box.len, 0.3, wlen(i)) : null; b.at = null; if (b.len != null) fitUnder(i); }); A.box = 'y'; }
+      if (I.roomOk && !B2) { wallsUsed().forEach(function (i) { var b = BOXES[i]; b.on = true; b.k = 1; b.h = clamp(I.box.top - R.H, 0.03, 0.4); b.d = clamp(I.box.d, 0.06, 0.4); b.len = I.box.len != null && i === 0 && I.box.len < wlen(i) - 0.005 ? clamp(I.box.len, 0.3, wlen(i)) : null; b.at = null; if (b.len != null) fitUnder(i); }); A.box = 'y'; }
       else { P.box = 'y'; P.boxTop = I.box.top; P.boxD = I.box.d; if (I.box.len != null) P.boxL = I.box.len; }
     }
-    if (I.dir && I.dir.length) A.dir = I.dir.slice();
-    if (I.furs.length) { I.furs.forEach(function (f) { addFur(f.t, null, null, f); }); A.fur = true; }
+    if (I.dir && I.dir.length) { if (B2) P.dir = I.dir.slice(); else A.dir = I.dir.slice(); }      // 263번: 짓기에서는 방향도 확인 전 — 확인하면 빛이 든다
+    if (I.furs.length && B2) P.furs = I.furs.map(function (f) { return { t: f.t, w: f.w, d: f.d, h: f.h, hex: f.hex, cn: f.cn }; });      // 263번: 짓기에서는 폰에서 잰 가구가 가구 차례에 놓인다
+    else if (I.furs.length) { I.furs.forEach(function (f) { addFur(f.t, null, null, f); }); A.fur = true; }
     else if (I.furCols.length) P.furs = I.furCols.slice();
     gs = groups();
     if (I.curW && gs.length === 1) { u = CB(gs[0]); z = szOf(gkey(gs[0])); z.w = clamp(I.curW, u.minW, u.maxW); z.full = z.w >= u.maxW - 0.0005; }      // 앱 품목의 가로가 처음 크기
@@ -2364,11 +2427,13 @@
     if (I.kind && (FIXED || !restored)) A.kind = I.kind;
     if (I.bkind && (BKFIX || !A.bkind)) A.bkind = I.bkind;
     C.sl = I.lv; C.lead = !!I.lead; if (I.pleat === 'nabi') C.pleat = 'nabi';
-    ['wall', 'floor'].forEach(function (k) { S[k] = I[k] ? 0 : p ? hexIdx(k, p[k + 'Hex']) : null; });
+    ['wall', 'floor'].forEach(function (k) { if (I.build) { S[k] = null; P[k] = I[k] ? 0 : null; return; } S[k] = I[k] ? 0 : p ? hexIdx(k, p[k + 'Hex']) : null; });      // 263번: 짓기에서는 잰 색도 확인 전(두 박자로 칠해진다)
     UNDO = []; S.sel = null; S.kopen = false; S.hideFur = false; S.night = false; S.fv = null; S.wsel = 0; S.csel = 0;
     OPID++; OPENED = false; ZID++; ZT = 0; V.s = 0; FC.on = false; V.az = 0.62; V.el = 0.6; V.h = 0; V.hy = 0; V.yaw = 0;
     SLID++; SLV = C.slit; HEMID++; HEMV = C.lead ? 0 : 1; DHEMV = C.dlead ? 0 : 1;
     RISE.k = A.room ? 1 : 0; GLS.k = A.win ? 1 : 0; BOXES.forEach(function (b) { b.k = b.on ? 1 : 0; });
+    BLD = !!I.build; BLDC = BLD && !!(I.wall && I.floor); BMS = BLD ? 900 : 0; app.dataset.build = BLD ? '1' : '';      // 263번: 짓기 — 머리의 '선택'은 숨김
+    BUILD = BLD && !A.room; FL.w = FL.d = BUILD ? 0.03 : 1; SUNK.k = BLD && A.dir == null ? 0 : 1;      // 263번: 짓기는 점 하나에서 시작 · 빛은 방향을 확인할 때
     if (!restored || STEPS.indexOf(S.step) < 0) S.step = 'measure';
     if (!restored) S.view = 'top';
     if (S.view === 'hem') S.view = 'eye';
@@ -2479,7 +2544,7 @@
     if (!furs.length) mcf.forEach(function (f) { var t = f && furType(f.n); if (t && hexOk(f.hex) && f.stay !== false) furCols.push({ t: t, hex: f.hex, cn: clean(f.n) }); });
     var sh = by.sheer, dr = by.drape, bf = layers.blind, bk = bf && BKM[bf.blindKind] || null, cw = dr || sh;
     return {
-      name: clean(r.name) || '공간', type: type, kind: kind, fixed: items.length > 0, layers: layers,
+      name: clean(r.name) || '공간', type: type, kind: kind, fixed: items.length > 0, layers: layers, build: !!o.build, blank: !!o.build && !m,      // 263번: 공간 추가에서 짓기 · blank = 폰 실측이 없는 공간(공간 · 창을 칸마다 적는다)
       room: [W, D, H], roomOk: roomOk, wins: wins, winsOk: winsOk, box: box, dir: dir,
       wall: surfOf(r, m, 'wall'), floor: surfOf(r, m, 'floor'), furs: furs, furCols: furCols,
       gaze: GAZE[r.privacy] || null, light: LIGHT[r.lightBlock] || null,

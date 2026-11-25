@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261303';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261304';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1019,6 +1019,39 @@
         setRoomColor(room, withBridge(mc.wall || wall, mc.floor || floor, mc.bridgeK, mc.furniture));
         if (wall && floor) room.colorSrc = 'phone';      // 둘 다 폰 색. colorSrc를 읽는 곳은 'house'·벽/바닥 비교뿐이라 새 값이어도 그대로 지나감
     }
+    // 263번: 공간 추가를 입체 방에서 짓기(결정 #410 · 시안 2판, 화면 확인 #34) — 폰에서 잰 공간도 · 안 잰 공간도 측정만 하는 입체 방으로 열고,
+    //  지은 값을 폰 실측과 같은 꼴로 바꿔 259번 길(applyPhoneSize · applyPhoneExtras)로 넣음 → 입체 방에서 고친 숫자가 그대로 견적 크기
+    //  못 열면(그림 엔진 · WebGL 없음) 예전 1.6 크기 화면. 입체 방에서 뒤로 나가면 공간을 만들지 않음(1.5 그대로)
+    function buildRoom3D(pm) {
+        const d = state.editingRoom, R3 = window.RedamRoom3D;
+        if (!d || !d.addDraft || !R3 || R3.isOpen()) return false;
+        const room = { name: d.name, roomType: d.roomType, width: d.width, height: d.height, spaceWidth: d.spaceWidth, spaceHeight: d.spaceHeight, panes: d.panes || null, windowDir: d.windowDir, planComp: d.phoneComp || null };
+        return R3.open({ room, items: [], measure: pm || null, fabricOf: () => null, build: true, onClose: res => builtRoom3D(res, pm) }) !== false;
+    }
+    function builtRoom3D(res, pm) {      // 입체 방이 닫힘 — 지었으면 공간을, 못 열었으면 예전 크기 화면, 뒤로 나갔으면 아무것도
+        const d = state.editingRoom;
+        if (!d || !d.addDraft) return;
+        if (!res || !res.pack) { goToStep("1.6-Add-Size"); return; }
+        const b = res.built;
+        if (!b) { state.editingRoom = null; render(); return; }
+        const pw = pm && Array.isArray(pm.창) ? pm.창 : [];
+        const side = i => (pw[i] && pw[i].side) || '';      // 창 좌우(블라인드 손잡이)는 입체 방이 모름 — 폰 값을 같은 차례로
+        const keep = (v, ph, cap) => ph > 0 && Math.abs(v - Math.min(ph, cap)) <= 1 ? ph : v;      // 입체 방이 그리느라 줄인 값(창이 천장에 닿지 않게 3 cm 등)만이면 폰 값 그대로 — 손으로 고친 값만 견적으로
+        const bx = (b.box || []).find(x => x && x.on !== false);
+        const both = !!(b.wall && b.floor);      // 입체 방에서 폰 색을 둘 다 확인함
+        const m = {
+            이름: d.name, 종류: d.roomType, 구성: pm ? pm.구성 : null,
+            창: (b.wins || []).map((w, i) => ({ w: keep(w.w, Number(pw[i] && pw[i].w), 1470), h: keep(w.h, Number(pw[i] && pw[i].h), b.room.h - 3 - (w.sill || 0)), sill: w.sill, side: side(i) })),
+            전체: pm && pm.전체 ? pm.전체 : null,      // 커튼 전체 크기는 입체 방이 모르는 값 — 폰 값 그대로
+            공간: b.room, 박스: bx ? { top: bx.top, d: bx.d, len: bx.len } : false, 방향: b.dir || [],
+            색: both ? { 벽: b.wall, 바닥: b.floor } : (pm && pm.색) || null
+        };
+        Object.assign(d, { sizeMode: 'full', spaceWidth: 0, spaceHeight: 0, partWidth: 0, partHeight: 0, width: 0, height: 0, paneBase: 0, windowDir: [], dirUnknown: false, panes: null, phoneColor: null, room3d: res.pack });
+        applyPhoneSize(d, m); applyPhoneExtras(d, m);
+        if (!windowDirOf(d.windowDir).length) d.dirUnknown = true;      // 입체 방에서 '모름'으로 넘김
+        if (both) window.concierge.finishAddRoom('none');      // 색은 폰에서 잰 것을 입체 방에서 확인함 → 공간을 바로 만듦(259번 seedPhoneColor가 넣음)
+        else window.concierge.addRoomColor();      // 색은 지금처럼 앱이 잼(사진으로 재기 · '○○과 같아요') — 창 방향은 입체 방에서 고른 것이 켜진 채
+    }
     function paneBoxHtml(target, label, val) {
         return `<div id="measureBox_${target}" class="measure-box pane-box" onclick="window.concierge.openKeypad('${target}')"><span class="pane-k">${label}</span><span id="displayVal_${target}" class="pane-v font-serif-kr${val ? '' : ' is-empty'}">${val || '—'}</span></div>`;
     }
@@ -1827,7 +1860,7 @@
             }; // 41번, 43번
             const pm = phoneMeasures().find(m => m.이름 === displayName);      // 245번: 같은 이름의 폰 실측이 있으면 크기를 미리 채움(보고 고치기만)
             if (pm) { applyPhoneSize(state.editingRoom, pm); applyPhoneExtras(state.editingRoom, pm); }      // 259번: 구성 · 창 방향 · 색도
-            goToStep("1.6-Add-Size");
+            if (!buildRoom3D(pm)) goToStep("1.6-Add-Size");      // 263번: 입체 방에서 공간을 짓는다 — 입체 방이 없으면 예전 크기 화면
         },
         choosePhoneSize: function(i) {      // 245번: '폰에서 잰 크기' 칩 — 그 이름으로 공간, 종류는 실측의 '앱에서 고를 종류'(없으면 이름에서 짐작, 그래도 없으면 작은방)
             const m = phoneMeasures()[i];
@@ -1881,6 +1914,7 @@
             if (src === 'first' && mc && (mc.wall || mc.floor)) state.house = houseOf(mc, room.id);
             seedPhoneColor(room, d.phoneColor);      // 259번: 태블릿에서 못 잰(비어 있는) 벽·바닥은 폰에서 잰 색으로
             if (d.phoneComp && !room.planComp) { room.planComp = d.phoneComp; room.planPicked = true; room.compOk = false; }      // 259번: 폰에서 들은 구성 — 상품을 다 뺀 공간(215번)처럼 구성 화면에 회색 칸으로 미리, 누르면 확정 · 다른 칸도 그대로
+            if (d.room3d) { room.room3d = d.room3d; if (window.RedamRoom3D && window.RedamRoom3D.resign) window.RedamRoom3D.resign(room.room3d, room, []); }      // 263번: 지은 입체 방 — 공간 화면의 '입체 방' 단추가 이어서 엶
             room.id = newRoomId();
             state.roomsCart.push(room);
             state.activeSpaceId = room.id;
