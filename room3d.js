@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261306';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261307';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -138,7 +138,7 @@
 .r3d .layers .chip.on::before, .r3d .kinds .chip.on::before, .r3d .srow .chip.on::before { position: absolute; left: 0; top: 50%; margin: -4px 0 0; }
 .r3d .shapeblk { margin-top: 28px; }
 .r3d .srow { display: flex; align-items: center; gap: 0 16px; width: 100%; min-height: 50px; border-top: 1px solid var(--ink14); }
-.r3d .srow.first { border-top: 0; }
+.r3d .srow.first, .r3d .srow.sub { border-top: 0; }      /* 266번: sub — 위 줄(가로 · 높이)에 딸린 단추 줄 */
 .r3d .srow .chip[data-chip=slit], .r3d .srow .chip[data-chip=hem], .r3d .srow .chip[data-chip=tape] { min-width: 48px; }
 .r3d .srow.tall { min-height: 56px; }
 .r3d .srow .k { width: 64px; flex: none; font-size: 15px; color: var(--muted); white-space: nowrap; }
@@ -306,6 +306,7 @@
   // 258번: 앱에서 받은 것 — HOST 공간 이름 · LAYER 겹마다 고른 원단 { name, hex, density, blindKind, band } · FIXED 품목이 있어 구성을 여기서 바꾸지 않음 · BKFIX 블라인드 종류를 원단이 정함
   var HOST = { name: '' }, LAYER = { drape: null, sheer: null, blind: null }, FIXED = false, BKFIX = false;
   var ALIVE = false, SESSION = 0, SIG = '', MSIG = null, SEED = null, ONFIN = null, DELTA = {};
+  var CURI = null;      // 266번: 앱 품목의 커튼 크기 { w, h (m), need: 선택에서 품목 크기로 맞출지, hand: 커튼 크기를 손으로 바꿨는지 }
   var GUEST = null, QUICK = false;      // 260번: GUEST 손님용 { d · s: 후보 목록(겉지 · 속지), di · si: 지금 건 후보, d0 · s0: 처음 후보, last: 마지막에 누른 겹 } · QUICK 움직임 없이(멈춘 그림)      // DELTA: 손으로 바꾼 크기(cm) — cur 커튼 한 벌 · blind 블라인드 { w, h }
   function on(type, fn) { root.addEventListener(type, fn); }      // 귀는 root에만 — 닫으면 root가 화면에서 떨어져 아무것도 듣지 않는다
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -811,12 +812,23 @@
     var small = u.sill >= 0.4 && u.top - u.sill < 1.6;
     // 다는 높이(hang): 커튼박스가 있으면 박스 안 천장, 없으면 천장 … 창틀 위 사이 어디든 / 아랫단(botY): 바닥에서 1 cm가 기본, 창 아래까지 올릴 수 있다
     var ceilY = R.H + (hasBox ? bxi.h * bxi.k : 0), frameY = Math.min(R.H, u.top + 0.15), floorY = 0.01, sillY = Math.max(floorY, u.sill - 0.2), botMax = Math.max(u.sill, 0.1);
-    var hang = hasBox ? ceilY : z.top == null ? (small ? frameY : ceilY) : clamp(z.top, Math.min(R.H, u.top + 0.05), R.H);
-    var botY = z.bot == null ? (small ? sillY : floorY) : clamp(z.bot, 0, botMax), topY = hang - 0.03;
-    var minW = Math.min(u.w, maxW), recW = clamp(u.w + 0.5, minW, maxW);      // 가로: 창만 … 벽 전체. 손대기 전에는 창보다 양옆 25 cm씩 넓게(창이 벽을 거의 다 차지하면 벽 전체)
-    var full = z.w == null ? hasBox || u.w > wlen(i) - 1.04 : !!z.full;      // 손대기 전: 커튼박스가 있으면 박스 끝에서 끝까지(대개 벽에서 벽), 없으면 창보다 양옆 25 cm씩
-    var cw = full ? maxW : z.w == null ? recW : clamp(z.w, minW, maxW);
-    var cx = clamp(u.cx, u.lo + cw / 2, u.hi - cw / 2);
+    // 266번(결정 #414): 기장 — '바닥까지'(바닥 위 gap, 처음 1 cm) · '창 아래'(창 아래로 below만큼, 처음 20 cm). 창이 바닥에서 30 cm 안이면(바닥까지 오는 창 · 베란다 창) '바닥까지'만
+    var sillOK = u.sill >= 0.3, hem, gap = null, below = null, botY;
+    if (z.hem === 'win' && sillOK) { hem = 'win'; below = clamp(z.below == null ? 0.2 : z.below, 0, u.sill); botY = u.sill - below; }
+    else if (z.hem || z.bot == null) { hem = 'floor'; gap = clamp(z.gap == null ? 0.01 : z.gap, 0, botMax); botY = gap; }
+    else { botY = clamp(z.bot, 0, botMax); hem = sillOK && botY >= 0.1 ? 'win' : 'floor'; }      // 266번 전에 저장한 입체 방(아랫단 높이만 있음) — 그 자리 그대로
+    if (sillOK && below == null) below = u.sill - botY;
+    if (gap == null) gap = botY;
+    var hang = hasBox ? ceilY : z.top == null ? ceilY : clamp(z.top, Math.min(R.H, u.top + 0.05), R.H);      // 266번: 손대기 전에는 늘 천장에서(박스가 있으면 박스 안) — 266번 전의 '작은 창은 창틀 위에서'는 뺌(기본은 벽에서 벽 · 바닥까지, 결정 #414). 창틀 위로는 위 손잡이로
+    var topY = hang - 0.03;
+    // 266번(결정 #414): 가로 — '벽에서 벽'(처음 값 · 박스가 벽보다 짧으면 박스 끝에서 끝) · '창 기준'(창 왼쪽 ml · 오른쪽 mr, 처음 25 cm씩 · 옆 창 · 벽 끝까지) · '직접'(가로 w · 가운데 cx)
+    var minW = Math.min(u.w, maxW), recW = clamp(u.w + 0.5, minW, maxW), mlMax = Math.max(0, u.a - u.lo), mrMax = Math.max(0, u.hi - u.b);
+    var mode = z.mode || (z.w != null && !z.full ? 'free' : 'wall'), cw, cx, ml, mr;      // 266번 전에 저장한 입체 방: 가로를 손댔으면 '직접', 아니면 '벽에서 벽'
+    if (mode === 'win') { ml = clamp(z.ml == null ? 0.25 : z.ml, 0, mlMax); mr = clamp(z.mr == null ? 0.25 : z.mr, 0, mrMax); cw = u.w + ml + mr; cx = u.a - ml + cw / 2; }
+    else if (mode === 'free') { cw = clamp(z.w == null ? recW : z.w, minW, maxW); cx = clamp(z.cx == null ? u.cx : z.cx, u.lo + cw / 2, u.hi - cw / 2); }
+    else { cw = maxW; cx = (u.lo + u.hi) / 2; }
+    if (mode !== 'win') { ml = Math.max(0, u.a - (cx - cw / 2)); mr = Math.max(0, cx + cw / 2 - u.b); }
+    var full = cw >= maxW - 0.0005;
     var nabi = C.pleat === 'nabi', need = Math.max(2, Math.ceil(cw / 0.75 - 0.001));                    // 나비 주름은 2배 주름 — 소폭(1.5 m)으로 가로의 2배가 안 되면 못 만든다: 3.0 m 4폭, 3.6 m 5폭
     var base = z.pok != null ? z.pok : Math.max(2, Math.round(cw / 0.75));                              // 손대기 전: 가로 75 cm마다 한 폭 (3.0 m 4폭 · 3.6 m 5폭 · 4.5 m 6폭)
     var cover = Math.max(2, Math.ceil(cw * 1.5 / 1.5 - 0.001));                                        // 일반 주름으로 만들어 주는 가장 적은 배수는 1.5배(결정 #398 — 바람은 2배, 가격 때문에 1.5배를 고르는 손님이 꽤 있고 작은 방은 1.5배도 많이 한다): 3.0 m 3폭, 3.6 m · 4.0 m 4폭, 4.5 m 5폭부터 (결정 #146과 같다)
@@ -826,9 +838,26 @@
     var A0 = clamp(0.25 * Math.sqrt(Math.max(0, cloth * cloth - lam * lam)), 0.008, 0.045);             // 천이 남는 만큼 앞뒤로 굽이친다
     var smin = clamp(cw * 0.055, 0.08, cw * 0.3), sdw = smin + (cw / 2 - smin) * (1 - C.sopen);      // 19판: 속지 한쪽 자락의 폭 — 다 걷으면 smin까지 모인다(겉지보다 얇아 조금 덜 차지한다 — 시안 값)
     return { key: key, wall: i, smin: smin, sdw: sdw, cw: cw, cx: cx, topY: topY, botY: botY, hang: hang, len: hang - botY, h: topY - botY, cy: (topY + botY) / 2, dw: dw, dmin: dmin, full: full, pok: pok, minPok: minPok, n: n, A: A0, ns: Math.max(6, Math.round(cw * 8)),      // ns: 속커튼은 가로의 2배 · len: 다는 높이에서 아랫단까지(커튼 길이)
-      uw: u.w, ucx: u.cx, lo: u.lo, hi: u.hi, usill: u.sill, utop: u.top, L: L, zs: rz.s, zd: rz.d, minW: minW, maxW: maxW, recW: recW, ceilY: ceilY, frameY: frameY, floorY: floorY, sillY: sillY, botMax: botMax, hasBox: hasBox };
+      uw: u.w, ucx: u.cx, lo: u.lo, hi: u.hi, usill: u.sill, utop: u.top, L: L, zs: rz.s, zd: rz.d, minW: minW, maxW: maxW, recW: recW, ceilY: ceilY, frameY: frameY, floorY: floorY, sillY: sillY, botMax: botMax, hasBox: hasBox,
+      mode: mode, ml: ml, mr: mr, mlMax: mlMax, mrMax: mrMax, ua: u.a, ub: u.b, hem: hem, gap: gap, below: below, sillOK: sillOK };      // 266번
   }
   function szOf(key) { return C.sz[key] || (C.sz[key] = {}); }
+  function seedCur(g, w, h) {      // 266번: 앱 품목의 가로 · 높이가 처음 크기(그림과 견적이 같은 숫자에서 시작) — 크기 칸만 새로(폭수 · 위 손잡이로 옮긴 다는 높이는 그대로)
+    var z = szOf(gkey(g)), u, m, y;
+    ['mode', 'ml', 'mr', 'w', 'cx', 'full', 'hem', 'gap', 'below', 'bot'].forEach(function (k) { delete z[k]; });
+    u = CB(g); m = w ? (w - u.uw) / 2 : 0;
+    if (!w) { }      // 가로: 벽(박스) 끝에서 끝이면 '벽에서 벽', 창보다 양옆이 같게 넓으면 '창 기준'(양옆 반씩 — 1 cm가 남으면 오른쪽에), 아니면 '직접'
+    else if (w >= u.maxW - 0.005) { z.mode = 'wall'; z.full = true; }
+    else if (m >= -0.005 && m <= Math.min(u.mlMax, u.mrMax) + 0.005) { z.mode = 'win'; z.ml = Math.max(0, Math.floor(m * 100 + 1e-6) / 100); z.mr = Math.max(0, Math.round((2 * m - z.ml) * 100) / 100); }
+    else { z.mode = 'free'; z.w = clamp(w, u.minW, u.maxW); z.full = false; }
+    if (h) {      // 높이: 다는 곳에서 바닥 위 10 cm 안까지 내려오면 '바닥까지', 그보다 짧으면 '창 아래 ○ cm'(창이 바닥에서 30 cm 안이면 바닥에서 뜬 채로)
+      z.hem = 'floor'; u = CB(g); y = u.hang - h;
+      if (u.sillOK && y >= 0.1) { z.hem = 'win'; z.below = clamp(u.usill - y, 0, u.usill); }
+      else z.gap = clamp(y, 0, u.botMax);
+    }
+    u = CB(g); m = { w: w ? cm(u.cw) - Math.round(w * 100) : 0, h: h ? cm(u.len) - Math.round(h * 100) : 0 };      // 품목 크기를 그릴 수 없을 때(창보다 좁거나 · 창을 다 못 덮거나 · 천장보다 긴 길이) — 그린 크기와의 차이를 처음부터 세어 둔다: 완료하면 견적이 장에 보이는 숫자가 된다
+    if (m.w || m.h) DELTA.cur = m; else delete DELTA.cur;
+  }
   // 블라인드가 걸리는 자리 — 창마다 한 장. 창을 조금 덮되 옆 창과 붙어 있으면 그쪽은 덮지 않는다. 커튼박스가 있고 앞뒤 폭이 넉넉하면 박스 안에서 내려온다(창틀에 달 수도 있다 — C.bat). 폭이 좁으면 창틀에만
   function BB(j) {
     if (j == null || !WINS[j]) j = WINS[S.wsel] ? S.wsel : 0;
@@ -1431,10 +1460,18 @@
     if (hp.bl) { var q = BB(), w = WINS[q.j]; if (w.sill > 0.005) return q.bot >= w.sill - 0.0005 ? { k: '창턱에서', v: cm(q.bot - w.sill) } : { k: '창턱 아래', v: cm(w.sill - q.bot) }; }
     return { k: '바닥에서', v: cm(hp.gap) };
   }
-  function sizeRows() {      // 고른 커튼 한 벌 · 고른 블라인드의 크기 — 가로 · 세로, 그 아래 밑단이 뜬 거리(누르면 밑단 앞으로 다가간다 — 17판: 머리의 '밑단'을 대신한다)
-    var e = 0.0005, bl = kindNow() === 'blind', b = bl ? BB() : CB(), hp = hemVal(), on = S.view === 'hem', nm = on ? '밑단 가까이 보기 끝내기' : '밑단 가까이 보기';
-    var h = bl ? srow('가로', stepHtml('w', cm(b.w), b.w <= b.minW + e, b.w >= b.maxW - e, '가로')) + srow('세로', stepHtml('h', cm(b.len), b.bot >= b.botMax - e, b.bot <= e, '세로'))
-      : srow('가로', stepHtml('w', cm(b.cw), b.cw <= b.minW + e, b.cw >= b.maxW - e, '가로')) + srow('세로', stepHtml('h', cm(b.len), b.botY >= b.botMax - e, b.botY <= e, '세로'));
+  function sizeRows() {      // 고른 커튼 한 벌 · 고른 블라인드의 크기 — 가로 · 높이, 그 아래 밑단이 뜬 거리(누르면 밑단 앞으로 다가간다 — 17판: 머리의 '밑단'을 대신한다)
+    var e = 0.0005, bl = kindNow() === 'blind', b = bl ? BB() : CB(), hp = hemVal(), on = S.view === 'hem', nm = on ? '밑단 가까이 보기 끝내기' : '밑단 가까이 보기', h;
+    if (bl) h = srow('가로', stepHtml('w', cm(b.w), b.w <= b.minW + e, b.w >= b.maxW - e, '가로')) + srow('높이', stepHtml('h', cm(b.len), b.bot >= b.botMax - e, b.bot <= e, '높이'));      // 266번: '세로' → '높이'(결정 #413) — 블라인드는 낱말만
+    else {      // 266번(결정 #414): 커튼 — 가로 숫자 아래 세 단추, 창 기준이면 양옆 여유 · 높이 숫자 아래 기장 두 단추, 창 아래면 그 길이
+      var wl = '벽에서 벽';      // 박스가 벽보다 짧으면 박스 끝에서 끝(span이 박스 끝까지) — 숫자 칸이 그 길이를 보여 준다
+      h = srow('가로', stepHtml('w', cm(b.cw), b.cw <= b.minW + e, b.cw >= b.maxW - e, '가로'))
+        + srow('', tapChip('cwm', 'wall', '', wl, '', b.mode === 'wall') + tapChip('cwm', 'win', '', '창 기준', '', b.mode === 'win') + tapChip('cwm', 'free', '', '직접', '', b.mode === 'free'), 'sub');
+      if (b.mode === 'win') h += srow('창 왼쪽', stepHtml('ml', cm(b.ml), b.ml <= e, b.ml >= b.mlMax - e, '창 왼쪽 여유')) + srow('창 오른쪽', stepHtml('mr', cm(b.mr), b.mr <= e, b.mr >= b.mrMax - e, '창 오른쪽 여유'));
+      h += srow('높이', stepHtml('h', cm(b.len), b.botY >= b.botMax - e, b.botY <= e, '높이'))
+        + srow('', tapChip('chm', 'floor', '', '바닥까지', '', b.hem === 'floor' && b.gap < 0.1 + e) + tapChip('chm', 'win', '', '창 아래', '', b.sillOK ? b.hem === 'win' : 'off'), 'sub');
+      if (b.hem === 'win') { h += srow('창 아래', stepHtml('bw', cm(b.below), b.below <= e, b.below >= b.usill - e, '창 아래 길이')); hp = null; }      // 창 아래면 바닥에서 뜬 거리 줄 대신
+    }
     if (hp) h += '<button type="button" class="srow' + (on ? ' on' : '') + '" data-view="hem" aria-pressed="' + on + '" aria-label="' + nm + '" title="' + nm + '"><span class="k" data-nm="gk">' + hp.k + '</span><span class="v"><span data-nm="g">' + hp.v + '</span>&nbsp;cm</span><i class="ti">' + TI.zoom + '</i></button>';
     return h;
   }
@@ -1479,7 +1516,7 @@
       h += '</div>';
     }
     if (NUDGE) {      // 단추를 누르고 있는 동안에는 숫자만 바꾼다(누른 단추를 갈아 끼우지 않게)
-      var nb = k === 'blind' ? BB() : CB(), hpN = hemVal(), nv = { w: cm(k === 'blind' ? nb.w : nb.cw), h: cm(nb.len), p: nb.pok + '폭', g: hpN ? hpN.v : '', gk: hpN ? hpN.k : '' };
+      var nb = k === 'blind' ? BB() : CB(), hpN = hemVal(), nv = { ml: cm(nb.ml || 0), mr: cm(nb.mr || 0), bw: cm(nb.below || 0), w: cm(k === 'blind' ? nb.w : nb.cw), h: cm(nb.len), p: nb.pok + '폭', g: hpN ? hpN.v : '', gk: hpN ? hpN.k : '' };
       [].forEach.call(tray.querySelectorAll('[data-nm]'), function (el) { el.textContent = nv[el.dataset.nm]; });
     } else {
       if (lay !== laySig) { laySig = lay; layersEl.innerHTML = lay; }
@@ -1707,6 +1744,7 @@
   var lastKind = null;
   function kindKey() { var k = roomReady() ? kindNow() : null; return k === 'blind' ? k + ':' + bkNow() + (BK[bkNow()].band ? ':' + bandNow().join('/') : SLAT[bkNow()] ? ':' + glowNow() : '') : k; }      // 구성(블라인드는 종류까지) — 바뀌면 방을 다시 짓는다
   function render(anim) {
+    if (CURI && CURI.need && !CURI.hand && S.step === 'cur' && roomReady() && kindNow() && kindNow() !== 'blind' && groups().length === 1) seedCur(groups()[0], CURI.w, CURI.h);      // 266번: 커튼 크기를 손대기 전에는 품목 크기로(측정에서 창 · 박스 · 높이가 바뀐 것을 따라감) — 그릴 수 없는 만큼은 처음부터 견적 차이로
     if (S.q === 'fur' && P && P.furs && !A.fur && !BLD) { var fl = P.furs;      // 263번: 짓기에서는 '다음'을 눌러야 놓인다(panelNext)
       P.furs = null; fl.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '잰 색'; } }); buildFurs(); sharesDirty = true; }      // 258번: 앱에서 색만 잰 가구(치수 없음)는 흔한 규격으로 놓이고 잰 색이 입혀진다
     var kn = kindKey();
@@ -1816,8 +1854,8 @@
     sceneSync();      // 19판: 눈 자리에 맞춰 창밖 사진의 조각을 다시 가리킨다
   }
   // 치수 글자와 손잡이 — 지금 순서의 것만 뜬다 (재기: 방 · 창 / 고르기: 커튼 자리)
-  var OV = {}, LABEL = { rw: '공간 가로', rd: '공간 세로', wl: '창 가로', wr: '창 가로', wt: '창 위', wb: '창 아래', ct: '커튼 다는 높이', cb: '커튼 길이', cs: '커튼 폭', co: '여닫기', fh: '가구 높이', bx: '커튼박스 자리' };
-  ['dw', 'dd', 'dn', 'df', 'dg', 'b1', 'b2'].forEach(function (k) { var el = document.createElement('span'); el.className = 'dim'; over.appendChild(el); OV[k] = el; });
+  var OV = {}, LABEL = { rw: '공간 가로', rd: '공간 세로', wl: '창 가로', wr: '창 가로', wt: '창 위', wb: '창 아래', ct: '커튼 다는 높이', cb: '커튼 길이', cs: '커튼 폭', cr: '커튼 폭 오른쪽 끝', co: '여닫기', fh: '가구 높이', bx: '커튼박스 자리' };
+  ['dw', 'dd', 'dn', 'df', 'dg', 'b1', 'b2', 'dc'].forEach(function (k) { var el = document.createElement('span'); el.className = 'dim'; over.appendChild(el); OV[k] = el; });
   Object.keys(LABEL).forEach(function (k) { var el = document.createElement('button'); el.className = 'grip'; el.type = 'button'; el.dataset.grip = k; el.setAttribute('aria-label', LABEL[k]); over.appendChild(el); OV[k] = el; });
   function put(el, x, y, z, on) {
     if (on) tmp.set(x, y, z).project(cam);
@@ -1843,6 +1881,11 @@
     var kd = kindNow(), c = S.step === 'cur' && still && roomReady() && !!kd, b = CB(), pw = b.wall, bl = kd === 'blind', bb = BB();
     putL(OV.ct, pw, b.cx, b.topY, b.zd, c && !bl && !bx(pw).on); putL(OV.cb, pw, b.cx, b.botY, b.zd, c && !bl);
     if (bl) putL(OV.cs, bb.wall, bb.cx - bb.w / 2, bb.top - bb.h / 2, bb.zo, c); else putL(OV.cs, pw, b.cx - b.cw / 2, b.cy, b.zd, c);
+    putL(OV.cr, pw, b.cx + b.cw / 2, b.cy, b.zd, c && !bl);      // 266번: 오른쪽 끝 손잡이 — 창 기준은 양옆을 따로
+    var cid = c && !bl && drag && drag.type === 'grip' ? drag.id : '', cdo = /^(cs|cr|cb|ct)$/.test(cid);      // 266번(결정 #414): 끄는 동안 손잡이 곁에 cm — 가로와 그쪽 여유 · 높이와 창 아래(바닥에서)
+    if (cdo) OV.dc.textContent = cid === 'cs' || cid === 'cr' ? '가로 ' + cm(b.cw) + ' cm' + (b.mode === 'win' ? ' · 창 ' + (cid === 'cs' ? '왼쪽 ' + cm(b.ml) : '오른쪽 ' + cm(b.mr)) + ' cm' : '') : '높이 ' + cm(b.len) + ' cm' + (b.hem === 'win' ? ' · 창 아래 ' + cm(b.below) + ' cm' : ' · 바닥에서 ' + cm(b.botY) + ' cm');
+    putL(OV.dc, pw, cid === 'cs' ? b.cx - b.cw / 2 : cid === 'cr' ? b.cx + b.cw / 2 : b.cx, cid === 'cb' ? b.botY : cid === 'ct' ? b.topY : b.cy, b.zd, cdo);
+    if (cdo && !OV.dc.hidden) OV.dc.style.transform += ' translateY(-52px)';      // 손가락에 가리지 않게 한 뼘 위
     var shp = kd === 'sheer' || (kd === 'double' && S.part === 'sheer'), svw = Math.min(b.cw, wlen(pw) - 0.006);      // 19판: 속지를 고르는 동안에는 여닫기 손잡이가 속지의 안쪽 끝에 뜬다(겉지는 걷혀 있다)
     if (bl) putL(OV.co, bb.wall, bb.cx, bb.y, bb.zo, c); else if (shp) putL(OV.co, pw, b.cx + svw / 2 - Math.min(b.sdw, svw / 2), b.cy, b.zs, c); else putL(OV.co, pw, b.cx + b.cw / 2 - b.dw, b.cy, b.zd, c);
     var bw = boxWall(), bq = bw != null ? bx(bw) : NOBOX, bs = bw != null ? boxSeg(bw) : null, bL = bw != null ? wlen(bw) : 0;      // 커튼박스 자리 손잡이 — 박스가 벽보다 짧을 때만, 박스 앞턱 가운데에
@@ -2056,6 +2099,19 @@
     else if (kind === 'size') { a = String(key).split(':'); var f = selItem(); if (f) { var f0 = furNow(f); if (f.m) { f.m0 = f.m; f.m = null; } f.si[+a[0]] = +a[1]; if (TYPES[f.type].sizes[+a[0]][+a[1]].h != null) f.hc = null; settleFur(f); furGlide(f, f0); } }
     else if (kind === 'pleat') { C.pleat = key; layout(); }
     else if (kind === 'bat') { C.bat = key; layout(); }
+    else if (kind === 'cwm' || kind === 'chm') {      // 266번(결정 #414): 커튼 가로 [벽에서 벽 · 창 기준 · 직접] · 기장 [바닥까지 · 창 아래] — 바뀐 크기는 손으로 바꾼 것처럼 견적에 들어간다
+      var s1 = sizeNow(), cb1 = CB(), zz = szOf(cb1.key);
+      if (kind === 'cwm') {      // 직접: 지금 크기 그대로에서 시작 · 창 기준: 앞서 고친 여유가 있으면 그것(양쪽 다 벽 끝이면 25 cm씩)
+        if (key === 'free') { zz.w = cb1.cw; zz.cx = cb1.cx; }
+        if (key === 'win' && cb1.mode !== 'win' && zz.ml != null && zz.mr != null && zz.ml >= cb1.mlMax - 0.0005 && zz.mr >= cb1.mrMax - 0.0005) zz.ml = zz.mr = 0.25;
+        zz.mode = key; zz.full = key === 'wall';
+      }
+      else {      // 바닥까지: 바닥 위 1 cm로(이미 바닥까지면 그대로) · 창 아래: 앞서 고친 길이(처음 20 cm)
+        if (key === 'floor' && !(cb1.hem === 'floor' && cb1.gap < 0.1)) zz.gap = 0.01;
+        zz.hem = key; zz.bot = null; if (key === 'win' && S.view === 'hem') setView('eye');      // 밑단 가까이 보기 줄이 '창 아래' 줄로 바뀌므로 눈높이로
+      }
+      track(s1); layout();
+    }
     else if (kind === 'join') { C.join = key === 'y'; S.csel = 0; layout(); }
     else if (kind === 'layer') {      // 장 머리의 걸린 것 — 안 걸린 것을 누르면 걸리고, 걸린 것을 누르면 그것을 고른다. 블라인드와 커튼은 서로 바꿔 걸린다(고른 원단은 남는다 — 결정 #395)
       var kn = kindNow(), hasD = kn === 'double' || kn === 'drape', hasS = kn === 'double' || kn === 'sheer';
@@ -2066,7 +2122,7 @@
     sharesDirty = true; render();
   }
   function gripMove(e) {
-    var id = drag.id, p, b, CM = 0.01, s0 = id === 'ct' || id === 'cb' || id === 'cs' ? sizeNow() : null;      // 크기는 1 cm 단위로 — 실제로는 1 cm가 큰 차이를 만든다 · 258번: s0 — 손으로 바꾼 크기를 세려고
+    var id = drag.id, p, b, CM = 0.01, s0 = id === 'ct' || id === 'cb' || id === 'cs' || id === 'cr' ? sizeNow() : null;      // 크기는 1 cm 단위로 — 실제로는 1 cm가 큰 차이를 만든다 · 258번: s0 — 손으로 바꾼 크기를 세려고
     if (id === 'fh') {      // 가구 높이는 자유롭게 — 가구를 지나는 세로 면 위에서 손가락 높이를 읽는다
       var fit = selItem(); if (!fit) return;
       var fn = new THREE.Vector3(cam.position.x - fit.x, 0, cam.position.z - fit.z).normalize();
@@ -2097,10 +2153,19 @@
       b = CB(); p = wallHit(e, b.wall, b.zd); if (!p) return;
       var z = szOf(b.key);
       if (id === 'ct') z.top = magnet(clamp(snap(p.y + 0.03, CM), Math.min(R.H, b.utop + 0.05), R.H), [b.ceilY, b.frameY]);      // 천장 … 창틀 위
-      else if (id === 'cb') z.bot = magnet(clamp(snap(p.y, CM), 0, b.botMax), b.usill >= 0.4 ? [b.floorY, b.sillY] : [b.floorY]);      // 바닥 … 창 아래
-      else if (id === 'cs') {      // 창만 … 벽 전체 — 한쪽이 벽에 닿아 있으면 잡은 쪽만 늘어난다
-        var w2 = p.x <= b.lo + 0.03 ? b.maxW : 2 * (b.ucx - p.x) <= 2 * (b.hi - b.ucx) ? 2 * (b.ucx - p.x) : b.hi - p.x;
-        w2 = magnet(clamp(snap(w2, CM), b.minW, b.maxW), [b.recW, b.maxW]); z.w = w2; z.full = w2 >= b.maxW - 0.0005;
+      else if (id === 'cb') {      // 바닥 … 창 아래 — 266번: 바닥에서 10 cm 안이면 '바닥까지', 그 위는 '창 아래 ○ cm'(바닥까지 오는 창은 늘 '바닥까지')
+        var yb = magnet(clamp(snap(p.y, CM), 0, b.botMax), b.usill >= 0.4 ? [b.floorY, b.sillY] : [b.floorY]); z.bot = null;
+        if (b.sillOK && yb >= 0.1) { z.hem = 'win'; z.below = b.usill - yb; } else { z.hem = 'floor'; z.gap = yb; }
+      }
+      else if ((id === 'cs' || id === 'cr') && b.mode !== 'free') {      // 266번: 벽에서 벽 · 창 기준 — 잡은 쪽 끝만 움직이고 '창 기준'이 된다(양쪽 다 벽 끝이면 '벽에서 벽'). 25 cm · 벽 끝에 붙는다
+        var lft = id === 'cs', mx = lft ? b.mlMax : b.mrMax, mv = magnet(clamp(snap(lft ? b.ua - p.x : p.x - b.ub, CM), 0, mx), [0.25, mx]);
+        z.ml = lft ? mv : b.ml; z.mr = lft ? b.mr : mv;
+        z.mode = z.ml >= b.mlMax - 0.0005 && z.mr >= b.mrMax - 0.0005 ? 'wall' : 'win';
+      }
+      else if (id === 'cs' || id === 'cr') {      // '직접' — 가운데를 두고 양옆으로. 한쪽이 벽에 닿아 있으면 잡은 쪽만 늘어난다(266번: 오른쪽 끝도 같게)
+        var c0 = z.cx == null ? b.ucx : z.cx, lf = id === 'cs', far = lf ? p.x <= b.lo + 0.03 : p.x >= b.hi - 0.03, hx = lf ? c0 - p.x : p.x - c0;
+        var w2 = far ? b.maxW : hx <= (lf ? b.hi - c0 : c0 - b.lo) ? 2 * hx : lf ? b.hi - p.x : p.x - b.lo;
+        w2 = magnet(clamp(snap(w2, CM), b.minW, b.maxW), [b.recW, b.maxW]); z.w = w2; z.full = w2 >= b.maxW - 0.0005;      // 벽 끝까지 가도 '직접' 그대로
       }
       else if (kindNow() === 'sheer' || S.part === 'sheer') C.sopen = 1 - (clamp(b.cx + b.cw / 2 - p.x, b.smin, b.cw / 2) - b.smin) / Math.max(0.001, b.cw / 2 - b.smin);      // 19판: 속지를 고르는 동안에는 속지를 걷고 친다 — 값은 겉지와 따로 남는다
       else C.open = 1 - (clamp(b.cx + b.cw / 2 - p.x, b.dmin, b.cw / 2) - b.dmin) / (b.cw / 2 - b.dmin);
@@ -2115,8 +2180,10 @@
     if (kindNow() === 'blind') { b = BB(); z = blOf(b.j); if (k === 'w') z.w = clamp(Math.round((b.w + d * 0.01) * 100) / 100, b.minW, b.maxW); else z.bot = clamp(Math.round((b.bot - d * 0.01) * 100) / 100, 0, b.botMax); }
     else {
       b = CB(); z = szOf(b.key);
-      if (k === 'w') { v = clamp(Math.round((b.cw + d * 0.01) * 100) / 100, b.minW, b.maxW); z.w = v; z.full = v >= b.maxW - 0.0005; }
-      else z.bot = clamp(Math.round((b.botY - d * 0.01) * 100) / 100, 0, b.botMax);      // 세로는 아랫단이 움직인다(다는 높이는 방에서 위 손잡이로)
+      if (k === 'w') { v = clamp(Math.round((b.cw + d * 0.01) * 100) / 100, b.minW, b.maxW); z.w = v; z.cx = b.cx; z.mode = 'free'; z.full = v >= b.maxW - 0.0005; }      // 266번: 가로 숫자를 바꾸면 '직접'(가운데는 그대로)
+      else if (k === 'ml' || k === 'mr') { z.mode = 'win'; z.ml = b.ml; z.mr = b.mr; z[k] = clamp(Math.round((b[k] + d * 0.01) * 100) / 100, 0, k === 'ml' ? b.mlMax : b.mrMax); }      // 266번: 창 기준 — 그쪽 여유만
+      else if (k === 'bw' || (k === 'h' && b.hem === 'win')) { z.hem = 'win'; z.bot = null; z.below = clamp(Math.round((b.below + d * 0.01) * 100) / 100, 0, b.usill); }      // 266번: 창 아래 ○ cm — 높이 단추도 창 아래 길이를 바꾼다
+      else { z.hem = 'floor'; z.bot = null; z.gap = clamp(Math.round((b.botY - d * 0.01) * 100) / 100, 0, b.botMax); }      // 높이는 아랫단이 움직인다(다는 높이는 방에서 위 손잡이로) — 266번: 바닥까지면 바닥에서 뜬 거리      // 세로는 아랫단이 움직인다(다는 높이는 방에서 위 손잡이로)
     }
     track(s0); layout(); sharesDirty = true; render(false);
   }
@@ -2267,6 +2334,7 @@
   // ───── 258번: 앱과 잇는 곳 — 손으로 바꾼 크기 세기 · 뒤로 · 끝내기 · 열고 닫기 ─────
   function sizeNow() { var bl = kindNow() === 'blind', b = bl ? BB() : CB(); return { k: bl ? 'blind' : 'cur', w: cm(bl ? b.w : b.cw), h: cm(b.len) }; }
   function track(a) {      // 손잡이 · 1 cm 단추로 바꾼 만큼만 센다(창 크기를 고쳐서 저절로 바뀐 것은 세지 않는다)
+    if (CURI && a.k === 'cur') CURI.hand = true;      // 266번: 커튼 크기를 손댄 뒤로는 품목 크기로 다시 맞추지 않는다(단추 · 1 cm · 손잡이 모두 여기를 지남)
     var b = sizeNow(), d; if (a.k !== b.k || (a.w === b.w && a.h === b.h) || !isFinite(a.w) || !isFinite(a.h) || !isFinite(b.w) || !isFinite(b.h)) return;      // 262번: 숫자가 깨진 값은 견적 차이에 안 넣는다
     d = DELTA[a.k] || (DELTA[a.k] = { w: 0, h: 0 }); d.w += b.w - a.w; d.h += b.h - a.h;
   }
@@ -2393,7 +2461,7 @@
     else if (I.furs.length) { I.furs.forEach(function (f) { addFur(f.t, null, null, f); }); A.fur = true; }
     else if (I.furCols.length) P.furs = I.furCols.slice();
     gs = groups();
-    if (I.curW && gs.length === 1) { u = CB(gs[0]); z = szOf(gkey(gs[0])); z.w = clamp(I.curW, u.minW, u.maxW); z.full = z.w >= u.maxW - 0.0005; }      // 앱 품목의 가로가 처음 크기
+    if ((I.curW || I.curH) && gs.length === 1) { seedCur(gs[0], I.curW, I.curH); }      // 앱 품목의 가로가 처음 크기
     if (I.blW && WINS.length === 1) blOf(0).w = I.blW;
   }
   function carry(p) {      // 앱의 크기가 바뀌어 새로 지을 때 — 고른 모양(주름 · 밑단 · 줄 · 등 · 빛 조절 · 다는 곳)과 놓은 가구는 이어 간다
@@ -2408,7 +2476,7 @@
   }
   function reseed(was, now, I) {
     var gs, u, z;
-    if (was.cw !== now.cw || was.ch !== now.ch) { delete DELTA.cur; C.sz = {}; gs = groups(); if (I.curW && gs.length === 1) { u = CB(gs[0]); z = szOf(gkey(gs[0])); z.w = clamp(I.curW, u.minW, u.maxW); z.full = z.w >= u.maxW - 0.0005; } }
+    if (was.cw !== now.cw || was.ch !== now.ch) { delete DELTA.cur; C.sz = {}; gs = groups(); if ((I.curW || I.curH) && gs.length === 1) { seedCur(gs[0], I.curW, I.curH); } }
     if (was.bw !== now.bw || was.bh !== now.bh) { delete DELTA.blind; C.bl = {}; if (I.blW && WINS.length === 1) blOf(0).w = I.blW; }
   }
   canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); });      // 폰이 그리는 판을 잠시 거둬 가면 — 돌아올 때 다시 그린다(three.js가 판을 다시 잡는다)
@@ -2428,6 +2496,8 @@
     if (!P) P = {};
     if (!restored) { applyInput(I); if (p) carry(p); }
     else if (p.seed && I.seed) reseed(p.seed, I.seed, I);      // 저장한 뒤 견적에서 품목 크기를 바꿨으면 그 겹만 앱 값으로(나머지는 그대로)
+    var szs = restored && p.C && p.C.sz ? p.C.sz : {}, newer = Object.keys(szs).some(function (k) { var q = szs[k]; return !!(q && (q.mode || q.hem)); });      // 266번 뒤에 저장한 방인지(크기 칸에 mode · hem이 있음)
+    CURI = I.curW || I.curH ? { w: I.curW, h: I.curH, hand: false, need: !restored || (!newer && !(p.DELTA && p.DELTA.cur)) || !!(p.seed && I.seed && (p.seed.cw !== I.seed.cw || p.seed.ch !== I.seed.ch)) } : null;      // 266번: 새로 짓거나 · 266번 전에 저장한 방(손댄 차이 없음) · 앱에서 품목 크기를 바꿨으면 선택에서 품목 크기로 맞춘다
     // 언제나 앱의 지금 값으로 — 원단 · 잰 색 · 품목 구성 · 속지 비침 · 리드밴드
     A.asked = true; A.type = I.type || A.type; A.gaze = I.gaze || null; A.light = I.light || null;
     if (I.kind && (FIXED || !restored)) A.kind = I.kind;
@@ -2557,7 +2627,8 @@
       bkind: bk || BKM[r.blindWant] || null, bkFixed: !!bk,
       lv: layers.sheer && LVD[layers.sheer.density] != null ? LVD[layers.sheer.density] : null,
       lead: !!(sh && sh.leadBand), pleat: dr && /나비/.test(String(dr.pleatType || '')) ? 'nabi' : null,
-      curW: cw && num(cw.width) ? cw.width / 100 : null, blW: by.blind && num(by.blind.width) ? by.blind.width / 100 : null,
+      curW: cw && num(cw.width) ? cw.width / 100 : null, curH: cw && num(cw.height) ? cw.height / 100 : null,      // 266번: 높이도 처음 크기
+      blW: by.blind && num(by.blind.width) ? by.blind.width / 100 : null,
       pack: r.room3d && typeof r.room3d === 'object' ? r.room3d : null,
       sig: sigOf(r), seed: seedOf(items),
       msig: m ? hash(JSON.stringify([m.공간 || null, m.창 || null, m.박스 === undefined ? null : m.박스, m.전체 || null])) : null
