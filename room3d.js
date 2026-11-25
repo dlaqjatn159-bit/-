@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261307';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261308';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -80,6 +80,8 @@
 .r3d .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
 .r3d .stage.aim::after { content: ''; position: absolute; inset: 12px; border: 1px solid var(--ink45); pointer-events: none; }
 .r3d .over { position: absolute; inset: 0; pointer-events: none; }
+.r3d .app[data-endv="1"] .over { display: none; }      /* 267번: 다 지은 장면은 보기만 — 손잡이 · 치수 숨김 */
+.r3d .r3d-endp { margin-top: 10px; color: #6b5d50; }      /* 267번: '이제 이 공간에서 바라시는 것을 듣겠습니다.' */
 .r3d .dim.hem { color: var(--text); font-size: 17px; }
 .r3d .dim { position: absolute; left: 0; top: 0; padding: 0 8px; background: var(--bg); color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .r3d .grip { position: absolute; left: 0; top: 0; width: 48px; height: 48px; margin: -24px 0 0 -24px; pointer-events: auto; touch-action: none; cursor: grab; }
@@ -459,7 +461,7 @@
   var S = { step: 'measure', q: null, wall: null, floor: null, items: [], seq: 0, cand: null, candName: null, fabric: null, settled: false, sel: null, view: 'top', hideFur: false, night: false, wsel: 0, csel: 0, part: 'drape', cmp: true, dtex: null, stex: null, fv: null, kopen: false };      // kopen: 장 머리의 '구성 바꾸기'가 펼쳐져 있는지      // fv: 열려 있는 원단 화면({ kind 겉지 · 속지, view sheet 비침 네 폭 · open 원단 사진, lv 비침 단계, i 보는 원단 })      // wsel: 고른 창(블라인드면 고른 블라인드) · csel: 고른 커튼 한 벌
   var V = { t: 0, az: 0.62, el: 0.6, yaw: 0, rad: 0, h: 0, hy: 0, s: 0 };          // t: 0 위에서 내려다봄 → 1 눈높이 · h: 0 → 1 밑단 보기 · hy: 밑단 둘레로 돈 각 · s: 0 → 1 속커튼 볼 때 창 앞으로 다가감
   var RISE = { k: 0 }, GLS = { k: 0 };                            // 벽이 서는 정도 · 창이 뚫리는 정도
-  var FL = { w: 1, d: 1 }, SUNK = { k: 1 }, PATCH0 = 0, BUILD = false, BLD = false, BLDC = false;      // 263번: FL 바닥이 가로 · 세로로 펴진 정도(점 → 선 → 바닥) · SUNK 창으로 드는 빛(방향을 확인하면 0 → 1) · BUILD 공간 크기를 짓는 중 · BLD 공간 추가에서 짓기(build) · BLDC 폰에서 벽 · 바닥 색을 둘 다 잼
+  var FL = { w: 1, d: 1 }, SUNK = { k: 1 }, PATCH0 = 0, BUILD = false, BLD = false, BLDC = false, ENDV = false;      // 267번: ENDV 다 지어 눈높이로 내려온 때(한 번 더 '다음'이면 닫고 질문으로) · 263번: FL 바닥이 가로 · 세로로 펴진 정도(점 → 선 → 바닥) · SUNK 창으로 드는 빛(방향을 확인하면 0 → 1) · BUILD 공간 크기를 짓는 중 · BLD 공간 추가에서 짓기(build) · BLDC 폰에서 벽 · 바닥 색을 둘 다 잼
   var BMS = 0;      // 263번: 짓기에서 움직임 한 번 900 ms(0.6 ~ 1초, 결정 #410) — 0이면 예전 빠르기
   var SHARES = {}, ZONE = 0, sharesDirty = true, UNDO = [];
   // 공간들 — 폰에서 재 온 공간이 공간 화면에 미리 떠 있다(아직 안 한 모양). 공간 추가는 폰에서 안 잰 공간에만. LIVE: 지금 편집기에 열린 공간(공간 화면이면 -1)
@@ -1680,6 +1682,7 @@
     }).join('') + '</div>';
   }
   function qHtml(k) {
+    if (!k && BLD && ENDV) return '<h2>' + esc(HOST.name || '공간') + ' · 다 지었습니다</h2><p class="r3d-endp">이제 이 공간에서 바라시는 것을 듣겠습니다.</p>';      // 267번: 다 지은 눈높이 — 오른쪽 장에 두 줄
     if (!k) return '';
     var h = '<h2>' + title(k) + '</h2>';
     if (isNum(k)) return h + '<div class="fields" id="r3d-flds"></div>' + KEYS;
@@ -1700,6 +1703,7 @@
   var recSig = '', qSig = '', fldSig = '';
   function paintPanel() {
     var inPanel = S.step === 'measure', k = inPanel ? S.q : null, h = '';
+    if (k && ENDV) ENDV = false;      // 267번: 되돌리기로 질문이 다시 열리면 끝 장면이 아님(손잡이 · '다음 →'으로, 다 고치면 다시 눈높이)
     if (inPanel) recList(JSON.parse(pack())).forEach(function (r) {
       if (r[0] === k || stepOf(r[0]) !== S.step) return;      // 묻기에서는 들은 말을, 재기에서는 잰 것을 — 다른 순서의 것은 머리의 순서를 눌러 본다
       h += '<button type="button" class="row" data-rec="' + r[0] + '"><span class="k">' + r[1] + '</span><span class="v">' + r[2] + '</span></button>';
@@ -1712,7 +1716,9 @@
     pnext.hidden = isNum(k) && NUM.i >= 0;
     var need = k && !answered(k) && !pre(k) && !isNum(k) && k !== 'dir' && k !== 'fur';
     if (BEAT || (k === 'box' && NUM.key === k && NUM.pick.some(function (p) { return p == null; }))) need = true;      // 커튼박스: 벽마다 있음 · 없음을 골라야 넘어간다
-    pnext.classList.toggle('off', !!need || (!k && !canStep(STEPS[STEPS.indexOf(S.step) + 1])));
+    pnext.classList.toggle('off', !!need || (!k && !canStep(STEPS[STEPS.indexOf(S.step) + 1]) && !(BLD && ENDV)));
+    app.dataset.endv = BLD && ENDV ? '1' : '';      // 267번: 다 지은 장면은 보기만(손잡이 · 치수 숨김 — 위 CSS)
+    var pl = BLD && ENDV ? '질문으로 →' : '다음 →', ps = pnext.querySelector('span'); if (ps && ps.textContent !== pl) ps.textContent = pl;      // 267번: 그때 '다음' 단추는 '질문으로 →'
   }
   var headSig = '';
   function paintHead() {      // 258번: 머리 — 공간 이름 · 측정 · 선택 · 도구(되돌리기 · 가구 · 낮 · 밤 · 위에서 · 눈높이)
@@ -1989,7 +1995,7 @@
       if (nx) { S.q = nx; render(); } else if (fresh) { S.q = null; nextStep(); } else { S.q = null; render(); }
     }, CALM ? 0 : 320);
   }
-  function nextStep() { if (BLD && S.step === 'measure') { builtEnd(); return; } var si = STEPS.indexOf(S.step); if (si >= 0 && si < STEPS.length - 1) goStep(STEPS[si + 1], true); }      // 263번: 짓기는 측정 끝 = 닫기
+  function nextStep() { if (BLD && S.step === 'measure') { if (!ENDV) { ENDV = true; S.q = null; setView('eye'); sharesDirty = true; render(); return; } builtEnd(); return; } var si = STEPS.indexOf(S.step); if (si >= 0 && si < STEPS.length - 1) goStep(STEPS[si + 1], true); }      // 263번: 짓기는 측정 끝 = 닫기 · 267번: 그 전에 한 번 눈높이로 내려와 '다 지었습니다'
   function setBox(i, on) {
     var bq = BOXES[i]; if (bq.on === on) return;
     bq.on = on; var a = bq.k, b = on ? 1 : 0, id = ++bq.tk;
@@ -2440,6 +2446,7 @@
     o.v = 1; o.sig = SIG; o.msig = MSIG; o.seed = SEED; o.wallHex = surfHex('wall'); o.floorHex = surfHex('floor'); o.DELTA = {}; o.step = 'measure'; o.q = null;
     var res = { done: false, pack: o, built: { room: z.room, wins: z.wins, box: z.box, dir: (A.dir || []).slice(),
       wall: BLDC && S.wall === 0 ? surfHex('wall') : null, floor: BLDC && S.floor === 0 ? surfHex('floor') : null } };      // 색은 폰에서 잰 색을 확인한 것만(견본으로 바꾼 것은 잰 색이 아니라 넣지 않음)
+    if (ENDV) { try { res.snap = snapShot(); } catch (err) { res.snap = null; } }      // 267번: 다 지은 눈높이 장면 한 장 — 앱이 그 공간의 질문 화면 뒤에 옅게(concierge.js buildBg)
     var cb = ONFIN; ONFIN = null; if (cb) cb(res);
   }
   function hexIdx(k, hx) { if (!hx) return null; hx = String(hx).toLowerCase(); for (var i = 0; i < SURFS[k].length; i++) if (String(SURFS[k][i].hex).toLowerCase() === hx) return i; return null; }
@@ -2508,7 +2515,7 @@
     OPID++; OPENED = false; ZID++; ZT = 0; V.s = 0; FC.on = false; V.az = 0.62; V.el = 0.6; V.h = 0; V.hy = 0; V.yaw = 0;
     SLID++; SLV = C.slit; HEMID++; HEMV = C.lead ? 0 : 1; DHEMV = C.dlead ? 0 : 1;
     RISE.k = A.room ? 1 : 0; GLS.k = A.win ? 1 : 0; BOXES.forEach(function (b) { b.k = b.on ? 1 : 0; });
-    BLD = !!I.build; BLDC = BLD && !!(I.wall && I.floor); BMS = BLD ? 900 : 0; app.dataset.build = BLD ? '1' : '';      // 263번: 짓기 — 머리의 '선택'은 숨김
+    BLD = !!I.build; ENDV = false; BLDC = BLD && !!(I.wall && I.floor); BMS = BLD ? 900 : 0; app.dataset.build = BLD ? '1' : '';      // 263번: 짓기 — 머리의 '선택'은 숨김
     BUILD = BLD && !A.room; FL.w = FL.d = BUILD ? 0.03 : 1; SUNK.k = BLD && A.dir == null ? 0 : 1;      // 263번: 짓기는 점 하나에서 시작 · 빛은 방향을 확인할 때
     if (!restored || STEPS.indexOf(S.step) < 0) S.step = 'measure';
     if (!restored) S.view = 'top';

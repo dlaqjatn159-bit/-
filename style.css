@@ -3418,5 +3418,11 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .ph-th:disabled { opacity: 0.5; cursor: default; }
 .ph-sizes { margin-bottom: var(--rd-space-24); }
 .fur-chips button.ph-done { color: var(--muted); cursor: default; }
+/* 267번(결정 #419): 방금 지은 공간의 질문 화면 뒤에 그 방이 옅게 (concierge.js buildBg) — 처음엔 진하게, 0.9초에 16%로 물러남 */
+#buildBg { position: absolute; inset: 0; z-index: 0; pointer-events: none; background: center 40% / cover no-repeat; opacity: 0; transition: opacity .9s cubic-bezier(.2, .8, .2, 1), filter .9s cubic-bezier(.2, .8, .2, 1); }
+#buildBg.on { opacity: .16; filter: blur(1.5px); }
+#buildBg.first { opacity: 1; filter: none; transition: none; }
+#trackCurationSection.bbg #v2Viewport { z-index: 1; }
+#trackCurationSection.bbg #v2Viewport > *, #trackCurationSection.bbg .ask-stage { background-color: transparent !important; }      /* 267번: 그 화면만 바탕을 비움 */
 
 

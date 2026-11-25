@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261307';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261308';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -319,6 +319,29 @@
         introWant = (pushHistory !== false || !!fwd) && PHOTO_INTRO_STEPS.includes(nextStep);      // 사진 화면 앞 안내 장면은 앞으로 갈 때만 (뒤로 오면 건너뜀, 73번)
         updatePrevButtonVisibility();
         render();
+        buildBg();      // 267번
+    }
+    // 267번(결정 #419): 방금 지은 공간의 색 물음(1.7) · 질문 화면 뒤에 그 방(다 지은 눈높이 장면)이 옅게 — 처음 넘어올 때는 진하게 보였다가 0.9초에 물러남(모양은 style.css #buildBg)
+    //  원단을 다 고르고 마무리(6-Finish)에 처음 오면 입체 방이 저절로 열려 고른 원단이 걸린 방을 보여 줌(그 공간에 한 번)
+    const BUILD_ASK = ['2-Base-Floor', '2-Base-Wall', '2-Base-Block', '2-Base-Privacy', '3-Config-Style', '0.5-House-Taste', '2-Base-SheerFeel', '0.6-House-Tex', '2-Base-BlindKind'];      // 그 공간의 질문 · 취향(길잡이 차례)
+    function buildBg() {
+        if (state.step === '6-Finish' && state.buildFlowId && state.editingRoomId === state.buildFlowId && state.buildShown !== state.buildFlowId) {
+            state.buildShown = state.buildFlowId; setTimeout(() => { if (state.step === '6-Finish') finRoomOpen(); }, 350);
+        }
+        const on = !!state.buildSnap && ((state.step === '1.7-Add-Same' && !!state.buildAsk) || (!!state.buildFlowId && state.editingRoomId === state.buildFlowId && BUILD_ASK.includes(state.step)));
+        bgShow(on, state.buildSnap, 'b' + state.buildSeq);
+    }
+    function bgShow(on, src, key) {      // 267번: 뒤 그림 한 장(#buildBg)을 켜고 끔 — key가 바뀌면 처음부터(진하게 → 옅게)
+        const sec = document.getElementById('trackCurationSection');
+        if (sec) sec.classList.toggle('bbg', on);      // 질문 화면 바탕을 비워 뒤 그림이 보이게
+        let el = document.getElementById('buildBg');
+        if (!on) { if (el) el.classList.remove('on'); return; }
+        if (!el) { el = document.createElement('div'); el.id = 'buildBg'; (sec || document.body).prepend(el); }
+        if (el.dataset.src !== key) {
+            el.dataset.src = key; el.style.backgroundImage = 'url(' + src + ')';
+            el.classList.add('first'); void el.offsetWidth; el.classList.remove('first');
+        }
+        el.classList.add('on');
     }
 
     // 수정하기에서 카드로 벽·바닥을 고른 뒤: 그 부분의 잰 색은 카드로 바뀌므로 지우고, 수정하기 화면으로 돌아감
@@ -501,7 +524,7 @@
         if (!todo.length) return null;
         // 152번: 공간 하나를 먼저 정함 — 하다 만 공간 → 중심 화면에서 누른 공간 → 목록 첫 공간
         const begun = x => !!(x.lightBlock || x.privacy || x.compOk || x.ownTaste);
-        const r = todo.find(x => x.altBuilding) || todo.find(begun) || todo.find(x => x.id === state.pickedSpaceId) || todo[0];      // 167번: 만들던 둘째 줄 먼저 · 178번: 누른 공간은 손님이 직접 누른 것만(새로 만든 공간 아님)
+        const r = todo.find(x => x.altBuilding) || todo.find(x => x.id === state.buildFlowId && x.id === state.pickedSpaceId) || todo.find(begun) || todo.find(x => x.id === state.pickedSpaceId) || todo[0];      // 167번: 만들던 둘째 줄 먼저 · 267번: 방금 지은 공간은 끝까지 먼저(결정 #419 한 공간씩 — 공간 목록에서 다른 공간을 누르면 그 공간부터) · 178번: 누른 공간은 손님이 직접 누른 것만(새로 만든 공간 아님)
         if (!askedRoom(r)) return { kind: 'ask', room: r };
         if (!r.compOk || !r.planComp) return { kind: 'comp', room: r };      // 138번: 공간마다 구성 사진 화면
         // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
@@ -1088,6 +1111,8 @@
         if (!res || !res.pack) { goToStep("1.6-Add-Size"); return; }
         const b = res.built;
         if (!b) { state.editingRoom = null; render(); return; }
+        state.buildSnap = res.snap || null; state.buildSeq = (state.buildSeq || 0) + 1;      // 267번: 다 지은 눈높이 장면(입체 방이 넘김) — 이 공간의 색 물음 · 질문 화면 뒤에 옅게(buildBg)
+        state.buildAsk = true;      // 267번: 공간을 만들면(finishAddRoom) 공간 목록에 멈추지 않고 그 공간의 질문으로
         const pw = pm && Array.isArray(pm.창) ? pm.창 : [];
         const side = i => (pw[i] && pw[i].side) || '';      // 창 좌우(블라인드 손잡이)는 입체 방이 모름 — 폰 값을 같은 차례로
         const keep = (v, ph, cap) => ph > 0 && Math.abs(v - Math.min(ph, cap)) <= 1 ? ph : v;      // 입체 방이 그리느라 줄인 값(창이 천장에 닿지 않게 3 cm 등)만이면 폰 값 그대로 — 손으로 고친 값만 견적으로
@@ -1907,6 +1932,7 @@
             const base = String(baseName || selectedName).trim() || selectedName;
             let displayName = base, nameNo = 2;
             while (usedNames.has(displayName)) displayName = `${base} ${nameNo++}`;
+            state.buildAsk = false;      // 267번: 짓기를 마치면 builtRoom3D가 다시 켬(중간에 나간 짓기의 표시가 남지 않게)
             state.editingRoomId = null;
             state.editingRoom = {
                 name: displayName, roomType: selectedName, addDraft: true,
@@ -1980,6 +2006,7 @@
             if (at >= 0) stepHistory.length = at;
             if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "1-Space") stepHistory.pop();
             goToStep("1-Space", false);
+            if (state.buildAsk) { state.buildAsk = false; state.buildFlowId = state.pickedSpaceId = room.id; flowNext(); }      // 267번: 짓기로 만든 공간은 바로 그 공간의 질문으로 — 집 흐름(길잡이) 그대로라 구성을 바꾸면 크기도 바뀜(265번), 질문 화면의 ←는 공간 목록으로
         },
         openRoomCart: function(roomId) {
             const target = state.roomsCart.find(r => r.id === roomId);
@@ -2753,6 +2780,7 @@
         // 새 상담 시작: 고객 입력 내용을 모두 비움
         resetAll: function() {
             state.roomsCart = [];
+            state.buildAsk = false; state.buildFlowId = null; state.buildSnap = null;      // 267번
             state.pickedSpaceId = null;      // 178번
             state.house = null;
             state.editingRoomId = null;
