@@ -3427,5 +3427,10 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 /* 268번: '다음 공간' 화면 — 위 '○○ · 마쳤습니다' · 단추 안 폰에서 잰 크기 */
 .next-done { font-size: 17px; color: #7a6b5d; margin-bottom: 18px; text-align: center; }
 .next-size { display: block; font-size: 14px; color: #8a7b6c; margin-top: 6px; }
+/* 269번(결정 #419): 최종 제안 '공간의 색과 빛' — 창가 그림 자리에 그 방 그림(520 × 350, 600px까지), 이름은 위로 맞춤 */
+.jg-mb-pic.has-still { aspect-ratio: 520 / 350; flex: 0 1 auto; width: min(100%, 600px); }
+.jg-mb-pic.has-still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.jg-mb-row:has(.has-still) { align-items: flex-start; }
+.jg-mb-row:has(.has-still) .jg-mb-name { padding-top: 4px; }
 
 

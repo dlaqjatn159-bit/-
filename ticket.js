@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261309';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261310';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -204,6 +204,20 @@ async function loadTicketPhotos(data) {
         })());
     }));
     await Promise.all(jobs);
+    return data;
+}
+// 269번(결정 #419): 공간의 색과 빛 — 손님이 걸어 본 그 방 그림(final.js roomStillUrl, 화면 최종 제안과 같은 한 장)을 data.stills[공간 이름]에
+//  그림은 한 장씩 차례로 그려져서 기다리는 시간은 8초 + 공간마다 3초. 그림이 없으면(고객 화면 공간이 아님 · 원단이 다름 · 입체 방을 못 그림) 그 공간은 창가 그림 그대로
+async function loadTicketStills(data) {
+    data.stills = {};
+    if (typeof window.roomStillUrl !== 'function') return data;
+    const late = new Promise(r => setTimeout(() => r(null), 8000 + 3000 * data.rooms.length));
+    await Promise.all(data.rooms.map(async room => {
+        const want = room.items.filter(it => it.fabricId).map(it => it.photoKey);      // 견적서 품목의 '원단__색'
+        const url = await Promise.race([window.roomStillUrl(room.name, want).catch(() => null), late]);
+        const img = url ? await loadImage(url, 3000) : null;
+        if (img) data.stills[room.name] = img;
+    }));
     return data;
 }
 
@@ -1678,11 +1692,13 @@ function planHouse(data) {
     let y = TICKET_HEAD_Y + 34;      // 235번: 칸 이름 줄 없음(그림이 대신 말함)
     const KEY_W = 92;      // 194번: 이름표 폭 (SX: key는 fKey·MUTED, SX + KEY_W: 글은 fBody·MUTED) · 235번: 64 → 92 ('블라인드' 네 글자가 글과 겹쳐서)
     const PH = Math.round(SW * HOUSE_SCENE_H / HOUSE_SCENE_W);      // 235번: 창가 그림 높이 (화면과 같은 비율)
+    const STW = Math.min(SW, 650), STH = Math.round(STW * 350 / 520);      // 269번: 그 방 그림(520 × 350)의 크기
     const rows = sp.map(s => {
         const ln = roomLines.find(r => r.name === s.name);
-        const o = { s, stripY: y };
-        o.nameY = y + Math.round(PH / 2 + PAPER_F3 * 0.35);      // 이름은 그림 가운데 높이 (화면 A형과 같음)
-        let ty = y + PH;
+        const o = { s, stripY: y, still: (data.stills && data.stills[s.name]) || null };      // 269번: 그 방 그림(있으면 창가 그림 대신)
+        const ph = o.still ? STH : PH;
+        o.nameY = o.still ? y + Math.round(PAPER_F3 * 0.85) + 4 : y + Math.round(PH / 2 + PAPER_F3 * 0.35);      // 이름은 그림 가운데 높이 (화면 A형과 같음) · 269번: 방 그림이면 위로 맞춤(화면과 같음)
+        let ty = y + ph;
         if (o.odd) { o.keyY = ty + 8 + PAPER_F4 * 0.85; ty = o.keyY; }
         const lines = [];
         if (ln && ln.parts) {
@@ -1710,7 +1726,8 @@ function planHouse(data) {
         c.textAlign = 'left';
         rows.forEach(o => {
             c.font = fName; c.fillStyle = DARK; c.fillText(o.s.name, CX, o.nameY);
-            drawHouseScene(c, o.s, SX, o.stripY, SW, PH);      // 235번: 띠 대신 창가 그림
+            if (o.still) c.drawImage(o.still, SX, o.stripY, STW, STH);      // 269번: 그 방 그림
+            else drawHouseScene(c, o.s, SX, o.stripY, SW, PH);      // 235번: 띠 대신 창가 그림
             o.lines.forEach((ln, i) => {
                 const py = o.textY + i * LH4;
                 if (ln.key) { c.font = fKey; c.fillStyle = MUTED; c.fillText(ln.key, SX, py); }
@@ -2247,6 +2264,7 @@ async function makeTicketBlobs(opts) {
         }
     } catch (e) {}
     const data = await loadTicketPhotos(ticketData());
+    if (!opts.contract) await loadTicketStills(data);      // 269번: 공간의 색과 빛에 그 방 그림(계약 장에는 없음)
     const canvases = opts.contract ? [buildContractCanvas(data, opts.pixelRatio || 1)].filter(Boolean) : buildTicketCanvases(opts, data);      // 244번: 계약 장은 한 장
     if (!canvases.length) throw new Error('계약 장을 만들 수 없음');
     if (opts.canvasOnly) return { canvases, blobs: [], type: null, cardCount: canvases.cardCount || 0, houseCount: canvases.houseCount || 0, nightAt: canvases.nightAt };      // 화면에 띄우기만 할 때 (고객 화면 최종 제안)

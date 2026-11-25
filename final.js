@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261309';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261310';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -324,7 +324,7 @@
                 sp.forEach(s => {
                     const ln = roomLines.find(r => r.name === s.name);
                     h += '<div class="jg-mb-room">';
-                    h += `<div class="jg-mb-row"><span class="jg-mb-name font-serif-kr">${esc(s.name)}</span><div class="jg-mb-pic">${houseSceneSvg(s)}</div></div>`;
+                    h += `<div class="jg-mb-row"><span class="jg-mb-name font-serif-kr">${esc(s.name)}</span><div class="jg-mb-pic" data-still-room="${esc(s.name)}">${houseSceneSvg(s)}</div></div>`;
                     if (ln && ln.parts && ln.parts.length) h += '<dl class="jg-mb-say">' + ln.parts.map(q => `<dt>${esc(q.k)}</dt><dd>${esc(q.text)}</dd>`).join('') + '</dl>';
                     h += '</div>';
                 });
@@ -453,6 +453,36 @@
 
         box.innerHTML = h;
         bindFinalNavSpy(box);      // 144번
+        roomStills(box);      // 269번
+    }
+    // 269번(결정 #419): '공간의 색과 빛'의 창가 그림 자리에 그 방 그림(고른 원단이 걸린 눈높이 — 입체 방의 멈춘 한 장 520 × 350). 그리는 동안 · 못 그리면 창가 그림 그대로
+    //  roomStillUrl(공간 이름, 견적서 품목 '원단__색' 목록) → 그림 주소(못 그리면 null). 견적서 이미지(ticket.js loadTicketStills)도 이것을 불러 같은 그림 · 같은 기억(이 창에서만, 저장 안 함)
+    //  견적서 품목과 고객 화면 공간의 원단이 다르면(직원 화면에서 바꾸고 아직 고객 화면에 안 돌아옴) 옛 그림을 쓰지 않고 null
+    const ROOM_STILL = new Map();
+    function roomStillUrl(name, want) {
+        const R3 = window.RedamRoom3D, r = (state.roomsCart || []).find(x => x.name === name && x.isConfigured);
+        if (!r || !R3 || !R3.still || !cz.room3dFabricOf) return Promise.resolve(null);
+        const cs = r.curtains || [];
+        if (want && cs.filter(c => c.fabricId).map(c => c.fabricId + '__' + (c.colorName || '')).sort().join('|') !== want.slice().sort().join('|')) return Promise.resolve(null);
+        const fit = cs.some(c => c.hotelFit), measure = cz.room3dMeasure ? cz.room3dMeasure(r) : null, mc = r.measuredColor || {};      // 리담 핏(한 폭 더) · 입체 방에서 고친 것까지 열쇠에(마무리 그림 finStillKey와 같은 뜻)
+        const key = JSON.stringify([r.id, cs.map(c => [c.presetType, c.fabricId, c.colorName, !!c.leadBand, c.width, c.height]), r.width, r.height, fit, mc.wall && mc.wall.hex, mc.floor && mc.floor.hex, r.room3d || 0, measure || 0]);
+        if (!ROOM_STILL.has(key)) {
+            const p = R3.still({ room: r, items: cs, measure, fabricOf: cz.room3dFabricOf, fit })
+                .catch(() => { if (ROOM_STILL.get(key) === p) ROOM_STILL.delete(key); return null; });      // 못 그렸으면 다음에 다시
+            ROOM_STILL.set(key, p); if (ROOM_STILL.size > 12) ROOM_STILL.delete(ROOM_STILL.keys().next().value);
+        }
+        return ROOM_STILL.get(key);
+    }
+    window.roomStillUrl = roomStillUrl;
+    function roomStills(box) {
+        box.querySelectorAll('[data-still-room]').forEach(el => {
+            const name = el.dataset.stillRoom;
+            roomStillUrl(name).then(url => {
+                if (!url) return;
+                const cur = [...document.querySelectorAll('[data-still-room]')].find(x => x.dataset.stillRoom === name);      // 그리는 동안 화면을 다시 그렸으면 새 칸에
+                if (cur && !cur.classList.contains('has-still')) { cur.classList.add('has-still'); cur.innerHTML = '<img alt="" src="' + url + '">'; }
+            });
+        });
     }
 
     // ---- 최종 제안의 종이: 저장·인쇄되는 이미지를 한 쪽씩 보여 줌 (app.js makeTicketBlobs) ----
