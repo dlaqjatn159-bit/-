@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261304';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261305';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -1707,7 +1707,8 @@
   var lastKind = null;
   function kindKey() { var k = roomReady() ? kindNow() : null; return k === 'blind' ? k + ':' + bkNow() + (BK[bkNow()].band ? ':' + bandNow().join('/') : SLAT[bkNow()] ? ':' + glowNow() : '') : k; }      // 구성(블라인드는 종류까지) — 바뀌면 방을 다시 짓는다
   function render(anim) {
-    if (S.q === 'fur' && P && P.furs && !A.fur) { var fl = P.furs; P.furs = null; fl.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '잰 색'; } }); buildFurs(); sharesDirty = true; }      // 258번: 앱에서 색만 잰 가구(치수 없음)는 흔한 규격으로 놓이고 잰 색이 입혀진다
+    if (S.q === 'fur' && P && P.furs && !A.fur && !BLD) { var fl = P.furs;      // 263번: 짓기에서는 '다음'을 눌러야 놓인다(panelNext)
+      P.furs = null; fl.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '잰 색'; } }); buildFurs(); sharesDirty = true; }      // 258번: 앱에서 색만 잰 가구(치수 없음)는 흔한 규격으로 놓이고 잰 색이 입혀진다
     var kn = kindKey();
     if (kn !== lastKind) { lastKind = kn; layout(); }      // 구성이 바뀌면 레일 · 블라인드 자리를 다시 짓는다
     normPart(); syncOpen(); syncZoom(); lampGo(anim);
@@ -1986,6 +1987,10 @@
     if (k && pre(k)) {      // 폰에서 잰 값을 그대로 받는다
       keep();
       if (k === 'dir') { A.dir = P.dir.slice(); layout(); sunIn(); }      // 263번: 확인하면 빛이 든다
+      else if (k === 'color' && BLD) {      // 263번: 짓기는 '다음' 한 번에 하나 — 벽, 다음에 바닥(11-25 사장님 '나누자')
+        if (S.wall == null) { S.wall = P.wall; sharesDirty = true; render(); return; }
+        S.floor = P.floor; sharesDirty = true;
+      }
       else if (k === 'color') {      // 벽이 먼저, 이어서 바닥 — 우리 집 색이 들어가는 것이 보이게 두 박자로
         var si0 = SESSION, wait = CALM ? 0 : 420;
         BEAT = true; S.wall = P.wall; sharesDirty = true; render();
@@ -1998,6 +2003,7 @@
       }
     }
     if (k === 'dir' && A.dir == null) { keep(); A.dir = []; sunIn(); }      // 263번
+    if (k === 'fur' && BLD && P && P.furs && !A.fur) { keep(); var fz = P.furs; P.furs = null; fz.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '잰 색'; } }); buildFurs(); sharesDirty = true; render(); return; }      // 263번: 짓기 — 폰에서 잰 가구는 '다음'을 누르면 솟아오르고, 한 번 더 누르면 마침
     if (k === 'fur' && !A.fur) { keep(); A.fur = true; }
     if (k && !answered(k)) return;      // 답이 있어야 넘어간다
     nx = firstOpen(S.step);
