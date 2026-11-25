@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261305';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261306';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -970,11 +970,25 @@
                 : `<button type="button" onclick="window.concierge.choosePhoneSize(${i})">${esc(m.이름)} ${phoneSizeText(m)}</button>`).join('')
             + '</div></div>';
     }
-    function applyPhoneSize(d, m) {      // 공간 추가 그림(state.editingRoom)에 크기를 넣음 — 그대로 고칠 수 있음
+    // 265번: 커튼 기본 크기 — 가로 = 벽에서 벽(박스 길이를 잰 공간은 박스 끝에서 끝, 창 합보다 좁지 않게) · 높이 = 다는 곳(박스 안 천장, 박스가 없으면 천장)에서 바닥까지 (결정 #414)
+    //  폰 실측 4판의 공간(벽에서 벽 가로 · 바닥에서 천장 높이) · 박스(top 바닥에서 박스 안 · len 길이, 비면 벽 끝까지). 공간이 없는 옛 줄은 전체(괄호)로. 모르면 null
+    function phoneWallSize(m, ws) {
+        const cw = m.커튼벽;      // 입체 방에서 지은 공간(builtWall): 첫 창이 난 벽의 길이 · 높이 · 그 벽 창 합을 이미 셈
+        if (cw) return cw.w > 0 && cw.h > 0 ? { w: Math.max(cw.w, cw.wins || 0), h: cw.h } : null;
+        const sp = (m.공간 && cmInt(m.공간.w) > 0) ? m.공간 : (m.전체 || {}), bx = (m.박스 && typeof m.박스 === 'object') ? m.박스 : null;
+        const w = cmInt(bx && bx.len) || cmInt(sp.w), h = cmInt(bx && bx.top) || cmInt(sp.h);
+        if (!(w > 0 && h > 0)) return null;
+        return { w: Math.max(w, ws.reduce((s, x) => s + x.w, 0)), h };
+    }
+    // 265번: 폰 실측 한 공간 → 공간 추가 그림의 크기 칸. comp: 이 구성으로 셈 — 커튼(이중 · 겉만 · 속만)이면 벽에서 벽 · '전체', 블라인드만 · 모름이면 창 크기(예전 그대로). 크기를 모르면 null
+    function phoneSizeOf(m, comp) {
+        const d = {};
+        const wall = phoneWallSize(m, phoneWins(m));
+        if (wall && comp !== 'blind_only' && COMP_KINDS[comp]) return { sizeMode: 'full', spaceWidth: wall.w, spaceHeight: wall.h, width: wall.w, height: wall.h, partWidth: 0, partHeight: 0, paneBase: 0, panes: null };      // 커튼만 걸리는 공간이라 블라인드 나눔 · 손잡이는 넣지 않음
         const hand = s => s === '좌' ? 'L' : (s === '우' ? 'R' : Pricing.PANE_HAND_DEFAULT);
         const ws = phoneWins(m);
         const full = (m.전체 && cmInt(m.전체.w) > 0) ? { w: cmInt(m.전체.w), h: cmInt(m.전체.h) } : null;
-        if (!ws.length && !full) return;
+        if (!ws.length && !full) return null;
         if (ws.length > 1) {      // 창 여럿 = 한 품목 여러 장(216번), 저절로 '부분'(234번)
             const sum = ws.reduce((s, w) => s + w.w, 0), maxH = Math.max(...ws.map(w => w.h)), sameH = ws.every(w => w.h === ws[0].h);
             d.panes = ws.map(w => ({ w: w.w, h: sameH ? null : w.h, hand: hand(w.side), qty: 1 }));
@@ -993,7 +1007,27 @@
             d.spaceWidth = w.w; d.spaceHeight = w.h; d.width = w.w; d.height = w.h;
             if (ws[0] && hand(ws[0].side) !== Pricing.PANE_HAND_DEFAULT) d.panes = [{ w: null, h: null, hand: hand(ws[0].side), qty: 1 }];
         }
+        return d;
+    }
+    const SIZE_KEYS = ['sizeMode', 'spaceWidth', 'spaceHeight', 'width', 'height'];
+    const sameSize = (a, b) => SIZE_KEYS.every(k => k === 'sizeMode' ? (a[k] || 'full') === (b[k] || 'full') : (Number(a[k]) || 0) === (Number(b[k]) || 0));
+    function applyPhoneSize(d, m) {      // 공간 추가 그림(state.editingRoom)에 크기를 넣음 — 그대로 고칠 수 있음
+        d.phoneSizes = null;
+        const now = phoneSizeOf(m, m.구성);
+        if (!now) return;
+        Object.assign(d, now);
         d.phoneSize = true;      // 1.6 "폰에서 잰 값" (저장하지 않는 그림 칸)
+        const cu = phoneSizeOf(m, 'double'), bl = phoneSizeOf(m, 'blind_only');      // 265번: 구성 화면에서 커튼 ↔ 블라인드로 바꾸면 그 구성의 크기로 — 두 크기를 공간에 남김(finishAddRoom)
+        if (cu && bl && !sameSize(cu, bl)) d.phoneSizes = { curtain: cu, blind: bl };
+    }
+    // 265번: 폰에서 잰 공간의 구성을 커튼 ↔ 블라인드로 바꿀 때 — 크기를 손대지 않았으면(만든 때 크기 그대로) 그 구성의 기본 크기로(커튼 벽에서 벽 · 블라인드 창 크기)
+    function phoneSizeSwap(r, type) {
+        const ps = r && r.phoneSizes;
+        if (!ps || !COMP_KINDS[type]) return;
+        const toB = type === 'blind_only', to = toB ? ps.blind : ps.curtain, from = toB ? ps.curtain : ps.blind;
+        if (!to || !from || !sameSize(r, from)) return;
+        SIZE_KEYS.forEach(k => { r[k] = to[k]; });
+        r.panes = Pricing.cleanPanes(to.panes);
     }
     // 259번: 폰 실측의 구성 · 창 방향 · 벽·바닥 색을 공간 추가 그림에 미리 넣음 (크기처럼 보고 고치기만, 태블릿에서 이미 정한 것은 그대로)
     //  실측 칸: 구성 'double'|'drape_only'|'sheer_only'|'blind_only'|null · 방향 ['남','동'](2개까지) · 색 { 벽: '#rrggbb', 바닥: '#rrggbb' } | null
@@ -1028,6 +1062,26 @@
         const room = { name: d.name, roomType: d.roomType, width: d.width, height: d.height, spaceWidth: d.spaceWidth, spaceHeight: d.spaceHeight, panes: d.panes || null, windowDir: d.windowDir, planComp: d.phoneComp || null };
         return R3.open({ room, items: [], measure: pm || null, fabricOf: () => null, build: true, onClose: res => builtRoom3D(res, pm) }) !== false;
     }
+    // 265번: 입체 방에서 지은 공간의 커튼 벽 — 첫 창이 난 벽(옆 벽이면 깊이가 그 벽 길이) · 그 벽의 박스 · 그 벽 창 합 (새 창 검토)
+    //  입체 방이 그리느라 바꾼 값(천장 210~300 밖, 천장보다 낮거나 너무 깊은 박스)은 폰 값 그대로 — 입체 방에서 손으로 고친 값만 견적으로
+    function builtWall(b, pm) {
+        const ws = b.wins || [], cw = ws[0] ? (ws[0].wall || 0) : 0, side = cw === 1 || cw === 3;
+        const P = pm || {}, ps = P.공간 || {}, pb = (P.박스 && typeof P.박스 === 'object') ? P.박스 : null;
+        const near = (a, c) => c > 0 && Math.abs(a - c) <= 1;
+        const ph = cmInt(ps.h), rh = Number(b.room && b.room.h) || 0;
+        const h = ph > 0 && (near(rh, ph) || ph < 210 || ph > 300) ? ph : rh;      // 입체 방 천장 한계(210~300)에 잘린 값이면 폰 값
+        let w = Number(b.room && (side ? b.room.d : b.room.w)) || 0;
+        if (!side && near(w, cmInt(ps.w))) w = cmInt(ps.w);
+        const bx = (b.box || []).find(x => x && x.wall === cw && x.on !== false);
+        let top = 0, len = 0;
+        if (bx) {
+            const drop = (Number(bx.top) || 0) - rh, pt = cmInt(pb && pb.top), pdrop = pt - ph;      // drop: 박스가 천장 위로 파인 깊이
+            top = pt > 0 && ph > 0 && ((h === ph && Math.abs(drop - pdrop) <= 1) || pdrop < 3 || pdrop > 40) ? pt : h + drop;      // 천장을 고치지 않았고 박스도 그대로 · 입체 방이 바로잡은 박스 → 폰 값
+            len = Number(bx.len) || 0;
+            if (len && near(len, cmInt(pb && pb.len))) len = cmInt(pb.len);
+        }
+        return { w: len || w, h: top || h, wins: ws.filter(x => (x.wall || 0) === cw).reduce((s, x) => s + (Number(x.w) || 0), 0) };
+    }
     function builtRoom3D(res, pm) {      // 입체 방이 닫힘 — 지었으면 공간을, 못 열었으면 예전 크기 화면, 뒤로 나갔으면 아무것도
         const d = state.editingRoom;
         if (!d || !d.addDraft) return;
@@ -1044,6 +1098,7 @@
             창: (b.wins || []).map((w, i) => ({ w: keep(w.w, Number(pw[i] && pw[i].w), 1470), h: keep(w.h, Number(pw[i] && pw[i].h), b.room.h - 3 - (w.sill || 0)), sill: w.sill, side: side(i) })),
             전체: pm && pm.전체 ? pm.전체 : null,      // 커튼 전체 크기는 입체 방이 모르는 값 — 폰 값 그대로
             공간: b.room, 박스: bx ? { top: bx.top, d: bx.d, len: bx.len } : false, 방향: b.dir || [],
+            커튼벽: builtWall(b, pm),      // 265번: 커튼 기본 크기(벽에서 벽 × 다는 높이)는 이것으로
             색: both ? { 벽: b.wall, 바닥: b.floor } : (pm && pm.색) || null
         };
         Object.assign(d, { sizeMode: 'full', spaceWidth: 0, spaceHeight: 0, partWidth: 0, partHeight: 0, width: 0, height: 0, paneBase: 0, windowDir: [], dirUnknown: false, panes: null, phoneColor: null, room3d: res.pack });
@@ -1913,6 +1968,7 @@
             else if (src === 'floor' && mc) setRoomColor(room, withBridge(house && house.wall, mc.floor, house && house.bridgeK, mc.furniture));
             if (src === 'first' && mc && (mc.wall || mc.floor)) state.house = houseOf(mc, room.id);
             seedPhoneColor(room, d.phoneColor);      // 259번: 태블릿에서 못 잰(비어 있는) 벽·바닥은 폰에서 잰 색으로
+            if (d.phoneSizes) room.phoneSizes = d.phoneSizes;      // 265번: 커튼 · 블라인드 두 기본 크기(구성을 바꾸면 phoneSizeSwap)
             if (d.phoneComp && !room.planComp) { room.planComp = d.phoneComp; room.planPicked = true; room.compOk = false; }      // 259번: 폰에서 들은 구성 — 상품을 다 뺀 공간(215번)처럼 구성 화면에 회색 칸으로 미리, 누르면 확정 · 다른 칸도 그대로
             if (d.room3d) { room.room3d = d.room3d; if (window.RedamRoom3D && window.RedamRoom3D.resign) window.RedamRoom3D.resign(room.room3d, room, []); }      // 263번: 지은 입체 방 — 공간 화면의 '입체 방' 단추가 이어서 엶
             room.id = newRoomId();
@@ -2359,6 +2415,7 @@
             if (ed && ed.flow) {
                 const t = state.roomsCart.find(r => r.id === state.editingRoomId);
                 if (t && t.colorFirst) { t.colorFirst = null; t.ownTaste = false; t.ownPres = null; t.ownTex = null; t.sheerFeel = null; t.blindWant = null; }      // 228번: 색으로 골랐다가 네 구성 칸으로 다시 고르면 색에서 채운 답을 비움(느낌·결·종류를 다시 물음)
+                phoneSizeSwap(t, type);      // 265번: 커튼 ↔ 블라인드로 바꾸면 그 구성의 기본 크기로(손대지 않은 크기일 때만)
                 if (t) { t.planComp = type; t.planPicked = true; t.compOk = true; }
                 saveOwnTaste(ed);
                 flowNext();
