@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261302';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261303';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -995,6 +995,30 @@
         }
         d.phoneSize = true;      // 1.6 "폰에서 잰 값" (저장하지 않는 그림 칸)
     }
+    // 259번: 폰 실측의 구성 · 창 방향 · 벽·바닥 색을 공간 추가 그림에 미리 넣음 (크기처럼 보고 고치기만, 태블릿에서 이미 정한 것은 그대로)
+    //  실측 칸: 구성 'double'|'drape_only'|'sheer_only'|'blind_only'|null · 방향 ['남','동'](2개까지) · 색 { 벽: '#rrggbb', 바닥: '#rrggbb' } | null
+    const PHONE_DIR = { 남: 'S', 동: 'E', 서: 'W', 북: 'N' };
+    const phoneHex = v => /^#?[0-9a-f]{6}$/i.test(String(v || '')) ? '#' + String(v).replace('#', '').toLowerCase() : null;
+    function phoneCompOf(name) {      // 이 이름의 폰 실측 구성(모르면 null) — 구성 화면의 '폰에서 들은 구성' 글 (259번)
+        const m = phoneMeasures().find(x => x.이름 === name);
+        return (m && COMP_KINDS[m.구성]) ? m.구성 : null;
+    }
+    function applyPhoneExtras(d, m) {      // 259번: 공간 추가 그림(state.editingRoom)에 — 크기가 없어도 넣음
+        if (COMP_KINDS[m.구성]) d.phoneComp = m.구성;      // 공간을 만들 때 정한 구성으로(구성 화면에 회색 칸, 손님이 한 번 눌러 확정)
+        const dirs = windowDirOf(String([].concat(m.방향 || []).join('')).split('').map(c => PHONE_DIR[c]));
+        if (dirs.length && !windowDirOf(d.windowDir).length && !d.dirUnknown) d.windowDir = dirs;      // 색 단계의 방향 단추가 켜진 채로 (눌러서 끄고 바꿀 수 있음)
+        const c = m.색 || {}, wall = phoneHex(c.벽), floor = phoneHex(c.바닥);
+        if (wall || floor) d.phoneColor = { wall, floor };
+    }
+    function seedPhoneColor(room, pc) {      // 259번: 공간을 만든 뒤 — 태블릿에서 재지 않은(비어 있는) 벽·바닥만 폰 색으로
+        const make = window.RoomColor && window.RoomColor.fromHex;
+        if (!pc || !make) return;
+        const mc = room.measuredColor || {};
+        const wall = mc.wall ? null : make(pc.wall), floor = mc.floor ? null : make(pc.floor);
+        if (!wall && !floor) return;
+        setRoomColor(room, withBridge(mc.wall || wall, mc.floor || floor, mc.bridgeK, mc.furniture));
+        if (wall && floor) room.colorSrc = 'phone';      // 둘 다 폰 색. colorSrc를 읽는 곳은 'house'·벽/바닥 비교뿐이라 새 값이어도 그대로 지나감
+    }
     function paneBoxHtml(target, label, val) {
         return `<div id="measureBox_${target}" class="measure-box pane-box" onclick="window.concierge.openKeypad('${target}')"><span class="pane-k">${label}</span><span id="displayVal_${target}" class="pane-v font-serif-kr${val ? '' : ' is-empty'}">${val || '—'}</span></div>`;
     }
@@ -1444,12 +1468,13 @@
                 const ed = state.editingRoom;
                 html += '<div class="bookmark-stage">';
                 html += stepHead(roomTopic(ed) ? `${roomTopic(ed)} 어떤 구성을 원하실까요?` : '어떤 구성을 원하실까요?');      // 안방은 / 거실은 (152번: roomTopic)
+                const phComp = ed && ed.prev && ed.prev.comp && phoneCompOf(ed.name) === ed.prev.comp ? ed.prev.comp : null;      // 259번: 회색 칸이 폰에서 들은 구성이면 그 칸 이름 아래 작은 글자 한 줄
                 // 233번: 색으로 고르기 입구 = 질문 줄 오른쪽 끝의 작은 글자('맡길게요'와 같은 모양). 사진은 네 칸 그대로. 길잡이에서 벽·바닥 잰 색으로 색 칸이 나올 때만
                 if (ed && ed.flow && cz.colorPick && cz.colorPick.cfCan && cz.colorPick.cfCan()) html += '<button type="button" class="r-quiet cf-quiet" onclick="window.concierge.cfOpen()">색부터 볼게요</button>';
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 [['double', 'comp_double', SOLID_TEXTURES.l1], ['sheer_only', 'comp_sheer', SOLID_TEXTURES.l2], ['drape_only', 'comp_drape', SOLID_TEXTURES.l3], ['blind_only', 'comp_blind', SOLID_TEXTURES.oak]].forEach(([k, ph, fb]) => {
                     html += renderBookmarkCard(COMP_NAMES[k], "", "", compBg(ph, fb), function() { window.concierge.chooseWindowComposition(k); },
-                        was('comp', k).trim());
+                        was('comp', k).trim(), k === phComp ? '폰에서 들은 구성' : '');      // 259번
                 });
                 html += '</div></div>';
                 break;
@@ -1801,7 +1826,7 @@
                 width: 0, height: 0, items: [], windowDir: []
             }; // 41번, 43번
             const pm = phoneMeasures().find(m => m.이름 === displayName);      // 245번: 같은 이름의 폰 실측이 있으면 크기를 미리 채움(보고 고치기만)
-            if (pm) applyPhoneSize(state.editingRoom, pm);
+            if (pm) { applyPhoneSize(state.editingRoom, pm); applyPhoneExtras(state.editingRoom, pm); }      // 259번: 구성 · 창 방향 · 색도
             goToStep("1.6-Add-Size");
         },
         choosePhoneSize: function(i) {      // 245번: '폰에서 잰 크기' 칩 — 그 이름으로 공간, 종류는 실측의 '앱에서 고를 종류'(없으면 이름에서 짐작, 그래도 없으면 작은방)
@@ -1854,6 +1879,8 @@
             else if (src === 'wall' && mc) setRoomColor(room, withBridge(mc.wall, house && house.floor, house && house.bridgeK, mc.furniture));
             else if (src === 'floor' && mc) setRoomColor(room, withBridge(house && house.wall, mc.floor, house && house.bridgeK, mc.furniture));
             if (src === 'first' && mc && (mc.wall || mc.floor)) state.house = houseOf(mc, room.id);
+            seedPhoneColor(room, d.phoneColor);      // 259번: 태블릿에서 못 잰(비어 있는) 벽·바닥은 폰에서 잰 색으로
+            if (d.phoneComp && !room.planComp) { room.planComp = d.phoneComp; room.planPicked = true; room.compOk = false; }      // 259번: 폰에서 들은 구성 — 상품을 다 뺀 공간(215번)처럼 구성 화면에 회색 칸으로 미리, 누르면 확정 · 다른 칸도 그대로
             room.id = newRoomId();
             state.roomsCart.push(room);
             state.activeSpaceId = room.id;

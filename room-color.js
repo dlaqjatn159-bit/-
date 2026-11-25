@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261302';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261303';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -400,6 +400,14 @@
         const m = part && st && st.mat && st.mat[part];
         if (m && m.k) o.mat = { k: m.k, g: m.g ? 1 : 0, s: r(c.grain || 0) };      // 113번
         return o;
+    }
+    // 259번: 폰에서 잰 색('#rrggbb') → 공간에 저장하는 모양(packColor와 같음: L·a·b 소수 한 자리 · 밝기 · 톤). 모르는 값이면 null
+    function fromHex(hex) {
+        const h = String(hex || '').replace('#', '');
+        if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+        const n = parseInt(h, 16), c = rgbToLab(n >> 16 & 255, n >> 8 & 255, n & 255), cls = classifyLab(c);
+        const r = v => Math.round(v * 10) / 10;
+        return { L: r(c.L), a: r(c.a), b: r(c.b), hex: '#' + h.toLowerCase(), light: cls.light, tone: cls.tone };
     }
     // 재료·광택 도우미 (113번)
     function matOf(part) { if (!st.mat) st.mat = {}; return st.mat[part] || (st.mat[part] = { k: null, g: null }); }
@@ -875,7 +883,7 @@
             st = null;      // 사진은 버림
         },
         // 직원 화면 "시험" 칸(fake-guest.js)이 같은 톤 나누기·이어주는 색을 쓰도록 꺼냄 (89번, 화면 변화 없음)
-        classifyLab, bridgeOf, labToHex,
+        classifyLab, bridgeOf, labToHex, fromHex,      // 259번: fromHex = 폰에서 잰 색 → 저장 모양
         step: pickStep,      // 다 찍은 자리면 그 자리만 다시 찍기
         undo,
         view(v) { st.view = v; render(); },
