@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261300';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261301';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -538,10 +538,29 @@
         if (!picked.length) return '';
         const lead = picked.find(i => i.presetType === 'drape') || picked[0];
         const rows = picked.map(i => `<div class="cp-fin-row"><i style="background:${colorHex(i.fabricId, i.colorName)}"></i><span>${esc(fabName(i.fabricId, i.colorName))}</span></div>`).join('');
-        return `<div class="cp-strip cp-dark cp-fin-band" style="background:${deepOf(colorHex(lead.fabricId, lead.colorName))};color:var(--on-band)">
-            ${rows}<div class="cp-next">${door(room.name + ' 마치기', 'window.concierge.commitRoomCart()')}</div></div>`;
+        // 260번: 띠가 넓어지며 칩 · 크기 아래에 이 공간의 멈춘 그림(입체 방 엔진이 그림) — 누르면 손님용 입체 방. 그릴 수 없으면 concierge.js가 좁은 띠로 되돌림
+        const w = Number(room.width) || 0, h = Number(room.height) || 0, pic = !!(window.RedamRoom3D && window.RedamRoom3D.still && w && h);
+        const info = w && h ? `<p class="cp-fin-info">가로 ${w} × 세로 ${h}</p>` : '';
+        const card = pic ? `<button type="button" class="cp-fin-room is-wait" id="finRoom" onclick="window.concierge.finRoomOpen()"><span class="cp-fin-pic"><img alt="" hidden></span><span class="cp-fin-in">누르면 이 공간 안으로 들어갑니다${ARROW}</span></button>` : '';
+        return `<div class="cp-strip cp-dark cp-fin-band${pic ? ' cp-fin-wide' : ''}" style="background:${deepOf(colorHex(lead.fabricId, lead.colorName))};color:var(--on-band)">
+            <div class="cp-fin-top"><div class="cp-fin-chips">${rows}</div>${info}</div>${card}<div class="cp-next">${door(room.name + ' 마치기', 'window.concierge.commitRoomCart()')}</div></div>`;
     }
 
+    // 260번: 입체 방 손님용 후보 — 고를 때 본 자리(겉지 세 자리 · 속지 네 폭)마다 원단 하나. 고른 원단이 든 자리는 고른 원단, 나머지는 그 자리의 첫 원단
+    //  돌려주는 것 { list: [{ name, hex, density, why, fabricId, colorName }], at: 고른 원단의 자리 } · 자리를 못 찾으면 고른 원단 하나만
+    function candsOf(item) {
+        try {
+            if (!item || !item.fabricId) return null;
+            const r = result(item); if (!r) return null;
+            const one = (x, id, color) => ({ name: seatName(r, x) + ' · ' + fabName(id, color), hex: colorHex(id, color), density: fabOf(id).density || null, why: whyOf(r, x), fabricId: id, colorName: color });
+            const seats = r.list.filter(x => !x.all), list = [];
+            let at = seats.findIndex(x => x.fabrics.some(f => f.id === item.fabricId && (!item.colorName || f.color === item.colorName)));
+            if (at < 0) at = seats.findIndex(x => x.fabrics.some(f => f.id === item.fabricId));      // "한 톤 짙게"로 고른 색 — 같은 원단이 든 자리
+            seats.forEach((x, i) => { const f = x.fabrics[0]; list.push(i === at ? one(x, item.fabricId, item.colorName) : one(x, f.id, f.color)); });
+            if (at < 0) return { list: [{ name: fabName(item.fabricId, item.colorName), hex: colorHex(item.fabricId, item.colorName), density: fabOf(item.fabricId).density || null, why: '', fabricId: item.fabricId, colorName: item.colorName }], at: 0 };
+            return { list, at };
+        } catch (e) { return null; }
+    }
     // 최종 제안 "공간의 색과 빛" 문장 (194번): 4막에서 손님이 본 이유 한 줄과 같은 말
     //  room = 저장된 공간(raw), kind = '속지'·'겉지', fabricId·colorName = 고른 원단. 자리를 못 찾으면 '' (ticket.js가 예전 문장으로)
     function whyLineFor(room, kind, fabricId, colorName) {
@@ -563,5 +582,5 @@
             return seat ? whyOf({ kind: 'drape', feel: r.feel, house: r.house }, seat, room) : '';
         } catch (e) { return ''; }
     }
-    cz.colorPick = { wants, html, after, back, finishHtml, whyLineFor, cfHtml, cfAfter, cfCan };      // concierge.js가 부름 · whyLineFor는 ticket.js(194번) · cf…는 228번 색으로 고르기
+    cz.colorPick = { wants, html, after, back, finishHtml, whyLineFor, cfHtml, cfAfter, cfCan, candsOf };      // 260번: candsOf      // concierge.js가 부름 · whyLineFor는 ticket.js(194번) · cf…는 228번 색으로 고르기
 })();

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261300';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261301';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -653,7 +653,7 @@
         if (idx >= 0 && typeof openSpaceMore === 'function') openSpaceMore(r.id, idx);      // 원단 바꾸기 — 겉지 · 속지는 더 보기(원단 고르기), 블라인드는 공간 화면에 머문다
     }
     window.concierge.openRoom3D = openRoom3D;      // 258번: 공간 머리의 '입체 방' 단추
-    Object.assign(cz, { shortFabName, swapCurtain, spaceToast, spaceHtml, spaceEditHtml, restoreCurtains });      // concierge.js가 부름 (165번: restoreCurtains)
+    Object.assign(cz, { shortFabName, swapCurtain, spaceToast, spaceHtml, spaceEditHtml, restoreCurtains, room3dFabricOf, room3dMeasure });      // 260번: room3d… 는 마무리 화면의 공간 그림 · 손님용 입체 방      // concierge.js가 부름 (165번: restoreCurtains)
     Object.assign(window.concierge, {
         swapCurtain: function(roomId, idx, fabricId, color, why) { swapCurtain(roomId, idx, fabricId, color, false, why); },
         dropCurtain: function(roomId, idx) { dropCurtain(roomId, idx); },      // 165번

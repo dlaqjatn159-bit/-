@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261300';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261301';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1085,6 +1085,84 @@
             btn.classList.toggle('on', on);
             btn.setAttribute('aria-pressed', String(on));
         });
+        finStillGo();      // 260번: 리담 핏(한 폭 더) · 밑단이 그림에도
+    }
+
+    // ---- 260번: 마무리 화면의 공간 그림 · 손님용 입체 방 (room3d.js의 still · open guest) ----
+    //  그림은 멈춘 한 장(눈높이) — 같은 값이면 다시 그리지 않음(이 창에서만 기억, 저장 안 함). 못 그리면 띠를 좁은 띠로 되돌림
+    //  공간 안에서는 고를 때 본 후보만 바꿔 걸어 봄(color-pick.js candsOf). '이걸로 할게요'면 바꾼 원단을 품목에, '← 마무리로'는 그대로
+    const FIN_STILL = new Map();
+    let finOpenOpts = null;
+    function finRoom3DOpts() {
+        const ed = state.editingRoom;
+        if (!ed || !cz.room3dFabricOf || !cz.colorPick || !cz.colorPick.candsOf) return null;
+        const base = state.roomsCart.find(r => r.id === state.editingRoomId) || {};
+        const room = Object.assign({}, base, { name: ed.name || base.name, roomType: ed.roomType || base.roomType, width: Number(ed.width) || base.width, height: Number(ed.height) || base.height,
+            measuredColor: ed.measuredColor || base.measuredColor || null, windowDir: ed.windowDir || base.windowDir, privacy: ed.privacy || base.privacy || null, lightBlock: ed.lightBlock || base.lightBlock || null });
+        const picked = (ed.items || []).filter(i => i.fabricId && (i.presetType === 'drape' || i.presetType === 'sheer'));
+        if (!picked.length) return null;
+        const items = picked.map(i => ({ presetType: i.presetType, fabricId: i.fabricId, colorName: i.colorName, width: room.width, height: room.height, leadBand: i.presetType === 'sheer' && !!ed.leadBand }));
+        const cands = k => { const it = picked.find(i => i.presetType === k); return it ? cz.colorPick.candsOf(it) : null; };
+        return { room, items, measure: cz.room3dMeasure ? cz.room3dMeasure(room) : null, fabricOf: cz.room3dFabricOf, fit: !!ed.hotelFit, guest: { drape: cands('drape'), sheer: cands('sheer') } };
+    }
+    function finStillKey(o) {
+        const mc = o.room.measuredColor || {};
+        return JSON.stringify([o.room.id || '', o.room.width, o.room.height, o.items.map(i => [i.presetType, i.fabricId, i.colorName, i.leadBand]), o.fit, mc.wall && mc.wall.hex, mc.floor && mc.floor.hex, o.room.room3d ? JSON.stringify(o.room.room3d) : 0, o.measure ? JSON.stringify(o.measure) : 0]);
+    }
+    function finWide(el) {      // 그림이 왔음 — 숨겼던 칸 · 넓은 띠를 되살림(그리다 그만둔 뒤 다시 그린 경우)
+        el.hidden = false;
+        const band = el.closest('.cp-fin-band'); if (band) band.classList.add('cp-fin-wide');
+        const st = document.querySelector('.msr-finish'); if (st) st.classList.add('cp-fin-wide-on');
+    }
+    function finNarrow(el) {      // 그림을 못 그림 — 그림 칸을 빼고 원래 좁은 띠로
+        el.hidden = true;
+        const band = el.closest('.cp-fin-band'); if (band) band.classList.remove('cp-fin-wide');
+        const st = document.querySelector('.msr-finish'); if (st) st.classList.remove('cp-fin-wide-on');
+    }
+    function finStillGo() {
+        const el = document.getElementById('finRoom');
+        if (!el) return;
+        const o = finRoom3DOpts();
+        if (!o || !window.RedamRoom3D || !window.RedamRoom3D.still) { finNarrow(el); return; }
+        const key = finStillKey(o), img = el.querySelector('img');
+        el.dataset.key = key;
+        const show = url => { img.src = url; img.hidden = false; el.classList.remove('is-wait'); finWide(el); };
+        if (FIN_STILL.has(key)) { show(FIN_STILL.get(key)); return; }
+        el.classList.add('is-wait');      // 그리는 동안 앞 그림을 흐리게 두고 새 그림으로 바꿈
+        window.RedamRoom3D.still(o).then(url => {
+            FIN_STILL.set(key, url); if (FIN_STILL.size > 8) FIN_STILL.delete(FIN_STILL.keys().next().value);
+            const cur = document.getElementById('finRoom');      // 그리는 동안 화면을 다시 그렸으면 새 칸에
+            if (cur && cur.dataset.key === key) { const im = cur.querySelector('img'); im.src = url; im.hidden = false; cur.classList.remove('is-wait'); finWide(cur); }
+        }, err => {
+            if (err && err.aborted) return;      // 입체 방을 열어 그만둔 것 — 닫힌 뒤 finRoomDone이 다시 그림
+            const cur = document.getElementById('finRoom');
+            if (cur && cur.dataset.key === key && cur.querySelector('img').hidden) finNarrow(cur);      // 앞 그림도 없으면 띠를 좁힘
+        });
+    }
+    function finRoomDone(res) {
+        const o = finOpenOpts, ed = state.editingRoom; finOpenOpts = null;
+        if (!o || !ed || !res || !res.guest) { if (state.step === "6-Finish") finStillGo(); return; }
+        const g = res.guest;
+        if (g.ok) {
+            let changed = false;
+            [['drape', g.drape], ['sheer', g.sheer]].forEach(([k, i]) => {
+                const L = o.guest[k], it = ed.items.find(x => x.presetType === k);
+                if (!L || !it || i == null || i < 0 || i === L.at) return;
+                const c = L.list[i]; if (!c || !c.fabricId) return;
+                it.fabricId = c.fabricId; it.colorName = c.colorName; changed = true;
+            });
+            if (changed) { state.cp = null; render(); if (cz.spaceToast) cz.spaceToast('공간 안에서 바꾼 원단을 넣었습니다'); return; }
+        } else if (g.goFabric) {
+            const idx = ed.items.findIndex(x => x.presetType === g.goFabric);
+            if (idx >= 0) { state.pendingItemQueue = ed.items; state.currentItemIndex = idx; state.cp = null; goToStep("3.5-Bridge"); return; }      // 그 겹의 원단 고르기로(고른 모습부터)
+        }
+        if (state.step === "6-Finish") finStillGo();      // 그리다 그만둔 그림을 다시
+    }
+    function finRoomOpen() {
+        if (!window.RedamRoom3D || window.RedamRoom3D.isOpen()) return;
+        const o = finRoom3DOpts(); if (!o) return;
+        finOpenOpts = o;
+        window.RedamRoom3D.open({ room: o.room, items: o.items, measure: o.measure, fabricOf: o.fabricOf, fit: o.fit, guest: o.guest, onClose: finRoomDone });
     }
 
     // ---- 두 번째 공간부터: 앞에서 진단한 공간과 바닥·벽이 같으면 바로 넘어가기 ----
@@ -1503,7 +1581,7 @@
             case "6-Finish": {
                 const curRoom = state.editingRoom;
                 const band = cz.colorPick ? cz.colorPick.finishHtml(curRoom) : '';      // 189번 A안: 정해진 속지·겉지 띠가 오른쪽에 남고, "○○ 마치기 →"는 띠 안에
-                html += '<div class="msr-stage msr-finish' + (band ? ' cp-has-band' : '') + '">' + progHtml();
+                html += '<div class="msr-stage msr-finish' + (band ? ' cp-has-band' : '') + (band.indexOf('cp-fin-wide') >= 0 ? ' cp-fin-wide-on' : '') + '">' + progHtml();      // 260번: 공간 그림이 든 넓은 띠
                 // 옵션은 처음부터 들어가 있음 → "이렇게 마무리" + 줄마다 빼기/넣기, 밑단은 시접/리드밴드 (139번)
                 html += '<h2 class="msr-title font-serif-kr">이렇게 마무리해 드립니다</h2>';
                 html += finishOptsHtml(curRoom);
@@ -1543,6 +1621,7 @@
         const photo = PHOTO_STEPS.includes(state.step);
         syncBack(photo);
         if (cz.colorPick) cz.colorPick.after();      // 189번: 새 원단 화면의 사진·밀기·띠 움직임·뒤로 글자색
+        if (state.step === "6-Finish") finStillGo();      // 260번: 마무리 화면의 공간 그림
         if (cz.colorPick && cz.colorPick.cfAfter) cz.colorPick.cfAfter();      // 228번: 색으로 고르기 화면의 뒤로 글자색
         if (photo) {
             // 138번: 띠 높이는 120px 하나(가로쓰기라 글자 길이로 늘리지 않음)
@@ -2348,6 +2427,7 @@
             state.editingRoom[key] = !state.editingRoom[key];
             refreshFinishOpts(`[data-k="${key}"]`);
         },
+        finRoomOpen: function() { finRoomOpen(); },      // 260번: 마무리 화면의 공간 그림
         setHem: function(lead) {
             if (!state.editingRoom) return;
             state.editingRoom.leadBand = !!lead;

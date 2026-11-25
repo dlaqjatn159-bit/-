@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261300';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261301';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -197,15 +197,51 @@
 @keyframes r3d-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 .r3d .r3d-wait .act { justify-content: center; }
 .r3d .ghost { z-index: 40; }
-@media (prefers-reduced-motion: reduce) { .r3d .piece, .r3d .board, .r3d .panel, .r3d .tools, .r3d .steps { transition: none; } .r3d .kinds, .r3d .lamp, .r3d.r3d-loading .r3d-msg::after { animation: none; } }`;
+@media (prefers-reduced-motion: reduce) { .r3d .piece, .r3d .board, .r3d .panel, .r3d .tools, .r3d .steps { transition: none; } .r3d .kinds, .r3d .lamp, .r3d.r3d-loading .r3d-msg::after { animation: none; } }
+/* 260번: 손님용(r3d-guest) — 머리의 순서 · 도구, 오른쪽 장, 방 위의 손잡이 · 색 조각 · 모양 줄 · 등 줄을 숨기고 방을 화면 가득, 아래는 종이 띠(후보 · 이유 한 줄 · 이걸로 할게요) */
+.r3d.r3d-guest .head, .r3d.r3d-guest .panel, .r3d.r3d-guest .over, .r3d.r3d-guest .board, .r3d.r3d-guest .shape, .r3d.r3d-guest .lamp { display: none !important; }
+.r3d .gtop, .r3d .gband, .r3d .gnote { display: none; }
+.r3d.r3d-guest .gtop { display: flex; position: absolute; left: 0; right: 0; top: 0; z-index: 3; align-items: center; gap: 8px; padding: 16px 28px; pointer-events: none; }
+.r3d.r3d-guest .gtop > * { pointer-events: auto; }
+.r3d .gtop .gb { height: 44px; padding: 0 14px; background: rgba(251, 249, 245, 0.9); font-size: 15px; color: var(--muted); }
+.r3d .gtop .gb.on { color: var(--text); box-shadow: inset 0 -1px 0 var(--text); }
+.r3d .gtop .gback { font-family: var(--serif); font-size: 17px; color: var(--text); }
+.r3d .gtop .gsp { flex: 1; }
+.r3d.r3d-guest .gnote { display: block; position: absolute; right: 28px; bottom: 12px; z-index: 3; padding: 2px 8px; background: rgba(251, 249, 245, 0.85); font-size: 13px; color: var(--muted); pointer-events: none; }
+.r3d.r3d-guest .gband { display: grid; grid-column: 1 / -1; grid-row: 3; grid-template-columns: auto minmax(0, 1fr) auto; gap: 36px; align-items: start; min-height: 168px; padding: 26px 40px 24px; border-top: 1px solid var(--ink14); background: var(--bg); }
+.r3d .grows { display: grid; grid-template-columns: auto auto; column-gap: 18px; row-gap: 32px; align-items: center; }
+.r3d .grows .k { font-size: 14px; color: var(--muted); }
+.r3d .gc { display: flex; gap: 10px; }
+.r3d .gc button { position: relative; width: 48px; height: 48px; border: 0.5px solid var(--ink14); overflow: visible; }
+.r3d .gc button .lvi { position: absolute; inset: 0; }
+.r3d .gc button.on::after { content: ''; position: absolute; left: 50%; bottom: -12px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: var(--point); }
+.r3d .gc button.was::before { content: '처음'; position: absolute; left: -4px; right: -4px; top: -19px; font-size: 11px; line-height: 1.4; color: var(--muted); text-align: center; }
+.r3d .gwhy { min-width: 0; padding-top: 2px; }
+.r3d .gwhy h3 { font-family: var(--serif); font-weight: 400; font-size: 24px; line-height: 1.3; letter-spacing: -0.02em; }
+.r3d .gwhy p { margin-top: 6px; font-size: 16px; color: var(--muted); }
+.r3d .gwhy .gfab { margin-top: 10px; font-size: 14px; color: var(--muted); }
+.r3d .gwhy .gfab span { border-bottom: 1px solid var(--ink45); }
+.r3d .gok { align-self: end; height: 48px; font-family: var(--serif); font-size: 22px; }
+.r3d .gok span { border-bottom: 1px solid var(--text); }
+/* 260번: 멈춘 그림(r3d-still) — 화면 밖에서 마무리 화면의 공간 그림 크기로 한 장만 그린다(보이지도 눌리지도 않음) */
+.r3d.r3d-still { left: -20000px; top: 0; right: auto; bottom: auto; width: 520px; height: 350px; opacity: 0; pointer-events: none; }
+.r3d.r3d-still .gtop, .r3d.r3d-still .gband, .r3d.r3d-still .gnote, .r3d.r3d-still .r3d-wait { display: none !important; }`;
   var MARKUP = "<div class=\"app\" id=\"r3d-app\" data-step=\"measure\"><header class=\"head\"><button class=\"act\" id=\"r3d-back\" type=\"button\"><span>뒤로</span></button><div class=\"spaces\" id=\"r3d-spaces\"></div><nav class=\"steps\" aria-label=\"순서\"><button class=\"act on\" data-step=\"measure\" type=\"button\"><span>측정</span></button><i class=\"rule\"></i><button class=\"act off\" data-step=\"cur\" type=\"button\"><span>선택</span></button></nav><div class=\"tools\" role=\"toolbar\" aria-label=\"보는 방법\"><button class=\"tool off\" id=\"r3d-undo\" type=\"button\" aria-label=\"되돌리기\" title=\"되돌리기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8.5 5 4 9.5l4.5 4.5\"/><path d=\"M4 9.5h10.25a5.25 5.25 0 0 1 0 10.5H11\"/></svg></button><i class=\"tsep\"></i><button class=\"tool\" id=\"r3d-furs\" type=\"button\" aria-label=\"가구 숨기기\" title=\"가구 숨기기\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g class=\"bd\"><path d=\"M5 11V7.5A1.5 1.5 0 0 1 6.5 6h11A1.5 1.5 0 0 1 19 7.5V11\"/><path d=\"M3 12.5a2 2 0 0 1 4 0V14h10v-1.5a2 2 0 0 1 4 0V17H3z\"/><path d=\"M5 17v2M19 17v2\"/></g><path class=\"sl\" d=\"M4 3.5l16 17\"/></svg></button><i class=\"tsep\"></i><button class=\"tool on\" data-night=\"0\" type=\"button\" aria-label=\"낮으로 보기\" title=\"낮\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3.75\"/><path d=\"M12 2.75v2M12 19.25v2M2.75 12h2M19.25 12h2M5.46 5.46l1.42 1.42M17.12 17.12l1.42 1.42M5.46 18.54l1.42-1.42M17.12 6.88l1.42-1.42\"/></svg></button><button class=\"tool\" data-night=\"1\" type=\"button\" aria-label=\"밤으로 보기\" title=\"밤\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z\"/></svg></button><i class=\"tsep\"></i><button class=\"tool on\" data-view=\"top\" type=\"button\" aria-label=\"위에서 보기\" title=\"위에서\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3l8 4.5v9L12 21l-8-4.5v-9z\"/><path d=\"M4 7.5l8 4.5 8-4.5M12 12v9\"/></svg></button><button class=\"tool\" data-view=\"eye\" type=\"button\" aria-label=\"눈높이로 보기\" title=\"눈높이\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M2.5 12S6 5.75 12 5.75 21.5 12 21.5 12 18 18.25 12 18.25 2.5 12 2.5 12z\"/><circle cx=\"12\" cy=\"12\" r=\"2.75\"/></svg></button></div></header><main class=\"stage\" id=\"r3d-stage\"><canvas id=\"r3d-gl\" aria-label=\"공간 모형\"></canvas><div class=\"over\" id=\"r3d-over\"></div><div class=\"board\" id=\"r3d-board\" aria-hidden=\"true\"></div><div class=\"shape\" id=\"r3d-shape\" hidden></div><div class=\"lamp\" id=\"r3d-lamp\" hidden></div></main><aside class=\"panel\" id=\"r3d-panel\"><div class=\"pin\"><div class=\"rec\" id=\"r3d-rec\"></div><div class=\"q\" id=\"r3d-q\" hidden></div><div class=\"pfoot\"><button class=\"act next\" id=\"r3d-pnext\" type=\"button\"><span>다음 →</span></button></div></div><div class=\"page\"><div class=\"phead\"><div class=\"layers\" id=\"r3d-layers\"></div><div class=\"kinds\" id=\"r3d-kinds\" hidden></div></div><div class=\"leaf\" id=\"r3d-tray\"></div><div class=\"pfoot\"><button class=\"act next\" id=\"r3d-next\" type=\"button\"><span>다음 →</span></button></div></div></aside></div><div class=\"r3d-wait\" role=\"status\"><p class=\"r3d-msg\">입체 방을 준비하고 있습니다</p><button type=\"button\" class=\"act next r3d-close\" hidden><span>닫기</span></button></div>";
   var ROOT = null, ENG = null, OPEN = false, OPTS = null, TOKEN = 0, loadP = null, styled = false;
+  // 260번: 손님용 머리 줄 — 마무리로(바꾼 것 안 넣음) · 낮/밤 · 걷기/치기. 창밖 한 줄은 지금 그대로(사진)
+  var GUEST_TOP = '<div class="gtop" id="r3d-gtop"><button type="button" class="gb gback" data-g="back">← 마무리로</button><span class="gsp"></span>'
+    + '<button type="button" class="gb" data-g="day">낮</button><button type="button" class="gb" data-g="night">밤</button>'
+    + '<button type="button" class="gb" data-g="open">걷기</button><button type="button" class="gb" data-g="close">치기</button></div>'
+    + '<p class="gnote">창밖은 예시 사진입니다.</p>';
+  var STILL = 0;      // 260번: 멈춘 그림을 그리는 중이면 그 차례 번호(0 = 아님)
   function ensureStyle() { if (styled) return; var s = document.createElement('style'); s.id = 'r3d-style'; s.textContent = CSS; document.head.appendChild(s); styled = true; }
   function ensureRoot() {
     if (ROOT) return ROOT;
     ROOT = document.createElement('div'); ROOT.className = 'r3d'; ROOT.setAttribute('role', 'dialog'); ROOT.setAttribute('aria-modal', 'true'); ROOT.setAttribute('aria-label', '입체 방');
     ROOT.innerHTML = MARKUP;
-    ROOT.style.setProperty('--scn', 'url(' + SCENE_URL + ')');      // 장의 비침 작은 그림이 같은 사진을 쓴다
+    ROOT.style.setProperty('--scn', 'url(' + SCENE_URL + ')');
+    ROOT.querySelector('#r3d-stage').insertAdjacentHTML('beforeend', GUEST_TOP);      // 260번: 손님용 머리 줄 · 창밖 한 줄
+    ROOT.querySelector('#r3d-app').insertAdjacentHTML('beforeend', '<div class="gband" id="r3d-gband"></div>');      // 260번: 손님용 아래 띠      // 장의 비침 작은 그림이 같은 사진을 쓴다
     ROOT.querySelector('.r3d-close').addEventListener('click', function () { close(); });
     ROOT.querySelector('#r3d-back').addEventListener('click', function () { if (!ENG || !ENG.alive()) close(); });      // 그림 엔진이 서기 전(받는 중 · 못 받음)에도 머리의 '뒤로'로 나간다
     return ROOT;
@@ -237,7 +273,8 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   // 258번: 앱에서 받은 것 — HOST 공간 이름 · LAYER 겹마다 고른 원단 { name, hex, density, blindKind, band } · FIXED 품목이 있어 구성을 여기서 바꾸지 않음 · BKFIX 블라인드 종류를 원단이 정함
   var HOST = { name: '' }, LAYER = { drape: null, sheer: null, blind: null }, FIXED = false, BKFIX = false;
-  var ALIVE = false, SESSION = 0, SIG = '', MSIG = null, SEED = null, ONFIN = null, DELTA = {};      // DELTA: 손으로 바꾼 크기(cm) — cur 커튼 한 벌 · blind 블라인드 { w, h }
+  var ALIVE = false, SESSION = 0, SIG = '', MSIG = null, SEED = null, ONFIN = null, DELTA = {};
+  var GUEST = null, QUICK = false;      // 260번: GUEST 손님용 { d · s: 후보 목록(겉지 · 속지), di · si: 지금 건 후보, d0 · s0: 처음 후보, last: 마지막에 누른 겹 } · QUICK 움직임 없이(멈춘 그림)      // DELTA: 손으로 바꾼 크기(cm) — cur 커튼 한 벌 · blind 블라인드 { w, h }
   function on(type, fn) { root.addEventListener(type, fn); }      // 귀는 root에만 — 닫으면 root가 화면에서 떨어져 아무것도 듣지 않는다
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   // ───── 색 (Lab) ─────
@@ -581,7 +618,7 @@
 
   // ───── 움직임 ─────
   var tweens = [], raf = 0;
-  function tween(dur, fn, done) { tweens.push({ t0: performance.now(), dur: CALM ? 1 : dur, fn: fn, done: done }); invalidate(); }
+  function tween(dur, fn, done) { tweens.push({ t0: performance.now(), dur: CALM || QUICK ? 1 : dur, fn: fn, done: done }); invalidate(); }      // 260번: 멈춘 그림은 움직임 없이
   function invalidate() { if (!raf) raf = requestAnimationFrame(frame); }
 
   // ───── 방 짓기 ─────
@@ -1617,7 +1654,7 @@
     [].forEach.call(root.querySelectorAll('.tools [data-view]'), function (el) { var on = el.dataset.view === S.view; el.classList.toggle('on', on); el.setAttribute('aria-pressed', on); });      // 밑단을 가까이 보는 동안에는 둘 다 점이 없다 — 어느 쪽이든 누르면 돌아온다
     canvas.setAttribute('aria-label', (HOST.name || '공간') + ' 모형');
   }
-  function paintUI() { paintTray(); paintPanel(); paintHead(); paintLamp(); }
+  function paintUI() { paintTray(); paintPanel(); paintHead(); paintLamp(); if (GUEST) paintGuest(); }      // 260번: 손님용 띠
   // 속커튼을 볼 때 — 겉커튼은 양옆으로 걷히고(낮의 모습), 고른 벌의 창 앞으로 다가간다. 나오면 되돌린다
   var OPENED = false, OPID = 0, ZT = 0, ZID = 0;
   function normPart() { var k = kindNow(); if (k === 'sheer') S.part = 'sheer'; else if (k !== 'double') S.part = 'drape'; else if (!S.part) S.part = 'drape'; }
@@ -2048,6 +2085,9 @@
     } else if (grip) {
       e.preventDefault(); glideStop(); keep(); drag = { type: 'grip', id: grip.dataset.grip, pid: e.pointerId };
       try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+    } else if (e.target === canvas && GUEST) {      // 260번: 손님용은 둘러보기만(창 · 가구를 옮기지 않음)
+      e.preventDefault(); drag = { type: 'look', hit: null, sx: e.clientX, sy: e.clientY, moved: false, az0: V.az, el0: V.el, yaw0: V.yaw, hy0: V.hy, pid: e.pointerId };
+      canvas.style.cursor = 'grabbing'; try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
     } else if (e.target === canvas) {
       e.preventDefault();
       var th = thingAt(e), it = th && th.fur != null ? itemOf(th.fur) : null, p = it && floorAt(e), wj = th && th.win != null ? th.win : -1, wh = wj >= 0 && S.step === 'measure' ? wallHit(e, WINS[wj].wall, 0) : null;
@@ -2139,6 +2179,7 @@
   on('pointercancel', function (e) { nudgeStop(); if (drag && e.pointerId === drag.pid) { var d = drag; endDrag(); if (d.type === 'fur') { d.it.ghost = false; d.it.gx = d.it.gz = null; buildFurs(); } render(); } });
   on('click', function (e) {
     if (!ALIVE) return;
+    if (GUEST) { var gt = e.target.closest('[data-g], [data-gk]'); if (gt) guestTap(gt); return; }      // 260번: 손님용
     var t = e.target, kn = t.closest('[data-nudge]'), v = t.closest('[data-view]'), st = t.closest('.steps [data-step]'), pk = t.closest('[data-pok]'), op = t.closest('[data-opt]'), ky = t.closest('[data-key]'), fl = t.closest('[data-fld]'), rc = t.closest('[data-rec]'), gf = t.closest('[data-gofab]');
     if (gf) { finish(true, gf.dataset.gofab); return; }      // 258번: 원단 바꾸기 — 고친 것은 품목에 넣고 닫은 뒤, 앱이 그 겹의 원단 고르기로
     if (kn) { if (e.detail === 0) { keep(); nudge(kn.dataset.nudge, +kn.dataset.d); } return; }      // 자판으로 누른 것만 여기서(손가락 · 마우스는 누르는 순간에)
@@ -2171,7 +2212,8 @@
     var b = sizeNow(), d; if (a.k !== b.k || (a.w === b.w && a.h === b.h)) return;
     d = DELTA[a.k] || (DELTA[a.k] = { w: 0, h: 0 }); d.w += b.w - a.w; d.h += b.h - a.h;
   }
-  function goBack() {      // 앱의 ← · 머리의 '뒤로' — 끌던 것 → 펼친 것 → 숫자 칸 → 밑단 보기 → 속지 → 겉지 → 측정 → 닫기(고친 것은 room3d에 남는다)
+  function goBack() {
+    if (GUEST) { guestEnd({ ok: false }); return; }      // 260번      // 앱의 ← · 머리의 '뒤로' — 끌던 것 → 펼친 것 → 숫자 칸 → 밑단 보기 → 속지 → 겉지 → 측정 → 닫기(고친 것은 room3d에 남는다)
     if (!ALIVE) return;
     if (drag) { var d0 = drag; endDrag(); if (d0.type === 'fur') { d0.it.ghost = false; d0.it.gx = d0.it.gz = null; buildFurs(); } render(); return; }
     if (S.kopen) { S.kopen = false; paintUI(); return; }
@@ -2193,8 +2235,69 @@
     if (k === 'blind') out.blind = { dw: bd.w, dh: bd.h };
     return out;
   }
+  // ───── 260번: 손님용 — 고를 때 본 후보만 바꿔 걸어 보기(겉지 세 자리 · 속지 네 폭). 크기 · 모양은 손대지 않는다 ─────
+  function gFab(c) { return { name: c.name || '', hex: hexOk(c.hex), density: c.density || null, blindKind: null, band: null }; }
+  function guestSetup(G) {
+    GUEST = { d: G.drape ? G.drape.list : [], s: G.sheer ? G.sheer.list : [], di: G.drape ? G.drape.at : -1, si: G.sheer ? G.sheer.at : -1, last: null, still: !!G.still };
+    GUEST.d0 = GUEST.di; GUEST.s0 = GUEST.si; GUEST.last = GUEST.d.length ? 'drape' : GUEST.s.length ? 'sheer' : kindNow() === 'sheer' ? 'sheer' : 'drape';
+    if (GUEST.d[GUEST.di]) LAYER.drape = gFab(GUEST.d[GUEST.di]);
+    if (GUEST.s[GUEST.si]) { LAYER.sheer = gFab(GUEST.s[GUEST.si]); if (LVD[LAYER.sheer.density] != null) C.sl = LVD[LAYER.sheer.density]; }
+    S.step = 'cur'; S.q = null; S.sel = null; S.view = 'eye'; V.t = 1; S.night = false; S.hideFur = false;
+    S.part = kindNow() === 'sheer' ? 'sheer' : 'drape';
+    if (S.wall == null) S.wall = 0; if (S.floor == null) S.floor = 0;      // 색을 못 잰 공간도 그림은 나오게(견본 첫 색)
+    RISE.k = 1; GLS.k = 1;      // 측정에서 아직 확인하지 않은 크기도 선 방으로 보여 준다(기록 A는 그대로 — 사장님 쪽 입체 방에서는 지금처럼 확인)
+    C.open = G.open != null ? clamp(+G.open, 0, 1) : 0.7; C.sopen = 0;      // 마무리 그림과 같은 걷힘
+    groups().forEach(function (g) { var z = szOf(gkey(g)); if (G.fit) z.pok = Math.min(POKMAX, (z.pok != null ? z.pok : CB(g).pok) + 1); });      // 리담 핏 = 한 폭 더(입체 방에서 정해 둔 폭 수가 있으면 그것에서)
+  }
+  function paintGuest() {
+    if (!GUEST) return;
+    [].forEach.call(root.querySelectorAll('.gtop [data-g]'), function (el) { var k = el.dataset.g; el.classList.toggle('on', k === 'night' ? !!S.night : k === 'day' ? !S.night : k === 'open' ? C.open > 0.5 : k === 'close' ? C.open <= 0.5 : false); });
+    var band = $('gband'); if (!band || GUEST.still) return;
+    function row(kind, k, list, at, at0) {
+      if (!list.length) return '';
+      return '<span class="k">' + k + '</span><div class="gc">' + list.map(function (c, i) {
+        var pic = kind === 'sheer' ? lvIcon(LVD[c.density] != null ? LVD[c.density] : 1) : '';
+        return '<button type="button" class="' + (i === at ? 'on' : '') + (i === at0 ? ' was' : '') + '" data-gk="' + kind + '" data-gi="' + i + '" aria-label="' + esc(c.name) + '"' + (kind === 'drape' ? ' style="background:' + (hexOk(c.hex) || '#ddd') + '"' : '') + '>' + pic + '</button>';
+      }).join('') + '</div>';
+    }
+    var last = GUEST.last === 'sheer' ? GUEST.s[GUEST.si] : GUEST.d[GUEST.di], lk = GUEST.last === 'sheer' ? '속지' : '겉지';
+    var h = '<div class="grows">' + row('drape', '겉지', GUEST.d, GUEST.di, GUEST.d0) + row('sheer', '속지', GUEST.s, GUEST.si, GUEST.s0) + '</div>'
+      + '<div class="gwhy">' + (last ? '<h3>' + lk + ' · ' + esc(last.name) + '</h3>' + (last.why ? '<p>' + esc(last.why) + '</p>' : '') : '')
+      + '<button type="button" class="gfab" data-g="fabric"><span>다른 원단은 원단 고르기에서 →</span></button></div>'
+      + '<button type="button" class="gok" data-g="ok"><span>이걸로 할게요</span></button>';
+    if (band.innerHTML !== h) band.innerHTML = h;
+  }
+  function guestEnd(r) { var cb = ONFIN; ONFIN = null; if (cb) cb({ done: false, guest: r }); }      // 손님용은 입체 방 기록(room3d)을 고치지 않는다
+  function guestTap(el) {
+    var g = el.dataset.g, a, id;
+    if (el.dataset.gk) {
+      var kind = el.dataset.gk, i = +el.dataset.gi, c = kind === 'sheer' ? GUEST.s[i] : GUEST.d[i]; if (!c) return;
+      GUEST.last = kind;
+      if (kind === 'drape') { GUEST.di = i; LAYER.drape = gFab(c); if (kindNow() === 'double') S.part = 'drape'; }
+      else { GUEST.si = i; LAYER.sheer = gFab(c); if (LVD[c.density] != null) C.sl = LVD[c.density]; if (kindNow() === 'double' || kindNow() === 'sheer') { S.part = 'sheer'; S.night = false; } }      // 속지는 낮에 본다(겉지는 양옆으로 걷힌다)
+      render(); return;
+    }
+    if (g === 'back') { guestEnd({ ok: false }); return; }
+    if (g === 'ok') { guestEnd({ ok: true, drape: GUEST.di, sheer: GUEST.si }); return; }
+    if (g === 'fabric') { guestEnd({ ok: false, goFabric: GUEST.last }); return; }
+    if (g === 'day' || g === 'night') { var n = g === 'night'; if (n && S.part === 'sheer') S.part = 'drape'; if (S.night !== n) { S.night = n; render(); } return; }      // 밤은 겉지의 몫
+    if (g === 'open' || g === 'close') {
+      if (S.part === 'sheer' && kindNow() === 'double') { S.part = 'drape'; render(); }
+      restoreOpen(); a = C.open; var b = g === 'open' ? 0.9 : 0; id = ++OPID;
+      tween(800, function (k) { if (id === OPID) { C.open = a + (b - a) * k; layout(); } }, function () { paintGuest(); });
+      paintGuest(); return;
+    }
+  }
+  function settled() { return ALIVE && !!SCN.tex && !tweens.length && !raf; }      // 멈춘 그림: 창밖 사진을 받았고 움직임이 다 끝났는지
+  function snap() {      // 그린 그 자리에서 바로 읽는다(그리는 판을 붙잡아 두지 않음) — 비어 있는 곳은 종이색으로
+    frame(performance.now());
+    var c = document.createElement('canvas'), g; c.width = canvas.width; c.height = canvas.height; g = c.getContext('2d');
+    g.fillStyle = getComputedStyle(root).getPropertyValue('--bg').trim() || '#fbf9f5'; g.fillRect(0, 0, c.width, c.height); g.drawImage(canvas, 0, 0);
+    return c.toDataURL('image/jpeg', 0.86);
+  }
   function finish(done, go) {      // 끝내기 — done: 완료(앱 품목에 넣음) · 아니면 닫기만(room3d에 남김) · go: 원단 바꾸기로 갈 겹
     if (!ALIVE) return;
+    if (GUEST) { guestEnd({ ok: false }); return; }      // 260번: 손님용 — 닫기 · 앱의 ← 는 바꾼 것 안 넣음
     if (NUDGE) { clearTimeout(NUDGE.t); NUDGE = null; } if (drag) endDrag(); restoreOpen();
     var o = JSON.parse(pack(true)), res;
     o.v = 1; o.sig = SIG; o.msig = MSIG; o.seed = SEED; o.wallHex = surfHex('wall'); o.floorHex = surfHex('floor');
@@ -2274,10 +2377,12 @@
     V.t = S.view === 'top' ? 0 : 1; V.rad = fitRad();
     traySig = laySig = kindSig = shapeSig = recSig = qSig = fldSig = headSig = lampSig = '\u0001'; lampKey = null;      // 지난번 화면의 줄(등 · 모양 · 장)이 남지 않게 — 빈 값이어도 한 번은 다시 그린다 LAMPV = [1, 1, 1]; lampMat.color.setRGB(1, 1, 1);
     if (RO) RO.observe(stage); else window.addEventListener('resize', resize);
+    GUEST = null; QUICK = !!(I.guest && I.guest.still);
+    if (I.guest) guestSetup(I.guest);      // 260번: 손님용 · 멈춘 그림
     lastKind = kindKey(); buildFurs(); resize(); layout(); sharesDirty = true; render(false);
   }
   function stop() {      // 닫기 — 그리기를 멈추고 기다리던 일을 모두 푼다(그리는 판은 다음에 다시 쓴다)
-    SESSION++; ALIVE = false; LIVE = -1; ONFIN = null;
+    SESSION++; ALIVE = false; LIVE = -1; ONFIN = null; GUEST = null; QUICK = false;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     tweens.length = 0; clearTimeout(advT); if (NUDGE) { clearTimeout(NUDGE.t); NUDGE = null; } if (drag) endDrag(); glideId++; GT = null; BEAT = false;
     if (RO) RO.disconnect(); else window.removeEventListener('resize', resize);
@@ -2289,7 +2394,7 @@
       l2s: function (wall, x, y, z) { WG[wall].updateMatrixWorld(); var q = L2W(wall, x, y, z).clone().project(cam), r = stage.getBoundingClientRect(); return { x: r.left + (q.x * 0.5 + 0.5) * r.width, y: r.top + (-q.y * 0.5 + 0.5) * r.height }; } };
   }
   DEF = pack(true);
-  return { start: start, stop: stop, back: goBack, finish: finish, key: onKey, blur: nudgeStop, alive: function () { return ALIVE; }, info: info, peek: peek };
+  return { settled: settled, snap: snap, start: start, stop: stop, back: goBack, finish: finish, key: onKey, blur: nudgeStop, alive: function () { return ALIVE; }, info: info, peek: peek };
   }      // makeEngine 끝
 
   // ───────── 앱 → 입체 방: 받은 값 읽기(258번) — 크기는 폰 실측 → 앱의 크기 → 기본값(측정에서 확인) 순 ─────────
@@ -2398,18 +2503,20 @@
   }
   function open(opts) {
     if (OPEN) return false;
+    if (STILL) stillStop();      // 260번: 그리던 멈춘 그림은 그만(다음에 다시)
     OPTS = opts || {}; OPEN = true; var tk = ++TOKEN, input;
     ensureStyle(); ensureRoot();
-    setWait('load', '입체 방을 준비하고 있습니다');
+    ROOT.classList.remove('r3d-still'); ROOT.classList.toggle('r3d-guest', !!OPTS.guest); ROOT.setAttribute('aria-label', OPTS.guest ? '공간' : '입체 방');      // 260번: 손님용(손님 화면은 '공간')
+    setWait('load', (OPTS.guest ? '공간을' : '입체 방을') + ' 준비하고 있습니다');      // 260번: 손님 화면은 '공간'
     document.body.appendChild(ROOT);
     document.addEventListener('keydown', onKeyDoc); window.addEventListener('blur', onBlur);
-    try { input = buildInput(OPTS); } catch (err) { console.error('[입체 방] 받은 값을 읽지 못함', err); setWait('fail', '이 공간의 값을 읽지 못했습니다.'); return true; }
+    try { input = buildInput(OPTS); if (OPTS.guest) input.guest = Object.assign({}, OPTS.guest, { fit: !!OPTS.fit }); } catch (err) { console.error('[입체 방] 받은 값을 읽지 못함', err); setWait('fail', '이 공간의 값을 읽지 못했습니다.'); return true; }
     loadThree().then(function () {
       if (!OPEN || tk !== TOKEN) return;
       if (!ENG) { try { ENG = makeEngine(ROOT); } catch (err) { console.error('[입체 방]', err); ENG = null; } }      // 못 만들었으면 다음 열 때 다시 해 본다
       if (!ENG) { setWait('fail', '이 기기에서는 입체 그림을 그릴 수 없습니다.'); return; }
       setWait('');
-      try { ENG.start(input, teardown); } catch (err) { console.error('[입체 방] 열지 못함', err); ENG.stop(); setWait('fail', '입체 방을 열지 못했습니다.'); }
+      try { ENG.start(input, teardown); } catch (err) { console.error('[입체 방] 열지 못함', err); ENG.stop(); setWait('fail', (OPTS.guest ? '공간을' : '입체 방을') + ' 열지 못했습니다.'); }
     }, function () { if (!OPEN || tk !== TOKEN) return; setWait('fail', '그림 엔진을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); });
     return true;
   }
@@ -2425,7 +2532,36 @@
   function close() { if (!OPEN) return; if (ENG && ENG.alive()) ENG.finish(false); else teardown({ done: false }); }      // 밖에서 닫기 — 고친 것은 room3d에 남긴다
   function back() { if (!OPEN) return; if (ENG && ENG.alive()) ENG.back(); else close(); }      // 앱의 ← (app.js handleBack)
   function isOpen() { return OPEN; }
+  // 260번: 멈춘 그림 한 장 — 마무리 화면의 공간 그림(눈높이, 520 × 350). 열려 있거나 그릴 수 없으면 실패(앱은 그림 칸을 숨김). 한 번에 하나씩
+  var stillQ = Promise.resolve(), STILLN = 0;
+  function stopErr(m) { var e = new Error(m); e.aborted = true; return e; }      // 그만둔 것(입체 방을 열어서) — 앱은 띠를 좁히지 않고 닫힌 뒤 다시 그림
+  function stillStop() { STILL = 0; if (ENG && ENG.alive()) ENG.stop(); if (ROOT) { ROOT.classList.remove('r3d-still', 'r3d-guest'); if (!OPEN && ROOT.parentNode) ROOT.parentNode.removeChild(ROOT); } }
+  function still(opts) {
+    function run() {
+      return new Promise(function (ok, no) {
+        if (OPEN) { no(stopErr('입체 방이 열려 있음')); return; }
+        var input, my = ++STILLN, t0;
+        try { input = buildInput(opts || {}); input.guest = { still: true, drape: (opts && opts.guest && opts.guest.drape) || null, sheer: (opts && opts.guest && opts.guest.sheer) || null, fit: !!(opts && opts.fit), open: opts && opts.open != null ? opts.open : 0.7 }; } catch (err) { no(err); return; }
+        function end(err, url) { if (STILL === my) stillStop(); if (err) no(err); else ok(url); }
+        ensureStyle(); ensureRoot(); ROOT.classList.add('r3d-guest', 'r3d-still'); STILL = my;
+        if (!ROOT.parentNode) document.body.appendChild(ROOT);
+        loadThree().then(function () {
+          if (STILL !== my || OPEN) { no(stopErr('그만둠')); return; }
+          if (!ENG) { try { ENG = makeEngine(ROOT); } catch (err) { ENG = null; } }
+          if (!ENG) { end(new Error('입체 그림을 그릴 수 없음')); return; }
+          try { ENG.start(input, null); } catch (err) { end(err); return; }
+          t0 = Date.now();
+          (function wait() {
+            if (STILL !== my || OPEN) { no(stopErr('그만둠')); return; }
+            if (ENG.settled() || Date.now() - t0 > 5000) { var url = null; try { url = ENG.snap(); } catch (err) { url = null; } end(url && url.length > 2000 ? null : new Error('그림이 비었음'), url); }
+            else setTimeout(wait, 60);
+          })();
+        }, function (err) { end(err || new Error('그림 엔진을 받지 못함')); });
+      });
+    }
+    var p = stillQ.then(run, run); stillQ = p.catch(function () {}); return p;
+  }
   function stats() { var s = { open: OPEN, inBody: !!(ROOT && ROOT.parentNode), roots: document.querySelectorAll('.r3d').length, styles: document.querySelectorAll('#r3d-style').length, engine: !!ENG }, i, k; if (ENG) { i = ENG.info(); for (k in i) s[k] = i[k]; } return s; }      // 시험용 — 열고 닫기를 되풀이해도 늘지 않는지
   function resign(pack, room, items) { if (pack && typeof pack === 'object') { pack.sig = sigOf(room); pack.seed = seedOf(items); } return pack; }      // 완료로 앱의 크기를 바꾼 뒤 공간 화면이 부름 — 바뀐 크기를 '그대로'로 적어 다음에 되살린다
-  window.RedamRoom3D = { open: open, close: close, isOpen: isOpen, back: back, stats: stats, resign: resign, _peek: function () { return ENG && ENG.alive() ? ENG.peek() : null; } };
+  window.RedamRoom3D = { open: open, still: still, close: close, isOpen: isOpen, back: back, stats: stats, resign: resign, _peek: function () { return ENG && ENG.alive() ? ENG.peek() : null; } };
 })();
