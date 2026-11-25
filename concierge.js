@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261308';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261309';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -328,8 +328,9 @@
         if (state.step === '6-Finish' && state.buildFlowId && state.editingRoomId === state.buildFlowId && state.buildShown !== state.buildFlowId) {
             state.buildShown = state.buildFlowId; setTimeout(() => { if (state.step === '6-Finish') finRoomOpen(); }, 350);
         }
-        const on = !!state.buildSnap && ((state.step === '1.7-Add-Same' && !!state.buildAsk) || (!!state.buildFlowId && state.editingRoomId === state.buildFlowId && BUILD_ASK.includes(state.step)));
-        bgShow(on, state.buildSnap, 'b' + state.buildSeq);
+        const nx = state.step === '1.9-Next-Room' && !!state.nextSnap;      // 268번: '다음 공간' 화면은 방금 마친 방(고른 원단이 걸린 그림)
+        const on = nx || (!!state.buildSnap && ((state.step === '1.7-Add-Same' && !!state.buildAsk) || (!!state.buildFlowId && state.editingRoomId === state.buildFlowId && BUILD_ASK.includes(state.step))));
+        bgShow(on, nx ? state.nextSnap : state.buildSnap, nx ? 'n' + state.nextFromId : 'b' + state.buildSeq);
     }
     function bgShow(on, src, key) {      // 267번: 뒤 그림 한 장(#buildBg)을 켜고 끔 — key가 바뀌면 처음부터(진하게 → 옅게)
         const sec = document.getElementById('trackCurationSection');
@@ -1740,6 +1741,18 @@
                 html += spaceEditHtml();
                 break;
 
+            // [다음 공간] 268번(결정 #419): 짓기로 만든 공간을 마친 뒤 — 폰에서 잰 공간 중 남은 것을 고르면 다시 짓기부터, 다 마쳤으면 최종 제안. 뒤에는 방금 마친 방(buildBg)
+            case "1.9-Next-Room": {
+                const nm = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+                const done = new Set(state.roomsCart.map(r => r.name));
+                const left = phoneMeasures().map((m, i) => ({ m, i })).filter(x => !done.has(x.m.이름));
+                const top = `<p class="next-done font-serif-kr">${nm(state.nextFrom)} · 마쳤습니다</p>`;
+                const more = label => [{ label, quiet: true, on: "window.concierge.goStep('1.5-Room-Type')" }, { label: '공간 목록 보기', quiet: true, on: "window.concierge.goStep('1-Space')" }];
+                if (left.length) html += askStage('다음은 어느 공간을 지을까요?', '', left.map((x, k) => ({ label: nm(x.m.이름), extra: `<span class="next-size">${phoneSizeText(x.m)}</span>`, rec: k === 0, on: `window.concierge.choosePhoneSize(${x.i})` })).concat(more('다른 공간 넣기')), { top });
+                else html += askStage('이제 최종 제안을 보시겠어요?', '', [{ label: '최종 제안 보기', rec: true, on: 'window.concierge.goToCheckout()' }].concat(more('공간 더 넣기')), { top });
+                break;
+            }
+
             // [Step 7: 최종 제안 = 통합 에디토리얼 룩북 (76번)]
             // 가로·세로 모두 액자 비례 미니멀 조각보 표지(100dvh) → 공간의 색과 빛 → 공간별 완결형 쇼룸 시트 → 호텔 인보이스 견적서로 이어 읽음
             case "7-Final-Dossier": {
@@ -2002,7 +2015,7 @@
             state.activeSpaceId = room.id;
             state.editingRoom = null;
             // 공간 추가 단계(종류·크기·같나요)는 뒤로 가기 목록에서 지움 → 중심 화면에서 ← 는 공간 추가 전 화면으로
-            const at = stepHistory.map(x => x.step).lastIndexOf("1.5-Room-Type");
+            const hs = stepHistory.map(x => x.step), at = Math.max(hs.lastIndexOf("1.5-Room-Type"), hs.lastIndexOf("1.9-Next-Room"));      // 268번: '다음 공간'에서 고른 공간도(크기 화면을 거쳤어도 ←로 옛 초안에 돌아가지 않게)
             if (at >= 0) stepHistory.length = at;
             if (stepHistory.length && stepHistory[stepHistory.length - 1].step === "1-Space") stepHistory.pop();
             goToStep("1-Space", false);
@@ -2666,8 +2679,16 @@
 
                 syncToV1MasterRooms();
             }
+            if (roomTarget && state.buildFlowId === roomTarget.id) {      // 268번(결정 #419): 짓기로 만든 공간을 마치면 공간 목록 대신 '다음 공간'으로 — 뒤에는 방금 마친 방(마무리 화면의 그림)
+                const fi = document.querySelector('#finRoom img');
+                state.nextSnap = fi && !fi.hidden && fi.src ? fi.src : (state.buildSnap || null);      // 블라인드처럼 마무리 화면 없이 마치면 다 지은 장면
+                state.nextFrom = roomTarget.name; state.nextFromId = roomTarget.id;
+                state.buildFlowId = null;      // 마친 공간을 나중에 다시 고쳐 마치면 공간 목록으로(지금처럼)
+                goToStep("1.9-Next-Room"); return;
+            }
             goToStep("1-Space");
         },
+        goStep: function(s) { goToStep(s); },      // 268번: '다음 공간' 화면의 조용한 단추(다른 공간 넣기 · 공간 목록 보기)
         goToCheckout: function() {
             const waitRoom = state.roomsCart.find(r => r.pickPending || r.altBuilding);      // 167번: 두 구성 중 아직 안 고른 공간 → 그 공간을 크게 보여 주고 멈춤
             if (waitRoom) {

@@ -3424,5 +3424,8 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 #buildBg.first { opacity: 1; filter: none; transition: none; }
 #trackCurationSection.bbg #v2Viewport { z-index: 1; }
 #trackCurationSection.bbg #v2Viewport > *, #trackCurationSection.bbg .ask-stage { background-color: transparent !important; }      /* 267번: 그 화면만 바탕을 비움 */
+/* 268번: '다음 공간' 화면 — 위 '○○ · 마쳤습니다' · 단추 안 폰에서 잰 크기 */
+.next-done { font-size: 17px; color: #7a6b5d; margin-bottom: 18px; text-align: center; }
+.next-size { display: block; font-size: 14px; color: #8a7b6c; margin-top: 6px; }
 
 
