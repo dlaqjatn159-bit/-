@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261310';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261311';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -418,14 +418,13 @@
   var WINS = [{ w: 2.4, sill: 0.1, top: 2.2, x: 0, wall: 0 }];      // 창들 — wall: 0 창 벽 · 1 오른쪽 벽 · 3 왼쪽 벽 / x: 그 벽 가운데에서 옆으로 떨어진 거리
   // 커튼박스는 벽마다 — 천장 속으로 파인 자리 (k: 0 없음 → 1 다 생김 · h: 파인 깊이 = 바닥에서 박스 안 천장까지 − 천장 높이 · d: 앞뒤 폭). 창이 있는 벽의 것만 쓰인다
   var BOXES = [0, 1, 2, 3].map(function () { return { on: false, k: 0, h: 0.12, d: 0.18, tk: 0, len: null, at: null }; }), NOBOX = { on: false, k: 0, h: 0, d: 0, len: null, at: null };      // len: 박스 길이 — null이면 벽 끝에서 벽 끝까지(대개 그렇다) · at: 박스 왼쪽 끝 자리(벽 가운데 기준) — null이면 그 벽 창들의 가운데. 방에서 박스를 끌어 옮긴다 (11-24 사장님: 신축 안방은 한쪽 벽에 붙은 박스가 흔하다 — 결정 #393)
-  var BLIND_BOX = 0.13;      // 블라인드(콤비 · 우드)는 윗상자 깊이가 11 cm 가까이 — 박스 앞뒤 폭이 13 cm는 되어야 박스 안에 단다 (11-24 사장님)
   // 블라인드 종류(17판, 결정 #404) — 방이 종류마다 다르게 그려진다. band: 콤비의 줄무늬(막힌 띠 · 비치는 띠) / slat: 살 간격 / tape: 살을 잇는 띠의 폭 / strong: 살 선을 또렷이 / own: 윗상자가 살과 같은 색
-  // cas: 윗상자 [높이, 앞뒤] · box: 커튼박스 안에 달 수 있는 박스 앞뒤 폭 — 콤비 · 우드의 13 cm만 사장님 말(11-24), 나머지 숫자는 모두 시안 값(정해진 것 아님 — 사장님께 들어야 한다)
+  // cas: 윗상자 [높이, 앞뒤] · box: 커튼박스 안에 달 수 있는 박스 앞뒤 폭 (270번) — 앞뒤는 제품 자체, box는 작업 공간까지 생각한 폭. 둘 다 사장님 실측(11-25, 글 #570 · 결정 #400). 높이는 시안 값
   var BK = {
-    combi: { n: '콤비', band: [0.075, 0.05], cas: [0.07, 0.08], box: BLIND_BOX },
-    roll:  { n: '롤', cas: [0.05, 0.055], box: 0.09 },
-    wood:  { n: '우드', slat: 0.05, tape: 0.038, strong: true, own: true, cas: [0.05, 0.06], box: BLIND_BOX },
-    alu:   { n: '알루미늄', slat: 0.025, own: true, cas: [0.03, 0.035], box: 0.06 }
+    combi: { n: '콤비', band: [0.075, 0.05], cas: [0.07, 0.09], box: 0.11 },
+    roll:  { n: '롤', cas: [0.05, 0.055], box: 0.07 },
+    wood:  { n: '우드', slat: 0.05, tape: 0.038, strong: true, own: true, cas: [0.05, 0.08], box: 0.10 },
+    alu:   { n: '알루미늄', slat: 0.025, own: true, cas: [0.03, 0.05], box: 0.08 }
   }, BKO = ['combi', 'roll', 'wood', 'alu'];
   // 살(18판) — w: 살 폭(살 간격의 배수, 닫히면 조금씩 겹친다) · th: 두께 · st: 걷어 올려 쌓일 때 한 장의 높이 · rail: 밑단 막대 높이 · back: 뒤 테두리 선 · ends: 살 끝 선. 모두 시안 값
   var SLAT = { wood: { w: 1.1, th: 0.003, st: 0.004, rail: 0.03, back: true, ends: true, soft: true, glow: [0.1, 0.035] }, alu: { w: 1.1, th: 0, st: 0.0012, rail: 0.02, back: false, ends: false, soft: false, glow: [0.12, 0.04] } };      // glow(19판): 살에 번지는 빛 [창 쪽 끝이 밝아지는 정도, 방 쪽 끝이 옅게 가라앉는 정도] · soft: 부드럽게 번지는지(우드) 또렷한 띠인지(알루미늄)
