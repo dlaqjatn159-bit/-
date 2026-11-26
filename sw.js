@@ -4,7 +4,7 @@
    - 외부 도구(Tailwind·아이콘·글꼴 등): 처음 한 번 받아 저장해 두고 이후엔 저장본 사용
    ========================================================================== */
 // 앱 버전: 바꾸면 탭이 새 서비스 워커를 받아 앱 파일을 다시 받아 둠 (CACHE 이름은 그대로 — 바꾸면 미리 받아 둔 사진까지 지워짐)
-const BUILD = '20261315';
+const BUILD = '20261316';
 const CACHE = 'redam-app-v1';
 const SCOPE = self.registration.scope;
 
@@ -71,8 +71,21 @@ self.addEventListener('fetch', event => {
     const url = new URL(req.url);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
     if (req.headers.has('authorization') || url.hostname === 'srv.redam.kr') return;      // 237번: 리담 서버(빈 시간·팩)는 늘 네트워크로 — 저장본이 굳지 않게
-    event.respondWith(url.origin === self.location.origin ? networkFirst(req) : cacheFirst(req));
+    event.respondWith(url.origin === self.location.origin ? (isPhoto(url) ? photoFirst(event, req) : networkFirst(req)) : cacheFirst(req));      // 275번: 사진은 저장본 먼저
 });
+
+// 275번: 사진(photos/ 아래 jpg · png · webp)은 저장본이 있으면 바로 보여 주고, 뒤에서 한 번 새로 받아 저장본만 바꿔 둠(같은 이름으로 사진을 바꾸면 다음에 볼 때부터 새 사진)
+//   전엔 미리 받아 둔 사진도 볼 때마다 네트워크를 먼저 기다림(최대 4초) — 비침 고르기 창밖 사진(895 KB)이 늦게 뜨던 까닭(AI 할 일 #86)
+const photoFresh = new Set();      // 이번에 뒤에서 새로 받은 사진(같은 사진을 거듭 받지 않게)
+function isPhoto(url) { return url.pathname.indexOf('/photos/') >= 0 && /\.(jpe?g|png|webp)$/i.test(url.pathname); }
+async function photoFirst(event, req) {
+    const cache = await caches.open(CACHE);
+    const hit = await cache.match(req);
+    const get = () => fetch(req).then(res => { if (res && res.ok) cache.put(req, res.clone()).catch(() => {}); return res; });
+    if (!hit) return get().catch(() => Response.error());
+    if (!photoFresh.has(req.url)) { photoFresh.add(req.url); event.waitUntil(get().catch(() => {})); }
+    return hit;
+}
 
 async function networkFirst(req) {
     const cache = await caches.open(CACHE);
