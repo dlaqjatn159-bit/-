@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261314';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261315';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.

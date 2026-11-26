@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261314';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261315';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -528,8 +528,9 @@
         const r = todo.find(x => x.altBuilding) || todo.find(x => x.id === state.buildFlowId && x.id === state.pickedSpaceId) || todo.find(begun) || todo.find(x => x.id === state.pickedSpaceId) || todo[0];      // 167번: 만들던 둘째 줄 먼저 · 267번: 방금 지은 공간은 끝까지 먼저(결정 #419 한 공간씩 — 공간 목록에서 다른 공간을 누르면 그 공간부터) · 178번: 누른 공간은 손님이 직접 누른 것만(새로 만든 공간 아님)
         if (!askedRoom(r)) return { kind: 'ask', room: r };
         if (!r.compOk || !r.planComp) return { kind: 'comp', room: r };      // 138번: 공간마다 구성 사진 화면
-        // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로)
-        if ((planHas(r, 'drape') || planHas(r, 'blind')) && !(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };      // 197번: 속지만 공간은 느낌을 묻지 않음(속지 추천은 느낌 답을 안 씀)
+        // 123번: 커튼 느낌 · 속지 질감 · 겉지 질감(162번 순서) · 블라인드 종류는 공간마다, 그 공간 원단 고르기 바로 앞에서 (빈 화면으로 새로) · 274번: 블라인드 종류만 구성 바로 다음(아래 줄)
+        if (planHas(r, 'blind') && !r.blindWant) return { kind: 'blind', room: r };      // 274번: 블라인드 종류를 느낌보다 먼저 — 앱이 빛 가림 · 바깥 시선 답으로 하나를 권함(결정 #424)
+        if ((planHas(r, 'drape') || (planHas(r, 'blind') && r.blindWant !== 'wood' && r.blindWant !== 'alu')) && !(r.ownTaste && r.ownPres)) return { kind: 'pres', room: r };      // 197번: 속지만 공간은 느낌을 묻지 않음(속지 추천은 느낌 답을 안 씀) · 274번: 우드 · 알루미늄 블라인드만인 공간도 묻지 않음(결정 #424)
         if (planHas(r, 'sheer') && !r.sheerFeel) return { kind: 'sheer', room: r };      // 162번: 속지 결 먼저 (원단도 속지 → 겉지 순)
         if (planHas(r, 'drape') && !(r.ownTaste && r.ownTex) && !(r.colorFirst && r.colorFirst.kind === 'drape')) return { kind: 'tex', room: r };      // 228번: 색으로 고른 겉지는 결을 묻지 않음(원단이 이미 정해짐)
         if (planHas(r, 'blind') && !r.blindWant) return { kind: 'blind', room: r };
@@ -693,6 +694,16 @@
     function hasBlindKindInPool(want) {
         if (!want || want === 'any') return true;
         return getLiveCategoryPool('블라인드').some(f => typeof blindKind === 'function' && blindKind(f) === want);
+    }
+    // 274번: 블라인드 종류를 앱이 하나 권함(결정 #424) — 빛 가림 · 바깥 시선 답과 지금 손님 원단 목록으로. 목록에 없는 종류는 권하지 않음. 우드 · 알루미늄은 권하지 않음(손님이 고르면 그대로)
+    function blindAdvice(ed) {
+        if (!ed || !ed.lightBlock) return null;
+        const full = k => getLiveCategoryPool('블라인드').some(f => blindKind(f) === k && typeof blindLight === 'function' && blindLight(f) === 'full');
+        if (ed.lightBlock === 'dark' && full('roll')) return { kind: 'roll', why: '줄 사이 틈이 없어 빛을 가장 많이 막습니다.' };
+        if (ed.lightBlock === 'dark' && full('combi')) return { kind: 'combi', why: '암막 원단이라 겹치면 빛을 거의 막습니다.' };
+        if (!hasBlindKindInPool('combi')) return hasBlindKindInPool('roll') ? { kind: 'roll', why: '한 장으로 내려와 창이 깔끔해 보입니다.' } : null;
+        if (ed.privacy === 'high') return { kind: 'combi', why: '겹치면 안이 가려지고, 엇갈리면 빛이 듭니다.' };
+        return { kind: 'combi', why: '엇갈리면 빛이 들고, 겹치면 가려집니다.' };
     }
     // 색 잇기를 물을 수 있는 공간: 벽·바닥을 둘 다 잰 색이 있음(카드로만 고른 공간은 아님). 블라인드도 물음 (92번: 블라인드 색값 다 들어 있음)
     // 벽·바닥 모두 잰 색값(밝기·붉은기·노란기)이 있는지 (92번)
@@ -1567,11 +1578,12 @@
             // [블라인드 종류 고르기: 블라인드 구성에서 한 번 (38-2)]
             case "2-Base-BlindKind":
                 html += '<div class="bookmark-stage">';
+                const bkAdv = blindAdvice(state.editingRoom);      // 274번: 권하는 종류 하나(카드 이름 아래 '권합니다' + 까닭 한 줄)
                 html += stepHead(state.editingRoom && state.editingRoom.flow ? `${state.editingRoom.name}에는 어떤 블라인드가 좋으실까요?` : '어떤 블라인드가 좋으실까요?');      // 123번
                 html += `<button type="button" class="step-skip${was('blindWant', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectBlindKind('any')">잘 모르겠어요</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("콤비", "", "", blindBg('blind_combi', SOLID_TEXTURES.l1), function() { window.concierge.selectBlindKind('combi'); }, 'vdesc' + was('blindWant', 'combi'));
-                html += renderBookmarkCard("롤", "", "", blindBg('blind_roll', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectBlindKind('roll'); }, 'vdesc' + was('blindWant', 'roll'));
+                html += renderBookmarkCard("콤비", bkAdv && bkAdv.kind === 'combi' ? '권합니다' : "", "", blindBg('blind_combi', SOLID_TEXTURES.l1), function() { window.concierge.selectBlindKind('combi'); }, 'vdesc' + was('blindWant', 'combi'), bkAdv && bkAdv.kind === 'combi' ? bkAdv.why : '');      // 274번
+                html += renderBookmarkCard("롤", bkAdv && bkAdv.kind === 'roll' ? '권합니다' : "", "", blindBg('blind_roll', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectBlindKind('roll'); }, 'vdesc' + was('blindWant', 'roll'), bkAdv && bkAdv.kind === 'roll' ? bkAdv.why : '');      // 274번
                 html += renderBookmarkCard("우드", "", "", blindBg('blind_wood', SOLID_TEXTURES.oak), function() { window.concierge.selectBlindKind('wood'); }, 'vdesc' + was('blindWant', 'wood'));
                 html += renderBookmarkCard("알루미늄", "", "", blindBg('blind_alu', SOLID_TEXTURES.tile), function() { window.concierge.selectBlindKind('alu'); }, 'vdesc' + was('blindWant', 'alu'));
                 html += '</div></div>';
