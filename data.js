@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261311';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261312';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -751,8 +751,8 @@ function calculateFabricMatchScore(fabric, room, category) {
 // 173번: 고른 블라인드 종류(콤비·롤)의 원단만 — 프린트는 두 종류 어디에나(38-2 점수 규칙과 같게). 그 종류가 하나도 없으면 거르지 않음
 function blindKindPool(pool, room, category) {
     const want = room && room.blindWant;
-    if (category !== '블라인드' || (want !== 'combi' && want !== 'roll') || !Array.isArray(pool)) return pool;
-    const out = pool.filter(f => { const k = blindKind(f); return k === want || k === 'print'; });
+    if (category !== '블라인드' || !BLIND_KIND_LABELS[want] || want === 'print' || !Array.isArray(pool)) return pool;      // 271번: 우드 · 알루미늄도 그 종류만(전엔 콤비 · 롤만 걸러, 우드를 골라도 콤비 · 롤이 섞여 나옴)
+    const out = pool.filter(f => { const k = blindKind(f); return k === want || (k === 'print' && (want === 'combi' || want === 'roll')); });      // 271번: 프린트는 콤비 · 롤 쪽에만(38-2 점수 규칙과 같게)
     return out.length ? out : pool;
 }
 
