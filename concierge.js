@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261313';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261314';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1237,7 +1237,7 @@
         const base = state.roomsCart.find(r => r.id === state.editingRoomId) || {};
         const room = Object.assign({}, base, { name: ed.name || base.name, roomType: ed.roomType || base.roomType, width: Number(ed.width) || base.width, height: Number(ed.height) || base.height,
             measuredColor: ed.measuredColor || base.measuredColor || null, windowDir: ed.windowDir || base.windowDir, privacy: ed.privacy || base.privacy || null, lightBlock: ed.lightBlock || base.lightBlock || null });
-        const picked = (ed.items || []).filter(i => i.fabricId && (i.presetType === 'drape' || i.presetType === 'sheer'));
+        const picked = (ed.items || []).filter(i => i.fabricId && (i.presetType === 'drape' || i.presetType === 'sheer' || i.presetType === 'blind'));      // 273번: 블라인드도 방 그림 · 손님용 입체 방에
         if (!picked.length) return null;
         const items = picked.map(i => ({ presetType: i.presetType, fabricId: i.fabricId, colorName: i.colorName, width: room.width, height: room.height, leadBand: i.presetType === 'sheer' && !!ed.leadBand }));
         const cands = k => { const it = picked.find(i => i.presetType === k); return it ? cz.colorPick.candsOf(it) : null; };
@@ -1723,7 +1723,7 @@
                 html += '<div class="msr-stage msr-finish' + (band ? ' cp-has-band' : '') + (band.indexOf('cp-fin-wide') >= 0 ? ' cp-fin-wide-on' : '') + '">' + progHtml();      // 260번: 공간 그림이 든 넓은 띠
                 // 옵션은 처음부터 들어가 있음 → "이렇게 마무리" + 줄마다 빼기/넣기, 밑단은 시접/리드밴드 (139번)
                 html += '<h2 class="msr-title font-serif-kr">이렇게 마무리해 드립니다</h2>';
-                html += finishOptsHtml(curRoom);
+                if (curRoom.items.some(i => i.presetType === 'sheer' || i.presetType === 'drape')) html += finishOptsHtml(curRoom);      // 273번: 블라인드만이면 옵션 줄이 없음(빈 목록 안 그림)
                 if (!band) html += `<button type="button" class="msr-add font-serif-kr" onclick="window.concierge.commitRoomCart()">${curRoom.name} 마치기</button>`;
                 html += '</div>' + band;
                 break;
@@ -2506,7 +2506,7 @@
                 state.currentItemIndex++;
                 goToStep("3.5-Bridge", false);
             } else if (state.editingRoom.sizeKnown) {
-                if (state.editingRoom.items.some(i => i.presetType === "sheer" || i.presetType === "drape")) goToStep("6-Finish");
+                if (state.editingRoom.items.some(i => i.presetType === "sheer" || i.presetType === "drape" || i.presetType === "blind")) goToStep("6-Finish");      // 273번: 블라인드도 마무리로 — 고른 블라인드가 걸린 방을 보고 '○○ 마치기'로 넘어감(결정 #426)
                 else window.concierge.commitRoomCart();
             } else {
                 goToStep("6-Measure");
@@ -2572,8 +2572,8 @@
                 state.currentItemIndex++;
                 goToStep("3.5-Bridge", false);
             } else if (state.editingRoom.sizeKnown) {
-                // 크기는 공간 추가 때 적었음 → 마무리(옵션). 블라인드만이면 고를 옵션이 없으니 바로 마침
-                if (state.editingRoom.items.some(i => i.presetType === "sheer" || i.presetType === "drape")) goToStep("6-Finish");
+                // 크기는 공간 추가 때 적었음 → 마무리(옵션). 273번: 블라인드만이어도 마무리(옵션 줄 없이 방 그림 · 마치기) — 전엔 바로 마침
+                if (state.editingRoom.items.some(i => i.presetType === "sheer" || i.presetType === "drape" || i.presetType === "blind")) goToStep("6-Finish");      // 273번: 블라인드도 마무리로 — 고른 블라인드가 걸린 방을 보고 '○○ 마치기'로 넘어감(결정 #426)
                 else window.concierge.commitRoomCart();
             } else {
                 goToStep("6-Measure");
