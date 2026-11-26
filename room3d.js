@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261312';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261313';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -471,7 +471,7 @@
   // ───── 크기가 바뀔 때 — 뚝 바뀌지 않고 부드럽게 옮겨 간다 ─────
   var GT = null, glideId = 0;      // GT: 옮겨 가는 중이면 닿을 크기
   var WMIN = 0.2;      // 창은 가로 · 세로 20 cm부터 — 주방 창(90 × 60)처럼 작은 창도 있다 (11-24 사장님)
-  var RMAX = [15, 12], POKMAX = 30;      // 큰 거실은 가로 6 ~ 10 m를 넘기도 한다 (11-24 사장님)
+  var RMAX = [15, 12, 6], POKMAX = 30;      // 큰 거실은 가로 6 ~ 10 m를 넘기도 한다 (11-24 사장님) · 272번: 셋째는 천장 높이 — 층고 높은 공간 4 · 6 m도 그대로(결정 #416, 전엔 3.0 m에서 잘림)
   var D0 = 11;      // [가로, 세로, 높이, 벽 넷의 커튼박스(깊이 · 앞뒤 폭), 창마다 넷…]
   function dims() { var a = [R.W, R.D, R.H]; BOXES.forEach(function (b) { a.push(b.h, b.d); }); WINS.forEach(function (w) { a.push(w.w, w.sill, w.top, w.x); }); return a; }
   function setDims(a) { R.W = a[0]; R.D = a[1]; R.H = a[2]; BOXES.forEach(function (b, i) { b.h = a[3 + i * 2]; b.d = a[4 + i * 2]; }); WINS.forEach(function (w, i) { var o = D0 + i * 4; if (a.length < o + 4) return; w.w = a[o]; w.sill = a[o + 1]; w.top = a[o + 2]; w.x = a[o + 3]; }); }
@@ -1621,7 +1621,7 @@
   }
   function applyNum() {
     var e = NUM.ent, old, list, r, src;
-    if (NUM.key === 'room') { R.W = e[0] = clamp(e[0], 1.5, RMAX[0]); R.D = e[1] = clamp(e[1], 1.0, RMAX[1]); R.H = e[2] = clamp(e[2], 2.1, 3.0); }
+    if (NUM.key === 'room') { R.W = e[0] = clamp(e[0], 1.5, RMAX[0]); R.D = e[1] = clamp(e[1], 1.0, RMAX[1]); R.H = e[2] = clamp(e[2], 2.1, RMAX[2]); }      // 272번: 천장 높이 2.1 ~ 6 m
     else if (NUM.key === 'box') NUM.walls.forEach(function (wl, rr) {      // 바닥에서 커튼박스까지 − 바닥에서 천장까지 = 박스가 파인 깊이
       var b = BOXES[wl], on = NUM.pick[rr] === 'y';
       if (on) { var L = wlen(wl); b.h = clamp(e[rr * 3] - R.H, 0.03, 0.4); b.d = clamp(e[rr * 3 + 1], 0.06, 0.4); b.len = e[rr * 3 + 2] >= L - 0.005 ? null : clamp(e[rr * 3 + 2], 0.3, L); }      // 벽 길이와 같으면 벽 끝까지(null)
@@ -2593,9 +2593,9 @@
       W = (num(sp && sp.w) || num(full && full.w) || num(r.spaceWidth) || num(r.width) || 420) / 100;
       D = num(sp && sp.d) ? sp.d / 100 : type === '베란다' ? 1.3 : 3.6;      // 세로(깊이)는 앱에 없는 값 — 기본 3.6 m(베란다 1.3 m), 측정에서 확인
       hh = num(sp && sp.h) || num(full && full.h) || num(r.spaceHeight);
-      H = hh && hh >= 210 && hh <= 300 ? hh / 100 : 2.35;      // 높이가 천장 높이로 보이지 않으면 2.35 m
+      H = hh && hh >= 210 && hh <= 600 ? hh / 100 : 2.35;      // 높이가 천장 높이로 보이지 않으면 2.35 m · 272번: 600까지(입체 방 RMAX와 같게)
     }
-    W = lim(W, 1.5, 15); D = lim(D, 1.0, 12); H = lim(H, 2.1, 3.0);
+    W = lim(W, 1.5, 15); D = lim(D, 1.0, 12); H = lim(H, 2.1, 6);      // 272번: 천장 6 m까지(입체 방 RMAX와 같게 — 여기는 엔진 밖이라 숫자로)
     // 창(m) — [가로, 세로, 바닥에서, 짝]. 폰 실측 → 앱의 블라인드 나눔(장마다) → 앱의 크기 한 장
     var ws = (m && Array.isArray(m.창) ? m.창 : []).filter(function (w) { return w && num(w.w) && num(w.h); }), wins = [], winsOk = false, c0 = items[0] || {};
     if (ws.length) { wins = ws.map(function (w) { return [w.w / 100, w.h / 100, zero(w.sill) != null ? w.sill / 100 : null, w.n || null]; }); winsOk = ws.every(function (w) { return zero(w.sill) != null; }); }

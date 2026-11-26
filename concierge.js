@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261312';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261313';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -1087,13 +1087,13 @@
         return R3.open({ room, items: [], measure: pm || null, fabricOf: () => null, build: true, onClose: res => builtRoom3D(res, pm) }) !== false;
     }
     // 265번: 입체 방에서 지은 공간의 커튼 벽 — 첫 창이 난 벽(옆 벽이면 깊이가 그 벽 길이) · 그 벽의 박스 · 그 벽 창 합 (새 창 검토)
-    //  입체 방이 그리느라 바꾼 값(천장 210~300 밖, 천장보다 낮거나 너무 깊은 박스)은 폰 값 그대로 — 입체 방에서 손으로 고친 값만 견적으로
+    //  입체 방이 그리느라 바꾼 값(천장 210~600 밖 — 272번, 천장보다 낮거나 너무 깊은 박스)은 폰 값 그대로 — 입체 방에서 손으로 고친 값만 견적으로
     function builtWall(b, pm) {
         const ws = b.wins || [], cw = ws[0] ? (ws[0].wall || 0) : 0, side = cw === 1 || cw === 3;
         const P = pm || {}, ps = P.공간 || {}, pb = (P.박스 && typeof P.박스 === 'object') ? P.박스 : null;
         const near = (a, c) => c > 0 && Math.abs(a - c) <= 1;
         const ph = cmInt(ps.h), rh = Number(b.room && b.room.h) || 0;
-        const h = ph > 0 && (near(rh, ph) || ph < 210 || ph > 300) ? ph : rh;      // 입체 방 천장 한계(210~300)에 잘린 값이면 폰 값
+        const h = ph > 0 && (near(rh, ph) || ph < 210 || ph > 600) ? ph : rh;      // 입체 방 천장 한계(210~600, 272번)에 잘린 값이면 폰 값
         let w = Number(b.room && (side ? b.room.d : b.room.w)) || 0;
         if (!side && near(w, cmInt(ps.w))) w = cmInt(ps.w);
         const bx = (b.box || []).find(x => x && x.wall === cw && x.on !== false);
