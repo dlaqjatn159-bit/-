@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -183,7 +183,7 @@ function sizeOutOfRange(v) { const n = Number(v); return !(n >= SIZE_MIN_CM && n
 // 견적란 크기 칸 모양: 범위 밖 = 빨간 테두리(size-out), 안 잰 처음 값 = 흐리게(size-unset)
 function sizeClass(c, key) { return sizeOutOfRange(c[key]) ? ' size-out' : (c.sizeUnset ? ' size-unset' : ''); }
 function sizeInputMark(el) { el.classList.remove('size-unset'); el.classList.toggle('size-out', sizeOutOfRange(el.value)); }
-function sizeWarnToast(v, what) { if (sizeOutOfRange(v)) showToast(`${what} ${Number(v) || 0}cm — ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖입니다. 맞게 재셨는지 확인해 주세요.`, 'error'); }
+function sizeWarnToast(v, what) { if (sizeOutOfRange(v)) showToast(`${what} ${Number(v) || 0}cm — ${SIZE_MIN_CM}~${SIZE_MAX_CM}cm 밖입니다. 실측이 맞는지 확인해 주세요.`, 'error'); }
 // 216번: 블라인드 여러 장 그림 막대 — 보기만(누르는 곳 아님). 전체 폭 위에 장마다 칸 · 손잡이 쪽에 점 · 남는 폭(창틀·기둥)은 빗금 · 넘치면 붉은 테두리
 function paneBarHtml(c) {
     const W = Number(c && c.width) || 0;
@@ -343,7 +343,7 @@ function generateDoc(type) {
 
     setTimeout(() => {
         if (type === 'factory') {
-            textarea.value = `[공장 통합 발주서]\n• 발주일자: ${dateStr}\n• 현장/고객명: ${custName} 님\n----------------------------------------\n\n${buildRoomSummaries(true)}\n\n----------------------------------------\n※ 모든 커튼 세로 제작 치수는 기구 차감 및 바닥 간격 조정이 반영된 최종 완제품 치수임.`;
+            textarea.value = `[공장 통합 발주서]\n• 발주일자: ${dateStr}\n• 현장/고객명: ${custName} 님\n----------------------------------------\n\n${buildRoomSummaries(true)}\n\n----------------------------------------\n※ 커튼 세로 제작 치수는 모두 기구 차감과 바닥 간격 조정을 반영한 최종 완제품 치수입니다.`;
         } else if (type === 'kakao') {
             // 손님에게 보내는 글은 견적서의 [카톡 글 복사]와 같은 글 (62번): 책자 이름·공장용 말 대신 색 이름 · 재질
             textarea.value = ticketKakaoText();

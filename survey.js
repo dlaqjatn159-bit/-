@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['survey.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // survey.js — 직원 화면 상담란(설문, 115~116번): 우리 집 취향·공간별 생활 답·견적란 자동 채움·세 방향 바꾸기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -467,7 +467,7 @@ function renderSurvey() {
 
     // 120번: 포인트는 공간마다(공간 카드의 "포인트" 줄). 집 줄의 "포인트가 되게"는 공간이 하나뿐일 때만(이미 골라 둔 집은 그대로 보임)
     const housePointBtn = rooms.length <= 1 || houseTaste.pres === 'point'
-        ? `<button type="button" class="survey-opt ${houseTaste.pres === 'point' ? 'on' : ''}" onclick="setHouseTaste('pres', 'point')">포인트가 되게</button>` : '';
+        ? `<button type="button" class="survey-opt ${houseTaste.pres === 'point' ? 'on' : ''}" onclick="setHouseTaste('pres', 'point')">포인트 있게</button>` : '';
 
     // 199번: 손님 화면처럼 들어가는 것만 — 겉지·블라인드가 있으면 커튼 느낌, 겉지가 있으면 겉지 결, 속지가 있으면 속지 결.
     //        품목이 없는 공간이 있거나(구성 전) 공간이 없으면 모두 보임. 숨겨도 답은 지우지 않음
@@ -482,19 +482,19 @@ function renderSurvey() {
         ${houseShow('pres') ? `<div class="survey-row">
             <div class="k">커튼은</div>
             <div class="survey-opts">
-                <button type="button" class="survey-opt ${houseTaste.pres === 'calm' ? 'on' : ''}" onclick="setHouseTaste('pres', 'calm')">조용히 스며들게</button>
-                <button type="button" class="survey-opt ${houseTaste.pres === 'weight' ? 'on' : ''}" onclick="setHouseTaste('pres', 'weight')">차분히 무게감 있게</button>
+                <button type="button" class="survey-opt ${houseTaste.pres === 'calm' ? 'on' : ''}" onclick="setHouseTaste('pres', 'calm')">넓어 보이게</button>
+                <button type="button" class="survey-opt ${houseTaste.pres === 'weight' ? 'on' : ''}" onclick="setHouseTaste('pres', 'weight')">차분하게</button>
                 ${housePointBtn}
             </div>
         </div>` : ''}
         ${houseShow('drape') ? `<div class="survey-row">
-            <div class="k">겉지 결</div>
+            <div class="k">겉지 질감</div>
             <div class="survey-opts">
                 <button type="button" class="survey-opt tex ${houseTaste.tex === 'smooth' ? 'on' : ''}" onclick="setHouseTaste('tex', 'smooth')">
                     ${texImgs.smooth ? `<img src="${texImgs.smooth}" alt="">` : ''}<span>매끈한</span>
                 </button>
                 <button type="button" class="survey-opt tex ${houseTaste.tex === 'texture' ? 'on' : ''}" onclick="setHouseTaste('tex', 'texture')">
-                    ${texImgs.texture ? `<img src="${texImgs.texture}" alt="">` : ''}<span>결 있는</span>
+                    ${texImgs.texture ? `<img src="${texImgs.texture}" alt="">` : ''}<span>짜임이 보이는</span>
                 </button>
                 <button type="button" class="survey-opt tex ${houseTaste.tex === 'fluffy' ? 'on' : ''}" onclick="setHouseTaste('tex', 'fluffy')">
                     ${texImgs.fluffy ? `<img src="${texImgs.fluffy}" alt="">` : ''}<span>보송한</span>
@@ -502,10 +502,10 @@ function renderSurvey() {
             </div>
         </div>` : ''}
         ${houseShow('sheer') ? `<div class="survey-row">
-            <div class="k">속지 결</div>
+            <div class="k">속지 질감</div>
             <div class="survey-opts">
                 <button type="button" class="survey-opt ${houseTaste.sheer === 'smooth' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'smooth')">매끈하게</button>
-                <button type="button" class="survey-opt ${houseTaste.sheer === 'texture' || houseTaste.sheer === 'thick' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'texture')">결 있게</button>
+                <button type="button" class="survey-opt ${houseTaste.sheer === 'texture' || houseTaste.sheer === 'thick' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'texture')">짜임이 보이게</button>
                 <button type="button" class="survey-opt ${houseTaste.sheer === 'linen' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'linen')">린넨으로</button>
                 <button type="button" class="survey-opt dim ${houseTaste.sheer === 'unknown' ? 'on' : ''}" onclick="setHouseTaste('sheer', 'unknown')">잘 모르겠어요</button>
             </div>
@@ -523,7 +523,7 @@ function renderSurvey() {
         const sizeUnsetRoom = !room.width && room.curtains.length > 0 && room.curtains.every(c => c.sizeUnset);      // 163번: 아직 안 잰 공간
         // 167번: 손님이 고르지 않은 둘째 줄 후보 (견적란·견적서엔 안 나옴)
         const czc = window.conciergeCore || {}, alt = room.altLine;
-        const altNames = alt ? (alt.curtains || []).map(c => (typeof ticketBookName === 'function') ? ticketBookName(c) : (c.label || '')).filter(Boolean).join(' · ') : '';
+        const altNames = alt ? (alt.curtains || []).map(c => (typeof ticketBookName === 'function') ? (typeof ticketBookNameStaff === 'function' ? ticketBookNameStaff : ticketBookName)(c) : (c.label || '')).filter(Boolean).join(' · ') : '';
         const altComp = alt && czc.COMP_NAMES && czc.roomComp ? (czc.COMP_NAMES[czc.roomComp(alt)] || '') : '';
         const altHtml = alt ? `<p class="survey-alt">다른 후보: ${esc([altComp, altNames].filter(Boolean).join(' · '))} (${room.pickPending ? '고르기 전' : '안 고름'})</p>` : '';
         // 벽·바닥·가구 색 묶음 (벽 바닥 하나로 묶기)
@@ -558,8 +558,8 @@ function renderSurvey() {
             `;
         } else {
             colorBundleHtml = `
-                <button type="button" class="survey-empty-chip" onclick="RoomColor.open(${room.id})" title="벽과 바닥 색을 함께 잽니다">
-                    <i class="fa-solid fa-camera text-xs"></i><span>방 색 재기 (벽·바닥)</span>
+                <button type="button" class="survey-empty-chip" onclick="RoomColor.open(${room.id})" title="벽과 바닥 색을 함께 측정합니다">
+                    <i class="fa-solid fa-camera text-xs"></i><span>방 색 측정 (벽·바닥)</span>
                 </button>
             `;
         }
@@ -650,10 +650,10 @@ function renderSurvey() {
                 </div>
                 ${room.colorFirst && room.colorFirst.name ? `<div class="survey-row"><!-- 228번: 손님이 색으로 고른 공간 --><div class="k">색으로 고름</div><div class="survey-opts"><span class="survey-opt on">${String(room.colorFirst.name).replace(/[<>&"]/g, '')}</span></div></div>` : ''}
 
-                ${!roomKnown || roomGroups.has('sheer') ? `<div class="survey-row"><div class="k">속지 결</div>
+                ${!roomKnown || roomGroups.has('sheer') ? `<div class="survey-row"><div class="k">속지 질감</div>
                     <div class="survey-opts">
                         <button type="button" class="survey-opt ${room.sheerFeel === 'smooth' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'smooth')">매끈하게</button>
-                        <button type="button" class="survey-opt ${room.sheerFeel === 'textured' || room.sheerFeel === 'cozy' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'textured')">결 있게</button>
+                        <button type="button" class="survey-opt ${room.sheerFeel === 'textured' || room.sheerFeel === 'cozy' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'textured')">짜임이 보이게</button>
                         <button type="button" class="survey-opt ${room.sheerFeel === 'linen' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'linen')">린넨으로</button>
                         <button type="button" class="survey-opt dim ${room.sheerFeel === 'any' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'sheerFeel', 'any')">잘 모르겠어요</button>
                     </div>
@@ -674,15 +674,15 @@ function renderSurvey() {
                 <div class="survey-own ${ownTaste ? 'on' : ''}">
                     ${ownShowPres ? `<div class="survey-row"><div class="k">커튼은</div>
                         <div class="survey-opts">
-                            <button type="button" class="survey-opt ${ownPres === 'calm' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'calm')">조용히 스며들게</button>
-                            <button type="button" class="survey-opt ${ownPres === 'weight' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'weight')">차분히 무게감 있게</button>
-                            <button type="button" class="survey-opt ${ownPres === 'point' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'point')">포인트가 되게</button>
+                            <button type="button" class="survey-opt ${ownPres === 'calm' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'calm')">넓어 보이게</button>
+                            <button type="button" class="survey-opt ${ownPres === 'weight' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'weight')">차분하게</button>
+                            <button type="button" class="survey-opt ${ownPres === 'point' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownPres', 'point')">포인트 있게</button>
                         </div>
                     </div>` : ''}
-                    ${ownShowTex ? `<div class="survey-row"><div class="k">겉지 결</div>
+                    ${ownShowTex ? `<div class="survey-row"><div class="k">겉지 질감</div>
                         <div class="survey-opts">
                             <button type="button" class="survey-opt ${ownTex === 'smooth' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'smooth')">매끈한</button>
-                            <button type="button" class="survey-opt ${ownTex === 'texture' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'texture')">결 있는</button>
+                            <button type="button" class="survey-opt ${ownTex === 'texture' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'texture')">짜임이 보이는</button>
                             <button type="button" class="survey-opt ${ownTex === 'fluffy' ? 'on' : ''}" onclick="setRoomSurveyField(${room.id}, 'ownTex', 'fluffy')">보송한</button>
                         </div>
                     </div>` : ''}

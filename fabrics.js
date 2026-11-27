@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabrics.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabrics.js — 직원 화면 › 원단: 원단 분류(톤·분위기) 편집·원단 색상 관리·되돌리기/중복 정리 버튼·원단 사진 확인·기기 사진 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -9,7 +9,7 @@ const TRAIT_FRAMES = [
     ['두 색', '가까이서는 ○○과 ○○ 실이 섞여 보이고, 멀리서는 ○○로 어우러집니다.'],
     ['점', '가까이서는 ○○빛 실이 드문드문 보이고, 멀리서는 ○○로 보입니다.'],
     ['대비', '○○ 바탕에 ○○ 실이 드문드문 보여 린넨 느낌이 납니다.'],
-    ['질감', '겉이 올록볼록해 빛에 따라 결이 살아납니다.']
+    ['질감', '겉이 올록볼록해 빛에 따라 질감이 살아납니다.']
 ];
 // 틀 버튼: 칸이 비어 있을 때만 틀을 넣고 커서를 둠 (저장은 칸 밖을 누를 때 onchange)
 function fillTraitFrame(btn, i) {
@@ -233,8 +233,8 @@ function handleColorFileUpload(event) {
             const more = res.unlisted.length > 4 ? ` 외 ${res.unlisted.length - 4}개` : '';
             showToast(
                 `색상 ${res.colors}개 (원단 ${res.fabrics}개)를 불러왔습니다.\n` +
-                `⚠️ 현재 원단 DB에 없는 품목 (${res.unlisted.length}개): ${sample}${more}\n` +
-                `(원단 DB에 단가표를 등록하시면 자동으로 색상이 반영됩니다)`,
+                `⚠️ 지금 원단 목록에 없는 품목 (${res.unlisted.length}개): ${sample}${more}\n` +
+                `(단가표를 원단 목록에 넣으면 색상도 함께 들어갑니다)`,
                 'warning'
             );
         } else {
@@ -381,7 +381,7 @@ function renderDevicePhotos() {
     });
     const num = s => /^\d+$/.test(s) ? Number(s) : Infinity;
     const chip = (key, label) => `<button type="button" class="dev-photo-chip" title="이 사진 지우기" onclick="removeDevicePhoto('${esc(key)}')">${esc(label)}<i aria-hidden="true">×</i></button>`;
-    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진', comp: '창 구성 사진', blind: '블라인드 종류 사진', tex: '겉지 결 사진', hung: '블라인드 걸린 사진' };
+    const SCENE_LABEL = { mood: '분위기 사진', feel: '속지 느낌 사진', comp: '창 구성 사진', blind: '블라인드 종류 사진', tex: '겉지 질감 사진', hung: '블라인드 걸린 사진' };
     const sceneRows = Object.keys(scenes).filter(k => scenes[k].length).map(k => {
         const order = SCENE_PHOTOS[k] || [];      // 217번: 걸린 사진(hung)은 정해진 이름이 없어 이름순, 칩 글자는 "콤비_테라_암막 RR-317_닫힘"
         const nm = key => key.split('/')[1];

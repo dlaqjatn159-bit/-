@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -54,7 +54,7 @@ function renderDbTable() {
             <tr class="hover:bg-slate-50 transition text-xs">
                 <td class="p-2.5 font-bold text-amber-900">
                     <div class="text-[10px] text-slate-400 font-normal">${f.book}${pv && pv.supplier ? ` · ${pv.supplier}` : ''} [${f.id}]</div>
-                    ${typeof redamNo === 'function' ? `<div class="text-[10px] font-normal text-stone-500">${redamNo(f.id) ? `리담 <b class="font-mono text-amber-900">${redamNo(f.id)}</b> · 견본 ${redamSamplePlace(f.id) || '-'}` : (getFabricColors(f.id).length ? '리담 번호 없음(갈래 모름)' : '리담 번호: 색을 넣으면 붙음')} <input type="text" value="${(redamNoStore().pages[f.id] || '').replace(/"/g, '&quot;')}" placeholder="쪽" maxlength="9" onchange="setRedamPage('${f.id.replace(/'/g, "\\'")}', this.value); renderDbTable()" class="w-12 ml-1 px-1 py-0.5 border border-slate-300 rounded text-[10px]"></div>` : ''}
+                    ${typeof redamNo === 'function' ? `<div class="text-[10px] font-normal text-stone-500">${redamNo(f.id) ? `리담 <b class="font-mono text-amber-900">${redamNo(f.id)}</b> · 견본 ${redamSamplePlace(f.id) || '-'}` : (getFabricColors(f.id).length ? '리담 번호 없음(분류 모름)' : '리담 번호: 색을 넣으면 붙음')} <input type="text" value="${(redamNoStore().pages[f.id] || '').replace(/"/g, '&quot;')}" placeholder="쪽" maxlength="9" onchange="setRedamPage('${f.id.replace(/'/g, "\\'")}', this.value); renderDbTable()" class="w-12 ml-1 px-1 py-0.5 border border-slate-300 rounded text-[10px]"></div>` : ''}
                     <div class="text-slate-800 font-semibold">${f.name}${f.engName ? ` <span class="text-stone-400 font-mono text-[11px] font-normal">[${f.engName}]</span>` : ''}</div>
                 </td>
                 <td class="p-2.5 font-mono">${calcBadge}</td>
@@ -327,7 +327,7 @@ function renderOptionPriceSettings() {
     // 255번: 겉지 높이 원가(결정 #343) — 숫자는 이 기기 · 비공개 팩(prices.cost.tallLabor · prices.cost.tallHem · prices.noSeamMaxH)에만
     h += '<div class="opt-group"><h3>겉지 높이 원가 <small>원가만 · 소폭 폭당 겉지 · 제작 높이 + 시접이 270cm(3마)를 넘으면 넘친 원단만큼 폭당 원가에 더함</small></h3>'
         + `<div class="opt-row opt-high"><span class="opt-name">폭당 수공</span><label class="opt-wide">${inp('cost.tallLabor', k.tallLabor, '비우면 끔')}<i>원 — 폭당 원가에서 원단값이 아닌 몫</i></label></div>`
-        + `<div class="opt-row opt-high"><span class="opt-name">시접</span><label class="opt-wide">${inp('cost.tallHem', k.tallHem)}<i>cm를 제작 높이에 더해 셈</i></label></div>`
+        + `<div class="opt-row opt-high"><span class="opt-name">시접</span><label class="opt-wide">${inp('cost.tallHem', k.tallHem)}<i>cm를 제작 높이에 더해 계산</i></label></div>`
         + `<div class="opt-row opt-high"><span class="opt-name">이음 불가 한계</span><label class="opt-wide">제작 높이 ${inp('noSeamMaxH', optNum(so.noSeamMaxH) || '', '없음')}<i>cm를 넘으면 견적 요약에 알림 (보브)</i></label></div></div>`;
     box.innerHTML = h;
     box.querySelectorAll('[data-row]').forEach(optionGainUpdate);
@@ -347,9 +347,9 @@ function optionGainUpdate(row) {
     const g = row && row.querySelector('[data-gain]');
     if (!g) return;
     const [s, c] = Array.from(row.querySelectorAll('input[data-opt]')).map(i => i.value === '' ? null : Number(i.value));
-    if (s === null || c === null || !Number.isFinite(s) || !Number.isFinite(c)) { g.textContent = '남는 돈 —'; g.classList.remove('is-minus'); return; }
+    if (s === null || c === null || !Number.isFinite(s) || !Number.isFinite(c)) { g.textContent = '이익 —'; g.classList.remove('is-minus'); return; }
     const d = s - c;
-    g.textContent = `남는 돈 ${d.toLocaleString('ko-KR')}원${s > 0 ? ` (${Math.round(d / s * 100)}%)` : ''}`;
+    g.textContent = `이익 ${d.toLocaleString('ko-KR')}원${s > 0 ? ` (${Math.round(d / s * 100)}%)` : ''}`;
     g.classList.toggle('is-minus', d < 0);
 }
 // 비공개 팩에 함께 담는 견적서 글 (불러올 때는 팩에 적힌 것만 덮어씀 — 비어 있으면 이 기기 것을 그대로 둠)

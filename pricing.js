@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -149,7 +149,7 @@
 
             const fabricSpec = fab.specCm || 150;
             isWideFabric = (fabricSpec >= 200);
-            isSheer = (fab.categoryType === '속지' || label.includes('속지') || (fab.name && fab.name.includes('쉬폰')));
+            isSheer = (fab.categoryType === '속지' || label.includes('속지') || label.includes('속커튼') || (fab.name && fab.name.includes('쉬폰')));
 
             if (c.pleat === 'panel' || c.pleatType === '패널' || c.pleatType === '판넬') {   // '판넬'은 예전 저장본 호환용
                 isPanel = true;
