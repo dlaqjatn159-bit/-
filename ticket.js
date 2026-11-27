@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -13,7 +13,7 @@
 function ticketItemReason(r, c) {
     if (!r || !r.diagnosed || !c || !c.fabricId) return '';
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
-    if (sf) return '상담 때 실물 샘플로 보여 드리겠습니다';
+    if (sf) return '실물 샘플로 보여 드리겠습니다.';
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
@@ -25,7 +25,7 @@ function ticketItemReason(r, c) {
 function ticketKeepWord(r, c) {
     if (!r || !r.diagnosed || !c || !c.fabricId) return '';
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
-    if (sf) return '상담 때 실물 샘플로 보여 드리겠습니다.';
+    if (sf) return '실물 샘플로 보여 드리겠습니다.';
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
     if (!f) return '';
     const cat = c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : '겉지');
@@ -49,7 +49,18 @@ function ticketFabricName(c, calc) {
     return ticketCleanName(f) + colorSuffix(c.colorName, f.id);
 }// 견적서 원단 칸 이름 (75번, 10-25 사장님): 책자에 적힌 원단 이름 + 색 번호만. 예) 블랑 1번
 //  책자·공급처 이름, 괄호(폭·단가), 색 이름 괄호는 뺌. 색이 하나뿐인 원단(POA1 등)은 번호 없이 이름만
+// 279번 (결정 #434): 손님 화면 원단 이름 = 리담 번호 하나("C014-2"). 번호가 아직 없으면 종류 말("커튼" · "콤비 블라인드"). 책자 이름은 손님에게 안 보임
+//  빌려 쓰는 곳: space.js 307줄(공간 목록 원단 칸, 손님 화면) · ticketPlainName의 마지막 대비
 function ticketBookName(c) {
+    const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
+    if (sf) return sf.name;
+    const f = FABRIC_DB.find(x => x.id === c.fabricId);
+    if (!f) return c.name || '원단';
+    const no = (typeof redamNo === 'function') ? redamNo(c.fabricId, c.colorName) : '';
+    return no || ticketEstKind(c);
+}
+// 279번: 옛 ticketBookName 그대로(책자 이름 + 색 번호) — 사장님 화면만. survey.js 526줄(상담란 '다른 후보')이 이것으로 옮겨야 사장님 화면이 지금과 같음(280번 쪽 한 줄)
+function ticketBookNameStaff(c) {
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
     if (sf) return sf.name;
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
@@ -108,7 +119,7 @@ function ticketPlainName(c, calc) {
     const sf = typeof sampleBlindFabric === 'function' ? sampleBlindFabric(c.fabricId) : null;
     if (sf) return sf.name;
     const f = FABRIC_DB.find(x => x.id === c.fabricId);
-    if (!f) return ticketFabricName(c, calc);
+    if (!f) return ticketBookName(c);      // 279번: 책자 이름 대신
     // 색 이름: 직원이 붙인 색 이름 → 색 값으로 지은 이름 → 톤
     let color = proNameOf(c.colorName ? whyFabricColor(f.id, c.colorName) : null);      // 색 이름은 색 사전 하나 (88번)
     if (!color && c.colorName) color = colorLabelOf(f.id, c.colorName);
@@ -139,7 +150,7 @@ function ticketPlainName(c, calc) {
         }
     }
     const out = [color, ...parts].filter(Boolean).join(' · ');
-    return out || ticketFabricName(c, calc);
+    return out || ticketBookName(c);      // 279번: 책자 이름 대신 리담 번호
 }
 // 원단 색과 벽·바닥 색의 관계 (61번): 같은 색 계열에 밝기만 다르면 톤온톤, 색 계열은 달라도 밝기·선명함이 비슷하면 톤인톤
 //  잰 벽 → 잰 바닥 순으로 먼저 맞는 것 하나. 못 재었거나 둘 다 아니면 빈칸
@@ -161,6 +172,10 @@ function ticketToneWord(r, c) {
 // 품목 종류 (속지 / 겉지 / 블라인드)
 function ticketKindLabel(c) {
     return c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : (c.presetType === 'drape' ? '겉지' : '커튼'));
+}
+// 279번: 손님 화면 글자만 '속커튼'·'겉커튼' — it.kind 값('속지'·'겉지')은 비교·저장에 쓰이니 그대로 두고, 그릴 때만 이 함수로 바꿔 보임
+function ticketKindSay(k) {
+    return k === '속지' ? '속커튼' : (k === '겉지' ? '겉커튼' : (k || ''));
 }
 // 사진이 없을 때 원단 칸을 채우는 색: 고른 색(없으면 원단)의 톤으로 짐작. 제안서·견적서·첫 화면 공간 칸이 함께 씀
 const FABRIC_TONE_FILL = { warm: '#dcc3a4', cool: '#b9c4cb', neutral: '#d3cdc3', deep: '#7a695c' };
@@ -222,18 +237,18 @@ async function loadTicketStills(data) {
 }
 
 // 해당 품목에만 붙는 안내 (87번): 소폭 이음 제작 커튼이 있으면 이음선 안내, 완전 암막 겉지가 있으면 빛샘 안내 — 각 한 번씩
-const SEAM_NOTE = '원단 폭이 좁은 제품은 폭을 이어 제작하므로, 커튼에 세로 이음선이 있습니다. 제작 과정상 자연스러운 것이며 불량이 아닙니다.';
-const LIGHT_LEAK_NOTE = '완전 암막 원단도 커튼 옆과 위로는 빛이 새어 들어올 수 있습니다. 원단 자체의 문제가 아니라 설치 구조상 생기는 현상입니다.';
+const SEAM_NOTE = '원단 폭이 좁은 제품은 폭을 이어 제작하므로, 커튼에 세로 이음선이 있습니다. 만들 때 생기는 것으로 불량이 아닙니다.';
+const LIGHT_LEAK_NOTE = '완전 암막 원단도 커튼 옆과 위로는 빛이 새어 들어올 수 있습니다. 원단 자체의 문제가 아니라 커튼을 다는 방식 때문에 생깁니다.';
 const HOTEL_FIT_NOTE = '리담 핏은 원단을 한 폭 더 넣어 주름을 깊고 풍성하게 만드는 리담의 마감입니다.';      // 136번 · 230번: 호텔핏 → 리담 핏(11-10 결정)
 // 리담의 약속 (159번, 11-08 사장님 결정 → 230번, 11-13 계약금 결정): 견적서 그림·최종 제안 견적·카톡 글이 ticketData()에서 같이 받음. 글을 바꾸려면 번호를 새로
 const PROMISE_LINE = {
-    sample: '실물 견본을 함께 보고 나서 주문합니다.',
+    sample: '실물 샘플을 함께 보고 나서 주문합니다.',
     deposit: '계약금 50%를 받은 뒤 제작에 들어갑니다.',
     cancel: '제작 전 취소는 계약금 전액을, 제작 뒤 취소는 이미 든 제작비를 뺀 금액을 돌려드립니다.',
     once: '금액은 시공하는 날 한 번에 받습니다.',
-    days: '제작은 보통 4~6일 걸립니다.',
-    fix: '크기를 잘못 쟀거나 시공에 하자가 있으면 리담이 다시 만들어 시공합니다.',
-    fixInstall: '시공에 하자가 있으면 리담이 다시 시공합니다.'      // 230번 보완: 제작 없는 일(이전설치·수선)의 하자 줄
+    days: '제작은 영업일 기준 2~5일 정도 걸립니다.',
+    fix: '시공이나 제작 때문에 생긴 문제라면 리담이 해결해 드립니다.',
+    fixInstall: '시공이나 제작 때문에 생긴 문제라면 리담이 해결해 드립니다.'      // 230번 보완: 제작 없는 일(이전설치·수선)의 하자 줄
 };
 // 230번: 받는 길 셋 — 'deposit' 품목이 있고 합계가 작은 주문 기준 이상(기준이 비면 늘) · 'small' 품목이 있고 기준 아래 · 'none' 품목이 없음(이전설치·수선처럼 시공비만)
 //  실물 견본 품목이 섞이면(hasSample) 합계가 그 품목을 뺀 금액이라 늘 'deposit', 금액 줄은 안 그림. 계약금 = 합계 절반을 천 원 아래 버림, 잔금 = 합계 − 계약금
@@ -368,8 +383,8 @@ function ticketData() {
     d.light = ticketLightOf(d);      // 131번: 견적서 빛 묶음 (넣지 않으면 null)
     d.move = ticketMoveOf();      // 241번: 견적서 이전설치 묶음 (넣지 않으면 null)
     // 161번: 실물 견본 품목(우드·색 못 잰 블라인드 등, 금액 0)이 있으면 합계가 그 품목을 뺀 금액임을 밝힘 — 저장 그림·최종 제안 화면·카톡 글이 같이 씀 · 커튼 견본은 종류 이름(속지·겉지)으로(211번)
-    const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.blindKind ? s.name.replace(' (실물 상담)', '') : s.categoryType))];
-    d.totalLabel = sampleNames.length ? '합계 금액 (시공비 포함 · 실물 견본 품목 제외)' : '합계 금액 (시공비 포함)';
+    const sampleNames = [...new Set(d.rooms.flatMap(r => r.items).map(i => sampleBlindFabric(i.fabricId)).filter(Boolean).map(s => s.blindKind ? s.name.replace(/ \((실물 상담|샘플 보고 결정)\)/, '') : ticketKindSay(s.categoryType)))];
+    d.totalLabel = sampleNames.length ? '합계 금액 (시공비 포함 · 실물 샘플 품목 제외)' : '합계 금액 (시공비 포함)';
     const moveShare = d.move ? Math.round(d.move.total * (globalVatOption === 'business' ? 1.1 : 1)) : 0;      // 241번: 이전설치 몫(부가세 포함)은 계약금에서 뺌
     const plan = ticketPayPlan(rooms, d.total, sampleNames.length > 0, moveShare);      // 230번: 견적에 맞는 약속 줄 + 계약금·잔금 한 줄
     d.promise = plan.promise.join('\n');
@@ -379,7 +394,7 @@ function ticketData() {
     if (d.contract.cut) d.depositText = '';
     if (sampleNames.length) {
         const nm = sampleNames.join('·');
-        d.note = [d.note, `${nm}${houseJosa(nm, '은', '는')} 상담 때 실물 견본으로 고른 뒤 금액을 알려 드립니다.`].filter(Boolean).join('\n');
+        d.note = [d.note, `${nm}${houseJosa(nm, '은', '는')} 상담 때 실물 샘플로 고른 뒤 금액을 알려 드립니다.`].filter(Boolean).join('\n');
     }
     return d;
 }
@@ -539,12 +554,12 @@ function drawTicket(ctx, data, W, slim) {
                 const k = Math.max(SW_W / sw, SW_H / sh), cw = SW_W / k, ch = SW_H / k;
                 ctx.drawImage(b.photo, (sw - cw) / 2, (sh - ch) / 2, cw, ch, px, swY, SW_W, SW_H);
             }
-            setFont(400, PAPER_F4, SANS); label(b.it.kind, tx, slim ? by + NAME_Y : by + 36, 'left', 3);
+            setFont(400, PAPER_F4, SANS); label(ticketKindSay(b.it.kind), tx, slim ? by + NAME_Y : by + 36, 'left', 3);
             setFont(400, NAME_PX, SERIF);
             b.lines.forEach((ln, li) => text(ln, nx, by + NAME_Y + li * NAME_LH, 'left', DARK));
             let ty = by + NAME_Y + (b.lines.length - 1) * NAME_LH;
             if (!b.it.sampleOnly) { setFont(400, PAPER_F3, SERIF); text(won(b.it.price), px + iw, by + NAME_Y, 'right', DARK); }
-            else if (b.it.sampleBlind) { setFont(400, PAPER_F4, SANS); text('견본 확인 후', px + iw, by + NAME_Y, 'right', MUTED); }      // 176번
+            else if (b.it.sampleBlind) { setFont(400, PAPER_F4, SANS); text('샘플 확인 후', px + iw, by + NAME_Y, 'right', MUTED); }      // 176번
             setFont(400, PAPER_F4, SANS);
             if (b.metaInline) text(b.it.meta, nx + b.lastW + 14, ty, 'left', MUTED);
             b.metaLines.forEach(ln => { ty += 32; text(ln, nx, ty, 'left', MUTED); });
@@ -570,14 +585,14 @@ function drawTicket(ctx, data, W, slim) {
         ].filter(r => r.lines.length);
         const sup = paras(data.supplier, INFO_W);
         const rowH = n => n * INFO_LH + INFO_GAP;
-        const h = (data.install > 0 ? 76 : 0) + (data.vatText ? (data.install > 0 ? 52 : 76) : 0) + 96 + 54 + (/실물 견본/.test(data.totalLabel || '') ? 40 : 0) + (data.depositText ? 56 : 0) + rows.reduce((a, r) => a + rowH(r.lines.length), 0)      // 230번: 계약금 줄
+        const h = (data.install > 0 ? 76 : 0) + (data.vatText ? (data.install > 0 ? 52 : 76) : 0) + 96 + 54 + (/실물 (견본|샘플)/.test(data.totalLabel || '') ? 40 : 0) + (data.depositText ? 56 : 0) + rows.reduce((a, r) => a + rowH(r.lines.length), 0)      // 230번: 계약금 줄
             + (sup.length ? 30 + rowH(sup.length) : 0) + 56;
         return { rows, sup, h };
     }
     function drawFooter(F, y) {
         if (data.install > 0) {
             hline(CX, RX, y, LINE, 0.6);
-            setFont(400, PAPER_F3, SANS); text('시공 및 설치비', CX, y + 48, 'left', MUTED);
+            setFont(400, PAPER_F3, SANS); text('시공비', CX, y + 48, 'left', MUTED);
             setFont(400, PAPER_F3, SERIF); text(won(data.install), RX, y + 48, 'right', DARK);
             y += 76;
         }
@@ -590,7 +605,7 @@ function drawTicket(ctx, data, W, slim) {
             y += first ? 76 : 52;
         }
         hline(CX, RX, y, DARK, 1);
-        const longLbl = /실물 견본/.test(data.totalLabel || '');      // 176번: 긴 이름표(실물 견본 품목 제외)는 합계 숫자 위 줄로 — 숫자에 깔리지 않게
+        const longLbl = /실물 (견본|샘플)/.test(data.totalLabel || '');      // 176번: 긴 이름표(실물 견본 품목 제외)는 합계 숫자 위 줄로 — 숫자에 깔리지 않게
         if (longLbl) { setFont(400, PAPER_F4, SANS); label(data.totalLabel, CX, y + 44, 'left', 3); y += 40; }
         y += 96;
         if (!longLbl) { setFont(400, PAPER_F4, SANS); label(data.totalLabel || '합계 금액 (시공비 포함)', CX, y - 6, 'left', 3); }      // 161번
@@ -811,11 +826,11 @@ function whyItemCands(F, R, facts) {
             if (whyDE(c, R.wall) < 6) add('C', 'C1', '커튼을 닫아도 공간이 넓어 보입니다.', '커튼이 눈에 띄지 않습니다.');
             else if (dL > 15) add('C', 'C3', '창 쪽이 가장 환해 보입니다.', '창이 넓어 보입니다.');
             else if (dL >= 6) add('C', 'C2', '창 쪽이 환해 보입니다.', '공간이 가벼워 보입니다.');
-            else if (dL < -15 && R.pres !== 'calm' && !(kind === 'sheer' && !R.pres)) add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '공간이 또렷하게 나뉘어 보입니다.');      // 183번: "조용히 스며들게요"면 아래 C4로 · 197번: 느낌을 안 물은 속지도 C4로
+            else if (dL < -15 && R.pres !== 'calm' && !(kind === 'sheer' && !R.pres)) add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '창이 벽과 또렷하게 구분되어 보입니다.');      // 183번: "조용히 스며들게요"면 아래 C4로 · 197번: 느낌을 안 물은 속지도 C4로
             else if (dL <= -6) add('C', 'C4', '창 쪽이 차분해 보입니다.', '공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
-            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울립니다.`, `${R.floorWood === false ? '바닥' : '바닥 나무'}색과 같은 쪽 색이라 잘 어울립니다.`);
+            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울립니다.`, `${R.floorWood === false ? '바닥' : '바닥 나무'}색과 같은 계열이라 잘 어울립니다.`);
             else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', `색 기운이 거의 없어, ${R.floorWood === false ? '바닥' : '바닥 나무'}색과 부딪히지 않습니다.`, '한쪽으로 치우친 색이 아니라, 바닥 색과 함께 두어도 차분합니다.');
         }
     }
@@ -824,16 +839,16 @@ function whyItemCands(F, R, facts) {
     const warm = !!(c && c.fam && WHY_WARM_FAM.includes(c.fam));
     const nOnly = R.N && !R.E && !R.W;
     const D = [
-        [R.N && kind === 'drape' && typeof isCoolGray === 'function' && isCoolGray(c), 'D0', '북쪽 빛은 푸른 기운이 있어, 이 색은 낮에 조금 더 푸르고 짙게 보입니다. 창가에서 견본을 대 보고 정하겠습니다.'],      // 180번: 북쪽이 든 창(북동·북서 포함) + 찬 회색 — D 가운데 가장 먼저
-        [R.E && R.bedroom && lifeFull, 'D1', '이른 아침 햇빛을 가려, 잠이 덜 깹니다.'],
+        [R.N && kind === 'drape' && typeof isCoolGray === 'function' && isCoolGray(c), 'D0', '북쪽 빛은 푸른 기운이 있어, 이 색은 낮에 조금 더 푸르고 짙게 보입니다. 창가에서 샘플을 대 보고 정하겠습니다.'],      // 180번: 북쪽이 든 창(북동·북서 포함) + 찬 회색 — D 가운데 가장 먼저
+        [R.E && R.bedroom && lifeFull, 'D1', '이른 아침 햇빛을 가려, 햇빛에 잠이 깨지 않습니다.'],
         [R.W && lifeFull, 'D5', '낮게 드는 오후 햇빛의 눈부심과 열기가 줄어듭니다.'],
-        [R.E && kind === 'sheer', 'D2', '아침에는 속지만 닫아도 공간이 밝습니다.'],
-        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '한낮의 강한 햇빛도 속지를 닫아 두면 눈부시지 않게 들어옵니다.'],
+        [R.E && kind === 'sheer', 'D2', '아침에는 속커튼만 닫아도 공간이 밝습니다.'],
+        [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '한낮의 강한 햇빛도 속커튼을 닫아 두면 눈부시지 않게 들어옵니다.'],
         [R.W && warm && c.C >= 6, 'D3', '오후에는 빛이 노래져, 이 색이 조금 더 따뜻해 보입니다.'],
         [R.W && c && c.C < 4, 'D4', '색 기운이 적어, 오후의 노란 빛에도 색이 크게 달라 보이지 않습니다.'],
         [nOnly && warm, 'D7', '푸르스름한 북쪽 빛에도, 따뜻한 기운이 있어 차가워 보이지 않습니다.'],
         [nOnly && c && c.C < 4 && c.L >= 75, 'D8', '하루 내내 밝기가 비슷해, 이 색이 시간마다 크게 달라 보이지 않습니다.'],
-        [nOnly && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 창이라, 밝은 속지로 빛을 덜 막습니다.']
+        [nOnly && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 창이라, 밝은 속커튼으로 빛을 덜 막습니다.']
     ].find(x => x[0]);
     if (D) add('D', D[1], D[2]);
     // O3 · T. 재질 (결 이야기는 하나만)
@@ -847,16 +862,16 @@ function whyItemCands(F, R, facts) {
     const sh = kind === 'drape' && c && facts.find(x => x.kind === 'sheer' && x.lab);
     if (sh) {
         const s = sh.lab;
-        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속지와 같은 계열에 한 톤 진한 색이라, 겹쳐 닫아도 어색하지 않습니다.');
-        else if (s.C < 3 && s.L >= 88 && c.C >= 4) add('P', 'P2', `낮에는 흰 속지로 밝게, 밤에는 ${F.it.colorDesc ? F.it.colorDesc + ' ' : ''}겉지로 차분하게 쓰실 수 있습니다.`);
-        else if (whyDE(s, c) < 5) add('P', 'P3', '속지와 색이 거의 같아, 겹쳐 닫아도 깔끔합니다.');
+        if (s.fam && s.fam === c.fam && c.L <= s.L - 10) add('P', 'P1', '속커튼과 같은 계열에 한 톤 진한 색이라, 겹쳐 닫아도 어색하지 않습니다.');
+        else if (s.C < 3 && s.L >= 88 && c.C >= 4) add('P', 'P2', `낮에는 흰 속커튼으로 밝게, 밤에는 ${F.it.colorDesc ? F.it.colorDesc + ' ' : ''}겉커튼으로 차분하게 쓰실 수 있습니다.`);
+        else if (whyDE(s, c) < 5) add('P', 'P3', '속커튼과 색이 거의 같아, 겹쳐 닫아도 깔끔합니다.');
     }
     return list;
 }
 // 작은 안내(한 원단에 1개, 36번 · 83번): 반대쪽 창(O1·O2)이나 밤 안내가 있는 공간이 먼저, 없으면 완전 암막(F4)·벽보다 훨씬 진한 색(C5)·햇빛에 옅어 보임(F10, 63번)
 function whyItemNote(F, R, cands) {
     if (R.opp) {
-        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '반대쪽 창으로 빛이 들어 공간 안이 바깥보다 밝은 낮에는, 밖에서 안이 조금 비쳐 보일 수 있습니다. 신경 쓰이시면 겉지를 조금 닫아 두시면 됩니다.';
+        if (F.kind === 'sheer' && (R.privacy === 'some' || R.privacy === 'high')) return '반대쪽 창으로 빛이 들어 공간 안이 바깥보다 밝은 낮에는, 밖에서 안이 조금 비쳐 보일 수 있습니다. 신경 쓰이시면 겉커튼을 조금 닫아 두시면 됩니다.';
         if (F.kind === 'drape' && R.block === 'dark') return '반대쪽 창에서도 빛이 들어, 그쪽도 가려야 공간이 완전히 어두워집니다.';
     }
     if (R.room && R.room.night) return '';      // 속지만 밤 안내가 있는 공간은 안내가 이미 있음 (한 원단에 1개)
@@ -884,21 +899,21 @@ function whyChoseOf(facts, candsList, R, heard) {
     const parts = [];
     facts.forEach((F, i) => {
         if (F.kind === 'blind') return;
-        const k = F.kind === 'sheer' ? '속지' : '겉지';
+        const k = F.kind === 'sheer' ? '속커튼' : '겉커튼';
         const f = candsList[i].find(x => x.g === 'F'), rel = whyLinkFits(F, R) ? whyColorRel(F, R) : '';
         const fr = f ? f.t[0] : '';
-        if (rel && fr) parts.push(`${k}는 ${rel}, ${fr} 원단입니다.`);
-        else if (rel) parts.push(`${k}는 ${rel} 골랐습니다.`);
-        else if (fr) parts.push(`${k}는 ${fr} 원단으로 골랐습니다.`);
+        if (rel && fr) parts.push(`${k}은 ${rel}, ${fr} 원단입니다.`);
+        else if (rel) parts.push(`${k}은 ${rel} 골랐습니다.`);
+        else if (fr) parts.push(`${k}은 ${fr} 원단으로 골랐습니다.`);
     });
     // 88번: "그래서"를 빼고 속지·겉지를 각각 한 문장으로 (앞 문장 '본 것' 때문에 고른 것처럼 들리지 않게)
     const out = parts.slice();
     // K (한 톤 바꿈): 둘째 문장
     const kf = facts.find(F => F.kind !== 'blind' && F.it.toneStep);
     if (kf) {
-        const up = kf.it.toneStep > 0, kk = kf.kind === 'sheer' ? '속지' : '겉지';
-        const tail = up ? '한 톤 밝은 색으로 바꿔, 빛을 더 환하게 받도록 했습니다.' : '한 톤 진한 색으로 바꿔, 차분한 무게를 더했습니다.';
-        out.push(parts.length ? '그중 ' + tail : `${kk}는 ${tail}`);
+        const up = kf.it.toneStep > 0, kk = kf.kind === 'sheer' ? '속커튼' : '겉커튼';
+        const tail = up ? '한 톤 밝은 색으로 바꿔, 빛을 더 환하게 받도록 했습니다.' : '한 톤 진한 색으로 바꿔, 더 차분해 보이게 했습니다.';
+        out.push(parts.length ? '그중 ' + tail : `${kk}은 ${tail}`);
     }
     return out;
 }
@@ -1008,7 +1023,7 @@ function drawWhy(ctx, data, W, compact, title) {
             ops.push({ chip: set.hex, y: cy });
         }
         setFont(400, T_SIZE, SERIF);
-        const titleText = (set.it.kind === '블라인드' && name.includes('블라인드')) ? name : `${set.it.kind} · ${name}`;
+        const titleText = (set.it.kind === '블라인드' && name.includes('블라인드')) ? name : `${ticketKindSay(set.it.kind)} · ${name}`;
         const hl = wrap(titleText, colW, colW - chipW);
         hl.forEach((ln, i) => { ops.push({ t: ln, f: [400, T_SIZE, SERIF], c: DARK, y: cy, x: i === 0 ? chipW : 0 }); if (i < hl.length - 1) cy += T_LH; });
         cy += T_LH + 4;
@@ -1297,12 +1312,12 @@ function houseMoodLines(sp) {
         const names = miss.filter(x => !!x.h.empty === empty).map(x => x.s.name);
         if (!names.length) return;
         const who = sp.length === 1 ? '이번에는' : names.join('·') + houseJosa(names.join('·'), '은', '는');
-        missLines.push(empty ? `${sp.length === 1 ? '' : who + ' '}벽·바닥 색과 맞는 또렷한 색 원단이 지금 책자에 없어, ${sp.length === 1 ? '이번에는 ' : ''}차분한 색으로 골랐습니다.`
+        missLines.push(empty ? `${sp.length === 1 ? '' : who + ' '}벽·바닥 색과 맞는 또렷한 색 원단이 지금 샘플북에 없어, ${sp.length === 1 ? '이번에는 ' : ''}차분한 색으로 골랐습니다.`
             : `${who} 또렷한 포인트 색 대신 차분한 색으로 골랐습니다.`);
     });
     const out = [];
     const houseMissed = ht.pres === 'point' && held.length > 0 && miss.length === held.length;      // 포인트 공간이 모두 포인트 색 없이 끝남
-    if (houseWord && !houseMissed) out.push(`${houseWord} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
+    if (houseWord && !houseMissed) out.push(`${houseWord} 집이 되도록, 원하신 분위기에 맞춰 원단을 골랐습니다.`);
     const groups = [];
     sp.forEach(s => {
         const r = s.raw || {};
@@ -1316,12 +1331,12 @@ function houseMoodLines(sp) {
     // 123번: 취향을 공간마다 물으면 집 취향 말이 없음 → 모든 공간이 같은 말이면 집 한 문장, 다르면 공간끼리 묶어 한 문장씩
     const tasteN = sp.filter(s => s.fabs.some(f => f.k !== '속지')).length;      // 197번: 속지만 공간은 셈에서 뺌
     if (!houseWord && groups.length === 1 && groups[0].names.length === tasteN) {
-        out.push(`${groups[0].w} 집이 되도록, 고르신 느낌에 맞춰 원단을 골랐습니다.`);
+        out.push(`${groups[0].w} 집이 되도록, 원하신 분위기에 맞춰 원단을 골랐습니다.`);
         return out.concat(missLines);
     }
     groups.forEach(g => {
         const names = g.names.join('·');
-        out.push(`${names}${houseJosa(names, '은', '는')} ${g.w} 느낌으로 ${houseWord ? '따로 ' : ''}맞췄습니다.`);
+        out.push(`${names}${houseJosa(names, '은', '는')} ${g.w} 분위기로 ${houseWord ? '따로 ' : ''}맞췄습니다.`);
     });
     return out.concat(missLines);
 }
@@ -1337,7 +1352,7 @@ function houseBrief(sp) {
         if (maxD <= HOUSE_UNIFY) {
             const L = avg(reps, 'L'), b = avg(reps, 'b');
             const fam = (L >= 80 ? '밝은 ' : (L >= 60 ? '부드러운 ' : '깊은 ')) + (b >= 12 ? '베이지' : (b >= 5 ? '아이보리·그레이지' : '그레이'));
-            out.push(`집 전체를 ${fam} 계열로 맞춰, 공간을 옮겨 다녀도 흐름이 끊기지 않습니다.`);
+            out.push(`집 전체를 ${fam} 계열로 맞춰, 방을 옮겨 다녀도 색이 자연스럽게 이어집니다.`);
         } else {
             let point = null;
             if (S.length >= 3) S.forEach((s, i) => {
@@ -1350,9 +1365,9 @@ function houseBrief(sp) {
                 const names = S.filter((_, j) => j !== point.i).map(s => s.name).join('·');
                 out.push(`${names}${houseJosa(names, '은', '는')} 같은 계열로 잇고, ${point.s.name}만 ${dir} 두어 분위기를 달리했습니다.`); // 41번 · 83번
             } else if (S.length === 2) {
-                out.push(`${S[0].name}${houseJosa(S[0].name, '과', '와')} ${S[1].name}${houseJosa(S[1].name, '은', '는')} 각자의 빛과 바탕색에 맞춰 따로 골랐습니다.`); // 41번 · 83번
+                out.push(`${S[0].name}${houseJosa(S[0].name, '과', '와')} ${S[1].name}${houseJosa(S[1].name, '은', '는')} 빛과 벽·바닥 색이 서로 달라 따로 골랐습니다.`); // 41번 · 83번
             } else {
-                out.push('공간마다 빛과 바탕색이 달라, 각각에 맞춰 골랐습니다.'); // 41번 · 83번
+                out.push('공간마다 빛과 벽·바닥 색이 달라, 각각에 맞춰 골랐습니다.'); // 41번 · 83번
             }
         }
     }
@@ -1362,9 +1377,9 @@ function houseBrief(sp) {
     if (sh.length >= 2) {
         if (sh.every(f => f.fabricId === sh[0].fabricId && f.colorName === sh[0].colorName)) {
             const who = withSheer.length === sp.length ? '모든 공간을' : withSheer.map(s => s.name).join('·') + ' 모두';
-            out.push(`속지는 ${who} 같은 색으로 맞춰, 밖에서 보면 창이 한결같아 보입니다.`);
+            out.push(`속커튼은 ${who} 같은 색으로 맞춰, 밖에서 보면 창이 한결같아 보입니다.`);
         } else if (maxDist(sh.map(f => f.lab)) <= HOUSE_SHEER_SAME) {
-            out.push('속지는 비슷한 밝기로 맞춰, 밖에서 봐도 창이 고르게 보입니다.');
+            out.push('속커튼은 비슷한 밝기로 맞춰, 밖에서 봐도 창이 고르게 보입니다.');
         }
     }
     // ③ 가구 (65번: 진단 말투 — 커튼을 어떻게 골랐는지는 2번 몫이라 안 씀)
@@ -1385,7 +1400,7 @@ function houseBrief(sp) {
         if (darkest) out.push(`${fs.name}의 ${nm}${f.n}${ga} 집에서 가장 진한 색입니다.`);
         else if (lightest) out.push(`${fs.name}의 ${nm}${f.n}${ga} 집에서 가장 밝은 색입니다.`);
         else if (base.length && Math.min(...base.map(o => whyDE(f, o))) <= HOUSE_FUR_NEAR) out.push(`${fs.name}의 ${f.n}${houseJosa(f.n, '은', '는')} 벽·바닥과 비슷한 색이라, 공간이 한 톤으로 이어집니다.`);
-        else out.push(`${fs.name}의 ${nm}${f.n}${houseJosa(f.n, '은', '는')} 바탕색 사이에서 또렷하게 보입니다.`);
+        else out.push(`${fs.name}의 ${nm}${f.n}${houseJosa(f.n, '은', '는')} 벽·바닥 색 사이에서 또렷하게 보입니다.`);
     }
     return houseMoodLines(sp).concat(out.slice(0, 3));      // 118번
 }
@@ -1495,7 +1510,7 @@ function drawHouseMap(ctx, sp, bg, o) {
     const over = q => boxes.reduce((a, o) => a + Math.max(0, Math.min(q.x2 + 6, o.x2) - Math.max(q.x1 - 6, o.x1)) * Math.max(0, Math.min(q.y2 + 4, o.y2) - Math.max(q.y1 - 4, o.y1)), 0)
         + ((q.x1 < 2 || q.x2 > W - 2 || q.y1 < 0 || q.y2 > H) ? 1e6 : 0);
     const put = p => {
-        const name = SEL !== null ? p.m.k : (p.m.t === 's' && p.m.who.length === sp.length && sp.length > 1) ? p.m.k : p.m.who.join('·') + ' ' + p.m.k;
+        const name = SEL !== null ? ticketKindSay(p.m.k) : (p.m.t === 's' && p.m.who.length === sp.length && sp.length > 1) ? ticketKindSay(p.m.k) : p.m.who.join('·') + ' ' + ticketKindSay(p.m.k);
         ctx.font = `400 ${NF}px ${SERIF}`; const wN = ctx.measureText(name).width;
         ctx.font = `400 ${CF}px ${SANS}`; const wC = p.m.cn ? ctx.measureText(p.m.cn).width + 6 : 0;
         const tw = wN + wC, g = 10, mid = p.y + NF * 0.35;
@@ -1539,16 +1554,16 @@ function houseRoomLines(sp) {
         const sayOf = x => {
             const { f, t, d, dL, db } = x;
             if (d <= HOUSE_LINE_NEAR) {
-                if (t <= 0.25) return '벽 바로 곁의 색이라, 닫아 두면 창 쪽이 벽과 하나로 보입니다.';
+                if (t <= 0.25) return '벽과 아주 가까운 색이라, 닫아 두면 창 쪽이 벽과 하나로 보입니다.';
                 if (t >= 0.75) return '바닥 가까운 색이라, 닫아 두면 창 쪽이 바닥과 이어져 보입니다.';
-                return '벽과 바닥 사이의 색이라, 닫아도 공간이 한 덩어리로 보입니다.';
+                return '벽과 바닥 사이의 색이라, 닫아도 공간이 하나로 이어져 보입니다.';
             }
             if (Math.abs(dL) >= Math.abs(db)) {
                 if (dL < 0 && typeof pointVivid === 'function' && pointVivid(f.lab)) return '짙고 색 기운이 또렷한 색이라, 창 쪽의 포인트가 됩니다.';      // 183번: 와인처럼 또렷한 짙은 색은 무게가 아니라 포인트 (차콜과 같은 말이 되지 않게)
-                if (dL < 0) return f.lab.L < fl.L ? '선에서 한참 아래, 바닥보다 짙은 색이라 공간에 무게를 잡아 줍니다.' : '선보다 짙은 쪽이라, 공간에 무게를 더합니다.';
+                if (dL < 0) return f.lab.L < fl.L ? '바닥보다 짙은 색이라, 공간이 묵직해 보입니다.' : '선보다 짙은 쪽이라, 공간이 차분해 보입니다.';
                 return f.lab.L > w.L ? '벽보다 밝은 색이라, 닫아 두면 창 쪽이 환하게 보입니다.' : '선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.';
             }
-            if (typeof pointVivid === 'function' && !pointVivid(f.lab)) return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽이지만 색 기운이 적어, 공간을 ${db > 0 ? '포근하게' : '차분하게'} 받쳐 줍니다.`;      // 160번: 회색을 포인트라 하지 않음
+            if (typeof pointVivid === 'function' && !pointVivid(f.lab)) return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽이지만 색 기운이 적어, 공간이 ${db > 0 ? '포근해' : '차분해'} 보입니다.`;      // 160번: 회색을 포인트라 하지 않음
             return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽으로 벗어난 색이라, 창 쪽의 포인트가 됩니다.`;
         };
         const parts = pos.map(x => {
@@ -1565,7 +1580,7 @@ function houseRoomLines(sp) {
 //  칸 이름 줄은 없음(그림이 대신 말함). 예전 띠(194번)의 HOUSE_MB_COLS · houseMoodParts는 남겨 두었지만 이제 안 씀
 //  화면(지도, 한 공간씩 진하게)과 순서만 같고 모양은 다름 — 80번 원칙의 의도한 예외(141번)
 const HOUSE_MB_COLS = [['벽', 34], ['속지', 22], ['겉지', 22], ['바닥', 22]];
-const HOUSE_MEASURED_NOTE = '벽·바닥 색은 상담 때 회색 카드와 함께 잰 값입니다.';      // 194번(E): 잰 값 한 줄 — 화면(final.js)과 종이가 같이 씀
+const HOUSE_MEASURED_NOTE = '벽·바닥 색은 상담 때 회색 카드로 측정한 값입니다.';      // 194번(E): 잰 값 한 줄 — 화면(final.js)과 종이가 같이 씀
 function houseMoodParts(s) {
     const okHex = h => /^#[0-9a-f]{6}$/i.test(h || '');
     const fab = k => { const f = s.fabs.find(x => x.k === k && okHex(x.hex)); return f ? f.hex : null; };
@@ -1704,7 +1719,7 @@ function planHouse(data) {
         if (ln && ln.parts) {
             ln.parts.forEach(p => {
                 const sub = wrap(p.text, SW - KEY_W, fBody);
-                sub.forEach((t, i) => lines.push({ key: i === 0 ? (p.k || '') : '', t }));
+                sub.forEach((t, i) => lines.push({ key: i === 0 ? ticketKindSay(p.k || '') : '', t }));
             });
         }
         o.lines = lines;
@@ -1895,7 +1910,7 @@ function buildShowroomCanvas(data, pr, pageNo, total) {
         let dy = 0;
         const blocks = r.sets.map(s => {
             const hideKind = s.it.kind === '블라인드' && String(s.it.name).includes('블라인드');
-            const b = { s, kind: hideKind ? '' : s.it.kind, y0: dy };
+            const b = { s, kind: hideKind ? '' : ticketKindSay(s.it.kind), y0: dy };
             dy += F4;                                                     // 종류 · 색 코드 줄
             b.tLines = wrap(s.it.name, DW, fTitle); b.tY = dy + 10 + F3; dy = b.tY + (b.tLines.length - 1) * LH3;
             b.dLines = (s.lines && s.lines.length) ? wrap(s.lines.join(' '), DW, fSans) : [];
@@ -1972,26 +1987,26 @@ const NIGHT_WARM_B = 8, NIGHT_COOL_B = 3;      // 벽 60% · 바닥 40%로 섞�
 const NIGHT_SAY = {
     dusk: {
         north: '커튼은 열어 둡니다. 해가 직접 들지 않는 창이라, 이때부터 스탠드나 라인조명을 켜 두시면 낮과 밤의 차이가 줄어듭니다.',
-        floor: f => `커튼은 열어 둡니다. ${f} 바닥에 남은 햇빛이 공간의 온기를 먼저 보여 줍니다.`,
-        wall: w => `커튼은 열어 둡니다. 해가 지는 동안 ${w} 벽이 천천히 가라앉으며 공간의 차분한 색을 먼저 보여 줍니다.`,
-        plain: '커튼은 열어 둡니다. 남은 햇빛이 공간의 색을 먼저 보여 줍니다.'
+        floor: f => `커튼은 열어 둡니다. ${f} 바닥에 남은 햇빛이 공간을 따뜻하게 보이게 합니다.`,
+        wall: w => `커튼은 열어 둡니다. 해가 지는 동안 ${w} 벽이 조금씩 어두워지며 공간이 차분해 보입니다.`,
+        plain: '커튼은 열어 둡니다. 남은 햇빛에 공간의 색이 잘 보입니다.'
     },
     evening: {
-        drape: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 커튼 가까이에서 퍼진 빛이 겉지 주름의 질감을 드러냅니다.',      // 147번: 라인조명도 함께
-        sheer: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 은은한 빛이 속지에 부드럽게 번져 창 쪽이 밝아집니다.',
-        blind: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 낮게 퍼진 빛이 공간을 감싸 줍니다.'
+        drape: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 커튼 가까이에서 퍼진 빛에 겉커튼 주름이 잘 보입니다.',      // 147번: 라인조명도 함께
+        sheer: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 은은한 빛이 속커튼에 부드럽게 번져 창 쪽이 밝아집니다.',
+        blind: '메인 조명을 끄고 스탠드나 라인조명만 켭니다. 낮게 퍼진 빛에 공간이 아늑해 보입니다.'
     },
     sleep: {
-        double: '겉지까지 닫습니다. 속지만 닫아 두면 밖에서 실루엣이 보입니다. 빛은 그대로 두셔도 좋습니다.',
-        sheer: '속지만 있는 창은 밤에 안의 그림자가 비칠 수 있습니다. 잠들기 전에는 창 가까운 조명을 꺼 두시면 좋습니다.',
-        drape: '겉지를 닫습니다. 빛은 그대로 두셔도 좋습니다.',
-        blind: '블라인드를 내립니다. 빛은 그대로 두셔도 좋습니다.'
+        double: '겉커튼까지 닫습니다. 속커튼만 닫아 두면 밖에서 실루엣이 보입니다. 조명은 그대로 켜 두셔도 됩니다.',
+        sheer: '속커튼만 있는 창은 밤에 안의 그림자가 비칠 수 있습니다. 잠들기 전에는 창 가까운 조명을 꺼 두시면 좋습니다.',
+        drape: '겉커튼을 닫습니다. 조명은 그대로 켜 두셔도 됩니다.',
+        blind: '블라인드를 내립니다. 조명은 그대로 켜 두셔도 됩니다.'
     }
 };
 // 136번: 제품 이름(브랜드) 대신 종류로만 적음. 색온도·연색성은 손님이 읽을 수 있게 풀이를 함께
 const NIGHT_LAMP = { name: '상향식 플로어스탠드', socket: '일반 전구 소켓(E26)', cri: '연색성 90 이상',
     buy: '"상향식 플로어스탠드"로 찾으시고, 전구는 위 색온도와 연색성으로 고르시면 됩니다', entrust: '시공 당일, 색온도와 연색성에 맞는 전구를 끼운 스탠드를 가져와 커튼 옆 알맞은 자리에 놓아 드립니다',      // 148번
-    line: '커튼박스 안이나 천장 가장자리에 숨겨 달아, 끊김 없는 빛으로 커튼 전체를 고르게 비춥니다. 길이를 재어 따로 견적을 드립니다.',      // 146번
+    line: '커튼박스 안이나 천장 가장자리에 숨겨 달아, 끊김 없는 빛으로 커튼 전체를 고르게 비춥니다. 길이를 실측해 따로 견적을 드립니다.',      // 146번
     kSay: '빛의 색을 숫자로 나타낸 것입니다. 낮을수록 노랗고 따뜻하게, 높을수록 희고 푸르게 보입니다.',
     criSay: '빛 아래에서 색이 자연광 아래와 얼마나 같게 보이는지를 나타낸 것입니다. 100에 가까울수록 자연광에 가깝습니다. 90 이상이면 커튼과 벽이 낮에 본 색과 거의 같게 보입니다.' };      // 148번: 100 = 자연광 기준
 // 빛 아래 색 (그림용 어림): 지금의 방등 = 흔한 주광색 LED(푸르고 납작하게) · 권하는 빛 = 그 색온도의 빛 색을 절반만 섞음
@@ -2041,7 +2056,7 @@ function houseNightOf(data, opts) {
     const jg = C.jogakbo(data);
     if (!jg || !jg.cells || !jg.cells.length) return null;
     const main = nightMainOf(sp), { k, tone } = nightKelvinOf(sp, main);
-    const kinds = main.fabs.map(f => f.k);
+    const kinds = main.fabs.map(f => ({ '속커튼': '속지', '겉커튼': '겉지' })[f.k] || f.k);      // 279번: 새 말이 값으로 들어와도 아래 비교가 맞게
     const comp = kinds.includes('겉지') && kinds.includes('속지') ? 'double' : (kinds.includes('겉지') ? 'drape' : (kinds.includes('속지') ? 'sheer' : 'blind'));
     const dirs = typeof windowDirOf === 'function' ? windowDirOf(main.raw && main.raw.windowDir) : [];
     const S = NIGHT_SAY;
@@ -2132,7 +2147,7 @@ function buildNightCanvas(data, pr, N) {
     const text = (s, x, yy, color, font, align) => { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.fillText(s, x, yy); };
     const hline = yy => { ctx.strokeStyle = LINE; ctx.lineWidth = PAPER_HL; ctx.beginPath(); ctx.moveTo(CX, yy); ctx.lineTo(RX, yy); ctx.stroke(); };
     if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
-    text('공간의 밤', CX, headY, MUTE, fT);      // 146번: '이 집' 대신 '공간'
+    text('밤에는 이렇게 보입니다', CX, headY, MUTE, fT);      // 146번: '이 집' 대신 '공간'
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     [N.before, N.after].forEach((cells, i) => {
         const x0 = CX + i * (QW + GAP), G = 3;
@@ -2348,8 +2363,8 @@ function ticketKakaoText(data) {
         if (!room.items.length) return;
         out.push('', `■ ${room.name}${room.sampleOnly ? '' : ' ' + won(room.total)}`);
         room.items.forEach(it => {
-            out.push(`· ${it.kind} · ${it.bookName || it.name}${it.bookSub ? ` (${it.bookSub})` : ''}`);      // 208번 · 223번: 리담 번호는 괄호로 뒤에
-            const sub = [it.size, it.meta, it.sampleOnly ? (it.sampleBlind ? '견본 확인 후' : '') : won(it.price)].filter(Boolean).join(' · ');      // 176번
+            out.push(`· ${ticketKindSay(it.kind)} · ${it.bookName || it.name}${it.bookSub ? ` (${it.bookSub})` : ''}`);      // 208번 · 223번: 리담 번호는 괄호로 뒤에
+            const sub = [it.size, it.meta, it.sampleOnly ? (it.sampleBlind ? '샘플 확인 후' : '') : won(it.price)].filter(Boolean).join(' · ');      // 176번
             if (sub) out.push(`  ${sub}`);
         });
     });
@@ -2362,7 +2377,7 @@ function ticketKakaoText(data) {
         data.move.items.forEach(it => out.push(`· ${it.name}`, `  ${[it.size, it.meta, won(it.price)].filter(Boolean).join(' · ')}`));
     }
     out.push('');
-    if (data.install > 0) out.push(`시공 및 설치비 ${won(data.install)}`);
+    if (data.install > 0) out.push(`시공비 ${won(data.install)}`);
     if (data.vatText) out.push(`${data.vatLabel || '부가세'} ${data.vatText}`);      // 132번
     out.push(`${data.totalLabel || '합계 금액 (시공비 포함)'} ${data.total}원`);      // 161번
     if (data.depositText) out.push(data.depositText);      // 230번

@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['booking.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 시공 날짜 잡기 (작업목록 202번)
 //  - 견적서 다음 단계에서 고객이 편한 날짜와 도착 시간을 선택
@@ -22,6 +22,9 @@
     let cacheBusyTime = 0;
     let cachedPersonalStatus = true;
     let fetchErrorMsg = '';
+    let cacheFrom = '';      // 279번: 받아 둔 바쁜 시간이 어느 날부터의 것인지 (YYYY-MM-DD)
+    const PAGE_DAYS = 21;    // 279번: 한 번에 보이는 날 수 (3주)
+    const MAX_PAGE = 16;     // 279번: 넘길 수 있는 끝 — 16번째 3주의 마지막 날이 오늘부터 357일 뒤 (서버는 1년 안의 시공일만 받음)
 
     let state = {
         travel: 30,
@@ -30,7 +33,10 @@
         selectedDateStr: null,
         selectedTime: null,
         staffMsg: '',
-        isBooking: false
+        isBooking: false,
+        page: 0,            // 279번: 몇 번째 3주인지 (0 = 내일부터 3주, 지금과 같음)
+        canPage: true,      // 279번: 서버가 '그날부터(from)'를 알아들으면 true — 옛 서버면 false로 바뀌고 첫 3주만
+        paging: false       // 279번: 넘기는 중 (두 번 눌림 막기)
     };
 
     function loadSettings() {
@@ -137,14 +143,15 @@
             return null;
         }
         const now = Date.now();
-        if (!force && cacheBusy && (now - cacheBusyTime < 120000)) {
+        const fromStr = pageFromStr();      // 279번: 이 3주가 시작하는 날 (오늘 + 21일 × 몇 번째)
+        if (!force && cacheBusy && cacheFrom === fromStr && (now - cacheBusyTime < 120000)) {
             return cacheBusy;
         }
 
         const settings = loadSettings();
 
         try {
-            const res = await window.redamServerFetch('/app/slots?days=22&personal=' + (settings.blockPersonal ? '1' : '0'));      // 237번: 리담 서버
+            const res = await window.redamServerFetch('/app/slots?from=' + fromStr + '&days=22&personal=' + (settings.blockPersonal ? '1' : '0'));      // 237번: 리담 서버
             if (!res.ok) {
                 fetchErrorMsg = '서버 설정 확인 (설정 › 리담 서버 잇기)';
                 return null;
@@ -154,8 +161,14 @@
                 fetchErrorMsg = '서버 설정 확인 (설정 › 리담 서버 잇기)';
                 return null;
             }
+            const gotStr = Number.isFinite(data.from) ? new Date(data.from + 9 * 3600e3).toISOString().slice(0, 10) : '';      // 279번: 서버가 준 첫 날 (한국 날짜)
+            if (gotStr !== fromStr) {      // 279번: 옛 서버(from을 모름)거나 서버가 오늘로 돌려놓음 → 넘기기를 끄고 첫 3주로
+                state.canPage = false;
+                state.page = 0;
+            }
             cacheBusy = data.busy;
             cacheBusyTime = Date.now();
+            cacheFrom = pageFromStr();      // 279번: 받은 것이 어느 3주 것인지 (옛 서버면 오늘)
             cachedPersonalStatus = (data.personal !== false);
             fetchErrorMsg = '';
             return cacheBusy;
@@ -171,6 +184,13 @@
         const day = String(d.getDate()).padStart(2, '0');
         return `${y}-${m}-${day}`;
     }
+
+    // 279번: 몇 번째 3주인지에 따라 그 3주가 시작하는 날 (0번째 = 오늘 — 칸은 다음 날부터 21일)
+    function pageBaseDate() {
+        const t = new Date();
+        return new Date(t.getFullYear(), t.getMonth(), t.getDate() + state.page * PAGE_DAYS);
+    }
+    function pageFromStr() { return toDateStr(pageBaseDate()); }
 
     function parseTimeStr(tStr) {
         const parts = (tStr || '09:00').split(':').map(Number);
@@ -299,7 +319,7 @@
         const lockIcon = state.unlocked ? '🔓' : '🔒';
         html += `<button type="button" onclick="window.redamBooking.toggleLock()">${leadDays}일 뒤부터 ${lockIcon}</button>`;
 
-        html += `<button type="button" onclick="window.redamBooking.refreshBusy()">새로</button>`;
+        html += `<button type="button" onclick="window.redamBooking.refreshBusy()">새로고침</button>`;
 
         let msg = state.staffMsg || fetchErrorMsg;
         if (!msg && settings.blockPersonal && !cachedPersonalStatus) {
@@ -331,16 +351,16 @@
 
         if (!busyList) {
             html += '<div class="bk-body" style="align-items:center; justify-content:center;">';
-            html += '  <div class="bk-error-msg">지금은 빈 시간을 볼 수 없습니다.</div>';
+            html += '  <div class="bk-error-msg">지금은 빈 시간을 확인할 수 없습니다.</div>';
             html += '</div>';
             panel.innerHTML = html;
             return;
         }
 
         const days = [];
-        const today = new Date();
-        for (let i = 1; i <= 21; i++) {
-            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+        const base = pageBaseDate();      // 279번: 넘긴 3주의 시작 날 (0번째면 오늘 — 지금과 같음)
+        for (let i = 1; i <= PAGE_DAYS; i++) {
+            const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
             const dateStr = toDateStr(d);
             const res = computeAvailableSlotsForDate(d, busyList, settings, state.unlocked, state.travel, state.installMinutes);
             days.push({
@@ -351,10 +371,14 @@
             });
         }
 
+        if (state.selectedDateStr && !days.some(d => d.dateStr === state.selectedDateStr)) {      // 279번: 고른 날이 이 3주 밖이면 놓음
+            state.selectedDateStr = null;
+            state.selectedTime = null;
+        }
         if (!state.selectedDateStr) {
-            if (pick && pick.start) {
-                const pickD = new Date(pick.start);
-                state.selectedDateStr = toDateStr(pickD);
+            const pickStr = (pick && pick.start) ? toDateStr(new Date(pick.start)) : '';
+            if (pickStr && days.some(d => d.dateStr === pickStr)) {      // 279번: 잡아 둔 날이 이 3주 안일 때만 그날을 고름
+                state.selectedDateStr = pickStr;
                 state.selectedTime = pick.start;
             } else {
                 const firstAvail = days.find(d => d.status === '가능');
@@ -371,6 +395,17 @@
         html += '  <div class="bk-left">';
         html += '    <h1 class="bk-title">시공 날짜</h1>';
         html += '    <div class="bk-subtitle">편하신 날과 도착 시간을 골라 주세요.</div>';
+        // 279번: 3주씩 앞뒤로 넘기기 (오늘 이전으로는 못 감 · 옛 서버면 줄째 안 보임) — 누르는 것: 짙은 갈색 글자 + 밑줄 1px, 누르는 자리 위아래 14px
+        const showPrev = state.page > 0, showNext = state.canPage && state.page < MAX_PAGE;
+        if (showPrev || showNext) {
+            const navBtn = 'background:none; border:none; cursor:pointer; padding:14px 2px; font-family:var(--sans); font-size:15px; color:var(--ink); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:4px;';
+            const lastDay = days[days.length - 1].date;
+            html += '    <div class="bk-cal-nav" style="display:flex; align-items:center; justify-content:space-between; margin:-14px 0 14px 0;">';
+            html += `      <button type="button" style="${navBtn}${showPrev ? '' : ' visibility:hidden;'}" onclick="window.redamBooking.movePage(-1)">‹ 앞 3주</button>`;
+            html += `      <span style="font-family:var(--sans); font-size:17px; color:var(--ink);">${days[0].date.getMonth() + 1}월 ${days[0].date.getDate()}일 ~ ${lastDay.getMonth() + 1}월 ${lastDay.getDate()}일</span>`;
+            html += `      <button type="button" style="${navBtn}${showNext ? '' : ' visibility:hidden;'}" onclick="window.redamBooking.movePage(1)">다음 3주 ›</button>`;
+            html += '    </div>';
+        }
 
         html += '    <div class="bk-cal-head">';
         ['월', '화', '수', '목', '금', '토', '일'].forEach(h => {
@@ -406,7 +441,9 @@
             html += `  <div class="bk-confirmed-sub">${formatDateKorean(pickDate)} · ${formatTimeKorean(pickDate, pick.minutes || state.installMinutes).split(' · ')[0]}</div>`;
             html += `</div>`;
         } else if (!anyAvail) {
-            html += '<div class="bk-empty-msg">앞으로 3주 안에 빈 시간이 없습니다.</div>';
+            const emptyMsg = !state.canPage ? '앞으로 3주 안에 빈 시간이 없습니다.'      // 279번: 옛 서버(넘기기 없음)면 지금 말 그대로
+                : (state.page < MAX_PAGE ? '이 3주에는 빈 시간이 없습니다. 다음 3주를 확인해 주세요.' : '이 3주에는 빈 시간이 없습니다.');
+            html += `<div class="bk-empty-msg">${emptyMsg}</div>`;
         } else if (!selectedDay || selectedDay.slots.length === 0) {
             html += `<h2 class="bk-right-title">${selectedDay ? formatDateKorean(selectedDay.date) : ''}</h2>`;
             html += '<div class="bk-empty-msg">이날은 남은 시간이 없습니다.</div>';
@@ -560,7 +597,7 @@
                     return;
                 }
             } else if (reason === 'taken') {
-                state.staffMsg = '방금 그 시간이 찼습니다';
+                state.staffMsg = '방금 그 시간에 다른 예약이 들어왔습니다';
                 pick.confirmed = false;
                 if (typeof window.setBookingPick === 'function') window.setBookingPick(pick);
                 state.selectedTime = null;
@@ -575,18 +612,18 @@
             } else if (reason === 'phone') {
                 state.staffMsg = '연락처를 먼저 적어 주세요';
             } else if (reason === 'time') {
-                state.staffMsg = '지난 시간이에요';
+                state.staffMsg = '이미 지난 시간입니다';
             } else if (reason === 'secret' || reason === 'setup' || reason === 'error' || reason === 'origin') {
                 state.staffMsg = '서버 설정 확인';
             } else {
                 state.staffMsg = '서버 설정 확인';
             }
-            if (btn) btn.textContent = '확정 (길게 누르기)';
+            if (btn) btn.textContent = '확정 · 길게 누르기';
             renderStaffBarOnly();
         } catch (e) {
             state.isBooking = false;
             state.staffMsg = '인터넷 연결 확인';
-            if (btn) btn.textContent = '확정 (길게 누르기)';
+            if (btn) btn.textContent = '확정 · 길게 누르기';
             renderStaffBarOnly();
         }
     }
@@ -602,12 +639,18 @@
         state.installMinutes = computeInitialInstallMinutes();
         state.unlocked = false;
         state.staffMsg = '';
+        state.canPage = true;      // 279번: 열 때마다 서버가 from을 아는지 다시 봄
+        state.paging = false;
+        state.page = 0;
 
         const pick = (typeof window.getBookingPick === 'function') ? window.getBookingPick() : null;
         if (pick && pick.start) {
             const pickDate = new Date(pick.start);
             state.selectedDateStr = toDateStr(pickDate);
             state.selectedTime = pick.start;
+            const t0 = new Date();
+            const dayN = Math.round((new Date(pickDate.getFullYear(), pickDate.getMonth(), pickDate.getDate()) - new Date(t0.getFullYear(), t0.getMonth(), t0.getDate())) / 864e5);
+            state.page = Math.max(0, Math.min(MAX_PAGE, Math.floor((dayN - 1) / PAGE_DAYS)));      // 279번: 잡아 둔 날이 든 3주부터 보여 줌 (지난 날이면 첫 3주)
             if (Number.isFinite(pick.travel)) state.travel = pick.travel;
             if (Number.isFinite(pick.minutes)) state.installMinutes = pick.minutes;
         } else {
@@ -629,7 +672,7 @@
                 <div class="bk-staff">${renderStaffBar()}</div>
             </div>
             <div class="bk-body" style="align-items:center; justify-content:center;">
-                <div class="bk-empty-msg">빈 시간을 보는 중입니다</div>
+                <div class="bk-empty-msg">빈 시간을 확인하고 있습니다.</div>
             </div>
         `;
 
@@ -689,6 +732,19 @@
         renderModal(cacheBusy);
     }
 
+    async function movePage(step) {      // 279번: 3주씩 앞뒤로 — 오늘 이전 · 끝 너머 · 옛 서버에서는 안 넘어감
+        if (state.paging) return;
+        const next = state.page + step;
+        if (next < 0 || next > MAX_PAGE || (step > 0 && !state.canPage)) return;
+        state.paging = true;
+        state.page = next;
+        state.selectedDateStr = null;
+        state.selectedTime = null;
+        const busy = await fetchBusy(false);
+        state.paging = false;
+        renderModal(busy);
+    }
+
     async function refreshBusy() {
         const busy = await fetchBusy(true);
         renderModal(busy);
@@ -707,6 +763,7 @@
         cycleTravel,
         cycleInstall,
         toggleLock,
-        refreshBusy
+        refreshBusy,
+        movePage
     };
 })();

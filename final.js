@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261320';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -42,7 +42,7 @@
             fabs: (r.isConfigured ? (r.curtains || []) : []).filter(c => c.fabricId).map(c => ({ kind: c.presetType, hex: fabOf(c.fabricId, c.colorName) }))
         })) : ((data && data.rooms) || []).map(rm => ({
             name: rm.name, raw: rm.raw || rm,
-            fabs: (rm.items || []).map(i => ({ kind: (i.kindKey === 'drape' || i.kind === '겉지') ? 'drape' : (i.kindKey === 'sheer' || i.kind === '속지') ? 'sheer' : 'other', hex: fabOf(i.fabricId, i.colorName, i.fill) }))
+            fabs: (rm.items || []).map(i => ({ kind: (i.kindKey === 'drape' || i.kind === '겉지' || i.kind === '겉커튼') ? 'drape' : (i.kindKey === 'sheer' || i.kind === '속지' || i.kind === '속커튼') ? 'sheer' : 'other', hex: fabOf(i.fabricId, i.colorName, i.fill) }))
         }));
         return src.map(s => {
             const wallP = roomPart(s.raw, 'wall'), floorP = roomPart(s.raw, 'floor');
@@ -218,7 +218,8 @@
 
     // 공간별 쇼룸 시트에 들어갈 내용 (80번: 화면과 저장 이미지가 같이 씀)
     //  { rm, name, sz, compLabel, dirTxt, metaLine(값만 한 줄), st(창가 색 띠), paras(① 들은 말 · ② 본 것 · ③ 고른 것, 83번), commentTxt, sets(원단별 ④ 원단 줄), back·front(겹침 스와치: 겉지 뒤·속지 앞, 한 장이면 null), night }
-    const COMP_SAY = { double: '속지와 겉지', sheer_only: '속지', drape_only: '겉지', blind_only: '블라인드' };      // 83번 문장표 1장
+    const COMP_SAY = { double: '속커튼과 겉커튼', sheer_only: '속커튼', drape_only: '겉커튼', blind_only: '블라인드' };
+    const finKindSay = k => (typeof ticketKindSay === 'function' ? ticketKindSay(k) : k);      // 279번: 보이는 글자만 속커튼·겉커튼 (it.kind 값은 그대로)      // 83번 문장표 1장
     function showroomRowsOf(data) {
         const whyInfo = (typeof whySetsOf === 'function') ? whySetsOf(data) : { rooms: [] };
         const allSp = (typeof houseSpacesOf === 'function') ? houseSpacesOf(data) : [];
@@ -295,7 +296,7 @@
         if (configuredRooms.length) h += '<button type="button" data-sec="finSecWhy" onclick="window.concierge.scrollFinalSec(\'finSecWhy\')">공간 제안</button>';
         h += '<button type="button" data-sec="finSecEst" onclick="window.concierge.scrollFinalSec(\'finSecEst\')">견적서</button>';
         const night = (typeof houseNightOf === 'function') ? houseNightOf(data) : null;      // 131번
-        if (night) h += '<button type="button" data-sec="finSecNight" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">공간의 밤</button>';
+        if (night) h += '<button type="button" data-sec="finSecNight" onclick="window.concierge.scrollFinalSec(\'finSecNight\')">밤에는 이렇게 보입니다</button>';
         if (window.redamBooking && window.redamBooking.ready()) h += '<button type="button" onclick="window.redamBooking.open()">시공 날짜</button>';      // 202번
         if (configuredRooms.length) h += '<button type="button" onclick="openContractPanel()">계약</button>';      // 244번: 직원 화면을 열지 않고 계약 금액 → 계약 장(app.js)
         h += '<button type="button" class="is-save" onclick="window.concierge.saveQuote()">견적서 저장</button>';
@@ -325,7 +326,7 @@
                     const ln = roomLines.find(r => r.name === s.name);
                     h += '<div class="jg-mb-room">';
                     h += `<div class="jg-mb-row"><span class="jg-mb-name font-serif-kr">${esc(s.name)}</span><div class="jg-mb-pic" data-still-room="${esc(s.name)}">${houseSceneSvg(s)}</div></div>`;
-                    if (ln && ln.parts && ln.parts.length) h += '<dl class="jg-mb-say">' + ln.parts.map(q => `<dt>${esc(q.k)}</dt><dd>${esc(q.text)}</dd>`).join('') + '</dl>';
+                    if (ln && ln.parts && ln.parts.length) h += '<dl class="jg-mb-say">' + ln.parts.map(q => `<dt>${esc(finKindSay(q.k))}</dt><dd>${esc(q.text)}</dd>`).join('') + '</dl>';
                     h += '</div>';
                 });
             }
@@ -365,7 +366,7 @@
                         const baseName = sItem.it.name;
                         const hideKind = sItem.it.kind === '블라인드' && baseName.includes('블라인드');
                         return `<div class="jg-fab-block">`
-                            + (hideKind ? '' : `<div class="jg-fab-k"><span>${esc(sItem.it.kind)}</span></div>`)      // 132번: 색 코드는 뺌
+                            + (hideKind ? '' : `<div class="jg-fab-k"><span>${esc(finKindSay(sItem.it.kind))}</span></div>`)      // 132번: 색 코드는 뺌
                             + `<h4 class="jg-fab-title font-serif-kr">${esc(baseName)}</h4>`
                             + (sItem.lines && sItem.lines.length ? `<p class="jg-fab-desc">${esc(sItem.lines.join(' '))}</p>` : '')
                             + (sItem.note ? `<p class="jg-fab-note">${esc(sItem.note)}</p>` : '')
@@ -393,23 +394,23 @@
             (room.items || []).forEach(it => {
                 h += '<div class="fin-est-line">';
                 h += `<div class="fin-est-chip" style="${room.isLight ? `background:${it.fill}` : fabricFillStyle(it.fabricId, it.colorName)}"></div>`;
-                h += `<span class="fin-est-k">${esc(it.kind)}</span>`;
+                h += `<span class="fin-est-k">${esc(finKindSay(it.kind))}</span>`;
                 const estSmall = [it.bookSub, it.meta].filter(Boolean).join(' · ');      // 208번 · 223번: 리담 번호가 작은 글씨 맨 앞
                 h += `<span class="fin-est-nm font-serif-kr">${esc(it.bookName || it.name)}${estSmall ? `<small>${esc(estSmall)}</small>` : ''}</span>`;
                 h += `<span class="fin-est-sz">${esc(it.size || '')}</span>`;
-                h += `<span class="fin-est-pr font-serif-kr">${it.sampleOnly ? (it.sampleBlind ? '견본 확인 후' : '') : `${it.price.toLocaleString()}원`}</span>`;      // 176번
+                h += `<span class="fin-est-pr font-serif-kr">${it.sampleOnly ? (it.sampleBlind ? '샘플 확인 후' : '') : `${it.price.toLocaleString()}원`}</span>`;      // 176번
                 h += '</div>';
             });
             h += '</div>';
         });
         // 145번: 견적서 기본 공간 = 공간 3개(각 겉지·속지 두 줄). 모자라면 보이지 않는 빈 묶음으로 자리만 채움
-        const blankLine = '<div class="fin-est-line"><div class="fin-est-chip"></div><span class="fin-est-k">겉지</span><span class="fin-est-nm font-serif-kr">-</span><span class="fin-est-sz">-</span><span class="fin-est-pr">-</span></div>';
+        const blankLine = '<div class="fin-est-line"><div class="fin-est-chip"></div><span class="fin-est-k">겉커튼</span><span class="fin-est-nm font-serif-kr">-</span><span class="fin-est-sz">-</span><span class="fin-est-pr">-</span></div>';
         for (let i = estRooms.length; i < 3; i++) h += `<div class="fin-est-space is-blank" aria-hidden="true"><div class="fin-est-hd"><span class="fin-est-rname font-serif-kr">-</span></div>${blankLine}${blankLine}</div>`;
         h += '</div>';
         h += '<div class="fin-est-foot">';
         // 132번: 손님 화면에서는 입력 칸 대신 글자 "30,000원"(고치는 것은 직원 화면 견적 칸) + 부가세 줄(일반 판매가 "포함" / 세금계산서 10% 금액)
         h += '<div class="fin-est-sums">';
-        if (data.install > 0) h += `<div class="fin-est-install"><span>시공 및 설치비</span><span class="font-serif-kr">${Number(data.install).toLocaleString()}원</span></div>`;
+        if (data.install > 0) h += `<div class="fin-est-install"><span>시공비</span><span class="font-serif-kr">${Number(data.install).toLocaleString()}원</span></div>`;
         if (data.vatText) h += `<div class="fin-est-install"><span>${esc(data.vatLabel || '부가세')}</span><span class="font-serif-kr">${esc(data.vatText)}</span></div>`;
         h += '</div>';
         h += `<div class="fin-est-total-row"><span class="fin-est-total-lbl">${esc(data.totalLabel || '합계 금액 (시공비 포함)')}</span><span class="fin-est-total-num font-serif-kr"><span id="finEdTotalNum">${esc(data.total)}</span><small>원</small></span></div>`;
@@ -431,7 +432,7 @@
         if (night) {
             const cv = cells => '<div class="jg-cv">' + cells.map(c => `<span class="jg-c" style="left:calc(${c.x / 16 * 100}% + 1.5px);top:calc(${c.y / 10 * 100}% + 1.5px);width:calc(${c.w / 16 * 100}% - 3px);height:calc(${c.h / 10 * 100}% - 3px);background:${c.hex}"></span>`).join('') + '</div>';
             h += '<section class="fin-night" id="finSecNight">';
-            h += `<div class="fin-night-top"><h2 class="fin-night-ttl font-serif-kr">공간의 밤</h2></div>`;
+            h += `<div class="fin-night-top"><h2 class="fin-night-ttl font-serif-kr">밤에는 이렇게 보입니다</h2></div>`;
             h += '<div class="fin-night-pair">' + [night.before, night.after].map((cells, i) => `<figure><div class="fin-night-q">${cv(cells)}</div><figcaption>${esc(night.caps[i])}</figcaption></figure>`).join('') + '</div>';
             h += '<div class="fin-night-times">' + night.times.map(t => `<div><h3 class="font-serif-kr">${esc(t.t)}</h3><p class="font-serif-kr">${esc(t.p)}</p></div>`).join('') + '</div>';
             const spec = night.lamp.spec.map(x => x === night.lamp.kTxt ? `<em>${esc(x)}</em>` : esc(x)).join(' · ');
@@ -514,7 +515,7 @@
         const n = imgs.length, onCard = finalCardCount > 0 && finalPage < finalCardCount;
         // 쪽 묶음 (37번): [0, house) = 우리 집 색 · [house, card) = 원단을 고른 이유 · [card, n) = 견적서
         const groupOf = k => k < finalHouseCount ? 'house' : (k < finalCardCount ? 'why' : (finalNightAt >= 0 && k >= finalNightAt ? 'night' : 'ticket'));      // 131번: 밤 장부터 끝(맺음)까지 'night'
-        const nextWord = { why: '공간 제안', ticket: '견적서 보기', night: '공간의 밤' }, prevWord = { house: '공간의 색과 빛', why: '공간 제안', ticket: '견적서' };
+        const nextWord = { why: '공간 제안', ticket: '견적서 보기', night: '밤에는 이렇게 보입니다' }, prevWord = { house: '공간의 색과 빛', why: '공간 제안', ticket: '견적서' };
         const pager = document.getElementById('finPager');
         if (pager) {
             // 세로 모드에서는 [← 이전 (맨 왼쪽)] · [쪽 번호 + 크게 보기 (가운데)] · [다음 → (맨 오른쪽)] 자리가 고정됨 (39번)
@@ -549,7 +550,7 @@
             finalNightAt = typeof nightAt === 'number' ? nightAt : -1;
             canvases.forEach((c, k) => {
                 const img = document.createElement('img');
-                img.alt = k < finalHouseCount ? '공간의 색과 빛' : ((k < finalCardCount) ? '공간 제안' : (finalNightAt >= 0 && k >= finalNightAt ? '공간의 밤' : '견적서'));
+                img.alt = k < finalHouseCount ? '공간의 색과 빛' : ((k < finalCardCount) ? '공간 제안' : (finalNightAt >= 0 && k >= finalNightAt ? '밤에는 이렇게 보입니다' : '견적서'));
                 img.src = c.toDataURL('image/png');
                 box.appendChild(img);
             });
@@ -558,7 +559,7 @@
         } catch (e) {
             console.error(e);
             const box = document.getElementById('finPaper');
-            if (box) box.innerHTML = '<p class="fin-wait font-serif-kr">견적서를 그리지 못했습니다. 다시 열어 주세요</p>';
+            if (box) box.innerHTML = '<p class="fin-wait font-serif-kr">견적서를 불러오지 못했습니다. 다시 열어 주세요.</p>';
         }
     }
 
