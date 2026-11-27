@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -9,47 +9,47 @@
     const { state, getLiveDb, roomHasLab } = cz;
 
     // ---- 손님 화면 낱말 (189번) ----
-    const SHEER_NAME = { light: '많이 비침', medium: '은은한 비침', day: '낮 가림', heavy: '중지' };
-    const SHEER_DENSITY = { light: '많이 비침', medium: '은은한 비침', day: '낮 가림', heavy: '거의 안 비침' };      // 원단 사실 한 줄 (data.js DENSITY_LABELS와 같음)
+    const SHEER_NAME = { light: '많이 비침', medium: '은은한 비침', day: '낮에도 가림', heavy: '거의 안 비침' };
+    const SHEER_DENSITY = { light: '많이 비침', medium: '은은한 비침', day: '낮에도 가림', heavy: '거의 안 비침' };      // 원단 사실 한 줄 (data.js DENSITY_LABELS와 같음)
     const SHEER_GRAIN = { linen: '린넨', natural: '짜임이 보이는 질감', smooth: '매끈한 질감' };
     const DRAPE_TEX = { smooth: '매끈한 질감', natural: '짜임이 보이는 질감', cozy: '도톰하고 포근한 질감' };      // fabric-pick.js diffTexWord와 같음
-    const DRAPE_BLOCK = { none: '빛 스밈', mid: '반쯤 가림', life: '생활 암막', full: '완전 암막' };              // fabric-pick.js diffLightWord와 같음
+    const DRAPE_BLOCK = { none: '빛이 들어옴', mid: '반쯤 가림', life: '생활 암막', full: '완전 암막' };              // fabric-pick.js diffLightWord와 같음
     // 이유 한 줄 (189번, 11-08 사장님 확인: 시안의 추천안)
     const WHY = {
         sheer: {
             light: '바깥 풍경이 또렷이 비쳐, 낮에 창이 가장 환합니다.',
-            medium: '바깥의 형태는 보이고, 흐리게 번집니다.',
+            medium: '바깥이 형태만 흐릿하게 보입니다.',
             day: '낮에는 밖에서 안이 보이지 않고, 빛은 들어옵니다.',
-            heavy: '속지 가운데 가장 도톰해, 저녁 불을 켜도 안이 흐릿합니다.'
+            heavy: '속커튼 가운데 가장 도톰해, 저녁에 불을 켜도 안이 흐릿하게만 보입니다.'
         },
         calm: {      // 넓게 · 고요하게 · 아늑하게 (색채학 4-8-2)
-            light: '벽 쪽으로 한 톤 밝아, 창 쪽이 트여 보입니다.',
+            light: '벽에 가까운 밝은 색이라, 창 쪽이 트여 보입니다.',
             lightWhite: '벽과 같은 흰빛이라, 창 쪽이 트여 보입니다.',      // 흰 벽 집: 벽 밝기 90 이상이고 이 색이 85 이상일 때만 (5-9-2)
-            mid: '벽과 바닥 사이 색이라, 가장 고요하게 스며듭니다.',
-            deep: '바닥 쪽으로 한 톤 내려, 창가가 아늑해집니다.'
+            mid: '벽과 바닥 사이 색이라, 가장 자연스럽게 어울립니다.',
+            deep: '바닥에 가까운 한 톤 짙은 색이라, 창가가 아늑해 보입니다.'
         },
         weight: {
-            warm: '공간보다 짙고 따뜻한 쪽이라, 창가가 묵직하고 포근해 보입니다.',
-            house: '이 집의 빛깔 그대로 짙어져, 공간에 차분한 무게를 잡아 줍니다.',
-            cool: '공간보다 짙고 차가운 쪽이라, 창가가 단정하게 가라앉아 보입니다.'
+            warm: '벽·바닥보다 짙고 따뜻한 색이라, 창가가 묵직하고 포근해 보입니다.',
+            house: '벽·바닥과 같은 계열을 짙게 한 색이라, 공간이 차분하고 묵직해 보입니다.',
+            cool: '벽·바닥보다 짙고 차가운 색이라, 창가가 차분하고 단정해 보입니다.'
         },
         point: {      // 색 있는 집 = 기법 효과 (1109f)
-            tint: '공간과 같은 빛깔을 한층 짙게, 튀지 않고 깊어지는 포인트입니다.',
-            analog: '공간 색의 옆자리 색이라, 자연스럽게 눈이 가는 포인트입니다.',
-            sat: '공간보다 맑은 색이라, 같은 결 안에서 또렷해집니다.',
-            split: '공간의 반대쪽 곁 색이라, 또렷하지만 부딪히지 않습니다.',
-            comp: '공간의 반대편 색이라, 창이 가장 먼저 눈에 들어옵니다.'
+            tint: '벽·바닥과 같은 계열을 한층 짙게 한 색이라, 튀지 않는 포인트가 됩니다.',
+            analog: '벽·바닥 색과 가까운 계열이라, 자연스럽게 눈이 가는 포인트가 됩니다.',
+            sat: '벽·바닥과 같은 계열에서 더 선명한 색이라, 창이 또렷해 보입니다.',
+            split: '벽·바닥과 반대색에 가까운 색이라, 눈에 띄지만 튀지 않습니다.',
+            comp: '벽·바닥과 반대되는 색이라, 창이 가장 먼저 눈에 들어옵니다.'
         },
         pointGray: {      // 무채색·중성 집 (1109g). "회색이 맑아 보입니다"는 실물 시험 뒤
-            warm: '회색 공간이라, 흐린 색 하나로도 창에 온기가 생깁니다.',
-            cool: '회색 공간이라, 흐린 색 하나로도 창이 맑아집니다.',
-            tint: '회색 공간이라, 흐린 색 하나로도 창에 빛깔이 생깁니다.',
-            opp: '공간과 반대 기운의 색이라, 창이 또렷해집니다.',
-            value: '공간보다 짙은 색이라, 창이 먼저 눈에 들어옵니다.'
+            warm: '벽·바닥이 회색 계열이라, 연한 색 하나로도 창가가 따뜻해 보입니다.',
+            cool: '벽·바닥이 회색 계열이라, 연한 색 하나로도 창가가 산뜻해 보입니다.',
+            tint: '벽·바닥이 회색 계열이라, 연한 색 하나로도 창가에 색이 살아납니다.',
+            opp: '벽·바닥과 반대 기운의 색이라, 창이 또렷해 보입니다.',
+            value: '벽·바닥보다 짙은 색이라, 창이 먼저 눈에 들어옵니다.'
         }
     };
     const HONEST_SCENE = '창밖은 예시 사진입니다.';
-    const PHOTO_MISSING = '사진을 찍기 전이라 잰 색으로 보여 드립니다.';
+    const PHOTO_MISSING = '원단 사진이 아직 없어, 측정한 색으로 보여 드립니다.';
     // "왜 이 셋인가요" 지도의 글 (190번). 둘째 문장의 뒤는 최종 제안 "공간의 색과 빛"(ticket.js HOUSE_MAP_LEAD)과 같은 말
     const MAP_SAY = {
         calm: w => `${w} 모두 선 가까이 있고, 밝기만 다릅니다.`,
@@ -82,7 +82,7 @@
         if (book && n.startsWith(book + ' ')) n = n.slice(book.length).trim();
         return (!color || new RegExp(String(color).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$').test(n)) ? n : n + ' ' + color;
     }
-    const bookLine = id => { const b = String(fabOf(id).book || '').trim(); return b ? b + ' 책자' : ''; };
+    // 278번: 책자 이름은 손님 화면 어디에도 보이지 않음(결정 #435) — 원단 이름 위 "○○ 책자" 줄(옛 bookLine)을 지움
     function colorHex(id, color) {
         const c = (typeof getFabricColors === 'function' ? getFabricColors(id) : []).find(x => x.name === color);
         return (c && c.hex) || '';
@@ -195,7 +195,7 @@
     // 220번: 포인트 방식 질문 — 블라인드와 같은 질문·같은 틀(concierge.js askStage). 방식 이름은 손님 화면에도 그대로(11-11 결정)
     function askHtml(r) {
         const s = cp(), picked = !!cur().fabricId;
-        return cz.askStage('포인트는 어떤 방식으로 주실까요?', '', r.list.map((y, i) => y.all
+        return cz.askStage('포인트는 어떤 색으로 할까요?', '', r.list.map((y, i) => y.all
             ? { label: '맡길게요', quiet: true, on: `window.concierge.cpTech(${i})`, was: picked && i === s.seat }
             : { label: esc(y.name), on: `window.concierge.cpTech(${i})`, was: picked && i === s.seat }));
     }
@@ -214,13 +214,13 @@
         const s = cp(), x = r.list[Math.min(s.seat, r.list.length - 1)];
         if (r.tech) {      // 220번: 포인트 방식 설명 한 장 — 벽 바탕 · 커튼 색 면 · 바닥 띠 + 색 칩(누르면 면 색이 바뀜) → "이 방식으로" → 바로 원단 사진
             const chips = chipsOf(x), k = Math.max(0, Math.min(s.chip || 0, chips.length - 1)), face = (chips[k] && chips[k].hex) || x.hex || '#efece6', ink = inkOn(face);
-            const chipRow = chips.length > 1 ? `<div class="pt-chips">${chips.map((c, i) => `<button type="button" class="pt-chip${i === k ? ' is-on' : ''}" aria-label="색 ${i + 1}" style="background:${c.hex}" onclick="concierge.cpChip(${i})"></button>`).join('')}</div><span class="pt-cap">이 방식으로 고를 수 있는 색</span>` : '';
-            const other = r.list.some(y => y.all) ? `<button type="button" class="cp-map-link" onclick="concierge.cpAsk()">다른 방식 보기</button>` : '';
+            const chipRow = chips.length > 1 ? `<div class="pt-chips">${chips.map((c, i) => `<button type="button" class="pt-chip${i === k ? ' is-on' : ''}" aria-label="색 ${i + 1}" style="background:${c.hex}" onclick="concierge.cpChip(${i})"></button>`).join('')}</div><span class="pt-cap">고를 수 있는 색</span>` : '';
+            const other = r.list.some(y => y.all) ? `<button type="button" class="cp-map-link" onclick="concierge.cpAsk()">다른 색 보기</button>` : '';
             const mcT = state.editingRoom.measuredColor || {};
             return `<div class="cp-stage cp-sheet cp-framed" style="background:${(mcT.wall && mcT.wall.hex) || '#eee9e0'};color:${ink}">
             <i class="cp-frame-in" style="background:${face}"></i><i class="cp-frame-floor" style="background:${(mcT.floor && mcT.floor.hex) || '#b98a5e'}"></i>
             <div class="cp-say"><h1 class="cp-hero">${esc(x.name)}</h1><p class="cp-why">${esc((typeof POINT_TECH_DESC !== 'undefined' && POINT_TECH_DESC[x.key]) || '')}</p>${chipRow}${other}</div>
-            <div class="cp-door-at">${door('이 방식으로', 'concierge.cpOpen()')}</div></div>`;
+            <div class="cp-door-at">${door('이 색으로 할게요', 'concierge.cpOpen()')}</div></div>`;
         }
         const names = r.list.length > 1 ? `<div class="cp-names">${r.list.map((y, i) =>
             `<button type="button" class="${i === s.seat ? 'is-on' : ''}" onclick="concierge.cpSeat(${i})">${esc(seatName(r, y))}</button>`).join('')}</div>` : '';      // 한 장뿐이면 이름 줄 없음
@@ -291,7 +291,6 @@
             <div class="cp-door-at cp-on-photo">${door('이 원단으로', 'concierge.cpPick()')}</div>
             <div class="cp-strip" style="background:${band};color:${inkOn(band)}">
                 <div class="cp-fabric">
-                    <span class="cp-book">${esc(bookLine(f.id))}</span>
                     <span class="cp-name">${esc(fabName(f.id, f.color))}</span>
                     ${facts.filter(Boolean).map(t => `<span class="cp-fact">${esc(t)}</span>`).join('')}
                     ${(typeof fabricTraitOf === 'function' && fabricTraitOf(f.id)) ? `<span class="cp-fact">${esc(fabricTraitOf(f.id))}</span>` : ''}
@@ -312,7 +311,7 @@
             <div class="cp-strip cp-dark" style="background:${moving ? band : deepOf(band)};color:${moving ? inkOn(band) : 'var(--on-band)'}" data-deep="${deepOf(band)}">
                 <div class="cp-list">${r.list.filter(y => !y.all).map(y => { const on = y === x || (!!x.all && y.key === f.tech); return `<span class="${on ? 'is-on' : ''}">${on ? '<i></i>' : ''}${esc(seatName(r, y))}</span>`; }).join('')}</div>
                 <div class="cp-fabric">
-                    <span class="cp-book">${esc(((x.all && typeof POINT_TECH_TERM !== 'undefined' && POINT_TECH_TERM[f.tech]) || seatName(r, x)) + ' · ' + bookLine(f.id))}</span>
+                    <span class="cp-book">${esc((x.all && typeof POINT_TECH_TERM !== 'undefined' && POINT_TECH_TERM[f.tech]) || seatName(r, x))}</span>
                     <span class="cp-name">${esc(fabName(f.id, f.color))}</span>
                     <span class="cp-fact">${esc(facts.filter(Boolean).join(' · '))}</span>
                     <span><button type="button" class="cp-link" onclick="concierge.cpOther()">다른 원단 보기</button></span>
@@ -339,7 +338,7 @@
         const s = cp(), r = result(cur());
         // 뒤로(왼쪽 위 한 곳): 색 면 위에서는 그 면의 글자색. 열림에서는 "← 그 장 이름"(누르면 한 장으로)
         if (btn) {
-            if (s.view === 'open') { btn.style.color = getComputedStyle(stage.querySelector('.cp-strip')).color; if (r) btn.textContent = '← ' + (seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]) || '포인트 방식'); }      // 220번: 맡길게요 묶음은 이름이 없음
+            if (s.view === 'open') { btn.style.color = getComputedStyle(stage.querySelector('.cp-strip')).color; if (r) btn.textContent = '← ' + (seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]) || '포인트'); }      // 220번: 맡길게요 묶음은 이름이 없음
             else if (s.view === 'picked') btn.style.color = '#fff';
             else if (s.view === 'map') { btn.style.color = 'var(--ink)'; if (r) btn.textContent = '← ' + seatName(r, r.list[Math.min(s.seat, r.list.length - 1)]); }      // 190번: 지도에서 ← 는 보던 색 한 장으로
             else if (stage.classList.contains('cp-framed')) { const mcB = (state.editingRoom && state.editingRoom.measuredColor) || {}; btn.style.color = inkOn((mcB.wall && mcB.wall.hex) || '#eee9e0'); }      // 221번: 포인트 한 장은 ← 가 벽 띠 위에 있음 → 벽 색에 맞춘 글자색
@@ -454,8 +453,8 @@
     //  엔진은 data.js colorFirstChips · colorFirstSeat · colorFirstNear. 입구는 concierge.js 구성 사진 화면 질문 줄 오른쪽 글자(cfCan, 233번)
     //  관계 한 줄은 위 WHY 표를 빌림(whyOf). 어느 자리에도 안 드는 색만 아래 두 문장 (11-13 ③ 초안 — 사장님 아침 확인)
     const CF_NONE = {
-        strong: '벽·바닥에 견주면 꽤 강한 색이라, 창이 공간에서 가장 먼저 보입니다.',
-        other: '벽·바닥과 기운이 다른 색이라, 창이 공간에서 따로 보일 수 있습니다.'
+        strong: '벽·바닥보다 꽤 강한 색이라, 창이 가장 먼저 눈에 들어옵니다.',
+        other: '벽·바닥과 기운이 다른 색이라, 창만 따로 떠 보일 수 있습니다.'
     };
     function cfWhy(seat, room) {      // seat: { feel, key, tech, house, L } (색 칸의 seat 또는 공간의 colorFirst)
         if (!seat) return '';
@@ -566,6 +565,7 @@
     function whyLineFor(room, kind, fabricId, colorName) {
         try {
             if (!room || !fabricId) return '';
+            kind = ({ '속커튼': '속지', '겉커튼': '겉지' })[kind] || kind;      // 278번: ticket.js가 품목 글자를 '속커튼 · 겉커튼'으로 넘겨도(279번) 아래 '속지' · '겉지' 비교가 그대로 맞게
             const cfw = room.colorFirst;      // 228번: 색으로 고른 겉지는 고를 때 본 한 줄 그대로
             if (kind === '겉지' && cfw && cfw.kind === 'drape' && cfw.fabricId === fabricId && (!colorName || cfw.colorName === colorName)) return cfWhy(cfw, room);
             if (kind === '속지') { const d = fabOf(fabricId).density; return (d && WHY.sheer[d]) || ''; }      // 빛 한 장의 장 = 원단 비침(density)

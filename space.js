@@ -1,10 +1,11 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['space.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // space.js — 고객 화면 중심 화면(1-Space): 왼쪽 기둥·공간 칸 그리기·한 톤 밝게/진하게·원단 바꾸기·알림·수정하기 화면 (130-4④에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
     const cz = window.conciergeCore;      // concierge.js와 잇는 다리 (130-4)
     const { state, getLiveDb, calculateV1ItemPrice, syncToV1MasterRooms, askedRoom, planHas, takeLine, putLine, swapLine, COMP_NAMES, flowPeek, fabricFillStyle, HATCH, hexCode, roomPart, roomSize, roomComp, kindOf, houseColor, furCount, furLabelOf, dirPickerHtml, msrBoxHtml, paneBlockHtml, render, colorFillOf, splitNameColor } = cz;
 
+    const kindSay = c => ({ '속지': '속커튼', '겉지': '겉커튼' })[kindOf(c)] || kindOf(c);      // 278번: 손님 화면 글자만 속커튼 · 겉커튼(kindOf가 돌려주는 글은 그대로 두고 여기서 바꿔 보임)
     // ---- 중심 화면 끝 모습: 한 톤 밝게 / 진하게 · 더 보기에서 바꾸기 (20번 4단계) ----
     // 원단 찾기와 같은 목록(data.js finderEntries: 원단의 색 하나 = 한 장)을 씀. 화면을 그릴 때 한 번만 만듦
     let spaceEntries = null;
@@ -104,7 +105,7 @@
         if (state.step === "1-Space") render();
         if (silent) return;
         const name = shortFabName(fabricId, color);
-        spaceToast(`${r.name} ${kindOf(c)}: ${typeof finderJosa === 'function' ? finderJosa(name, '으로', '로') : name + '(으)로'} 바꿨습니다`,
+        spaceToast(`${r.name} ${kindSay(c)}: ${typeof finderJosa === 'function' ? finderJosa(name, '으로', '로') : name + '(으)로'} 바꿨습니다`,
             () => swapCurtain(roomId, idx, prev.fabricId, prev.colorName, true, { toneStep: prev.toneStep, pickDir: prev.pickDir, baseFabricId: prev.baseFabricId, baseColorName: prev.baseColorName }));
     }
     // 고객 화면 알림 (아래 가운데, 짙은 갈색). 되돌리기가 있으면 3.5초, 없으면 1.8초
@@ -154,7 +155,7 @@
         state.activeSpaceId = r.id;
         syncToV1MasterRooms();
         render();
-        spaceToast(`${r.name} ${kindOf(c)}를 뺐습니다`, () => restoreCurtains(roomId, before));
+        spaceToast(`${r.name} ${typeof finderJosa === 'function' ? finderJosa(kindSay(c), '을', '를') : kindSay(c) + '을(를)'} 뺐습니다`, () => restoreCurtains(roomId, before));
     }
     // 167번: 줄 이름 — 구성 이름 (만드는 중이면 빈 글)
     function lineName(o) { return (o && COMP_NAMES[roomComp(o)]) || ''; }
@@ -180,7 +181,7 @@
         syncToV1MasterRooms();
         render();
         const nm = lineName(gone);
-        spaceToast(`${r.name}: ${nm ? nm + ' ' : ''}후보를 뺐습니다`, () => restoreLines(roomId, snap));
+        spaceToast(`${r.name}: ${nm ? "'" + nm + "' " : ''}후보를 뺐습니다`, () => restoreLines(roomId, snap));
     }
     // 167번: 줄을 누르면 고른 줄 (다른 줄은 흐리게, 지우지 않음). 만드는 중엔 못 고름
     function selectLine(roomId, lineNo) {
@@ -197,9 +198,9 @@
     const ANSWER_SAY = {
         lightBlock: { light: '빛 들어와도 괜찮음', soft: '빛 적당히 가림', dark: '빛 완전히 가림' },
         privacy: { open: '시선 괜찮음', some: '시선 조금 가림', high: '시선 많이 가림' },
-        pres: { calm: '조용히 스며들게', weight: '차분한 무게감', point: '포인트 있게' },
-        sheer: { smooth: '매끈한 속지', textured: '짜임이 보이는 속지', cozy: '도톰한 속지', linen: '린넨 속지' },      // 191번: 린넨 (cozy는 옛 상담)
-        tex: { smooth: '매끈한 겉지', texture: '짜임이 보이는 겉지', fluffy: '보송한 겉지' }
+        pres: { calm: '넓어 보이게', weight: '차분하게', point: '포인트 있게' },
+        sheer: { smooth: '매끈한 속커튼', textured: '짜임이 보이는 속커튼', cozy: '도톰한 속커튼', linen: '린넨 속커튼' },      // 191번: 린넨 (cozy는 옛 상담)
+        tex: { smooth: '매끈한 겉커튼', texture: '짜임이 보이는 겉커튼', fluffy: '보송한 겉커튼' }
     };
     function answerSay(r, keys) {      // 170번: keys를 주면 그 칸만 (두 줄 공간은 이름 아래 빛·시선, 줄마다 느낌·결)
         const has = k => r.isConfigured ? (r.curtains || []).some(c => c.presetType === k) : planHas(r, k);
@@ -312,7 +313,7 @@
             s += '<div class="dos-item-main">';
             s += mode === 'cur' ? `<button type="button" class="dos-sw${fc}" style="${swStyle}" onclick="window.concierge.selectLine(${r.id}, ${no})" aria-label="${esc(lineName(r))}"></button>` : `<div class="dos-sw${fc}" style="${swStyle}"></div>`;
             s += `<div class="dos-txt"><button type="button" class="dos-redit dos-drop"${live ? ` onclick="window.concierge.dropCurtain(${r.id}, ${i})"` : ' disabled'}>빼기</button>`;      // 168번: 빼기는 칸 오른쪽 위 구석 (165번: 묻지 않고 빼고 알림에 되돌리기)
-            s += isBlindDupe ? '' : `<div class="dos-kind">${kindOf(c)}</div>`;
+            s += isBlindDupe ? '' : `<div class="dos-kind">${kindSay(c)}</div>`;
             s += `<div class="dos-fab font-serif-kr"><span class="dos-fname">${esc(baseFabName)}</span>${showColLbl ? `<span class="dos-fcolor">${esc(colLbl)}</span>` : ''}${opts.length ? `<em class="dos-fopts">· ${opts.join(' · ')}</em>` : ''}</div>`;
             if (c.presetType !== 'blind') {      // 블라인드는 더 보기·밝게/진하게가 없음
                 s += '<div class="dos-item-sub">';
@@ -332,7 +333,7 @@
         // 133번(재검토 A3): 로고 아래 "○○ 고객님의 공간" 이름표는 뺌 — 레이아웃이 설명하게
         // 161번: 담은 품목이 모두 실물 견본(우드·색 못 잰 블라인드)이면 "찾았습니다"라 하지 않음
         const allSample = doneN && list.filter(r => r.isConfigured).every(r => (r.curtains || []).length && r.curtains.every(c => typeof sampleBlindFabric === 'function' && sampleBlindFabric(c.fabricId)));
-        h += allSample ? '<h2 class="dos-lead font-serif-kr">상담 때 실물 견본으로<br>함께 고르겠습니다</h2>'
+        h += allSample ? '<h2 class="dos-lead font-serif-kr">실물 샘플로<br>함께 고르겠습니다</h2>'
            : doneN ? '<h2 class="dos-lead font-serif-kr">공간마다 알맞은<br>원단을 찾았습니다</h2>' // 42번: 사족 설명 제거
                    : '<h2 class="dos-lead font-serif-kr">먼저 크기와 색을<br>함께 살펴보겠습니다</h2>';
         // 맨 위 공간 전체 색 띠: 칸을 누르면 그 공간으로 이동 (77번)
@@ -427,19 +428,19 @@
                     const drapeFlex = curtTotalFlex * 0.25;
                     const sheerFlex = curtTotalFlex * 0.5;
                     topSegs += seg('벽', wHex, wallSideFlex);
-                    topSegs += seg('겉지', dFill, drapeFlex, fillCls(r, 0));
-                    topSegs += seg('속지', sFill, sheerFlex, fillCls(r, 1));
-                    topSegs += seg('겉지', dFill, drapeFlex, fillCls(r, 0));
+                    topSegs += seg('겉커튼', dFill, drapeFlex, fillCls(r, 0));
+                    topSegs += seg('속커튼', sFill, sheerFlex, fillCls(r, 1));
+                    topSegs += seg('겉커튼', dFill, drapeFlex, fillCls(r, 0));
                     topSegs += seg('벽', wHex, wallSideFlex);
                 } else if (r.curtains.length === 1) {
-                    const c0 = r.curtains[0], k = kindOf(c0);
+                    const c0 = r.curtains[0], k = kindSay(c0);
                     topSegs += seg('벽', wHex, wallSideFlex);
                     topSegs += seg(k, colorFillOf(c0.fabricId, c0.colorName), curtTotalFlex, fillCls(r, 0));
                     topSegs += seg('벽', wHex, wallSideFlex);
                 } else {
                     topSegs += seg('벽', wHex, wallSideFlex);
                     const eachFlex = curtTotalFlex / r.curtains.length;
-                    r.curtains.forEach((c, i) => { topSegs += seg(kindOf(c), colorFillOf(c.fabricId, c.colorName), eachFlex, fillCls(r, i)); });
+                    r.curtains.forEach((c, i) => { topSegs += seg(kindSay(c), colorFillOf(c.fabricId, c.colorName), eachFlex, fillCls(r, i)); });
                     topSegs += seg('벽', wHex, wallSideFlex);
                 }
             } else {
@@ -548,8 +549,8 @@
         const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
         const row = (k, part) => {
             const p = roomPart(ed, part);
-            return `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 재지 않았습니다'}</span>${hexCode(p)}`
-                + `<button type="button" class="ed-btn" onclick="window.concierge.editRoomColor('${part}')">${p ? '다시 재기' : '재기'}</button></div>`;
+            return `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${p ? p.hex : HATCH}"></i><span class="dos-wfn">${p ? esc(p.name) : '아직 측정하지 않았습니다'}</span>${hexCode(p)}`
+                + `<button type="button" class="ed-btn" onclick="window.concierge.editRoomColor('${part}')">${p ? '다시 측정' : '측정하기'}</button></div>`;
         };
         const house = houseColor();
         let h = '<div class="msr-stage msr-edit">';      // 공간 이름 · 수정하기는 왼쪽 위 뒤로 가기에 (73번)
@@ -576,17 +577,11 @@
         // 창 구성 선택 (48번): 상담을 마친 공간이면 이중 커튼 · 속지만 · 겉지만 · 블라인드로 즉시/스마트하게 변경
         if (r.isConfigured) {
             const curComp = roomComp(r) || 'double';
-            const compHints = {
-                double: '속지와 겉지가 함께 들어가는 구성입니다',
-                sheer_only: '은은한 채광의 속지만 들어가는 구성입니다',
-                drape_only: '빛 차단을 위한 겉지만 들어가는 구성입니다',
-                blind_only: '창틀 안에 들어가는 블라인드 구성입니다'
-            };
-            h += '<div class="ed-comp"><span class="ed-comp-k">창 구성</span><div class="ed-comp-btns">';
+            h += '<div class="ed-comp"><span class="ed-comp-k">구성</span><div class="ed-comp-btns">';
             [
                 ['double', '이중 커튼'],
-                ['sheer_only', '속지 커튼'],
-                ['drape_only', '겉지 커튼'],
+                ['sheer_only', '속커튼만'],
+                ['drape_only', '겉커튼만'],
                 ['blind_only', '블라인드']
             ].forEach(([k, txt]) => {
                 const on = (curComp === k);

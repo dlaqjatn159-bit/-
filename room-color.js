@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -43,7 +43,7 @@
     const HIT_PX = 22;                        // 이미 찍은 점에서 이만큼 안을 누르면 그 점을 지움
     // 찍는 방법 (37번): 방 문 앞에서 창 쪽을 넓게. 창 아래는 역광이라 카드가 어둡게 찍혀서 카드는 바닥 가운데쯤
     const SHOOT_GUIDE = '공간 입구에 서서 <b>창 쪽을 넓게</b> 찍어 주세요<br>(광각 0.6배)';
-    const SHOOT_CARD = '카드는 창 바로 아래가 아닌, 바닥 가운데쯤에 두면 빛이 고르게 받습니다.';
+    const SHOOT_CARD = '카드는 창 바로 아래보다 바닥 가운데쯤에 두어야 빛을 고르게 받습니다.';
     const SHOOT_FUR = '가구 위나 바로 옆에 회색·흰 카드를 두고<br><b>가까이</b> 찍어 주세요';      // 66번
     const SHOOT_FUR_SUB = '카드와 가구가 같은 빛을 받게 붙여 두면 색이 정확합니다. 한 장에 가구 하나입니다.';
 
@@ -458,7 +458,7 @@
         if (typeof renderRooms === 'function') renderRooms();
         if (typeof calculateAll === 'function') calculateAll();
         if (goFinder && typeof openRoomColorFinder === 'function') { openRoomColorFinder(room.id); return; }      // 반영 뒤 원단 찾기로
-        if (typeof showToast === 'function') showToast(`[${name}] 잰 색을 반영하고 추천 원단을 채웠어요.`);
+        if (typeof showToast === 'function') showToast(`[${name}] 측정한 색을 반영하고 추천 원단을 채웠어요.`);
     }
 
     function render() {
@@ -471,7 +471,7 @@
 
         let h = '<div class="rc-sheet" role="dialog" aria-labelledby="rcTitle">';
         h += '<div class="rc-head">';
-        h += `<h2 id="rcTitle" class="font-serif-kr">방 벽 · 바닥 색 재기 <small>${esc(room ? room.name : '')}</small></h2>`;
+        h += `<h2 id="rcTitle" class="font-serif-kr">방 벽 · 바닥 색 측정 <small>${esc(room ? room.name : '')}</small></h2>`;
         h += '<button type="button" class="staff-btn" onclick="RoomColor.close()">닫기</button>';
         h += '</div><div class="rc-body"><div>';
 
@@ -512,7 +512,7 @@
         } else {
             h += '<div class="rc-empty">';
             h += `<p class="font-serif-kr">${SHOOT_GUIDE}</p>`;
-            h += `<p class="rc-empty-sub">${SHOOT_CARD} 카드는 손에서 떼 주세요(손 그림자가 지지 않게). 사진은 저장되지 않아요.</p>`;
+            h += `<p class="rc-empty-sub">${SHOOT_CARD} 카드는 손에서 떼 주세요(손 그림자가 지지 않게).</p>`;
             h += '<label class="staff-btn rc-empty-btn">사진 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
             h += phoneBtnHtml('staff-btn rc-empty-btn', 0);      // 245번
             h += '</div>';
@@ -537,9 +537,9 @@
         const saved = room && room.measuredColor;
         if (!st.photos[0] && saved) {
             // 사진을 아직 안 불러왔으면 지난번에 잰 값을 보여 줌 (사진은 저장하지 않으니 다시 재려면 새로 찍기)
-            h += `<p class="rc-note">지난번에 잰 값이에요${saved.at ? ` (${new Date(saved.at).toLocaleDateString('ko-KR')})` : ''}. 다시 재려면 사진을 불러와 주세요.</p>`;
-            h += resultCard('wall', saved.wall, '재지 않았어요');
-            h += resultCard('floor', saved.floor, '재지 않았어요');
+            h += `<p class="rc-note">지난번에 측정한 값이에요${saved.at ? ` (${new Date(saved.at).toLocaleDateString('ko-KR')})` : ''}. 다시 측정하려면 사진을 불러와 주세요.</p>`;
+            h += resultCard('wall', saved.wall, '측정하지 않았어요');
+            h += resultCard('floor', saved.floor, '측정하지 않았어요');
             if (saved.furniture && saved.furniture.length) h += '<div class="fur-box rc-fur"><span class="fur-lbl">가구 <small>(공간 카드에서 따로 고쳐요)</small></span>' + saved.furniture.map(furRowHtml).join('') + '</div>';
         } else {
             if (st.photos[0] && (!res.raw.gray || !res.raw.white)) {
@@ -565,7 +565,7 @@
 
         // 아래: 반영
         const canApply = !!(res.wall || res.floor) && matReady(res);
-        h += '<div class="rc-foot"><span>고객 화면에는 숫자 없이 "밝은 웜" 같은 말과 바닥·벽 카드만 쓰여요. 사진은 저장되지 않아요.</span>';
+        h += '<div class="rc-foot"><span>고객 화면에는 숫자 없이 "밝은 웜" 같은 말과 바닥·벽 카드만 쓰여요.</span>';
         h += `<div class="rc-foot-btns"><button type="button" class="staff-btn" onclick="RoomColor.apply()"${canApply ? '' : ' disabled'}>이 공간에 반영</button>`;
         h += `<button type="button" class="staff-btn rc-apply" onclick="RoomColor.apply(true)"${canApply ? '' : ' disabled'}>${res.wall && res.floor ? '반영 후 조화로운 원단 찾기 →' : '반영 후 원단 찾기 →'}</button></div></div>`; // 41번
         h += '</div>';
@@ -686,16 +686,16 @@
             h += '<label class="cm-go font-serif-kr">사진 찍기 · 불러오기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
             h += phoneBtnHtml('cm-skip', 0);      // 245번: 폰에서 보낸 사진
             h += phoneStripHtml();      // 245번: 사진이 없을 땐 단추 바로 밑에 작은 그림 줄
-            h += '<p class="cm-note">사진은 저장되지 않습니다</p></div>';
+            h += '</div>';
         }
         h += '</div>';
         // 오른쪽: 차례 목록 → 결과
         h += '<div class="cm-side">';
         if (cv) h += phoneStripHtml();      // 245번: 사진이 있을 땐 오른쪽 맨 위(사진 바꾸기)
         // 133번(재검토 A3): 위 "거실 · 색" 머리말은 뺌 (공간 이름은 왼쪽 위 뒤로 가기에)
-        const doneTitle = furOnly ? (st.furKind ? '가구 색을 찾았습니다' : '어떤 가구인가요?') : '이 공간의 색을 찾았습니다';      // 133번(재검토 A7): 리담의 말은 "~습니다"
+        const doneTitle = furOnly ? (st.furKind ? '가구 색을 측정했습니다' : '어떤 가구인가요?') : '이 공간의 색을 측정했습니다';      // 133번(재검토 A7): 리담의 말은 "~습니다"
         h += `<h2 class="cm-title font-serif-kr">${done ? doneTitle : (cv ? (keys[st.active] ? `사진에서 ${CUST_ASK[keys[st.active]]}` : '사진을 눌러 주세요') : '먼저 사진을 찍어 주세요')}</h2>`;
-        h += `<p class="cm-sub">${done ? (o.doneNote || '') : (cv ? '잘못 찍은 점은 누르면 지워집니다. 목록을 누르면 그것만 다시 찍습니다.' : '회색·흰 카드로 사진의 빛을 맞춰서 실제 색을 찾습니다.')}</p>`;
+        h += `<p class="cm-sub">${done ? (o.doneNote || '') : (cv ? '잘못 찍은 점은 누르면 지워집니다. 목록을 누르면 그것만 다시 찍습니다.' : '회색·흰 카드로 사진의 빛을 맞춰 실제 색을 측정합니다.')}</p>`;
         h += '<ul class="cm-steps">';
         keys.forEach((k, i) => {
             const n = pinsOf(k).length, full = isFull(k), on = cv && i === st.active;
@@ -706,7 +706,7 @@
         });
         h += '</ul>';
         if (res.cardsSwapped) h += '<p class="cm-alert">흰 카드와 회색 카드를 바꿔 누른 것 같습니다. 목록에서 카드를 눌러 다시 찍어 주세요.</p>';
-        else if (res.shadow >= SHADOW_DL) h += '<p class="cm-alert">카드에 그림자가 졌습니다. 그대로 써도 되고, 조금 옮겨 다시 찍으면 더 정확합니다.</p>';
+        else if (res.shadow >= SHADOW_DL) h += '<p class="cm-alert">카드에 그림자가 졌습니다. 그대로 쓰셔도 되고, 조금 옮겨 다시 찍으면 더 정확합니다.</p>';
         if (done && !res.cardsSwapped && furOnly) {
             // 가구 (66번): 색 한 줄 + 종류 칩. 종류를 골라야 담기
             const c = res.fur;
@@ -731,7 +731,7 @@
             if (o.dirPick && window.concierge && window.concierge.dirPickerHtml) h += window.concierge.dirPickerHtml();
         }
         h += '<div class="cm-foot">';
-        h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">지금은 못 재요 · 상담 때 카드로</button>' : '<span></span>';
+        h += o.onSkip ? '<button type="button" class="cm-skip" onclick="RoomColor.skipCustomer()">나중에 측정할게요 · 카드로 고르기</button>' : '<span></span>';
         if (cv && Object.values(st.pins).some(ps => ps.length)) h += '<button type="button" class="cm-skip" onclick="RoomColor.undo()">방금 것 지우기</button>';
         if (cv) h += '<label class="cm-skip">사진 바꾸기<input type="file" accept="image/*" hidden onchange="RoomColor.file(this, 0)"></label>';
         if (cv) h += phoneBtnHtml('cm-skip', 0);      // 245번
@@ -902,9 +902,9 @@
                 return `<span class="rc-sum-part">${label} <i class="rc-dot" style="background:${c.hex}"></i> <b>${esc(colorName(kind, c).name)}</b> ${classifyLab(c).text} → ${esc(cardName(kind, c.tone))}`
                     + (cur && cur !== c.tone ? ` <em>(지금 카드: ${esc(cardName(kind, cur))})</em>` : '') + '</span>';
             };
-            return `<div class="rc-summary"><span class="rc-sum-lbl">잰 색</span>${part('wall', mc.wall)}${part('floor', mc.floor)}`
+            return `<div class="rc-summary"><span class="rc-sum-lbl">측정한 색</span>${part('wall', mc.wall)}${part('floor', mc.floor)}`
                 + `<span class="rc-sum-btns"><button type="button" onclick="openRoomColorFinder(${room.id})">${mc.wall && mc.floor ? '조화로운 원단 보기' : '원단 찾기'}</button>` // 41번
-                + `<button type="button" onclick="RoomColor.open(${room.id})">다시 재기</button></span></div>`
+                + `<button type="button" onclick="RoomColor.open(${room.id})">다시 측정</button></span></div>`
                 + (mc.wall && mc.floor ? (() => {
                     const k = typeof mc.bridgeK === 'number' ? mc.bridgeK : BRIDGE_WALL_WEIGHT;
                     const br = mc.bridge || bridgeOf(mc.wall, mc.floor, k);

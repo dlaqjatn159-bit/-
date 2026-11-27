@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -81,7 +81,7 @@
 .r3d .stage.aim::after { content: ''; position: absolute; inset: 12px; border: 1px solid var(--ink45); pointer-events: none; }
 .r3d .over { position: absolute; inset: 0; pointer-events: none; }
 .r3d .app[data-endv="1"] .over { display: none; }      /* 267번: 다 지은 장면은 보기만 — 손잡이 · 치수 숨김 */
-.r3d .r3d-endp { margin-top: 10px; color: #6b5d50; }      /* 267번: '이제 이 공간에서 바라시는 것을 듣겠습니다.' */
+.r3d .r3d-endp { margin-top: 10px; color: #6b5d50; }      /* 267번: 다 지은 뒤 한 줄 */
 .r3d .dim.hem { color: var(--text); font-size: 17px; }
 .r3d .dim { position: absolute; left: 0; top: 0; padding: 0 8px; background: var(--bg); color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .r3d .grip { position: absolute; left: 0; top: 0; width: 48px; height: 48px; margin: -24px 0 0 -24px; pointer-events: auto; touch-action: none; cursor: grab; }
@@ -349,7 +349,7 @@
   var SHEERS = [{ n: '맑은 흰색', hex: '#F8F7F3' }, { n: '따뜻한 흰색', hex: '#F4EFE4' }, { n: '아이보리', hex: '#EDE5D4' }];
   var SHEER0 = '#F7F4EE';
   // 속커튼 비침 넷 — 흐림(px) · 덮개. 또렷 → 창 줄 형태 → 덩어리 → 안 보임. 앱 비침 고르기(결정 #361 · 256번)의 값에서 셋째 '낮 가림'만 19판에서 더 가리게 고쳤다(11-25 사장님: 조금 더 안 보이게 — 앱은 14 · 0.66, 실제 적용 때 앱도 같이 맞춘다)
-  var LV = ['많이 비침', '은은한 비침', '낮 가림', '중지'], LVB = [2, 7, 20, 40], LVA = [0.22, 0.48, 0.78, 0.97];
+  var LV = ['많이 비침', '은은한 비침', '낮에도 가림', '거의 안 비침'], LVB = [2, 7, 20, 40], LVA = [0.22, 0.48, 0.78, 0.97];
   // 가구 색 — 폰 실측에서 가구를 잴 때 카드와 함께 찍은 사진으로 잰 색이 들어온다(재는 일은 다 폰에서 — 태블릿은 두 손을 쓰기 어렵다, 11-24 사장님). 여기 것은 견본.
   // 태블릿에서 놓은 가구는 색 없이 빗금으로 남고, 색 판 · 조각보에서도 빗금, 색 추천에는 쓰이지 않는다 — 폰에서 재 오면 색이 들어온다
   var FURCOLS = [{ name: '짙은 회색', hex: '#5F5D5A' }, { name: '연한 회색', hex: '#D5CFC6' }, { name: '베이지', hex: '#D9C8AE' }, { name: '밝은 원목', hex: '#B9966B' }, { name: '월넛', hex: '#6E5038' }, { name: '먹색', hex: '#3E3A36' }, { name: '흰색', hex: '#ECEBE7' }, { name: '올리브', hex: '#7D7A5C' }];
@@ -384,13 +384,13 @@
   var STEPS = ['measure', 'cur'];      // 258번: 질문(묻기)은 앱의 질문 화면이 맡는다 — 입체 방은 측정 · 선택만
   var Q = { ask: [], measure: ['room', 'win', 'box', 'dir', 'color', 'fur'] };
   var SPACE_TYPES = ['거실', '안방', '작은방', '아이방', '서재', '주방', '베란다', '알파룸', '드레스룸'];
-  var KINDS = [['double', '이중 커튼'], ['drape', '겉지 커튼'], ['sheer', '속지 커튼'], ['blind', '블라인드']];
+  var KINDS = [['double', '이중 커튼'], ['drape', '겉커튼만'], ['sheer', '속커튼만'], ['blind', '블라인드']];
   var OPT = {      // [값, 누르는 말, 들은 말(명사형)]
     box: [['y', '있음', '있음'], ['n', '없음', '없음']],
     dir: [['동', '동'], ['서', '서'], ['남', '남'], ['북', '북']],
     light: [['ok', '들어와도 괜찮아요', '들어와도 괜찮음'], ['soft', '적당히 가려 주세요', '적당히 가림'], ['dark', '완전히 어둡게요', '완전히 어둡게']],
     gaze: [['ok', '괜찮아요', '괜찮음'], ['some', '조금 신경 쓰여요', '조금 신경 쓰임'], ['high', '많이 신경 쓰여요', '많이 신경 쓰임']],
-    feel: [['blend', '조용히 스며들게요', '스며들게'], ['weight', '차분히 무게감 있게요', '무게감 있게'], ['point', '포인트가 되게요', '포인트로']],
+    feel: [['blend', '넓어 보이게요', '넓어 보이게'], ['weight', '차분하게요', '차분하게'], ['point', '포인트 있게요', '포인트 있게']],
     dtex: [['smooth', '매끈한'], ['weave', '짜임이 보이는'], ['soft', '보송한']],
     stex: [['smooth', '매끈한'], ['weave', '짜임이 보이는'], ['linen', '린넨'], ['any', '잘 모르겠어요']],
     bkind: [['combi', '콤비'], ['roll', '롤'], ['wood', '우드'], ['alu', '알루미늄'], ['any', '잘 모르겠어요']]
@@ -402,12 +402,12 @@
       case 'type': return '어느 공간의 창인가요?';
       case 'room': return '공간 크기'; case 'win': return '창 크기'; case 'box': return '커튼박스'; case 'dir': return '창 방향';
       case 'color': return '벽 · 바닥 색'; case 'fur': return '큰 가구';
-      case 'light': return tp ? tp + ' 빛을 어느 정도 가리실까요?' : '빛은 어느 정도 가리실까요?';
-      case 'gaze': return tp ? tp + ' 밖에서 보이는 시선을 어느 정도 가리실까요?' : '밖에서 보이는 시선은 어느 정도 가리실까요?';
-      case 'feel': return (nm ? nm + '의 ' : '') + (bl ? '블라인드는' : '커튼은') + ' 어떤 느낌이 좋으실까요?';
-      case 'dtex': return '겉지는 어떤 질감이 좋으실까요?';
-      case 'stex': return '속지는 어떤 질감이 좋으실까요?';
-      case 'bkind': return nm ? nm + '에는 어떤 블라인드가 좋으실까요?' : '어떤 블라인드가 좋으실까요?';
+      case 'light': return tp ? tp + ' 빛을 어느 정도 가릴까요?' : '빛은 어느 정도 가릴까요?';
+      case 'gaze': return tp ? tp + ' 바깥 시선을 어느 정도 가릴까요?' : '바깥 시선은 어느 정도 가릴까요?';
+      case 'feel': return (nm ? nm + ' ' : '') + (bl ? '블라인드는' : '커튼은') + ' 어떤 분위기가 좋으세요?';
+      case 'dtex': return '겉커튼은 어떤 질감이 좋으세요?';
+      case 'stex': return '속커튼은 어떤 질감이 좋으세요?';
+      case 'bkind': return nm ? nm + '에는 어떤 블라인드가 좋으세요?' : '어떤 블라인드가 좋으세요?';
       default: return '';
     }
   }
@@ -1318,7 +1318,7 @@
   }
   function addFur(type, x, z, m) {      // m: 폰에서 잰 것 { w, d, h, c(색) }
     var T = TYPES[type], it = { id: ++S.seq, type: type, w: T.w, h: T.h, d: T.d, si: (T.def || []).slice(), x: x == null ? T.at[0] : x, z: z == null ? T.at[1] : z, wall: null, rot: 0, hex: null, cn: null, m: null };
-    if (m) { it.m = { w: m.w, d: m.d, h: m.h }; if (m.c != null) { it.hex = FURCOLS[m.c].hex; it.cn = FURCOLS[m.c].name; } if (m.hex) { it.hex = m.hex; it.cn = m.cn || '잰 색'; } }      // 폰 실측 4판은 잰 색을 hex로 보낸다
+    if (m) { it.m = { w: m.w, d: m.d, h: m.h }; if (m.c != null) { it.hex = FURCOLS[m.c].hex; it.cn = FURCOLS[m.c].name; } if (m.hex) { it.hex = m.hex; it.cn = m.cn || '측정한 색'; } }      // 폰 실측 4판은 잰 색을 hex로 보낸다
     settleFur(it);
     for (var n = 0; x == null && n < 5 && S.items.some(function (o) { return Math.hypot(o.x - it.x, o.z - it.z) < 0.25; }); n++) { it.z += 0.6; it.x += it.x > 0 ? -0.3 : 0.3; it.wall = null; settleFur(it); }
     S.items.push(it); it.grow = 0.001;
@@ -1491,7 +1491,7 @@
     if (cur) {
       var hasD = k === 'double' || k === 'drape', hasS = k === 'double' || k === 'sheer', bl = k === 'blind';
       // 장 머리(17판, 결정 #404) — 걸린 것만 보인다(이중 커튼이면 겉지 · 속지 — 누르면 그것을 고른다). 옆에 조용한 '구성 바꾸기' 하나 — 누르면 네 구성이 펼쳐지고, 고르면 방에 그렇게 걸린다. 빼기 단추는 없다
-      lay = (hasD ? layChip('drape', '겉지', !sm) : '') + (hasS ? layChip('sheer', '속지', sm) : '') + (bl ? layChip('blind', '블라인드', true) : '')
+      lay = (hasD ? layChip('drape', '겉커튼', !sm) : '') + (hasS ? layChip('sheer', '속커튼', sm) : '') + (bl ? layChip('blind', '블라인드', true) : '')
         + (FIXED ? '' : '<button type="button" class="act' + (S.kopen ? ' open' : '') + '" id="r3d-kindbtn" aria-expanded="' + !!S.kopen + '"><span>구성 바꾸기</span></button>');      // 258번: 앱에 품목이 있으면 구성은 품목이 정한다
       if (S.kopen) kh = KINDS.map(function (o) { return tapChip('kind', o[0], '', o[1], '', k === o[0]); }).join('');
       if (sm) h += hungHtml('sheer');      // 258번: 속지 — 걸린 원단과 그 비침(앱 원단의 비침 값)
@@ -1501,11 +1501,11 @@
       } else h += hungHtml('drape');
       // 모양(17판) — 방 위에 떠 있던 크기 · 주름 · 폭수 줄이 걸린 원단 줄 아래로 왔다
       h += '<div class="shapeblk">' + sizeRows();
-      if (sm || hasD) { var ld = sm ? C.lead : C.dlead; h += srow('밑단', tapChip('hem', 'fold', '', '시접', '', !ld) + tapChip('hem', 'lead', '', '리드밴드', '', !!ld)); }      // 19판(결정 #405): 겉지 장에도 같은 자리에 같은 줄 — 값은 겹마다 따로      // 18판: 속지 밑단 — 시접(기본) · 리드밴드(현행 앱 139번과 같다: 속지가 있을 때만, 겉지는 늘 시접)
+      if (sm || hasD) { var ld = sm ? C.lead : C.dlead; h += srow('밑단', tapChip('hem', 'fold', '', '기본', '', !ld) + tapChip('hem', 'lead', '', '리드밴드', '', !!ld)); }      // 19판(결정 #405): 겉지 장에도 같은 자리에 같은 줄 — 값은 겹마다 따로      // 18판: 속지 밑단 — 시접(기본) · 리드밴드(현행 앱 139번과 같다: 속지가 있을 때만, 겉지는 늘 시접)
       if (hasD && !sm) {
         b = CB();
         h += srow('주름', tapChip('pleat', 'wave', '<i class="ic">' + IC.wave + '</i>', '일반 주름', '', C.pleat === 'wave', true) + tapChip('pleat', 'nabi', '<i class="ic">' + IC.nabi + '</i>', '나비 주름', '', C.pleat === 'nabi', true), 'tall')
-          + srow('폭수', '<span class="stepper"><button type="button" class="pm' + (b.pok <= b.minPok ? ' off' : '') + '" data-pok="-1" data-g="−" aria-label="한 폭 줄이기"></button><span class="nm" data-nm="p">' + b.pok + '폭</span><button type="button" class="pm' + (b.pok >= POKMAX ? ' off' : '') + '" data-pok="1" data-g="+" aria-label="한 폭 늘리기"></button></span>');
+          + srow('폭 수', '<span class="stepper"><button type="button" class="pm' + (b.pok <= b.minPok ? ' off' : '') + '" data-pok="-1" data-g="−" aria-label="한 폭 줄이기"></button><span class="nm" data-nm="p">' + b.pok + '폭</span><button type="button" class="pm' + (b.pok >= POKMAX ? ' off' : '') + '" data-pok="1" data-g="+" aria-label="한 폭 늘리기"></button></span>');
       }
       if (!bl) { var jc = joinChips(); if (jc) h += srow('레일', jc); }
       else if (wallsUsed().some(function (i) { return bx(i).on; })) {      // 커튼박스가 있는 집의 블라인드: 박스 안 / 창틀 — 박스 앞뒤 폭이 좁으면 창틀에만
@@ -1528,7 +1528,7 @@
     if (S.step === 'measure' && it) {      // 고른 가구의 규격과 빼기 — 방 위에 남긴다: 가구를 고른 동안만 뜨고, 방에서 누른 것 곁에 붙으며, 재기의 장은 들은 말 · 물음 · 숫자판으로 차 있다
       var T = TYPES[it.type], mm = it.m || it.m0;
       sh = chipHtml('none', it.id, it.hex || HATCH_BG, T.name, it.cn || '', 'nd');
-      if (mm) sh += GAP + tapChip('size', 'm', '', '잰 치수', cm(mm.w) + ' × ' + cm(mm.d), !!it.m);      // 폰에서 잰 가구 — 규격을 눌러 바꿨다가도 돌아올 수 있게
+      if (mm) sh += GAP + tapChip('size', 'm', '', '실측 치수', cm(mm.w) + ' × ' + cm(mm.d), !!it.m);      // 폰에서 잰 가구 — 규격을 눌러 바꿨다가도 돌아올 수 있게
       (T.sizes || []).forEach(function (row, a) { sh += GAP; row.forEach(function (o, i) { sh += tapChip('size', a + ':' + i, '', o.n, o.sub, !it.m && it.si[a] === i); }); });
       sh += GAP + '<button type="button" class="act" id="r3d-remove"><span>빼기</span></button>';
     }
@@ -1544,10 +1544,10 @@
     function wsz(w) { return cm(w.w) + ' × ' + cm(w.top - w.sill); }
     if (a.light) out.push(['light', '빛', label(OPT.light, a.light)]);
     if (a.gaze) out.push(['gaze', '시선', label(OPT.gaze, a.gaze)]);
-    if (a.feel && a.kind !== 'sheer') out.push(['feel', '느낌', label(OPT.feel, a.feel)]);
+    if (a.feel && a.kind !== 'sheer') out.push(['feel', '분위기', label(OPT.feel, a.feel)]);
     var kdr = a.kind || kindNow();      // 못 들은 공간은 권하는 구성으로
-    if (HOUSE.dtex && (kdr === 'double' || kdr === 'drape')) out.push(['dtex', '겉지 질감', label(OPT.dtex, HOUSE.dtex)]);
-    if (HOUSE.stex && (kdr === 'double' || kdr === 'sheer')) out.push(['stex', '속지 질감', label(OPT.stex, HOUSE.stex)]);
+    if (HOUSE.dtex && (kdr === 'double' || kdr === 'drape')) out.push(['dtex', '겉커튼 질감', label(OPT.dtex, HOUSE.dtex)]);
+    if (HOUSE.stex && (kdr === 'double' || kdr === 'sheer')) out.push(['stex', '속커튼 질감', label(OPT.stex, HOUSE.stex)]);
     if (a.bkind && kdr === 'blind') out.push(['bkind', '종류', label(OPT.bkind, a.bkind)]);
     if (a.room) out.push(['room', '공간', cm(o.R.W) + ' × ' + cm(o.R.D) + ' × ' + cm(o.R.H)]);
     if (a.win) out.push(['win', '창', ws.length > 1 ? ws.length + '장 · ' + ws.map(wsz).join(', ') : wsz(ws[0]) + (ws[0].sill > 0.005 ? ' · 바닥에서 ' + cm(ws[0].sill) : '')]);
@@ -1681,7 +1681,7 @@
     }).join('') + '</div>';
   }
   function qHtml(k) {
-    if (!k && BLD && ENDV) return '<h2>' + esc(HOST.name || '공간') + ' · 다 지었습니다</h2><p class="r3d-endp">이제 이 공간에서 바라시는 것을 듣겠습니다.</p>';      // 267번: 다 지은 눈높이 — 오른쪽 장에 두 줄
+    if (!k && BLD && ENDV) return '<h2>' + esc(HOST.name || '공간') + ' · 공간을 다 만들었습니다</h2><p class="r3d-endp">이제 원하시는 분위기를 말씀해 주세요.</p>';      // 267번: 다 지은 눈높이 — 오른쪽 장에 두 줄
     if (!k) return '';
     var h = '<h2>' + title(k) + '</h2>';
     if (isNum(k)) return h + '<div class="fields" id="r3d-flds"></div>' + KEYS;
@@ -1751,7 +1751,7 @@
   function render(anim) {
     if (CURI && CURI.need && !CURI.hand && S.step === 'cur' && roomReady() && kindNow() && kindNow() !== 'blind' && groups().length === 1) seedCur(groups()[0], CURI.w, CURI.h);      // 266번: 커튼 크기를 손대기 전에는 품목 크기로(측정에서 창 · 박스 · 높이가 바뀐 것을 따라감) — 그릴 수 없는 만큼은 처음부터 견적 차이로
     if (S.q === 'fur' && P && P.furs && !A.fur && !BLD) { var fl = P.furs;      // 263번: 짓기에서는 '다음'을 눌러야 놓인다(panelNext)
-      P.furs = null; fl.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '잰 색'; } }); buildFurs(); sharesDirty = true; }      // 258번: 앱에서 색만 잰 가구(치수 없음)는 흔한 규격으로 놓이고 잰 색이 입혀진다
+      P.furs = null; fl.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '측정한 색'; } }); buildFurs(); sharesDirty = true; }      // 258번: 앱에서 색만 잰 가구(치수 없음)는 흔한 규격으로 놓이고 잰 색이 입혀진다
     var kn = kindKey();
     if (kn !== lastKind) { lastKind = kn; layout(); }      // 구성이 바뀌면 레일 · 블라인드 자리를 다시 짓는다
     normPart(); syncOpen(); syncZoom(); lampGo(anim);
@@ -2051,7 +2051,7 @@
       }
     }
     if (k === 'dir' && A.dir == null) { keep(); A.dir = []; sunIn(); }      // 263번
-    if (k === 'fur' && BLD && P && P.furs && !A.fur) { keep(); var fz = P.furs; P.furs = null; fz.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '잰 색'; } }); buildFurs(); sharesDirty = true; render(); return; }      // 263번: 짓기 — 폰에서 잰 가구는 '다음'을 누르면 솟아오르고, 한 번 더 누르면 마침
+    if (k === 'fur' && BLD && P && P.furs && !A.fur) { keep(); var fz = P.furs; P.furs = null; fz.forEach(function (t) { var it = addFur(t.t, null, null, t.w && t.d && t.h ? t : null); if (t.hex && !it.hex) { it.hex = t.hex; it.cn = t.cn || '측정한 색'; } }); buildFurs(); sharesDirty = true; render(); return; }      // 263번: 짓기 — 폰에서 잰 가구는 '다음'을 누르면 솟아오르고, 한 번 더 누르면 마침
     if (k === 'fur' && !A.fur) { keep(); A.fur = true; }
     if (k && !answered(k)) return;      // 답이 있어야 넘어간다
     nx = firstOpen(S.step);
@@ -2391,8 +2391,8 @@
         return '<button type="button" class="' + (i === at ? 'on' : '') + (i === at0 ? ' was' : '') + '" data-gk="' + kind + '" data-gi="' + i + '" aria-label="' + esc(c.name) + '"' + (kind === 'drape' ? ' style="background:' + (hexOk(c.hex) || '#ddd') + '"' : '') + '>' + pic + '</button>';
       }).join('') + '</div>';
     }
-    var last = GUEST.last === 'blind' ? (LAYER.blind && LAYER.blind.name ? LAYER.blind : null) : GUEST.last === 'sheer' ? GUEST.s[GUEST.si] : GUEST.d[GUEST.di], lk = GUEST.last === 'blind' ? '블라인드' : GUEST.last === 'sheer' ? '속지' : '겉지';      // 273번: 블라인드는 고른 블라인드 이름(후보 줄은 없음)
-    var h = '<div class="grows">' + row('drape', '겉지', GUEST.d, GUEST.di, GUEST.d0) + row('sheer', '속지', GUEST.s, GUEST.si, GUEST.s0) + '</div>'
+    var last = GUEST.last === 'blind' ? (LAYER.blind && LAYER.blind.name ? LAYER.blind : null) : GUEST.last === 'sheer' ? GUEST.s[GUEST.si] : GUEST.d[GUEST.di], lk = GUEST.last === 'blind' ? '블라인드' : GUEST.last === 'sheer' ? '속커튼' : '겉커튼';      // 273번: 블라인드는 고른 블라인드 이름(후보 줄은 없음)
+    var h = '<div class="grows">' + row('drape', '겉커튼', GUEST.d, GUEST.di, GUEST.d0) + row('sheer', '속커튼', GUEST.s, GUEST.si, GUEST.s0) + '</div>'
       + '<div class="gwhy">' + (last ? '<h3>' + lk + ' · ' + esc(last.name) + '</h3>' + (last.why ? '<p>' + esc(last.why) + '</p>' : '') : '')
       + '<button type="button" class="gfab" data-g="fabric"><span>다른 원단은 원단 고르기에서 →</span></button></div>'
       + '<button type="button" class="gok" data-g="ok"><span>이걸로 할게요</span></button>';
@@ -2565,12 +2565,12 @@
   function surfOf(room, m, part) {      // 벽 · 바닥 색 — 앱에서 잰 색(사진 + 카드) → 폰 실측의 색 → 카드로 고른 색. 없으면 측정에서 견본을 고른다
     var cz = window.conciergeCore, p = null, mc, c;
     try { p = cz && cz.roomPart ? cz.roomPart(room, part) : null; } catch (e) { p = null; }
-    if (p && p.src === 'measured' && hexOk(p.hex)) return { name: clean(p.name) || '잰 색', hex: p.hex };
+    if (p && p.src === 'measured' && hexOk(p.hex)) return { name: clean(p.name) || '측정한 색', hex: p.hex };
     mc = room.measuredColor && room.measuredColor[part];
-    if (mc && hexOk(mc.hex)) return { name: '잰 색', hex: mc.hex };
+    if (mc && hexOk(mc.hex)) return { name: '측정한 색', hex: mc.hex };
     c = m && m.색 && hexOk(m.색[part === 'wall' ? '벽' : '바닥']);
-    if (c) return { name: '폰에서 잰 색', hex: c };
-    if (p && hexOk(p.hex)) return { name: clean(p.name) || '카드 색', hex: p.hex };
+    if (c) return { name: '실측 때 측정한 색', hex: c };
+    if (p && hexOk(p.hex)) return { name: clean(p.name) || '카드로 고른 색', hex: p.hex };
     return null;
   }
   function buildInput(o) {
@@ -2620,8 +2620,8 @@
     function colOf(t) { for (var i = 0; i < mcf.length; i++) if (mcf[i] && furType(mcf[i].n) === t && hexOk(mcf[i].hex)) return mcf[i]; return null; }
     (m && Array.isArray(m.가구) ? m.가구 : []).forEach(function (f) {
       if (!f || !FURT[f.t] || !num(f.w) || !num(f.d) || !num(f.h)) return;
-      var c = hexOk(f.hex) ? { hex: f.hex, n: '잰 색' } : colOf(f.t);
-      furs.push({ t: f.t, w: f.w / 100, d: f.d / 100, h: f.h / 100, hex: c ? c.hex : null, cn: c ? clean(c.n) || '잰 색' : null });
+      var c = hexOk(f.hex) ? { hex: f.hex, n: '측정한 색' } : colOf(f.t);
+      furs.push({ t: f.t, w: f.w / 100, d: f.d / 100, h: f.h / 100, hex: c ? c.hex : null, cn: c ? clean(c.n) || '측정한 색' : null });
     });
     if (!furs.length) mcf.forEach(function (f) { var t = f && furType(f.n); if (t && hexOk(f.hex) && f.stay !== false) furCols.push({ t: t, hex: f.hex, cn: clean(f.n) }); });
     var sh = by.sheer, dr = by.drape, bf = layers.blind, bk = bf && BKM[bf.blindKind] || null, cw = dr || sh;
@@ -2665,7 +2665,7 @@
       if (!ENG) { setWait('fail', '이 기기에서는 입체 그림을 그릴 수 없습니다.'); return; }
       setWait('');
       try { ENG.start(input, teardown); } catch (err) { console.error('[입체 방] 열지 못함', err); ENG.stop(); setWait('fail', (OPTS.guest ? '공간을' : '입체 방을') + ' 열지 못했습니다.'); }
-    }, function () { if (!OPEN || tk !== TOKEN) return; setWait('fail', '그림 엔진을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); });
+    }, function () { if (!OPEN || tk !== TOKEN) return; setWait('fail', '화면을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'); });
     return true;
   }
   function teardown(res) {

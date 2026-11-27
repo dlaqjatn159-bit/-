@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261319';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -370,9 +370,9 @@ const MOOD_ALIASES = {
 };
 // 속지 비침 4단계 (창문 테스트: 낮에 한 겹을 창에 대고 안에서 밖을 봄)
 //  light=많이 비침(풍경 또렷) / medium=은은한 비침(형태는 보이나 흐림) / day=낮 가림(밝기만, 낮에는 밖에서 안 보임) / heavy=거의 안 비침(저녁 조명에도 흐릿)
-const DENSITY_LABELS = { light: '많이 비침', medium: '은은한 비침', day: '낮 가림', heavy: '거의 안 비침' };
+const DENSITY_LABELS = { light: '많이 비침', medium: '은은한 비침', day: '낮에도 가림', heavy: '거의 안 비침' };
 // 속지만 + 바깥 시선이 신경 쓰이는 공간에 붙이는 밤 안내 (33번: 구성 화면 속지 커튼 칸, 원단을 고른 이유 카드)
-const SHEER_NIGHT_NOTE = '밤에 불을 켜면 어떤 속지든 안의 그림자가 비칠 수 있습니다. 밤에도 가리셔야 하면 겉지를 더하실 수 있습니다.'; // 41번 · 83번
+const SHEER_NIGHT_NOTE = '밤에 불을 켜면 어떤 속커튼이든 안의 그림자가 비칠 수 있습니다. 밤에도 가리시려면 겉커튼을 함께 다시면 됩니다.'; // 41번 · 83번
 const DENSITY_ORDER = ['light', 'medium', 'day', 'heavy'];
 const DENSITY_FACTS = { light: '#맑은비침', medium: '#은은한비침', day: '#낮시간가림', heavy: '#비침적음' };
 function roomIsDouble(room) {
@@ -490,7 +490,7 @@ const MOOD_GUIDE = {
 };
 const MOOD_HINTS = {
     soft_warm: '포근하고 따뜻한 느낌', urban_clean: '깔끔하고 정돈된 느낌', balanced_neutral: '은은하고 편안한 느낌',
-    textured_linen: '짜임이 보이는 자연스러운 느낌', deep_private: '빛과 시선을 감싸는 아늑한 느낌', airy_bright: '가볍고 화사한 느낌'
+    textured_linen: '짜임이 보이는 자연스러운 느낌', deep_private: '빛과 시선을 가려 아늑한 느낌', airy_bright: '가볍고 화사한 느낌'
 };
 
 // 엑셀에 한글로 적어도(웜/쿨/…, 포근한/깔끔한/…) 코드로 바꿔 읽음
@@ -757,6 +757,7 @@ function blindKindPool(pool, room, category) {
 }
 
 // 추천 이유 한 줄 (짧은 말) (사장님이 직접 분류한 원단에만 표시 — 자동 추정값으로는 이유를 말하지 않음)
+const TONE_SAY = { warm: '따뜻한', cool: '차가운', neutral: '중간', deep: '짙은' };      // 278번: 원단 이유 한 줄의 톤 말(손님 화면) — TONE_LABELS(웜 · 쿨 …)는 사장님 화면 · 엑셀 읽기 · 견적서가 함께 써서 그대로
 const MATERIAL_REASON = { linen: '린넨 특유의 자연스러운 질감', linenlook: '린넨 느낌에 구김이 적은 린넨룩' };      // 견적서·원단 이유 (94번)
 function recommendReason(fabric, room, category, maxParts, onlySaid) {
     // onlySaid(원단을 고른 이유 카드, 24번): 손님이 답한 조건(바깥 시선·빛 가림·강한 햇빛)과 원단이 맞는 점만, 있으면 하나만 돌려줌
@@ -767,12 +768,12 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     const parts = [];
     if (moodOf(fabric) === targetMood) parts.push(room.wantMood ? `${MOOD_LABELS[targetMood]} 분위기` : MOOD_HINTS[targetMood]);
     if (fabric.tone === 'neutral') parts.push(floorT !== wallT ? '바닥과 벽을 잇는 톤' : '어디에나 어울리는 톤');
-    else if (fabric.tone === floorT) parts.push(`바닥과 어울리는 ${TONE_LABELS[floorT]} 톤`);
-    else if (fabric.tone === wallT) parts.push(`벽과 어울리는 ${TONE_LABELS[wallT]} 톤`);
+    else if (fabric.tone === floorT) parts.push(`바닥과 어울리는 ${TONE_SAY[floorT]} 톤`);
+    else if (fabric.tone === wallT) parts.push(`벽과 어울리는 ${TONE_SAY[wallT]} 톤`);
     // 채광별 이유(33번): 맞으면 바깥 시선 문구 대신 맨 앞에
     let lightSay = '';
-    if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'day') lightSay = '햇살이 강한 창이라, 낮에는 밖에서 안이 잘 보이지 않아요';
-    else if (category === '속지' && room.lightLevel === 'low' && (room.privacy === 'high' || room.privacy === 'some') && fabric.density === 'heavy') lightSay = '해가 덜 드는 창이라, 촘촘한 원단으로 골랐어요';
+    if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'day') lightSay = '햇빛이 강한 창이라, 낮에는 밖에서 안이 잘 보이지 않습니다';
+    else if (category === '속지' && room.lightLevel === 'low' && (room.privacy === 'high' || room.privacy === 'some') && fabric.density === 'heavy') lightSay = '해가 덜 드는 창이라, 촘촘한 원단으로 골랐습니다';
     else if (category === '속지' && room.lightLevel === 'high' && fabric.density === 'heavy') { parts.push('강한 햇빛을 거르는 비침'); said.push('강한 햇빛을 거르는 비침'); }
     if (category === '속지' && room.sheerFeel && fabric.texture) {
         const msg = room.sheerFeel === 'smooth' && fabric.texture === 'smooth' ? '깔끔하고 매끈한 질감'
@@ -785,7 +786,7 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
         const d = fabric.density;
         const msg = room.privacy === 'high' && (d === 'heavy' || d === 'day') ? '낮에도 안이 보이지 않는 비침'
             : room.privacy === 'some' && (d === 'day' || d === 'medium') ? '적당히 가리는 은은한 비침'
-            : room.privacy === 'open' && d === 'light' ? '풍경과 햇살을 살리는 맑은 비침' : '';
+            : room.privacy === 'open' && d === 'light' ? '바깥 풍경과 햇빛이 잘 보이는 원단' : '';
         if (msg && !lightSay) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
     if (lightSay) { parts.unshift(lightSay); said.unshift(lightSay); }   // 채광·시선을 함께 말해 주는 문장이라 바깥 시선 문구보다 먼저
@@ -802,14 +803,14 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
         const msg = room.lightBlock === 'dark' && b === 'full' ? '빛을 거의 막는 완전 암막'
             : room.lightBlock === 'soft' && b === 'life' ? '눈부심만 줄이는 생활 암막'
             : room.lightBlock === 'soft' && b === 'mid' ? '빛을 살짝 거르는 원단'
-            : room.lightBlock === 'light' && (b === 'none' || b === 'mid') ? '햇빛이 은은히 스미는 원단' : '';
+            : room.lightBlock === 'light' && (b === 'none' || b === 'mid') ? '햇빛이 은은하게 들어오는 원단' : '';
         if (msg) { parts.unshift(msg); said.unshift(msg); }       // 고객이 직접 고른 조건이라 맨 앞에
     }
     if (category === '블라인드' && room.blindWant && room.blindWant !== 'any') {
         const kind = blindKind(fabric);
-        const msg = room.blindWant === 'combi' && kind === 'combi' ? '빛을 들일 만큼만 맞추는 콤비'
+        const msg = room.blindWant === 'combi' && kind === 'combi' ? '빛을 원하는 만큼 들일 수 있는 콤비'
             : room.blindWant === 'roll' && kind === 'roll' ? '실용적이고 깔끔한 롤'
-            : room.blindWant === 'wood' && kind === 'wood' ? '나무 결이 살아 있는 우드'
+            : room.blindWant === 'wood' && kind === 'wood' ? '나무 무늬가 살아 있는 우드'
             : room.blindWant === 'alu' && kind === 'alu' ? '얇고 깨끗한 알루미늄' : '';
         if (msg) { parts.unshift(msg); said.unshift(msg); }   // 고객이 고른 블라인드 종류 (38-2)
     }
@@ -819,13 +820,13 @@ function recommendReason(fabric, room, category, maxParts, onlySaid) {
     if (category === '블라인드' && room.lightBlock) {
         const bl = blindLight(fabric), kind = blindKind(fabric);
         const msg = room.lightBlock === 'dark' && bl === 'full' ? '빛을 거의 막는 암막'
-            : room.lightBlock === 'light' && bl === 'see' ? '풍경은 살리고 햇빛만 거르는 투시'
-            : room.lightBlock !== 'dark' && kind === 'combi' ? '빛을 들일 만큼만 맞추는 콤비' : '';
+            : room.lightBlock === 'light' && bl === 'see' ? '바깥은 보이고 햇빛만 걸러 주는 투시'
+            : room.lightBlock !== 'dark' && kind === 'combi' ? '빛을 원하는 만큼 들일 수 있는 콤비' : '';
         if (msg) { if (!parts.includes(msg)) parts.unshift(msg); said.unshift(msg); }
     }
     // 색 하나 더 (98·116번): 손님이 고른 포인트 방향에 맞는 겉지면 맨 앞에
     if (pointSideOf(room, category) && typeof colorPlanFits === 'function' && colorPlanFits(fabric, room, category)) {      // 120번: 블라인드 포인트도
-        const msg = POINT_TECH_SAY[room.colorAccent] || { value: '벽보다 짙게 차분한 무게를 잡는 색',      // 120번: 고른 기법이면 용어 + 풀이      // 103번: 무게감 답은 '포인트'라 부르지 않음
+        const msg = POINT_TECH_SAY[room.colorAccent] || { value: '벽보다 짙어 차분해 보이는 색',      // 120번: 고른 기법이면 용어 + 풀이      // 103번: 무게감 답은 '포인트'라 부르지 않음
         color: '공간에 색 하나를 더하는 포인트', point: '공간에 색 하나를 더하는 포인트', warm: '따뜻한 색 하나를 더하는 포인트', cool: '차가운 색 하나를 더하는 포인트', opp: '공간의 온도를 살짝 바꾸는 포인트', deep: '공간에 색 하나를 더하는 포인트' }[room.colorAccent];      // 222번: deep(블라인드 밝기 대비)은 있는 글
         if (msg) { parts.unshift(msg); said.unshift(msg); }
     }
@@ -1531,16 +1532,16 @@ function colorTechGaps(mc) {
 const COLOR_ACCENT_TECHS = { value: ['value'], color: ['comp', 'split', 'analog', 'sat'], warm: ['warm'], cool: ['cool'], opp: ['opp'],      // opp = 뉴트럴 집 반대 온도 (101번, '색 하나 더'에만)
     tint: ['tint'], analog: ['analog'], sat: ['sat'], split: ['split'], comp: ['comp'], deep: ['value'] };      // 120번: 손님이 고른 기법 하나 · 222번: deep = 블라인드 밝기 대비(겉지 쪽은 명도 대비 줄)
 // 포인트 기법 (120번): 손님 화면 답은 용어 그대로, 순한 것부터. 이유 문장은 용어 + 풀이
-const POINT_TECH_TERM = { tint: '톤인톤', analog: '유사색', sat: '채도 대비', split: '분열보색', comp: '보색', opp: '반대 온도', warm: '웜 포인트', cool: '쿨 포인트', value: '밝기 대비', deep: '밝기 대비' };      // 220번: 밝기 대비(커튼 겉지 방식 화면) · 222번: deep = 블라인드 밝기 대비(무게감 'value'와 겹치지 않게 열쇠만 다름)
+const POINT_TECH_TERM = { tint: '은은한 색', analog: '가까운 색', sat: '더 선명한 색', split: '반대색에 가까운 색', comp: '반대색', opp: '반대 온도', warm: '따뜻한 색', cool: '차가운 색', value: '짙은 색', deep: '짙은 색' };      // 220번: 밝기 대비(커튼 겉지 방식 화면) · 222번: deep = 블라인드 밝기 대비(무게감 'value'와 겹치지 않게 열쇠만 다름)
 const POINT_TECH_SAY = {
-    tint: '톤인톤 · 공간과 같은 차분함은 지키고 색만 살짝 바꾼 색',
-    analog: '유사색 · 공간 색 바로 옆이라 어울리면서도 새로워 보이는 색',
-    sat: '채도 대비 · 같은 계열을 더 또렷하게 써서 중심을 잡는 색',
-    split: '분열보색 · 공간 색 맞은편의 바로 옆이라 생기는 살리고 부딪힘은 줄인 색',
-    comp: '보색 · 공간 색의 맞은편이라 가장 또렷하게 눈길을 모으는 색',
-    opp: '반대 온도 · 공간과 반대 온도로 공간의 온도를 살짝 바꾸는 색',
-    warm: '웜 포인트 · 흰색·회색 공간에 온기를 더하는 따뜻한 색',
-    cool: '쿨 포인트 · 흰색·회색 공간에 맑은 기운을 더하는 차가운 색'
+    tint: '은은한 색 · 벽·바닥의 차분함은 그대로 두고 색만 살짝 바꾼 색',
+    analog: '가까운 색 · 벽·바닥 색과 가까운 계열이라 어울리면서도 새로워 보이는 색',
+    sat: '더 선명한 색 · 같은 계열을 더 선명하게 써서 창가가 또렷해 보이는 색',
+    split: '반대색에 가까운 색 · 눈에 띄지만 반대색보다 덜 튀는 색',
+    comp: '반대색 · 벽·바닥 색과 반대되어 창이 가장 먼저 눈에 들어오는 색',
+    opp: '반대 온도 · 벽·바닥과 반대 온도라 공간의 느낌을 살짝 바꾸는 색',
+    warm: '따뜻한 색 · 흰색·회색 공간을 따뜻해 보이게 하는 색',
+    cool: '차가운 색 · 흰색·회색 공간을 맑고 산뜻해 보이게 하는 색'
 };
 // 222번: 블라인드 포인트 방식(무채색·중성 집) — 커튼 겉지(220·221번)와 같은 규칙. seatPoint 무채색·중성 갈래에 블라인드 색을 넣고 벽과의 색 차 15 아래는 뺌
 //  방식 = 숨은 기운 쪽(웜·쿨 포인트, 기운이 없으면 톤인톤) · 반대 온도 · 밝기 대비. 밝기 대비 열쇠는 'deep'('value'는 무게감 답 colorAccent가 이미 씀)
@@ -1568,16 +1569,16 @@ function pointTechOptions(mc, category, room) {      // 222번: room(창 방향)
 }
 // 포인트 방식 설명 (146번): 손님 화면용 보편적인 기법 풀이 (견적서 이유 문장 POINT_TECH_SAY와 따로)
 const POINT_TECH_DESC = {
-    tint: '밝기와 선명함은 비슷하게 두고 색만 바꾸는 방식입니다. 차분함을 지키면서 은은한 변화를 줍니다.',
-    analog: '색상환에서 바로 옆에 있는 색을 쓰는 방식입니다. 잘 어울리면서도 새로운 느낌을 줍니다.',
-    sat: '같은 계열의 색을 더 또렷하게 쓰는 방식입니다. 튀지 않으면서 중심을 잡아 줍니다.',
-    split: '맞은편 색(보색)의 바로 옆 색을 쓰는 방식입니다. 보색의 생기는 살리고 부딪힘은 줄입니다.',
-    comp: '색상환에서 맞은편에 있는 색을 쓰는 방식입니다. 가장 또렷하게 눈길을 모읍니다.',
-    opp: '따뜻한 색에는 차가운 색을, 차가운 색에는 따뜻한 색을 더하는 방식입니다. 온도감에 변화를 줍니다.',
-    warm: '흰색·회색처럼 색이 적은 바탕에 따뜻한 색을 더하는 방식입니다. 온기를 줍니다.',
-    cool: '흰색·회색처럼 색이 적은 바탕에 차가운 색을 더하는 방식입니다. 맑고 산뜻한 기운을 줍니다.',
-    value: '색보다 밝기 차이를 크게 두는 방식입니다. 짙은 색 하나로 창을 또렷하게 잡아 줍니다.',      // 220번 (11-11 사장님)
-    deep: '색보다 밝기 차이를 크게 두는 방식입니다. 짙은 색 하나로 창을 또렷하게 잡아 줍니다.'      // 222번: 블라인드 밝기 대비 — 글은 value와 같음
+    tint: '밝기와 선명함은 그대로 두고 색만 바꾸는 방식입니다. 차분하면서도 은은하게 달라 보입니다.',
+    analog: '벽·바닥 색과 가까운 계열의 색을 쓰는 방식입니다. 잘 어울리면서도 새로워 보입니다.',
+    sat: '같은 계열의 색을 더 선명하게 쓰는 방식입니다. 튀지 않으면서 창가가 또렷해 보입니다.',
+    split: '반대색에 가까운 색을 쓰는 방식입니다. 눈에 띄지만 반대색보다 덜 튑니다.',
+    comp: '벽·바닥 색과 반대되는 색을 쓰는 방식입니다. 창이 가장 먼저 눈에 들어옵니다.',
+    opp: '따뜻한 공간에는 차가운 색을, 차가운 공간에는 따뜻한 색을 더하는 방식입니다. 공간의 느낌이 살짝 달라집니다.',
+    warm: '흰색·회색 공간에 따뜻한 색을 더하는 방식입니다. 공간이 따뜻해 보입니다.',
+    cool: '흰색·회색 공간에 차가운 색을 더하는 방식입니다. 공간이 맑고 산뜻해 보입니다.',
+    value: '색보다 밝기 차이를 크게 두는 방식입니다. 짙은 색 하나로 창이 또렷해 보입니다.',      // 220번 (11-11 사장님)
+    deep: '색보다 밝기 차이를 크게 두는 방식입니다. 짙은 색 하나로 창이 또렷해 보입니다.'      // 222번: 블라인드 밝기 대비 — 글은 value와 같음
 };
 // 포인트 방식 설명 화면 (146번): 그 방식으로 고를 수 있는 원단 색 몇 개(색이 서로 겹치지 않게)와 쉬운 풀이
 function pointTechPreview(mc, category, key, n, room) {      // 222번: room(창 방향) — 블라인드 무채색·중성 집
