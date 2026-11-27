@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261322';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261323';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -243,7 +243,7 @@
         const tg = Y(GRAY_L), tw = Y(WHITE_L);
         const map = [0, 1, 2].map(i => {
             const gi = s.gray.lin[i], wi = s.white.lin[i];
-            if (wi - gi > 0.02) { const k = (tw - tg) / (wi - gi); return v => tg + (v - gi) * k; }
+            if (wi - gi > 0.02) { const k = (tw - tg) / (wi - gi); return v => (v <= gi ? v * tg / Math.max(gi, 0.001) : tg + (v - gi) * k); }      // 282번: 회색보다 어두운 쪽은 0을 지나는 줄(회색 카드 비례) — 두 카드 줄을 그대로 늘리면 사진이 조금 밝을 때 짙은 색이 0으로 잘려 검은 남색이 됨(AI 할 일 #93, 리담 서버 폰 측정과 같은 셈)
             return v => v * tw / Math.max(wi, 0.001);       // 두 카드 차이가 너무 작으면 흰 카드만으로
         });
         const fix = raw => {
