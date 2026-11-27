@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room-color.js']='20261322';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // 방 벽·바닥 색 재기 (작업목록 15번, 직원 화면 전용)
 //  - 걸레받이에 회색·흰 카드를 기대어 놓고 찍은 사진 한 장(필요하면 벽 사진 한 장 더)
@@ -134,9 +134,9 @@
             else name = C < 4 ? '다크 그레이' : C < 10 ? '딥 그레이지' : '모카';
         }
         const light = L >= 88 ? '아주 밝고' : L >= 75 ? '밝고' : L >= 55 ? '중간 밝기에' : L >= 38 ? '조금 어둡고' : '어둡고';
-        const famWord = { pink: '분홍', red: '붉은', yellow: '노란', olive: '초록', mint: '푸른 초록', blue: '푸른', lavender: '보랏' }[fam];
-        const note = fam === 'none' ? `${light} 색 기운이 거의 없습니다`
-            : `${light} ${famWord} 기운이 ${C < 6 ? '조금 있습니다' : C < 13 ? '은은합니다' : '또렷합니다'}`;
+        const famWord = { pink: '분홍', red: '붉은', yellow: '노란', olive: '초록', mint: '청록', blue: '푸른', lavender: '보랏' }[fam];
+        const note = fam === 'none' ? `${light} 차분한 ${L >= 88 ? '흰색' : '회색'}입니다`
+            : `${light} ${famWord}빛이 ${C < 6 ? '살짝 돕니다' : C < 13 ? '은은합니다' : '또렷합니다'}`;
         return { name, note };
     }
 

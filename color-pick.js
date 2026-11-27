@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261322';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -44,7 +44,7 @@
             warm: '벽·바닥이 회색 계열이라, 연한 색 하나로도 창가가 따뜻해 보입니다.',
             cool: '벽·바닥이 회색 계열이라, 연한 색 하나로도 창가가 산뜻해 보입니다.',
             tint: '벽·바닥이 회색 계열이라, 연한 색 하나로도 창가에 색이 살아납니다.',
-            opp: '벽·바닥과 반대 기운의 색이라, 창이 또렷해 보입니다.',
+            opp: '벽·바닥과 반대 계열의 색이라, 창이 또렷해 보입니다.',
             value: '벽·바닥보다 짙은 색이라, 창이 먼저 눈에 들어옵니다.'
         }
     };
@@ -454,7 +454,7 @@
     //  관계 한 줄은 위 WHY 표를 빌림(whyOf). 어느 자리에도 안 드는 색만 아래 두 문장 (11-13 ③ 초안 — 사장님 아침 확인)
     const CF_NONE = {
         strong: '벽·바닥보다 꽤 강한 색이라, 창이 가장 먼저 눈에 들어옵니다.',
-        other: '벽·바닥과 기운이 다른 색이라, 창만 따로 떠 보일 수 있습니다.'
+        other: '벽·바닥과 계열이 다른 색이라, 창만 따로 떠 보일 수 있습니다.'
     };
     function cfWhy(seat, room) {      // seat: { feel, key, tech, house, L } (색 칸의 seat 또는 공간의 colorFirst)
         if (!seat) return '';

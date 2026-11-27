@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261321';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261322';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -695,7 +695,7 @@ function whyJosa(name) {      // "거실과" / "안방과" / "방 2와" 처럼 �
     return '013678'.includes(ch) ? '과' : '와';
 }
 // ---- 색 값 (Lab): 색 기운(fam)은 room-color.js colorName과 같은 각도 구분, 채도 C ≥ 4일 때만 "기운 있음" ----
-const WHY_FAM_WORD = { pink: '분홍', red: '붉은', yellow: '노란', olive: '초록', mint: '푸른 초록', blue: '푸른', lavender: '보랏' };
+const WHY_FAM_WORD = { pink: '분홍', red: '붉은', yellow: '노란', olive: '초록', mint: '청록', blue: '푸른', lavender: '보랏' };
 const WHY_WARM_FAM = ['pink', 'red', 'yellow'];
 function whyLabOf(c) {
     if (!c || typeof c.L !== 'number' || typeof c.a !== 'number' || typeof c.b !== 'number') return null;
@@ -830,8 +830,8 @@ function whyItemCands(F, R, facts) {
             else if (dL <= -6) add('C', 'C4', '창 쪽이 차분해 보입니다.', '공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
-            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]} 기운이 있어 잘 어울립니다.`, `${R.floorWood === false ? '바닥' : '바닥 나무'}색과 같은 계열이라 잘 어울립니다.`);
-            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', `색 기운이 거의 없어, ${R.floorWood === false ? '바닥' : '바닥 나무'}색과 부딪히지 않습니다.`, '한쪽으로 치우친 색이 아니라, 바닥 색과 함께 두어도 차분합니다.');
+            if (c.fam && c.fam === R.floor.fam) add('C', 'C6', `바닥${R.floorName ? ' ' + R.floorName + whyJosa(R.floorName) : '과'} 같은 ${WHY_FAM_WORD[c.fam]}빛이 돌아 잘 어울립니다.`, `${R.floorWood === false ? '바닥' : '바닥 나무'}색과 같은 계열이라 잘 어울립니다.`);
+            else if (c.C < 3 && R.floor.C >= 6) add('C', 'C7', `차분한 흰색·회색 계열이라, ${R.floorWood === false ? '바닥' : '바닥 나무'}색과 잘 어울립니다.`, '한쪽으로 치우친 색이 아니라, 바닥 색과 함께 두어도 차분합니다.');
         }
     }
     // D. 창 방향이 만드는 결과 (방위 이름은 ② 칸에만). 하나만. D7~D9는 북쪽만 든 창에서만 (83번: 북서·북동은 동·서 문장) · D0(180번)은 북쪽이 든 창 모두
@@ -839,14 +839,14 @@ function whyItemCands(F, R, facts) {
     const warm = !!(c && c.fam && WHY_WARM_FAM.includes(c.fam));
     const nOnly = R.N && !R.E && !R.W;
     const D = [
-        [R.N && kind === 'drape' && typeof isCoolGray === 'function' && isCoolGray(c), 'D0', '북쪽 빛은 푸른 기운이 있어, 이 색은 낮에 조금 더 푸르고 짙게 보입니다. 창가에서 샘플을 대 보고 정하겠습니다.'],      // 180번: 북쪽이 든 창(북동·북서 포함) + 찬 회색 — D 가운데 가장 먼저
+        [R.N && kind === 'drape' && typeof isCoolGray === 'function' && isCoolGray(c), 'D0', '북쪽 빛은 푸른빛이 돌아, 이 색은 낮에 조금 더 푸르고 짙게 보입니다. 창가에서 샘플을 대 보고 정하겠습니다.'],      // 180번: 북쪽이 든 창(북동·북서 포함) + 찬 회색 — D 가운데 가장 먼저
         [R.E && R.bedroom && lifeFull, 'D1', '이른 아침 햇빛을 가려, 햇빛에 잠이 깨지 않습니다.'],
         [R.W && lifeFull, 'D5', '낮게 드는 오후 햇빛의 눈부심과 열기가 줄어듭니다.'],
         [R.E && kind === 'sheer', 'D2', '아침에는 속커튼만 닫아도 공간이 밝습니다.'],
         [R.S && !R.E && !R.W && kind === 'sheer', 'D6', '한낮의 강한 햇빛도 속커튼을 닫아 두면 눈부시지 않게 들어옵니다.'],
         [R.W && warm && c.C >= 6, 'D3', '오후에는 빛이 노래져, 이 색이 조금 더 따뜻해 보입니다.'],
-        [R.W && c && c.C < 4, 'D4', '색 기운이 적어, 오후의 노란 빛에도 색이 크게 달라 보이지 않습니다.'],
-        [nOnly && warm, 'D7', '푸르스름한 북쪽 빛에도, 따뜻한 기운이 있어 차가워 보이지 않습니다.'],
+        [R.W && c && c.C < 4, 'D4', `${c && c.L >= 88 ? '깨끗한 흰색' : '은은한 회색'}이라, 오후의 노란 빛에도 색이 거의 그대로 보입니다.`],
+        [nOnly && warm, 'D7', '푸르스름한 북쪽 빛에도, 따뜻한 느낌이 남아 포근해 보입니다.'],
         [nOnly && c && c.C < 4 && c.L >= 75, 'D8', '하루 내내 밝기가 비슷해, 이 색이 시간마다 크게 달라 보이지 않습니다.'],
         [nOnly && kind === 'sheer' && c && c.L >= 85, 'D9', '빛이 적은 창이라, 밝은 속커튼으로 빛을 덜 막습니다.']
     ].find(x => x[0]);
@@ -1019,7 +1019,7 @@ function drawWhy(ctx, data, W, compact, title) {
         let chipW = 0;
         if (set.hex) {      // 칩은 잰 색(색상코드)만. 없으면 칩·코드 없이 이름만
             setFont(400, C_SIZE, SANS);
-            chipW = C_SW + 10 + ctx.measureText(set.hex).width + 16;
+            chipW = C_SW + 12;      // 281번: 색 코드 글자는 손님 종이에 쓰지 않음(결정 #436) — 칩 자리만
             ops.push({ chip: set.hex, y: cy });
         }
         setFont(400, T_SIZE, SERIF);
@@ -1070,7 +1070,7 @@ function drawWhy(ctx, data, W, compact, title) {
         if (R.dirText) parts.push({ k: '창', name: R.dirText + '쪽', hex: '' });      // 156번: 벽·바닥을 못 잰 공간에서도 "창 남쪽"
         const cRows = []; let cRowW = 0;
         parts.forEach(c => {
-            const w = (c.hex ? C_SW + 10 : 0) + ctx.measureText(`${c.k} ${c.name} ${c.hex}`).width + 20;      // 대략 폭 (그릴 때 글꼴별로 다시 잼)
+            const w = (c.hex ? C_SW + 10 : 0) + ctx.measureText(`${c.k} ${c.name}`).width + 20;      // 대략 폭 (그릴 때 글꼴별로 다시 잼)
             if (cRows.length && cRowW + w <= QW) { cRows[cRows.length - 1].push(c); cRowW += w + 28; }
             else { cRows.push([c]); cRowW = w + 28; }
         });
@@ -1104,7 +1104,7 @@ function drawWhy(ctx, data, W, compact, title) {
         if (c.hex) { chip(c.hex, x, base); x += C_SW + 10; }
         setFont(400, C_SIZE, SANS); text(c.k, x, base, 'left', SOFT); x += ctx.measureText(c.k).width + 8;
         if (c.name) { setFont(400, C_SIZE, SANS); text(c.name, x, base, 'left', DARK); x += ctx.measureText(c.name).width + 8; }
-        if (c.hex) { setFont(400, C_SIZE, SANS); text(c.hex, x, base, 'left', SOFT); x += ctx.measureText(c.hex).width; }
+        // 281번: 색 코드 글자는 손님 종이에 쓰지 않음(결정 #436) — 색 칸(위 chip)만 남김
         return x + 28;
     }
     function drawRoom(L, y) {
@@ -1129,7 +1129,7 @@ function drawWhy(ctx, data, W, compact, title) {
             b.ops.forEach(o => {
                 if (o.chip) {
                     chip(o.chip, sx, sy + o.y);
-                    setFont(400, C_SIZE, SANS); text(o.chip, sx + C_SW + 10, sy + o.y, 'left', SOFT);
+                    // 281번: 색 코드 글자는 쓰지 않음(결정 #436) — 색 칸만
                     return;
                 }
                 setFont(o.f[0], o.f[1], o.f[2]); text(o.t, sx + (o.x || 0), sy + o.y, 'left', o.c);
@@ -1559,11 +1559,11 @@ function houseRoomLines(sp) {
                 return '벽과 바닥 사이의 색이라, 닫아도 공간이 하나로 이어져 보입니다.';
             }
             if (Math.abs(dL) >= Math.abs(db)) {
-                if (dL < 0 && typeof pointVivid === 'function' && pointVivid(f.lab)) return '짙고 색 기운이 또렷한 색이라, 창 쪽의 포인트가 됩니다.';      // 183번: 와인처럼 또렷한 짙은 색은 무게가 아니라 포인트 (차콜과 같은 말이 되지 않게)
+                if (dL < 0 && typeof pointVivid === 'function' && pointVivid(f.lab)) return '짙고 또렷한 색이라, 창 쪽의 포인트가 됩니다.';      // 183번: 와인처럼 또렷한 짙은 색은 무게가 아니라 포인트 (차콜과 같은 말이 되지 않게)
                 if (dL < 0) return f.lab.L < fl.L ? '바닥보다 짙은 색이라, 공간이 묵직해 보입니다.' : '선보다 짙은 쪽이라, 공간이 차분해 보입니다.';
                 return f.lab.L > w.L ? '벽보다 밝은 색이라, 닫아 두면 창 쪽이 환하게 보입니다.' : '선보다 밝은 쪽이라, 창 쪽이 가볍게 보입니다.';
             }
-            if (typeof pointVivid === 'function' && !pointVivid(f.lab)) return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽이지만 색 기운이 적어, 공간이 ${db > 0 ? '포근해' : '차분해'} 보입니다.`;      // 160번: 회색을 포인트라 하지 않음
+            if (typeof pointVivid === 'function' && !pointVivid(f.lab)) return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽이지만 색이 옅어, 공간이 ${db > 0 ? '포근해' : '차분해'} 보입니다.`;      // 160번: 회색을 포인트라 하지 않음
             return `벽과 바닥보다 ${db > 0 ? '따뜻한' : '차가운'} 쪽으로 벗어난 색이라, 창 쪽의 포인트가 됩니다.`;
         };
         const parts = pos.map(x => {
