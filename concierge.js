@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261317';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -685,9 +685,9 @@
     function setCompItems(ed, type) {
         const rName = ed.name;
         const one = (k, w) => ({ label: `${rName} ${w}`, presetType: k, fabricId: null, floorGap: 0 });
-        if (type === 'double') { ed.items = [one('sheer', '속지'), one('drape', '겉지')]; ed.blindWant = null; }
-        else if (type === 'sheer_only') { ed.items = [one('sheer', '속지')]; ed.blindWant = null; }
-        else if (type === 'drape_only') { ed.items = [one('drape', '겉지')]; ed.sheerFeel = null; ed.blindWant = null; }
+        if (type === 'double') { ed.items = [one('sheer', '속커튼'), one('drape', '겉커튼')]; ed.blindWant = null; }
+        else if (type === 'sheer_only') { ed.items = [one('sheer', '속커튼')]; ed.blindWant = null; }
+        else if (type === 'drape_only') { ed.items = [one('drape', '겉커튼')]; ed.sheerFeel = null; ed.blindWant = null; }
         else if (type === 'blind_only') { ed.items = [one('blind', '블라인드')]; ed.sheerFeel = null; }
     }
     // 고른 블라인드 종류가 지금 단가표 목록에 있는지 확인 (우드·알루미늄처럼 아직 목록에 없으면 실물 샘플 안내로, 38-2)
@@ -843,7 +843,7 @@
     const FLOOR_SW = { warm: '#bfa384', cool: '#d3d6d8', neutral: '#ada398', deep: '#4f3a2d' };
     const WALL_SW = { warm: '#f3ece2', cool: '#e6ebf0', neutral: '#e0d9d0', deep: '#6b4a3a' };
     const HATCH = 'repeating-linear-gradient(135deg, var(--paper-sheet) 0 6px, #efe7da 6px 12px)';      // 232번: 밝은 줄 = 손님 화면 종이(디자인 토큰)
-    const COMP_NAMES = { double: '이중 커튼', sheer_only: '속지 커튼', drape_only: '겉지 커튼', blind_only: '블라인드' };
+    const COMP_NAMES = { double: '이중 커튼', sheer_only: '속커튼만', drape_only: '겉커튼만', blind_only: '블라인드' };
     // 공간의 벽(part='wall') · 바닥(part='floor') 색: { hex, name, src: 'measured' | 'card' } 또는 null(아직 모름)
     // 잰 색의 이름: 자세한 이름(room-color.js colorName, 예: 라이트 베이지 · 내추럴 오크). 카드로 고른 색만 카드 이름(크림·아이보리 등)
     function measuredName(part, c) {
@@ -880,7 +880,7 @@
         const k = (r.curtains || []).map(c => c.presetType);
         return k.includes('blind') ? 'blind_only' : (k.includes('sheer') && k.includes('drape')) ? 'double' : k.includes('sheer') ? 'sheer_only' : (k.includes('drape') ? 'drape_only' : null);
     }
-    const kindOf = c => c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속지' : (c.presetType === 'drape' ? '겉지' : '커튼'));
+    const kindOf = c => c.presetType === 'blind' ? '블라인드' : (c.presetType === 'sheer' ? '속커튼' : (c.presetType === 'drape' ? '겉커튼' : '커튼'));
     // 이 집의 기본 색: 첫 공간에서 잰 벽·바닥 색 (state.house). 없으면 벽·바닥을 둘 다 잰 첫 공간에서 가져옴 (예전 상담·직원 화면에서 잰 공간)
     function houseColor() {
         if (state.house && (state.house.wall || state.house.floor)) {
@@ -978,8 +978,8 @@
                 + `<span class="pane-qty"><button type="button" aria-label="${i + 1}번 줄 한 장 빼기" onclick="window.concierge.paneQty(${i}, -1)">−</button><b class="font-serif-kr">${p.qty || 1}장</b><button type="button" aria-label="${i + 1}번 줄 한 장 더하기" onclick="window.concierge.paneQty(${i}, 1)">+</button></span>`
                 + `<button type="button" class="r-quiet pane-del" onclick="window.concierge.removePane(${i})">빼기</button></div>`;
         });
-        h += `<div class="pane-acts"><button type="button" class="r-quiet" onclick="window.concierge.addPane()">+ 줄 더하기</button>`
-            + `<button type="button" class="r-quiet" onclick="window.concierge.setPaneSameH(${!sameH})">${sameH ? '높이 따로 넣기' : '높이 같이'}</button></div></div>`;
+        h += `<div class="pane-acts"><button type="button" class="r-quiet" onclick="window.concierge.addPane()">+ 줄 추가</button>`
+            + `<button type="button" class="r-quiet" onclick="window.concierge.setPaneSameH(${!sameH})">${sameH ? '높이 따로' : '높이 같게'}</button></div></div>`;
         return h;
     }
     // 245번: 폰에서 잰 크기(리담 서버 실측, app.js window.redamVisit) — 1.5 공간 종류 위 칩. 칩이나 같은 이름의 공간 단추를 누르면 1.6 크기에 미리 채움
@@ -999,7 +999,7 @@
         if (!list.length) return '';
         const used = new Set(state.roomsCart.map(r => r.name));      // 이미 담은 공간(같은 이름)은 ✓ 흐리게 · 못 누름
         const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-        return '<div class="ask-house ph-sizes"><span class="ask-house-k">폰에서 잰 크기</span><div class="fur-chips">'
+        return '<div class="ask-house ph-sizes"><span class="ask-house-k">실측한 크기</span><div class="fur-chips">'
             + list.map((m, i) => used.has(m.이름)
                 ? `<button type="button" class="ph-done" disabled>✓ ${esc(m.이름)} ${phoneSizeText(m)}</button>`
                 : `<button type="button" onclick="window.concierge.choosePhoneSize(${i})">${esc(m.이름)} ${phoneSizeText(m)}</button>`).join('')
@@ -1210,7 +1210,7 @@
         if (hasSheer) {
             const lead = !!room.leadBand;
             h += '<div class="fo-row fo-hem"><span class="fo-nm font-serif-kr">밑단</span><div class="fo-pick" role="group" aria-label="밑단">'
-                + `<button type="button" data-hem="0" class="${lead ? '' : 'on'}" aria-pressed="${!lead}" onclick="window.concierge.setHem(false)">시접</button>`
+                + `<button type="button" data-hem="0" class="${lead ? '' : 'on'}" aria-pressed="${!lead}" onclick="window.concierge.setHem(false)">기본</button>`
                 + `<button type="button" data-hem="1" class="${lead ? 'on' : ''}" aria-pressed="${lead}" onclick="window.concierge.setHem(true)">리드밴드</button></div></div>`;
         }
         return h + '</div>';
@@ -1382,9 +1382,9 @@
                 const t = tasteNow(), forRoom = tasteRoom();
                 const wasT = v => t.pres === v;
                 const opts = [
-                    { label: '조용히 스며들게요', on: "window.concierge.pickTaste('pres', 'calm')", was: wasT('calm') },
-                    { label: '차분히 무게감 있게요', on: "window.concierge.pickTaste('pres', 'weight')", was: wasT('weight') },
-                    { label: '포인트가 되게요', on: "window.concierge.pickTaste('pres', 'point')", was: wasT('point') }
+                    { label: '넓어 보이게요', on: "window.concierge.pickTaste('pres', 'calm')", was: wasT('calm') },
+                    { label: '차분하게요', on: "window.concierge.pickTaste('pres', 'weight')", was: wasT('weight') },
+                    { label: '포인트 있게요', on: "window.concierge.pickTaste('pres', 'point')", was: wasT('point') }
                 ];
                 // 120번: 포인트는 공간마다(집 전체 구성 화면의 [포인트]) → 집 질문에는 공간이 하나뿐일 때만. 겉지·블라인드가 없으면(속지만) 숨김
                 const frP = forRoom && state.roomsCart.find(r => r.id === state.editingRoomId);
@@ -1394,8 +1394,8 @@
                 const subj = (c, b) => c && b ? '커튼과 블라인드는' : (b ? '블라인드는' : '커튼은');
                 const fr = forRoom && state.roomsCart.find(r => r.id === state.editingRoomId);
                 const q = forRoom
-                    ? `${forRoom.name}의 ${fr && planHas(fr, 'blind') ? '블라인드는' : '커튼은'} 어떤 느낌이 좋으실까요?`
-                    : `${subj(houseHas('sheer') || houseHas('drape'), houseHas('blind'))} 어떤 느낌이 좋으실까요?`;
+                    ? `${forRoom.name} ${fr && planHas(fr, 'blind') ? '블라인드는' : '커튼은'} 어떤 분위기가 좋으세요?`
+                    : `${subj(houseHas('sheer') || houseHas('drape'), houseHas('blind'))} 어떤 분위기가 좋으세요?`;
                 html += askStage(q, '', opts);
                 break;
             }
@@ -1404,7 +1404,7 @@
             case "0.6-House-Tex": {
                 const t = tasteNow(), wasX = v => t.tex === v ? ' was-picked' : '';
                 html += '<div class="bookmark-stage">';
-                html += stepHead(tasteRoom() ? `${state.editingRoom.name}의 겉지는 어떤 질감이 좋으실까요?` : '겉지는 어떤 질감이 좋으실까요?');
+                html += stepHead(tasteRoom() ? `${state.editingRoom.name} 겉커튼은 어떤 질감이 좋으세요?` : '겉커튼은 어떤 질감이 좋으세요?');
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
                 html += renderBookmarkCard("매끈한", "", "", texBg('tex_smooth', SOLID_TEXTURES.coolWhite), function() { window.concierge.pickTaste('tex', 'smooth'); }, 'vdesc' + wasX('smooth'));
                 html += renderBookmarkCard("짜임이 보이는", "", "", texBg('tex_texture', SOLID_TEXTURES.oak), function() { window.concierge.pickTaste('tex', 'texture'); }, 'vdesc' + wasX('texture'));
@@ -1446,7 +1446,7 @@
                 if (isPart && ((d.spaceWidth || d.width) > 0 || (d.spaceHeight || d.height) > 0)) {
                     html += `<p class="msr-space-ref font-serif-kr">공간 전체 크기: <b>${d.spaceWidth || d.width || 0} × ${d.spaceHeight || d.height || 0}cm</b></p>`;
                 }
-                if (d.phoneSize) html += '<p class="msr-space-ref font-serif-kr">폰에서 잰 값</p>';      // 245번
+                if (d.phoneSize) html += '<p class="msr-space-ref font-serif-kr">실측한 값</p>';      // 245번
                 html += '<div class="msr-grid">' +
                     msrBoxHtml('width', '가로', curW) +
                     msrBoxHtml('height', '세로', curH) +
@@ -1460,7 +1460,7 @@
             // [공간 추가 ③ 색, 두 번째 공간부터] 이 집의 기본 색과 같은지. 다른 부분만 다시 잼
             case "1.7-Add-Same": {
                 const hc = houseColor();
-                const wf = (k, c, part) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? measuredName(part, c) : '아직 재지 않았습니다'}</span>${hexCode(c && { hex: c.hex, src: 'measured' })}</div>`;
+                const wf = (k, c, part) => `<div class="dos-wfrow"><span class="dos-wfk">${k}</span><i style="background:${c ? c.hex : HATCH}"></i><span class="dos-wfn">${c ? measuredName(part, c) : '아직 측정하지 않았습니다'}</span>${hexCode(c && { hex: c.hex, src: 'measured' })}</div>`;
                 const extra = (hc ? `<div class="ask-house"><span class="ask-house-k">기본 벽·바닥 색</span>${wf('벽', hc.wall, 'wall')}${wf('바닥', hc.floor, 'floor')}</div>` : '') + dirPickerHtml();      // 창 방향은 공간마다 (이어받지 않음)
                 // 146번: 처음 잰 공간 하나가 아니라 앞서 담은 공간 중에서 고름 ("○○과 같아요", 최근 공간부터 4곳)
                 const refs = state.roomsCart.filter(r => r.measuredColor && (r.measuredColor.wall || r.measuredColor.floor)).slice().reverse().slice(0, 4);
@@ -1471,7 +1471,7 @@
                         { label: `${nm(withGwa(r.name))} 같아요`, rec: i === 0, on: `window.concierge.finishAddRoom('room', null, ${r.id})` }))
                         .concat([
                             { label: '모두 달라요', on: "window.concierge.measureNewRoom('both')" },
-                            { label: '지금은 못 재요', quiet: true, on: "window.concierge.finishAddRoom('none')" }
+                            { label: '나중에 측정할게요', quiet: true, on: "window.concierge.finishAddRoom('none')" }
                         ]), { extra: rows + dirPickerHtml() });
                     break;
                 }
@@ -1480,7 +1480,7 @@
                     { label: '벽만 달라요', on: "window.concierge.measureNewRoom('wall')" },
                     { label: '바닥만 달라요', on: "window.concierge.measureNewRoom('floor')" },
                     { label: '둘 다 달라요', on: "window.concierge.measureNewRoom('both')" },
-                    { label: '지금은 못 재요', quiet: true, on: "window.concierge.finishAddRoom('none')" }
+                    { label: '나중에 측정할게요', quiet: true, on: "window.concierge.finishAddRoom('none')" }
                 ], { extra });
                 break;
             }
@@ -1537,11 +1537,11 @@
             case "2-Base-Block": {
                 // 공간에 들어와 처음 묻는 질문 (117번): 위에 이 공간의 벽·바닥 확인 칩 (예전 빛 질문 자리에서 옮김 — 다르면 바닥·벽 카드로 고침)
                 const ed = state.editingRoom, wall = roomPart(ed, 'wall'), floor = roomPart(ed, 'floor');
-                const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 재지 않았습니다'}</b></span>`;
+                const part = (k, p) => `<span class="rc"><i style="background:${p ? p.hex : HATCH}"></i>${k} <b>${p ? p.name : '아직 측정하지 않았습니다'}</b></span>`;
                 // 133번(재검토 A3): 벽·바닥을 다 잰 공간은 이 줄을 뺌(사장님이 말로 하는 정보, 고칠 때는 중심 화면 "수정하기"). 못 잰 공간만 "카드로 고르기"를 남김
                 const chip = (ed.askCards || ed.fixOne || (wall && floor)) ?'' : `<div class="room-chip">이 공간 ${part('벽', wall)}${part('바닥', floor)}`
                     + `<button type="button" onclick="window.concierge.fixRoomColors()">카드로 고르기</button></div>`;
-                html += askStage(roomTopic(ed) ? `${roomTopic(ed)} 빛을 어느 정도 가리실까요?` : '빛은 어느 정도 가리실까요?', '', [      // 152번: 안방은 빛을…
+                html += askStage(roomTopic(ed) ? `${roomTopic(ed)} 빛을 어느 정도 가릴까요?` : '빛은 어느 정도 가릴까요?', '', [      // 152번: 안방은 빛을…
                     { label: '들어와도 괜찮아요', on: "window.concierge.selectLightBlock('light')", was: was('lightBlock', 'light') },
                     { label: '적당히 가려 주세요', on: "window.concierge.selectLightBlock('soft')", was: was('lightBlock', 'soft') },
                     { label: '완전히 어둡게요', on: "window.concierge.selectLightBlock('dark')", was: was('lightBlock', 'dark') }
@@ -1551,7 +1551,7 @@
 
             // [바깥 시선: 모든 공간에서 (117번)]
             case "2-Base-Privacy":
-                html += askStage(roomTopic(state.editingRoom) ? `${roomTopic(state.editingRoom)} 밖에서 보이는 시선을 어느 정도 가리실까요?` : '밖에서 보이는 시선은 어느 정도 가리실까요?', '', [      // 152번
+                html += askStage(roomTopic(state.editingRoom) ? `${roomTopic(state.editingRoom)} 바깥 시선을 어느 정도 가릴까요?` : '바깥 시선은 어느 정도 가릴까요?', '', [      // 152번
                     { label: '괜찮아요', on: "window.concierge.selectPrivacy('open')", was: was('privacy', 'open') },
                     { label: '조금 신경 쓰여요', on: "window.concierge.selectPrivacy('some')", was: was('privacy', 'some') },
                     { label: '많이 신경 쓰여요', on: "window.concierge.selectPrivacy('high')", was: was('privacy', 'high') }
@@ -1565,7 +1565,7 @@
                 const hs0 = fe ? ({ smooth: 'smooth', textured: 'texture', cozy: 'texture', linen: 'linen', any: 'unknown' }[state.editingRoom.sheerFeel] || null) : houseTasteNow().sheer;
                 const hs = hs0 === 'thick' ? 'texture' : hs0, wasS = v => hs === v ? ' was-picked' : '';
                 html += '<div class="bookmark-stage">';
-                html += stepHead(fe ? `${state.editingRoom.name}의 속지는 어떤 질감이 좋으실까요?` : '속지는 어떤 질감이 좋으실까요?');
+                html += stepHead(fe ? `${state.editingRoom.name} 속커튼은 어떤 질감이 좋으세요?` : '속커튼은 어떤 질감이 좋으세요?');
                 html += `<button type="button" class="step-skip${wasS('unknown')}" onclick="window.concierge.selectSheerFeel('any')">잘 모르겠어요</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 3;">';
                 html += renderBookmarkCard("매끈한", "", "", sheerFeelBg('feel_smooth', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectSheerFeel('smooth'); }, 'vdesc' + wasS('smooth'));
@@ -1579,11 +1579,11 @@
             case "2-Base-BlindKind":
                 html += '<div class="bookmark-stage">';
                 const bkAdv = blindAdvice(state.editingRoom);      // 274번: 권하는 종류 하나(카드 이름 아래 '권합니다' + 까닭 한 줄)
-                html += stepHead(state.editingRoom && state.editingRoom.flow ? `${state.editingRoom.name}에는 어떤 블라인드가 좋으실까요?` : '어떤 블라인드가 좋으실까요?');      // 123번
+                html += stepHead(state.editingRoom && state.editingRoom.flow ? `${state.editingRoom.name}에는 어떤 블라인드가 좋으세요?` : '어떤 블라인드가 좋으세요?');      // 123번
                 html += `<button type="button" class="step-skip${was('blindWant', 'any') ? ' was-picked' : ''}" onclick="window.concierge.selectBlindKind('any')">잘 모르겠어요</button>`;
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
-                html += renderBookmarkCard("콤비", bkAdv && bkAdv.kind === 'combi' ? '권합니다' : "", "", blindBg('blind_combi', SOLID_TEXTURES.l1), function() { window.concierge.selectBlindKind('combi'); }, 'vdesc' + was('blindWant', 'combi'), bkAdv && bkAdv.kind === 'combi' ? bkAdv.why : '');      // 274번
-                html += renderBookmarkCard("롤", bkAdv && bkAdv.kind === 'roll' ? '권합니다' : "", "", blindBg('blind_roll', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectBlindKind('roll'); }, 'vdesc' + was('blindWant', 'roll'), bkAdv && bkAdv.kind === 'roll' ? bkAdv.why : '');      // 274번
+                html += renderBookmarkCard("콤비", bkAdv && bkAdv.kind === 'combi' ? '추천' : "", "", blindBg('blind_combi', SOLID_TEXTURES.l1), function() { window.concierge.selectBlindKind('combi'); }, 'vdesc' + was('blindWant', 'combi'), bkAdv && bkAdv.kind === 'combi' ? bkAdv.why : '');      // 274번
+                html += renderBookmarkCard("롤", bkAdv && bkAdv.kind === 'roll' ? '추천' : "", "", blindBg('blind_roll', SOLID_TEXTURES.coolWhite), function() { window.concierge.selectBlindKind('roll'); }, 'vdesc' + was('blindWant', 'roll'), bkAdv && bkAdv.kind === 'roll' ? bkAdv.why : '');      // 274번
                 html += renderBookmarkCard("우드", "", "", blindBg('blind_wood', SOLID_TEXTURES.oak), function() { window.concierge.selectBlindKind('wood'); }, 'vdesc' + was('blindWant', 'wood'));
                 html += renderBookmarkCard("알루미늄", "", "", blindBg('blind_alu', SOLID_TEXTURES.tile), function() { window.concierge.selectBlindKind('alu'); }, 'vdesc' + was('blindWant', 'alu'));
                 html += '</div></div>';
@@ -1593,14 +1593,14 @@
             case "3-Config-Style": {
                 const ed = state.editingRoom;
                 html += '<div class="bookmark-stage">';
-                html += stepHead(roomTopic(ed) ? `${roomTopic(ed)} 어떤 구성을 원하실까요?` : '어떤 구성을 원하실까요?');      // 안방은 / 거실은 (152번: roomTopic)
+                html += stepHead(roomTopic(ed) ? `${roomTopic(ed)} 어떤 구성이 좋으세요?` : '어떤 구성이 좋으세요?');      // 안방은 / 거실은 (152번: roomTopic)
                 const phComp = ed && ed.prev && ed.prev.comp && phoneCompOf(ed.name) === ed.prev.comp ? ed.prev.comp : null;      // 259번: 회색 칸이 폰에서 들은 구성이면 그 칸 이름 아래 작은 글자 한 줄
                 // 233번: 색으로 고르기 입구 = 질문 줄 오른쪽 끝의 작은 글자('맡길게요'와 같은 모양). 사진은 네 칸 그대로. 길잡이에서 벽·바닥 잰 색으로 색 칸이 나올 때만
                 if (ed && ed.flow && cz.colorPick && cz.colorPick.cfCan && cz.colorPick.cfCan()) html += '<button type="button" class="r-quiet cf-quiet" onclick="window.concierge.cfOpen()">색부터 볼게요</button>';
                 html += '<div class="bookmark-canvas" style="--items-count: 4;">';
                 [['double', 'comp_double', SOLID_TEXTURES.l1], ['sheer_only', 'comp_sheer', SOLID_TEXTURES.l2], ['drape_only', 'comp_drape', SOLID_TEXTURES.l3], ['blind_only', 'comp_blind', SOLID_TEXTURES.oak]].forEach(([k, ph, fb]) => {
                     html += renderBookmarkCard(COMP_NAMES[k], "", "", compBg(ph, fb), function() { window.concierge.chooseWindowComposition(k); },
-                        was('comp', k).trim(), k === phComp ? '폰에서 들은 구성' : '');      // 259번
+                        was('comp', k).trim(), k === phComp ? '미리 말씀하신 구성' : '');      // 259번
                 });
                 html += '</div></div>';
                 break;
@@ -1620,11 +1620,11 @@
                 // 우드·알루미늄처럼 아직 목록에 없는 종류는 실물 샘플로 안내하고 바로 담음 (38-2)
                 if (curItem.presetType === 'blind' && bw && bw !== 'any' && !hasBlindKindInPool(bw)) {
                     const kindName = (typeof BLIND_KIND_LABELS !== 'undefined' && BLIND_KIND_LABELS[bw]) || '선택하신';
-                    const subText = bw === 'wood' ? '나무 결과 색감은 창가에서 실제로 대 보며 고르는 편이 정확합니다.'
-                        : (bw === 'alu' ? '슬랫 두께와 색감은 창가에서 실제로 대 보며 고르는 편이 정확합니다.'
+                    const subText = bw === 'wood' ? '나무 무늬와 색은 창가에 직접 대 보고 고르시는 게 가장 정확합니다.'
+                        : (bw === 'alu' ? '슬랫 두께와 색은 창가에 직접 대 보고 고르시는 게 가장 정확합니다.'
                         : '실제 샘플을 창가에 대 보며 어울리는 색을 골라 드립니다.');
                     html += '<div class="ambient-stage" onclick="window.concierge.proceedSampleBlind()">' + progHtml();
-                    html += `<h2 class="q-title font-serif-kr">${kindName} 블라인드는 상담 때<br>실물 샘플로 보여 드리겠습니다.</h2>`;
+                    html += `<h2 class="q-title font-serif-kr">${kindName} 블라인드는<br>실물 샘플로 보여 드리겠습니다.</h2>`;
                     html += `<p class="q-sub font-serif-kr">${subText}</p>`;
                     html += '<button type="button" class="txt-cta font-serif-kr home-go" onclick="window.concierge.proceedSampleBlind()">이 공간에 담아 두기 →</button>'; // 42번
                     html += '</div>';
@@ -1632,7 +1632,7 @@
                 }
                 // 189번: 속지·겉지는 새 화면(빛 한 장·색 한 장 → 열림 → 고름, color-pick.js). "고르고 있습니다"·포인트 방식 고르기를 거치지 않음. 블라인드·벽 바닥 색을 못 잰 겉지는 아래 옛 화면 그대로
                 if (cz.colorPick && cz.colorPick.wants(curItem)) { html += cz.colorPick.html(); break; }
-                const typeLabel = curItem.presetType === 'sheer' ? '속지' : (curItem.presetType === 'drape' ? '겉지' : '블라인드');
+                const typeLabel = curItem.presetType === 'sheer' ? '속커튼' : (curItem.presetType === 'drape' ? '겉커튼' : '블라인드');
                 // 120번: 포인트 공간의 겉지·블라인드는 "골랐습니다" 대신 기법부터 고름 (용어 그대로, 후보 있는 것만, 하나뿐이면 묻지 않음)
                 const techs = pointTechsFor(curItem);
                 if (techs.length > 1 && !state.seekNow) {
@@ -1647,12 +1647,12 @@
                         const room = c => `<svg class="pt-room" viewBox="0 0 240 120" aria-hidden="true"><rect width="240" height="96" fill="${wall}"/><rect y="96" width="240" height="24" fill="${floor}"/><rect x="80" y="18" width="80" height="62" fill="#cfe0ea"/><rect x="62" y="12" width="30" height="84" fill="${c}"/><rect x="148" y="12" width="30" height="84" fill="${c}"/></svg>`;
                         const strip = !P.hexes.length ? '' : `<div class="pt-show">${room(P.hexes[0])}${P.hexes.length > 1 ? `<div class="pt-chips">${P.hexes.map(h => `<span class="pt-chip" style="background:${h}"></span>`).join('')}</div><span class="pt-cap">이 방식으로 고를 수 있는 색</span>` : ''}</div>`;
                         html += askStage(P.term, P.say, [
-                            { label: '이 방식으로 할게요', rec: true, on: `window.concierge.pickPointTech('${pv.key}')` },
-                            { label: '다른 방식 보기', quiet: true, on: "window.concierge.previewPointTech('')" }
+                            { label: '이 색으로 할게요', rec: true, on: `window.concierge.pickPointTech('${pv.key}')` },
+                            { label: '다른 색 보기', quiet: true, on: "window.concierge.previewPointTech('')" }
                         ], { extra: strip });
                         break;
                     }
-                    html += askStage('포인트는 어떤 방식으로 주실까요?', '', techs.map(o => (
+                    html += askStage('포인트는 어떤 색으로 할까요?', '', techs.map(o => (
                         { label: o.term, on: `window.concierge.previewPointTech('${o.key}')`, was: ed.pointTech === o.key }))
                         .concat([{ label: '맡길게요', quiet: true, on: "window.concierge.pickPointTech('')", was: ed.pointTech === null && ed.pointAsked }]));
                     break;
@@ -1660,7 +1660,7 @@
                 if (techs.length === 1) state.editingRoom.pointTech = techs[0].key;
                 // 140번(B-6): "골랐습니다" + "찾는 중"을 한 화면으로. 들어오자마자 사진을 받고, 다 되면 제목이 "골랐습니다"로
                 html += '<div class="ambient-stage fab-seek-stage" id="fabSeekStage" role="status" onclick="window.concierge.proceedToFabricQueue()">' + progHtml();
-                html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br><span class="fab-seek-what">${typeLabel}를 고르고 있습니다</span></h2>`;
+                html += `<h2 class="q-title font-serif-kr">이 공간의 빛과 색에 맞춰<br><span class="fab-seek-what">${typeLabel}${typeLabel === '블라인드' ? '를' : '을'} 고르고 있습니다</span></h2>`;
                 html += seekChipsHtml();
                 html += '<p class="q-sub fab-seek-sub font-serif-kr">바닥·벽의 색과 들어오는 햇빛을 보고 있습니다</p>';
                 // 143번: "원단 보기" 버튼 없이 다 고르면 저절로 넘어감 (첫 칸도)
@@ -1674,15 +1674,15 @@
                 if (!roomHasLab(state.editingRoom)) {
                     const mc0 = (state.editingRoom && state.editingRoom.measuredColor) || {};
                     const need = ['wall', 'floor'].filter(p => !(mc0[p] && typeof mc0[p].L === 'number'));
-                    html += askStage('벽·바닥 색을 재야 원단을 추천할 수 있습니다', '', need.map(p => (
-                        { label: p === 'wall' ? '벽 색 재기' : '바닥 색 재기', on: `window.concierge.measureForFabric('${p}')` }))
-                        .concat([{ label: '지금은 못 재요 · 실물 견본으로', quiet: true, on: 'window.concierge.proceedSampleBlind(true)' }]));      // 161번 · 177번: 블라인드도 커튼도 실물 견본으로 견적까지
+                    html += askStage('벽·바닥 색을 측정해야 원단을 추천해 드릴 수 있습니다', '', need.map(p => (
+                        { label: p === 'wall' ? '벽 색 측정' : '바닥 색 측정', on: `window.concierge.measureForFabric('${p}')` }))
+                        .concat([{ label: '나중에 측정할게요 · 실물 샘플로', quiet: true, on: 'window.concierge.proceedSampleBlind(true)' }]));      // 161번 · 177번: 블라인드도 커튼도 실물 견본으로 견적까지
                     break;
                 }
                 const { queueItem, targetCategory, showcaseList } = fabricShowcase();
                 state.colorPick = state.colorPick || {};
                 if (!showcaseList.length) {      // 잰 색값이 있는 원단이 없으면 추천하지 않음 (92번)
-                    html += askStage('색을 잰 원단이 아직 없어 추천할 수 없습니다', '직원 화면 › 원단 색상 › 색 안 잰 원단에서 확인할 수 있습니다', []);
+                    html += askStage('추천할 원단을 준비하고 있습니다', '원단 샘플로 함께 보여 드리겠습니다.', []);
                     break;
                 }
 
@@ -1692,7 +1692,7 @@
                 const effPt = roomWithTaste(state.editingRoom);
                 const noPoint = targetCategory !== '속지' && typeof colorPlanMode === 'function' && colorPlanMode(effPt, targetCategory) === 'point'
                     && effPt.colorAccent !== 'value' && !showcaseList.some(e => e.fit);
-                html += stepHead(noPoint ? '이 공간에 맞는 또렷한 색이 아직 없어, 차분한 색 중에서 골라 주세요' : '마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
+                html += stepHead(noPoint ? '이 공간에 맞는 또렷한 색 원단이 지금은 없어, 차분한 색 중에서 골라 주세요' : '마음에 드는 원단을 눌러 주세요', ''); // 42번: 사족 설명 제거
                 // 창 그림(104번)은 원단 카드마다 하나씩 (137번, fabric-pick.js fabricCardHtml)
                 html += `<div class="bookmark-canvas" style="--items-count: ${Math.max(1, showcaseList.length)};">`;
                 state.fabPanelCount = showcaseList.length;      // 마지막 칸에 Re.dam 표시를 넣기 위해
@@ -1760,8 +1760,8 @@
                 const left = phoneMeasures().map((m, i) => ({ m, i })).filter(x => !done.has(x.m.이름));
                 const top = `<p class="next-done font-serif-kr">${nm(state.nextFrom)} · 마쳤습니다</p>`;
                 const more = label => [{ label, quiet: true, on: "window.concierge.goStep('1.5-Room-Type')" }, { label: '공간 목록 보기', quiet: true, on: "window.concierge.goStep('1-Space')" }];
-                if (left.length) html += askStage('다음은 어느 공간을 지을까요?', '', left.map((x, k) => ({ label: nm(x.m.이름), extra: `<span class="next-size">${phoneSizeText(x.m)}</span>`, rec: k === 0, on: `window.concierge.choosePhoneSize(${x.i})` })).concat(more('다른 공간 넣기')), { top });
-                else html += askStage('이제 최종 제안을 보시겠어요?', '', [{ label: '최종 제안 보기', rec: true, on: 'window.concierge.goToCheckout()' }].concat(more('공간 더 넣기')), { top });
+                if (left.length) html += askStage('다음은 어느 공간을 볼까요?', '', left.map((x, k) => ({ label: nm(x.m.이름), extra: `<span class="next-size">${phoneSizeText(x.m)}</span>`, rec: k === 0, on: `window.concierge.choosePhoneSize(${x.i})` })).concat(more('다른 공간 추가')), { top });
+                else html += askStage('이제 최종 제안을 보시겠어요?', '', [{ label: '최종 제안 보기', rec: true, on: 'window.concierge.goToCheckout()' }].concat(more('공간 더 추가')), { top });
                 break;
             }
 
@@ -1795,7 +1795,7 @@
         const seekStage = document.getElementById('fabSeekStage');
         if (seekStage) {
             const cur = state.pendingItemQueue[state.currentItemIndex] || {};
-            const label = cur.presetType === 'sheer' ? '속지' : (cur.presetType === 'drape' ? '겉지' : '블라인드');
+            const label = cur.presetType === 'sheer' ? '속커튼' : (cur.presetType === 'drape' ? '겉커튼' : '블라인드');
             state.seeking = true;
             const open = () => seekToQueue();      // 161번
             try { playFabricSeek(seekStage, label, state.currentItemIndex > 0, open, () => { state.seeking = false; }); }
@@ -2280,7 +2280,7 @@
                 r.curtains = r.curtains.filter(c => c.presetType === 'sheer');
                 r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
                 syncToV1MasterRooms();
-                spaceToast(`${r.name}: 겉지를 빼고 속지만 남겼습니다`, () => cz.restoreCurtains(r.id, before));      // 165번
+                spaceToast(`${r.name}: 겉커튼을 빼고 속커튼만 남겼습니다`, () => cz.restoreCurtains(r.id, before));      // 165번
                 render();
                 return;
             }
@@ -2291,7 +2291,7 @@
                 r.curtains = r.curtains.filter(c => c.presetType === 'drape');
                 r.subtotal = r.curtains.reduce((s, c) => s + ((c.calc && c.calc.curtainSubtotal) || 0), 0);
                 syncToV1MasterRooms();
-                spaceToast(`${r.name}: 속지를 빼고 겉지만 남겼습니다`, () => cz.restoreCurtains(r.id, before));      // 165번
+                spaceToast(`${r.name}: 속커튼을 빼고 겉커튼만 남겼습니다`, () => cz.restoreCurtains(r.id, before));      // 165번
                 render();
                 return;
             }
@@ -2303,7 +2303,7 @@
                     sizeKnown: true,
                     editOnly: false,
                     existingCurtains: sheerCurt ? [sheerCurt] : [],
-                    items: [{ label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }]
+                    items: [{ label: `${r.name} 겉커튼`, presetType: 'drape', fabricId: null, floorGap: 0 }]
                 });
                 state.pendingItemQueue = state.editingRoom.items;
                 state.currentItemIndex = 0;
@@ -2318,7 +2318,7 @@
                     sizeKnown: true,
                     editOnly: false,
                     existingCurtains: drapeCurt ? [drapeCurt] : [],
-                    items: [{ label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
+                    items: [{ label: `${r.name} 속커튼`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
                 });
                 state.pendingItemQueue = state.editingRoom.items;
                 state.currentItemIndex = 0;
@@ -2350,8 +2350,8 @@
                         editOnly: false,
                         existingCurtains: [],
                         items: [
-                            { label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 },
-                            { label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }
+                            { label: `${r.name} 속커튼`, presetType: 'sheer', fabricId: null, floorGap: 0 },
+                            { label: `${r.name} 겉커튼`, presetType: 'drape', fabricId: null, floorGap: 0 }
                         ]
                     });
                     state.pendingItemQueue = state.editingRoom.items;
@@ -2362,7 +2362,7 @@
                         sizeKnown: true,
                         editOnly: false,
                         existingCurtains: [],
-                        items: [{ label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
+                        items: [{ label: `${r.name} 속커튼`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
                     });
                     state.pendingItemQueue = state.editingRoom.items;
                     state.currentItemIndex = 0;
@@ -2372,7 +2372,7 @@
                         sizeKnown: true,
                         editOnly: false,
                         existingCurtains: [],
-                        items: [{ label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }]
+                        items: [{ label: `${r.name} 겉커튼`, presetType: 'drape', fabricId: null, floorGap: 0 }]
                     });
                     state.pendingItemQueue = state.editingRoom.items;
                     state.currentItemIndex = 0;
@@ -2388,7 +2388,7 @@
                     sizeKnown: true,
                     editOnly: false,
                     existingCurtains: [],
-                    items: [{ label: `${r.name} 겉지`, presetType: 'drape', fabricId: null, floorGap: 0 }]
+                    items: [{ label: `${r.name} 겉커튼`, presetType: 'drape', fabricId: null, floorGap: 0 }]
                 });
                 state.pendingItemQueue = state.editingRoom.items;
                 state.currentItemIndex = 0;
@@ -2402,7 +2402,7 @@
                     sizeKnown: true,
                     editOnly: false,
                     existingCurtains: [],
-                    items: [{ label: `${r.name} 속지`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
+                    items: [{ label: `${r.name} 속커튼`, presetType: 'sheer', fabricId: null, floorGap: 0 }]
                 });
                 state.pendingItemQueue = state.editingRoom.items;
                 state.currentItemIndex = 0;

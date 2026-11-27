@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261317';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['fabric-pick.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // fabric-pick.js — 고객 화면 원단 고르는 화면의 색상 덱·원단 카드·원단 사진 주소 기억·"찾는 중" 화면 (130-4②에서 concierge.js에서 떼어 냄). concierge.js 다음에 읽힘
 
 (function() {
@@ -114,9 +114,9 @@
         return ({ smooth: '매끈한 질감', natural: '짜임이 보이는 질감', cozy: '도톰하고 포근한 질감' })[f.texture] || '';      // 146번: '결' 대신 '질감' · 151번: 주석이 코드를 먹던 것 고침
     }
     function diffLightWord(f) {
-        if (f.categoryType === '속지') return ({ light: '훤히 비침', medium: '은은한 비침', day: '낮에도 가림', heavy: '거의 안 비침' })[f.density] || '';
+        if (f.categoryType === '속지') return ({ light: '많이 비침', medium: '은은한 비침', day: '낮에도 가림', heavy: '거의 안 비침' })[f.density] || '';
         const bo = typeof blackoutLevel === 'function' ? blackoutLevel(f) : null;
-        return ({ none: '빛 스밈', mid: '반쯤 가림', life: '생활 암막', full: '완전 암막' })[bo] || '';
+        return ({ none: '빛이 들어옴', mid: '반쯤 가림', life: '생활 암막', full: '완전 암막' })[bo] || '';
     }
     // 색: 잰 벽과 같은 계열(ticketToneWord와 같은 계산)이면 밝기로, 아니면 바닥에 더 가까울 때 "바닥 쪽"
     function diffColorWord(f, pick) {

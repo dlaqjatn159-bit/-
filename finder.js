@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261317';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['finder.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // finder.js — 직원 화면 › 원단 › 찾기: 원단 색 카드·거름망·정렬·비슷한 색·후보 모아 보기·고객에게 보여주기·색 지도·넣을 칸 고르기 (130-2에서 app.js에서 떼어 냄)
 
 
@@ -277,7 +277,7 @@ function renderFinder() {
     const cnt = document.getElementById('finderCount');
     if (cnt) cnt.innerHTML = sim ? `<b class="font-serif-kr">비슷한 색 ${list.length}개</b><small>거름망은 종류(겉지·속지)만 적용</small>`
         : (pair ? `<b class="font-serif-kr">어울리는 속지 ${list.length}개</b><small>${pairRule} · 거름망은 적용 안 함</small>`
-            : (mMode ? `<b class="font-serif-kr">${list.length}색</b><small>${esc(mRoom.name)} ${FINDER_ROOM_MODES[mMode]} · ${{ bridge: '벽과 바닥을 잇는 색 가운데 벽 쪽에 가까운 순', wall: '잰 벽 색과 가까운 순', floor: '바닥 색기를 따르고 바닥보다 밝은 순' }[mMode]} · 색 값이 있는 색만</small>`
+            : (mMode ? `<b class="font-serif-kr">${list.length}색</b><small>${esc(mRoom.name)} ${FINDER_ROOM_MODES[mMode]} · ${{ bridge: '벽과 바닥을 잇는 색 가운데 벽 쪽에 가까운 순', wall: '측정한 벽 색과 가까운 순', floor: '바닥과 같은 계열에서 바닥보다 밝은 순' }[mMode]} · 색 값이 있는 색만</small>`
             : `<b class="font-serif-kr">${finderColorTotal(list)}색</b><small>${finderFabricTotal(list)}개 원단 · 전체 ${finderColorTotal(all)}색${finderNoColorNote(list)}${FABRIC_DB.some(isCustomerHidden) ? ` · 손님 추천 숨김 ${FABRIC_DB.filter(isCustomerHidden).length}개 빠짐` : ''}</small>`));      // 색 수는 등록된 색만 (58번)
     const rbox = document.getElementById('finderRef');
     if (rbox) {
@@ -291,7 +291,7 @@ function renderFinder() {
     if (!all.length) { out.innerHTML = '<div class="finder-empty">보여 줄 원단이 없어요.<br>설정에서 단가표나 비공개 팩을 먼저 불러와 주세요.</div>'; return; }
     if (finderView === 'map') { out.innerHTML = finderMapHtml(all, new Set(list.map(e => e.key)), ref, mc); return; }
     if (!list.length) {
-        out.innerHTML = '<div class="finder-empty">' + (mMode ? '잰 색에 맞는 원단을 찾지 못했어요.<br>거름망을 풀거나 다른 찾기 방법을 골라 보세요.' : sim ? '비슷한 색을 찾지 못했어요.<br>종류(겉지·속지) 조건을 풀어 보세요.'
+        out.innerHTML = '<div class="finder-empty">' + (mMode ? '측정한 색에 맞는 원단을 찾지 못했어요.<br>거름망을 풀거나 다른 찾기 방법을 골라 보세요.' : sim ? '비슷한 색을 찾지 못했어요.<br>종류(겉지·속지) 조건을 풀어 보세요.'
             : (pair ? '어울리는 속지를 찾지 못했어요.<br>분류 탭에서 속지의 톤이 정해져 있는지 확인해 보세요.' : '조건에 맞는 색이 없어요.<br>조건을 하나씩 빼 보세요.')) + '</div>';
         return;
     }
@@ -413,14 +413,14 @@ function openFinderShow(custom) {
     if (picks.length < 2) { if (!custom) showToast('후보를 2개 이상 별표해 주세요. (6개까지)', 'info'); return; }
     finderShowMode = custom || null;
     const head = box.querySelector('.step-head');
-    if (head) head.innerHTML = custom ? '<p class="step-q font-serif-kr">어느 쪽이 더 마음에 드세요?</p><p class="step-sub">한 번 누르면 표시되고, 한 번 더 누르면 정해요</p>' : '<p class="step-q font-serif-kr">마음에 드는 색을 골라 보세요</p>';
+    if (head) head.innerHTML = custom ? '<p class="step-q font-serif-kr">어느 쪽이 더 마음에 드세요?</p><p class="step-sub">한 번 누르면 표시되고, 한 번 더 누르면 정해집니다.</p>' : '<p class="step-q font-serif-kr">마음에 드는 색을 골라 보세요</p>';
     finderShowList = picks; finderShowSel = -1; finderShowChanged = false;
     canvas.style.setProperty('--items-count', picks.length);
     canvas.innerHTML = picks.map((e, i) => {
         const n = (custom && typeof moreShowName === 'function') ? moreShowName(e) : finderShowName(e), clean = s => String(s).replace(/[<>&"]/g, '');      // 215번: 더 보기에서 연 나란히 보기만 손님 화면 이름 (직원 원단 찾기는 그대로, 182번)
         // 색 값도 사진도 없는 원단은 지어낸 색을 보여 주지 않고 "샘플북으로" (가로 글)
         const look = e.hex || photoFor(e.fabricId, e.color);
-        return window.concierge.bookmarkCard(clean(n.name), clean(look ? n.color : '샘플북으로 보여 드릴게요'), '', e.hex || 'var(--brand-panel)', function() { finderShowTap(i); }, look ? 'vdesc' : '');
+        return window.concierge.bookmarkCard(clean(n.name), clean(look ? n.color : '샘플북으로 보여 드리겠습니다'), '', e.hex || 'var(--brand-panel)', function() { finderShowTap(i); }, look ? 'vdesc' : '');
     }).join('');
     Array.from(canvas.children).forEach((card, i) => {
         const e = picks[i], img = document.createElement('img');
@@ -682,7 +682,7 @@ function finderApplyPut(t, e) {
 }
 // "어느 칸에 넣을까요?" 판: 넣을 칸이 안 정해졌을 때 그 카드 위에 뜸. 같은 종류 칸(속지 색 → 속지 칸 …)만, 하나뿐이어도 띄움
 //  - 칸 옆에는 지금 들어 있는 원단 이름만 작게 (단가·가격은 넣지 않음 — 고객과 같이 보는 상태에서도 씀)
-const FINDER_KIND_WORDS = { drape: '겉지', sheer: '속지', blind: '블라인드' };
+const FINDER_KIND_WORDS = { drape: '겉커튼', sheer: '속커튼', blind: '블라인드' };
 function openFinderSlots(card, key) {
     closeFinderSlots();
     const e = finderEntries().find(x => x.key === key);

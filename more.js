@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261317';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['more.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // more.js — 고객 화면 중심 화면 › 더 보기(20번 4단계 · 72번): 카드 ↔ 색 지도, 조건·순서·잇는 방향, 후보 1~4, 후보 비교하기 (130-2에서 app.js에서 떼어 냄)
 
 // ==============================================================
@@ -113,7 +113,7 @@ function renderSpaceMore() {
     if (sameFabCount > 1) h += `<div class="more-fg"><button type="button" class="more-chip more-chip-fab${spaceMore.sameFab ? ' on' : ''}" data-msamefab="1" aria-pressed="${spaceMore.sameFab}">${moreEsc(curFabName)} ${sameFabCount}색만</button></div>`;
     h += grp('bright') + grp('tex') + grp('see') + grp('block');
     if (spaceMore.view === 'cards') h += '<select class="more-sort" data-msort aria-label="순서">' + Object.keys(MORE_SORTS).map(k => `<option value="${k}"${spaceMore.sort === k ? ' selected' : ''}>${MORE_SORTS[k]}</option>`).join('') + '</select>';
-    if (any) h += '<button type="button" class="more-clear" data-mclear>조건 풀기</button>';
+    if (any) h += '<button type="button" class="more-clear" data-mclear>조건 지우기</button>';
     h += '</div>';
     // 색·사진 (74번, 카드 보기에서만): 카드를 한꺼번에 색 장 / 사진 장으로. 견본은 지금 원단(사진이 없으면 사진 있는 첫 색). 사진이 하나도 없으면 안 보임
     if (spaceMore.view === 'cards') {
@@ -203,7 +203,7 @@ function spaceMoreCardsHtml(d) {
 function spaceMoreMapHtml(d) {
     const room = d.slot.room, mc = room.measuredColor, measured = !!(mc && mc.wall && mc.floor);
     const pool = d.all.filter(e => e.L != null && e.b != null && e.hex);
-    if (!pool.length) return '<p class="more-empty">색 값이 들어온 원단이 아직 없습니다</p>';
+    if (!pool.length) return '<p class="more-empty">보여 드릴 원단이 아직 없습니다</p>';
     const fs = 14 * (spaceMore.mapK || 1);
     const W = MORE_MAP_W, H = MORE_MAP_H, P = { l: fs * 5.6 + 14, r: fs * 5.6 + 14, t: fs * 2 + 12, b: fs * 2 + 16 };
     const fur = (mc && Array.isArray(mc.furniture) ? mc.furniture : []).filter(f => typeof f.L === 'number' && typeof f.b === 'number');      // 가구 색 (37번)

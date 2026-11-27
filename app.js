@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261317';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['app.js']='20261318';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // app.js — 화면 전환(고객 / 직원), 직원 PIN, 직원 화면(견적 입력)
 // ==============================================================
@@ -22,7 +22,7 @@ window.onerror = function(msg, url, lineNo) {
 let appMode = 'customer';   // 'customer'(고객 화면) | 'staff'(직원 화면)
 
 // 파일 버전 확인: GitHub에 올린 파일 중 예전 버전이 섞여 있으면 화면 맨 위에 알려 줍니다.
-const REDAM_BUILD = '20261317';
+const REDAM_BUILD = '20261318';
 function checkFileVersions() {
     const expected = ['logo.js', 'pricing.js', 'costing.js', 'data.js', 'calculator.js', 'concierge.js', 'intro.js', 'fabric-pick.js', 'color-pick.js', 'space.js', 'final.js', 'app.js', 'more.js', 'survey.js', 'ticket.js', 'color-dict.js', 'fabrics.js', 'finder.js', 'settings.js', 'room-color.js', 'room3d.js', 'booking.js'];
     const reg = window.REDAM_FILES || {};
@@ -1600,7 +1600,7 @@ function staffPaneHtml(room, c) {
             + num(i, 'qty', p.qty, '장', 'w-14') + '<span class="text-[11px] text-slate-500">장</span>'
             + `<button type="button" onclick="removeStaffPane(${room.id}, ${c.id}, ${i})" class="whitespace-nowrap text-[11px] text-rose-500 hover:text-rose-700 font-bold px-1.5">빼기</button></div>`;
     });
-    h += `<div class="flex gap-3">${link(`addStaffPane(${room.id}, ${c.id})`, '+ 줄 더하기')}${link(`setStaffPaneSameH(${room.id}, ${c.id}, ${!sameH})`, sameH ? '높이 따로 넣기' : '높이 같이')}</div></div>`;
+    h += `<div class="flex gap-3">${link(`addStaffPane(${room.id}, ${c.id})`, '+ 줄 추가')}${link(`setStaffPaneSameH(${room.id}, ${c.id}, ${!sameH})`, sameH ? '높이 따로' : '높이 같게')}</div></div>`;
     return h;
 }
 // 블라인드 품목의 나눔을 고치고, 이 공간의 첫 블라인드면 공간 나눔도 같이 (고객 화면 수정하기·공간 화면과 어긋나지 않게)
@@ -2013,7 +2013,7 @@ function renderNoLabList() {
     if (!box || typeof fabricHasLabColor !== 'function') return;
     const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const list = (typeof FABRIC_DB !== 'undefined' ? FABRIC_DB : []).filter(f => !(typeof isCustomerHidden === 'function' && isCustomerHidden(f)) && !fabricHasLabColor(f));
-    if (!list.length) { box.textContent = '모든 원단에 잰 색값이 있습니다.'; return; }
+    if (!list.length) { box.textContent = '모든 원단에 측정한 색값이 있습니다.'; return; }
     const groups = {};
     list.forEach(f => { const k = f.categoryType || '기타'; (groups[k] = groups[k] || []).push(f); });
     box.innerHTML = `<p class="mb-1">${list.length}개 · 색상 입력표에 밝기·붉은기·노란기를 넣으면 추천에 들어갑니다.</p>`
