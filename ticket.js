@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261328';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261329';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -146,7 +146,7 @@ function ticketPlainName(c, calc) {
             if (DENSITY_LABELS[f.density]) parts.push(DENSITY_LABELS[f.density]);
         } else {
             const bo = blackoutLevel(f);
-            if (bo) parts.push(bo === 'mid' ? '보통 암막' : BLACKOUT_LABELS[bo]);
+            if (bo) parts.push(({ mid: '반쯤 가림', life: '생활 암막', full: '완전 암막' })[bo] || BLACKOUT_LABELS[bo]);      // 288번: 원단 고르기 화면과 같은 말(color-pick.js DRAPE_BLOCK) — '보통 암막'은 안 씀
         }
     }
     const out = [color, ...parts].filter(Boolean).join(' · ');
@@ -1298,6 +1298,13 @@ function houseMoodWord(pres, tex, hasDrape) {
     if (!row) return '';
     return row[hasDrape && row[tex] ? tex : ''];
 }
+// 288번: 분위기 말의 질감은 그 공간에 실제 들어간 겉커튼 원단의 질감(매끈 · 짜임 · 보송)을 먼저 씀 — 손님 답(보송한)과 다른 원단이 들어갔을 때 말이 어긋나지 않게. 원단 질감을 모르면 답 그대로
+const HOUSE_TEX_OF_FABRIC = { smooth: 'smooth', natural: 'texture', cozy: 'fluffy' };
+function houseTexOf(s, answered) {
+    const d = (s.fabs || []).find(f => f.k === '겉지' && f.fabricId);
+    const fab = d ? (Pricing.pickFabric(FABRIC_DB, d.fabricId) || {}) : {};
+    return HOUSE_TEX_OF_FABRIC[fab.texture] || answered || '';
+}
 // 분위기 문장 (118번 · 123번): 집 취향으로 한 문장 + "이 공간만 다르게"로 말이 달라진 공간은 같은 말끼리 묶어 한 문장씩
 function houseMoodLines(sp) {
     const ht = (typeof houseTaste === 'object' && houseTaste) || {};
@@ -1323,7 +1330,7 @@ function houseMoodLines(sp) {
         const r = s.raw || {};
         if (!r.ownTaste || missNames.has(s.name)) return;
         if (!s.fabs.some(f => f.k !== '속지')) return;      // 197번: 속지만 공간은 느낌을 묻지 않음 — 분위기 묶음에서 뺌
-        const w = houseMoodWord(r.ownPres || ht.pres, r.ownTex || ht.tex, drapeOf(s));
+        const w = houseMoodWord(r.ownPres || ht.pres, houseTexOf(s, r.ownTex || ht.tex), drapeOf(s));      // 288번: 질감 말은 답이 아니라 실제 들어간 겉커튼 원단으로
         if (!w || w === houseWord) return;
         const g = groups.find(x => x.w === w);
         if (g) g.names.push(s.name); else groups.push({ w, names: [s.name] });

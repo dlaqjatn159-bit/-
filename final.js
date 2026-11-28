@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261328';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['final.js']='20261329';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // final.js — 고객 화면 최종 제안: 도록(76번)·조각보·쇼룸 시트·종이 쪽 넘기기·크게 보기 (130-4③에서 concierge.js에서 떼어 냄). concierge.js·fabric-pick.js 다음에 읽힘
 
 (function() {
@@ -235,7 +235,7 @@
             const seenLines = (s && typeof houseDiagnosis === 'function') ? houseDiagnosis(s, raw, R ? R.sameAs : '') : [];
             const paraParts = [{ k: 'heard', t: R ? R.heard : '' }, { k: 'seen', t: seenLines.join(' ') }, { k: 'chose', t: (R && R.chose) ? R.chose.join(' ') : '' }].filter(p => p.t);      // 132번: 단락마다 글자 크기가 달라 종류를 같이 넘김
             const paras = paraParts.map(p => p.t);      // 네 칸 단락 ①②③ (83번)
-            const metaLine = [dirTxt ? dirTxt + '향' : '', sz ? `${sz.w} × ${sz.h}` : '', COMP_SAY[comp] || ''].filter(Boolean).join(' · ');
+            const metaLine = [dirTxt ? dirTxt + '향' : '', sz ? `${sz.w} × ${sz.h}cm` : '', COMP_SAY[comp] || ''].filter(Boolean).join(' · ');      // 288번: 단위(중심 화면 '240 × 210cm'와 같게)
             const sets0 = (R && R.sets && R.sets.length) ? R.sets : (rm.items || []).map(it => ({
                 it, hex: it.fill || '', lines: it.reason ? [it.reason] : [], note: ''
             }));

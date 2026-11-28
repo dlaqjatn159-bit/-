@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261328';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['room3d.js']='20261329';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // room3d.js — 입체 방(258번): 공간 하나를 선과 납작한 색의 모형으로 — 측정(폰에서 잰 값 확인) · 선택(고른 원단을 걸어 보고 크기 · 밑단 · 여닫기 · 블라인드 모양).
 //  시안 19판(Claude outputs/시안/입체방_1124/19판.html)을 앱 모듈로 옮김. 공간 화면의 '입체 방' 단추가 window.RedamRoom3D.open()으로 연다(space.js).
 //  금액: 이 파일은 금액을 셈하지 않는다. 완료 때 돌려주는 값 가운데 앱이 품목에 쓰는 것은 '손으로 바꾼 가로 · 세로(cm 차이)'와 '속지 리드밴드'뿐 — 나머지는 공간의 room3d 칸에만 남는다.
@@ -265,7 +265,7 @@
   // 260번: 손님용 머리 줄 — 마무리로(바꾼 것 안 넣음) · 낮/밤 · 걷기/치기. 창밖 한 줄은 지금 그대로(사진)
   var GUEST_TOP = '<div class="gtop" id="r3d-gtop"><button type="button" class="gb gback" data-g="back">← 마무리로</button><span class="gsp"></span>'
     + '<button type="button" class="gb" data-g="day">낮</button><button type="button" class="gb" data-g="night">밤</button>'
-    + '<button type="button" class="gb" data-g="open">걷기</button><button type="button" class="gb" data-g="close">치기</button></div>'
+    + '<button type="button" class="gb" data-g="open">열기</button><button type="button" class="gb" data-g="close">닫기</button></div>'
     + '<p class="gnote">창밖은 그림입니다.</p>';      // 263번: 창밖이 그림 층(결정 #409의 문장)
   var STILL = 0;      // 260번: 멈춘 그림을 그리는 중이면 그 차례 번호(0 = 아님)
   function ensureStyle() { if (styled) return; var s = document.createElement('style'); s.id = 'r3d-style'; s.textContent = CSS; document.head.appendChild(s); styled = true; }
