@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261327';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261328';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -147,7 +147,10 @@
             const pin = it.fabricId ? { fabricId: it.fabricId, colorName: it.colorName }
                 : (state.editingRoom && state.editingRoom.altPins && state.editingRoom.altPins[it.presetType]) || null;
             if (r && pin) {
-                const find = same => r.list.some((x, i) => {
+                const keyAt = it.fabricId && it.seatKey ? r.list.findIndex(x => x.key === it.seatKey) : -1;      // 287번: 고른 자리를 먼저 봄
+                const order = r.list.map((x, i) => i); if (keyAt > 0) { order.splice(keyAt, 1); order.unshift(keyAt); }
+                const find = same => order.some(i => {
+                    const x = r.list[i];
                     const j = x.fabrics.findIndex(f => f.id === pin.fabricId && (!same || !pin.colorName || f.color === pin.colorName));
                     if (j < 0) return false;
                     s.seat = i; s.fab = j;
@@ -439,6 +442,7 @@
         cpPick: () => {      // 이 원단으로: 칸에 바로 적고(다음을 누르기 전에 뒤로 가도 남게) 띠가 건너감
             const s = cp(), f = fabNow(), it = cur(); if (!f) return;
             it.fabricId = f.id; it.colorName = f.color;
+            const st = seatNow(); it.seatKey = st ? (st.all ? (f.tech || null) : st.key) : null;      // 287번: 손님이 고른 자리 — 같은 원단이 두 자리에 들어 있어도 입체 방 · 최종 제안이 이 자리의 이름 · 이유를 따름(포인트 '맡길게요' 묶음은 그 원단의 방식)
             s.view = 'picked'; s.anim = true; rerender();
         },
         cpOther: () => { const s = cp(); s.view = 'open'; rerender(); },
@@ -551,11 +555,18 @@
         try {
             if (!item || !item.fabricId) return null;
             const r = result(item); if (!r) return null;
-            const one = (x, id, color) => ({ name: seatName(r, x) + ' · ' + fabName(id, color), hex: colorHex(id, color), density: fabOf(id).density || null, why: whyOf(r, x), fabricId: id, colorName: color });
+            const one = (x, id, color) => ({ name: seatName(r, x) + ' · ' + fabName(id, color), hex: colorHex(id, color), density: fabOf(id).density || null, why: whyOf(r, x), fabricId: id, colorName: color, seatKey: x.key });      // 287번: seatKey — 방에서 바꿔 고르면 그 자리도 같이 적음(concierge.js finRoomDone)
             const seats = r.list.filter(x => !x.all), list = [];
-            let at = seats.findIndex(x => x.fabrics.some(f => f.id === item.fabricId && (!item.colorName || f.color === item.colorName)));
-            if (at < 0) at = seats.findIndex(x => x.fabrics.some(f => f.id === item.fabricId));      // "한 톤 짙게"로 고른 색 — 같은 원단이 든 자리
-            seats.forEach((x, i) => { const f = x.fabrics[0]; list.push(i === at ? one(x, item.fabricId, item.colorName) : one(x, f.id, f.color)); });
+            const holds = x => x.fabrics.some(f => f.id === item.fabricId);
+            let at = item.seatKey ? seats.findIndex(x => x.key === item.seatKey && holds(x)) : -1;      // 287번: 손님이 고른 자리 먼저 — 같은 원단이 앞자리에도 들어 있으면 앞자리 이름 · 이유로 바뀌던 것
+            if (at < 0) at = seats.findIndex(x => x.fabrics.some(f => f.id === item.fabricId && (!item.colorName || f.color === item.colorName)));
+            if (at < 0) at = seats.findIndex(holds);      // "한 톤 짙게"로 고른 색 — 같은 원단이 든 자리
+            const used = new Set([item.fabricId + '__' + (item.colorName || '')]);      // 287번: 다른 자리 칸에 고른 원단 · 이미 선 원단이 또 서지 않게
+            seats.forEach((x, i) => {
+                if (i === at) { list.push(one(x, item.fabricId, item.colorName)); return; }
+                const f = x.fabrics.find(y => !used.has(y.id + '__' + y.color)) || x.fabrics[0];
+                used.add(f.id + '__' + f.color); list.push(one(x, f.id, f.color));
+            });
             if (at < 0) return { list: [{ name: fabName(item.fabricId, item.colorName), hex: colorHex(item.fabricId, item.colorName), density: fabOf(item.fabricId).density || null, why: '', fabricId: item.fabricId, colorName: item.colorName }], at: 0 };
             return { list, at };
         } catch (e) { return null; }
@@ -576,9 +587,11 @@
             if (!r || !r.seats || !r.seats.length) return '';
             // 고른 원단이 들어 있는 자리: 같은 색 먼저, 없으면 그 자리 색의 "한 톤 짙게" 짝(darkerPair)으로 고른 색일 때만
             //  213번: 예전엔 같은 원단이면 아무 색이나 그 자리 말을 빌려 써서, 직원 화면에서 색을 바꾸면 바꾸기 전 색의 이유가 붙었음 → 짝이 아니면 '' (ticket.js 계산 문장으로)
+            const mine = (room.curtains || []).find(c => c.presetType === 'drape' && c.fabricId === fabricId && (!colorName || c.colorName === colorName));      // 287번: 담을 때 같이 적어 둔 고른 자리(concierge.js commitRoomCart)
+            const keyed = mine && mine.seatKey ? r.seats.find(x => x.key === mine.seatKey && x.fabrics.some(f => f.id === fabricId && (!colorName || f.color === colorName || (darkerPair(f.id, f.color) || {}).name === colorName))) : null;
             const same = r.seats.find(x => x.fabrics.some(f => f.id === fabricId && (!colorName || f.color === colorName)));
             const twin = !same && colorName ? r.seats.find(x => x.fabrics.some(f => f.id === fabricId && (darkerPair(f.id, f.color) || {}).name === colorName)) : null;
-            const seat = same || twin;
+            const seat = keyed || same || twin;
             return seat ? whyOf({ kind: 'drape', feel: r.feel, house: r.house }, seat, room) : '';
         } catch (e) { return ''; }
     }

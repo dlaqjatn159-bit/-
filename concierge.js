@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261327';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['concierge.js']='20261328';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // RE.DAM CONCIERGE V2 INTERACTION CONTROLLER (ZERO COMPROMISE ENGINE)
 // ==============================================================
@@ -250,6 +250,7 @@
                     colorName: c.colorName || '',
                     pickDir: c.pickDir || null, toneStep: c.toneStep || 0,      // 원단을 고른 이유 카드 (28번)
                     baseFabricId: c.baseFabricId || null, baseColorName: c.baseColorName || null,      // 한 톤 3단계 사다리 기준점 (49번)
+                    seatKey: c.seatKey || null,      // 287번: 손님이 고른 색 자리 — 최종 제안 이유 문장(color-pick.js whyLineFor)이 읽음. 금액과 무관
                     aiPick: c.aiPick || null, staffPick: c.staffPick || null, staffPicked: !!c.staffPicked, changeReason: c.changeReason || null, custPicked: !!c.custPicked,      // 세 픽·바꾼 이유·손님이 고른 원단 (116번)
                     rates: c.rates ? JSON.parse(JSON.stringify(c.rates)) : undefined,      // 품목을 만들 때의 가공·부자재 단가 (29번, 빠지면 금액이 바뀜)
                     panes: isBlind && c.panes ? JSON.parse(JSON.stringify(c.panes)) : undefined,      // 216번: 블라인드 장마다 가로·세로·손잡이 (빠지면 직원 화면을 다녀올 때 사라짐)
@@ -1298,7 +1299,7 @@
                 const L = o.guest[k], it = ed.items.find(x => x.presetType === k);
                 if (!L || !it || i == null || i < 0 || i === L.at) return;
                 const c = L.list[i]; if (!c || !c.fabricId) return;
-                it.fabricId = c.fabricId; it.colorName = c.colorName; changed = true;
+                it.fabricId = c.fabricId; it.colorName = c.colorName; it.seatKey = c.seatKey || null; changed = true;      // 287번: 방에서 바꿔 고른 자리도 같이
             });
             if (changed) { state.cp = null; render(); if (cz.spaceToast) cz.spaceToast('공간 안에서 바꾼 원단을 넣었습니다'); return; }
         } else if (g.goFabric) {
@@ -2620,6 +2621,7 @@
                         bookFilter: "ALL",
                         fabricId: item.fabricId,
                         colorName: item.colorName || '',
+                        seatKey: item.seatKey || null,      // 287번: 손님이 고른 색 자리 — 최종 제안 이유 문장이 이 자리를 따름(color-pick.js whyLineFor). 금액과 무관
                         baseFabricId: item.fabricId,
                         baseColorName: item.colorName || '',
                         custPicked: !!item.fabricId,      // 손님이 고객 화면에서 고른 원단 → 직원 화면 자동 채움이 덮지 않음 (116번)
