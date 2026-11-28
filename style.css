@@ -2255,7 +2255,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
 .dos-strip-seg i { flex: 1; height: 100%; display: block; }
 .dos-strip-seg.is-active { outline: 1px solid var(--ink); outline-offset: -1px; z-index: 2; }
 .dos-nav-list { display: flex; flex-direction: column; margin-top: 1rem; border-top: 0.5px solid var(--line); }
-.dos-nav-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0.68rem 0.2rem; border: 0; border-bottom: 0.5px solid var(--line); background: none; cursor: pointer; text-align: left; font-size: 15px; font-weight: 400; color: var(--muted); transition: color var(--m-press) ease; }
+.dos-nav-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0.68rem 0; border: 0; border-bottom: 0.5px solid var(--line); background: none; cursor: pointer; text-align: left; font-size: 15px; font-weight: 400; color: var(--muted); transition: color var(--m-press) ease; } /* 286번(AI 할 일 #61): 좌우 안쪽 0 — '거실' 글 · 오른쪽 점이 위 안내 글 · 집 그림 · '거실 보기' 칸과 같은 세로줄(전엔 3.2px 안쪽) */
 .dos-nav-item:hover { color: var(--ink); }
 .dos-nav-item.is-active { color: var(--ink); }
 .dos-nav-dots { display: inline-flex; align-items: center; gap: 4px; }
