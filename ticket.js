@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261331';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['ticket.js']='20261332';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // ticket.js — 최종 제안·견적서 이미지 (130-2에서 app.js에서 떼어 냄)
 //  견적서·원단 이름·이유 카드·우리 집 색·조각보 표지·쇼룸 시트·저장·카톡 글·인쇄
@@ -826,7 +826,7 @@ function whyItemCands(F, R, facts) {
             if (whyDE(c, R.wall) < 6) add('C', 'C1', '커튼을 닫아도 공간이 넓어 보입니다.', '커튼이 눈에 띄지 않습니다.');
             else if (dL > 15) add('C', 'C3', '창 쪽이 가장 환해 보입니다.', '창이 넓어 보입니다.');
             else if (dL >= 6) add('C', 'C2', '창 쪽이 환해 보입니다.', '공간이 가벼워 보입니다.');
-            else if (dL < -15 && R.pres !== 'calm' && !(kind === 'sheer' && !R.pres)) add('C', 'C5', '창이 먼저 눈에 들어옵니다.', '창이 벽과 또렷하게 구분되어 보입니다.');      // 183번: "조용히 스며들게요"면 아래 C4로 · 197번: 느낌을 안 물은 속지도 C4로
+            else if (dL < -15 && R.pres !== 'calm' && !(kind === 'sheer' && !R.pres)) add('C', 'C5', '벽보다 짙은 색이라, 창가에 먼저 시선이 갑니다.', '벽보다 짙은 색이라, 창가가 벽과 또렷하게 구분되어 보입니다.');      // 183번: "조용히 스며들게요"면 아래 C4로 · 197번: 느낌을 안 물은 속지도 C4로
             else if (dL <= -6) add('C', 'C4', '창 쪽이 차분해 보입니다.', '공간이 정돈되어 보입니다.');
         }
         if (R.floor) {
@@ -880,7 +880,7 @@ function whyItemNote(F, R, cands) {
     if (F.mat === 'linen') return '린넨이라 자연스럽게 구김이 가고, 세탁하면 조금 줄 수 있습니다.';
     if (F.mat === 'linenlook') return '린넨 느낌을 낸 원단이라, 구김이 적고 관리가 쉽습니다.';
     if (ids.includes('F4')) return '커튼 옆과 위로 새는 빛은 조금 남습니다.';
-    if (ids.includes('C5') && !(F.it.toneStep < 0)) return '차분한 쪽이 좋으시면 한 톤 밝은 색도 같이 보실 수 있습니다.';
+    if (ids.includes('C5') && !(F.it.toneStep < 0)) return '다 닫으면 공간이 조금 답답해 보일 수 있어, 한 톤 밝은 색도 같이 보실 수 있습니다.';
     if (F.kind === 'drape' && ['none', 'mid', 'life'].includes(blackoutLevel(F.f))) return '햇빛이 강하게 비치면 원단 색이 조금 옅고 밝게 보입니다.';
     return '';
 }
