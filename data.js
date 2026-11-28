@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261325';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261326';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -1632,6 +1632,7 @@ const SEAT_CFG = {
     wR: 9,                  // 무게감 자리 반경
     pointCMax: 45,          // 색 있는 집 포인트: 채도 45 넘으면 뺌
     pointDE: [15, 30, 50],  // 포인트 세기 = 벽과의 색 차(193번): 은근히 15~30 · 또렷이 30~50 · 과감히 50~. 15 아래는 스며들게 몫이라 뺌
+    pointDeepL: 20,         // 285번(결정 #421): 커튼 포인트 방식 묶음 — 또렷하지 않은 색은 벽보다 밝기 20 이상 짙어야 포인트(흰 벽 옆 옅은 오트밀 · 회녹색은 스며들게 몫)
     pointMid: [22, 40, 60], // 세기마다 띠 가운데: 원단 수가 같은 이름끼리는 여기에 가까운 쪽이 얼굴, 자리 안 순서도 이 기준
     grayCMin: 12,           // 무채색·중성 집 포인트 후보: 채도 12 이상(아래는 grayCMax 40 이하)
     grayCMax: 40            // 무채색·중성 집 포인트: 채도 40 넘으면 뺌
@@ -1815,7 +1816,8 @@ function seatDrapeTechs(room) {
     let r = null;
     try { r = colorTechCounts(mc); } catch (e) { r = null; }
     if (!r) return null;
-    const pool = (seatPoint(mc, seatPoolColors('겉지', room), room, true) || []).filter(c => c && c.e >= SEAT_CFG.pointDE[0]);      // 221번: 벽과의 색 차 15 아래는 스며들게 몫이라 뺌(193번 세기 방식과 같은 거름)
+    const pool = (seatPoint(mc, seatPoolColors('겉지', room), room, true) || []).filter(c => c && c.e >= SEAT_CFG.pointDE[0]      // 221번: 벽과의 색 차 15 아래는 스며들게 몫이라 뺌(193번 세기 방식과 같은 거름)
+        && (pointVivid(c) || (mc.wall.L - c.L) >= SEAT_CFG.pointDeepL));      // 285번(결정 #421): 또렷하거나, 벽보다 눈에 띄게 짙은 색만 포인트
     const ORDER = ['tint', 'warm', 'cool', 'analog', 'sat', 'opp', 'split', 'comp', 'value'];      // 순한 것부터 (120번 차례에 맞춤)
     const seats = ORDER.map(k => {
         const all = pool.filter(c => c.tech === k).sort((x, y) => Math.hypot(y.a, y.b) - Math.hypot(x.a, x.b));      // 또렷한 순 (160번)
