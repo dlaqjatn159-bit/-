@@ -2036,6 +2036,7 @@ button.dos-sw { display: block; padding: 0; border: 0; -webkit-appearance: none;
     color: var(--muted);
 }
 #v2FloatingPrevBtn:hover { border: 0; background: none; color: var(--ink); }
+#v2FloatingPrevBtn, .cm-back { display: none !important; }      /* 289번(결정 #467): 손님 화면 왼쪽 위 '← 공간 이름' 단추를 안 보이게 — 뒤로는 탭의 뒤로가기(app.js handleBack이 같은 일을 함). 단추와 코드는 그대로, 되돌릴 때 이 줄만 지움 */
 #v2FloatingPrevBtn, .fin-ed-back { position: relative; }
 #v2FloatingPrevBtn::before, .cm-back::before, .fin-ed-back::before { content: ''; position: absolute; inset: -10px -14px; }      /* 136번: 뒤로 가기 눌리는 범위를 안 보이게 넓힘(44×44 이상) */
 #v2FloatingPrevBtn.is-tab { padding: 4px 10px; margin-left: -10px; background: rgba(251, 249, 245, 0.85); }      /* 사진 화면: 같은 "← 공간 이름", 사진 위에서 읽히게 옅은 종이 바탕만 (107번) */
