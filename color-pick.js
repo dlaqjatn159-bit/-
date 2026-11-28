@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261330';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['color-pick.js']='20261331';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // color-pick.js — 4막 커튼 원단 고르기 새 화면 (189번): 속지 "빛 한 장" · 겉지 "색 한 장" → 열림(왼쪽 밝은 띠 + 사진) → 고름(띠가 오른쪽으로 건너가며 어두워짐)
 //  자리·원단은 data.js 세 자리 엔진(seatSheer · seatDrape, 188번). 블라인드와 벽·바닥 색을 못 잰 겉지는 옛 화면(고르고 있습니다 → 원단 카드) 그대로
 //  concierge.js가 부르는 것: wants(칸) · html() · after() · back() · finishHtml(공간) — "3.5-Bridge"·"6-Finish" 화면과 뒤로 가기에서. fabric-pick.js 다음에 읽힘
@@ -83,6 +83,11 @@
         return (!color || new RegExp(String(color).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$').test(n)) ? n : n + ' ' + color;
     }
     // 278번: 책자 이름은 손님 화면 어디에도 보이지 않음(결정 #435) — 원단 이름 위 "○○ 책자" 줄(옛 bookLine)을 지움
+    // 290번(결정 #469): 고른 원단을 부르는 색 이름은 그 원단 색의 색 사전 이름(ticket.js custColorName — 최종 제안 '공간 제안'과 같은 이름). 스며들게 · 무게감 겉커튼만, 못 찾으면 자리 이름 그대로
+    function pickedColorName(r, x, id, color) {
+        const own = (r.kind === 'drape' && !r.tech && typeof custColorName === 'function') ? custColorName(id, color) : '';
+        return own || seatName(r, x);
+    }
     function colorHex(id, color) {
         const c = (typeof getFabricColors === 'function' ? getFabricColors(id) : []).find(x => x.name === color);
         return (c && c.hex) || '';
@@ -314,7 +319,7 @@
             <div class="cp-strip cp-dark" style="background:${moving ? band : deepOf(band)};color:${moving ? inkOn(band) : 'var(--on-band)'}" data-deep="${deepOf(band)}">
                 <div class="cp-list">${r.list.filter(y => !y.all).map(y => { const on = y === x || (!!x.all && y.key === f.tech); return `<span class="${on ? 'is-on' : ''}">${on ? '<i></i>' : ''}${esc(seatName(r, y))}</span>`; }).join('')}</div>
                 <div class="cp-fabric">
-                    <span class="cp-book">${esc((x.all && typeof POINT_TECH_TERM !== 'undefined' && POINT_TECH_TERM[f.tech]) || seatName(r, x))}</span>
+                    <span class="cp-book">${esc((x.all && typeof POINT_TECH_TERM !== 'undefined' && POINT_TECH_TERM[f.tech]) || pickedColorName(r, x, f.id, f.color))}</span>
                     <span class="cp-name">${esc(fabName(f.id, f.color))}</span>
                     <span class="cp-fact">${esc(facts.filter(Boolean).join(' · '))}</span>
                     <span><button type="button" class="cp-link" onclick="concierge.cpOther()">다른 원단 보기</button></span>
@@ -555,7 +560,7 @@
         try {
             if (!item || !item.fabricId) return null;
             const r = result(item); if (!r) return null;
-            const one = (x, id, color) => ({ name: seatName(r, x) + ' · ' + fabName(id, color), hex: colorHex(id, color), density: fabOf(id).density || null, why: whyOf(r, x), fabricId: id, colorName: color, seatKey: x.key });      // 287번: seatKey — 방에서 바꿔 고르면 그 자리도 같이 적음(concierge.js finRoomDone)
+            const one = (x, id, color) => ({ name: pickedColorName(r, x, id, color) + ' · ' + fabName(id, color), hex: colorHex(id, color), density: fabOf(id).density || null, why: whyOf(r, x), fabricId: id, colorName: color, seatKey: x.key });      // 287번: seatKey — 방에서 바꿔 고르면 그 자리도 같이 적음(concierge.js finRoomDone)
             const seats = r.list.filter(x => !x.all), list = [];
             const holds = x => x.fabrics.some(f => f.id === item.fabricId);
             let at = item.seatKey ? seats.findIndex(x => x.key === item.seatKey && holds(x)) : -1;      // 287번: 손님이 고른 자리 먼저 — 같은 원단이 앞자리에도 들어 있으면 앞자리 이름 · 이유로 바뀌던 것
