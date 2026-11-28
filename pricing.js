@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261323';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['pricing.js']='20261324';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 /* ==========================================================================
    Re.dam 판매가 계산 엔진  (pricing.js)
    - 고객 화면(C)과 직원 화면(B)이 "같은 계산식"을 쓰도록 하나로 통합한 파일입니다.
@@ -147,7 +147,7 @@
             const hemAllowance = c.leadBand ? 15 : 30;
             const requiredH = actualH + hemAllowance;
 
-            const fabricSpec = fab.specCm || 150;
+            const fabricSpec = fab.specCm || 152;      // 283번: 원단마다 실제 폭(cm)을 씀. 폭이 없는 원단만 소폭 기본 60인치(152cm) — 사장님 11-28
             isWideFabric = (fabricSpec >= 200);
             isSheer = (fab.categoryType === '속지' || label.includes('속지') || label.includes('속커튼') || (fab.name && fab.name.includes('쉬폰')));
 
@@ -175,7 +175,8 @@
                         ? `${numWidths}폭 (호텔핏 +1폭 적용·높이:${actualH}cm)`
                         : `${numWidths}폭 (폭당제작·높이:${actualH}cm)`;
                 } else {
-                    isSeamless = (fabricSpec > 0) && (fabricSpec >= requiredH);
+                    // 283번(AI 할 일 #92): 이음 없는 한 장(눕혀 셈)은 대폭만. 소폭은 짧은 창도 폭으로 이어 셈. 대폭도 필요 높이가 그 원단의 실제 폭을 넘으면 옆 잇기(아래 갈래)
+                    isSeamless = isWideFabric && (fabricSpec >= requiredH);
                     if (isSeamless) {
                         const extraYards = c.hotelFit ? 2 : 0;
                         const baseYards = Math.ceil((totalW + 30) / 90) || 1;

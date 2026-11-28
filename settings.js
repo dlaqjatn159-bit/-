@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261323';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['settings.js']='20261324';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // settings.js — 직원 화면 › 원단 목록 표(책자 고르기·단가 보기)·견적서 창·설정 칸(안내 문구·결제/제작/공급자 글·유효 기간·배수·판매가 곡선·가공·부자재 단가) (130-2에서 app.js에서 떼어 냄)
 
 // 원단 목록의 단가(원단원가·기본가공비·소비자판매단가)는 평소 가림. "단가 보기"를 누른 동안만 보이고,
@@ -325,10 +325,10 @@ function renderOptionPriceSettings() {
     h += '<div class="opt-group"><h3>우드 블라인드 옵션 <small>헤베당 · 판매가를 비우면 원가 × 1.1 × 우드 배수</small></h3>' + row('리본끈', optNum(so.woodRibbon), 'woodRibbon', wc('woodRibbon'), 'cost.woodRibbon') + row('35mm 슬랫', optNum(so.wood35), 'wood35', wc('wood35'), 'cost.wood35') + '</div>';
     h += `<div class="opt-group"><h3>이전설치 <small>창당 · 기존 커튼·블라인드를 떼어 다시 다는 일</small></h3><div class="opt-row"><span class="opt-name">창당</span><label><em>판매가</em>${inp('moveUnit', optNum(so.moveUnit))}<i>원</i></label><span class="opt-same">원가 없음</span><span></span></div></div>`;
     // 255번: 겉지 높이 원가(결정 #343) — 숫자는 이 기기 · 비공개 팩(prices.cost.tallLabor · prices.cost.tallHem · prices.noSeamMaxH)에만
-    h += '<div class="opt-group"><h3>겉지 높이 원가 <small>원가만 · 소폭 폭당 겉지 · 제작 높이 + 시접이 270cm(3마)를 넘으면 넘친 원단만큼 폭당 원가에 더함</small></h3>'
+    h += '<div class="opt-group"><h3>겉지 높이 원가 <small>원가만 · 소폭 폭당 겉지 · 제작 높이 + 시접이 274cm(3야드)를 넘으면 넘친 원단만큼 폭당 원가에 더함</small></h3>'
         + `<div class="opt-row opt-high"><span class="opt-name">폭당 수공</span><label class="opt-wide">${inp('cost.tallLabor', k.tallLabor, '비우면 끔')}<i>원 — 폭당 원가에서 원단값이 아닌 몫</i></label></div>`
         + `<div class="opt-row opt-high"><span class="opt-name">시접</span><label class="opt-wide">${inp('cost.tallHem', k.tallHem)}<i>cm를 제작 높이에 더해 계산</i></label></div>`
-        + `<div class="opt-row opt-high"><span class="opt-name">이음 불가 한계</span><label class="opt-wide">제작 높이 ${inp('noSeamMaxH', optNum(so.noSeamMaxH) || '', '없음')}<i>cm를 넘으면 견적 요약에 알림 (보브)</i></label></div></div>`;
+        + `<div class="opt-row opt-high"><span class="opt-name">이음 불가 한계</span><label class="opt-wide">제작 높이 ${inp('noSeamMaxH', noSeamMaxHNow(), '250')}<i>cm를 넘으면 견적 요약에 알림 (보브) · 0이면 알림 없음</i></label></div></div>`;
     box.innerHTML = h;
     box.querySelectorAll('[data-row]').forEach(optionGainUpdate);
     if (!box.dataset.wired) {

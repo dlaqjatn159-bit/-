@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261323';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['calculator.js']='20261324';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // CORE CALCULATION GLUE  (calculator.js)
 // 계산 자체는 pricing.js(판매가)와 costing.js(원가, 직원 모드 전용)가 합니다.
@@ -18,8 +18,8 @@ function calculateAll() {
 
     let noFabCount = 0;      // 원단을 못 찾은 품목 수 (126번)
     let zeroPriceCount = 0;      // 172번: 판매가가 빈(0원) 원단을 쓴 품목 수
-    // 255번: 이을 수 없는 원단(보브)의 한계 높이(설정 › 가공·부자재 단가, 비면 0 = 알림 없음)와 그 높이를 넘는 품목 수
-    const noSeamMaxH = (typeof storedOptionPrices === 'function') ? (Number(storedOptionPrices().noSeamMaxH) || 0) : 0;
+    // 255번 · 283번: 이을 수 없는 원단(보브)의 한계 높이(설정 › 가공·부자재 단가, 비면 처음 값 250 · 0이면 알림 없음)와 그 높이를 넘는 품목 수
+    const noSeamMaxH = (typeof noSeamMaxHNow === 'function') ? noSeamMaxHNow() : 0;
     let noSeamHighCount = 0;
     const summaryListContainer = document.getElementById('summaryRoomList');
     if (summaryListContainer) summaryListContainer.innerHTML = '';

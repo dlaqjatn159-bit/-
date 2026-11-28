@@ -1,4 +1,4 @@
-(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261323';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
+(function(g){(g.REDAM_FILES=g.REDAM_FILES||{})['data.js']='20261324';})(typeof window!=='undefined'?window:globalThis); // 파일 버전 표시 (파일이 서로 맞는지 확인용)
 // ==============================================================
 // data.js — 데이터·저장·가져오기
 //
@@ -78,6 +78,9 @@ function saveOptionPricesStore(o) {
     try { localStorage.setItem(STORE_KEYS.optionPrices, JSON.stringify(o || {})); } catch (e) {}
 }
 const optNum = v => (typeof v === 'number' && Number.isFinite(v) && v >= 0) ? v : null;
+// 283번(AI 할 일 #92): 이을 수 없는 원단(보브)의 한계 제작 높이 — 설정 칸이 비면 처음 값 250cm(사장님 11-26, 길이 — 금액 아님), 0이면 알림 없음
+const NO_SEAM_MAX_H_DEFAULT = 250;
+function noSeamMaxHNow() { const v = optNum(storedOptionPrices().noSeamMaxH); return v === null ? NO_SEAM_MAX_H_DEFAULT : v; }
 // 판매 단가 (정한 값 → 처음 값)
 function optionPrices() {
     const s = storedOptionPrices(), d = OPTION_PRICE_DEFAULTS, out = { rail: {} };
@@ -252,6 +255,22 @@ function cleanNumber(val) {
     return Math.round(maxVal);
 }
 
+// 283번(AI 할 일 #111): 원단 넣기에서 폭 칸이 비었을 때 — 메모에 적힌 실제 폭('115"(292cm)' · '53"(134cm)')을 cm 숫자 먼저 읽음
+function specFromNote(noteRaw) {
+    const s = String(noteRaw || '');
+    const cm = s.match(/(\d+(?:\.\d+)?)\s*cm/i);
+    if (cm && parseFloat(cm[1]) > 10) return cm[1] + 'cm';
+    const inch = s.match(/(\d+(?:\.\d+)?)\s*("|인치|inch)/i);
+    if (inch && parseFloat(inch[1]) > 10) return inch[1] + '인치';
+    return '';
+}
+// 283번: 실제 폭을 모를 때 입력표 '커튼 폭'의 소폭 · 대폭 — 소폭 60인치(152cm), 대폭 280cm(이음 없는 한 장이 되는 가장 낮은 대폭)
+function specFromKind(kindRaw) {
+    const s = String(kindRaw || '');
+    if (s.includes('대폭')) return '280';
+    if (s.includes('소폭')) return '152';
+    return '';
+}
 function parseSpecToCm(specRaw, nameRaw = "") {
     const specStr = String(specRaw || "").trim().toLowerCase();
     const nameStr = String(nameRaw || "").trim().toLowerCase();
@@ -259,6 +278,9 @@ function parseSpecToCm(specRaw, nameRaw = "") {
     const matchNum = cleaned.match(/\d+/);
     const hasInch = specStr.includes('"') || specStr.includes('인치') || specStr.includes('inch');
     const hasCm = specStr.includes('cm');
+    // 283번: 'cm' 바로 앞 숫자가 있으면 그 값이 실제 폭 — "115인치(292cm)" · "292cm(115인치)" · "134cm" 모두 cm 숫자로(인치로 다시 곱하지 않음)
+    const cmMatch = specStr.match(/(\d+(?:\.\d+)?)\s*cm/);
+    if (cmMatch && parseFloat(cmMatch[1]) > 10) return Math.round(parseFloat(cmMatch[1]));
 
     if (matchNum) {
         const val = parseInt(matchNum[0], 10);
@@ -272,7 +294,7 @@ function parseSpecToCm(specRaw, nameRaw = "") {
         }
     }
     if (nameStr.includes('쉬폰') || nameStr.includes('차르르')) return 297;
-    return 150;
+    return 152;      // 283번: 소폭 기본 60인치(152cm) — 사장님 11-28
 }
 
 function detectCalcTypeAndUnit(costRaw, specRaw, nameRaw, unitRaw, noteRaw, bookRaw, catRaw) {
@@ -2890,7 +2912,8 @@ function buildFabricRecords(dataRows, rules) {
         let rawCode = getCol(['품번코드', '품번', '코드', 'id']);
         const name = getCol(['품명', '원단명', '품목명', '제품명']) || `품목 ${i}`;
         const engName = getCol(['영문품명', '영어품명', '책자품명', '발주품명', '영문명', '영어명', 'engname']); // 영문 품명 병기 지원 (51번)
-        const specRaw = getCol(['규격사이즈', '규격', '폭', 'cm', '폭cm']) || "150";
+        // 283번: 폭 칸이 비면 메모에 적힌 실제 폭 → 입력표 '커튼 폭'의 소폭 · 대폭 → 소폭 기본 152
+        const specRaw = getCol(['규격사이즈', '규격', '폭', 'cm', '폭cm']) || specFromNote(getCol(['비고', '메모'])) || specFromKind(getCol(['커튼폭', '원단폭'])) || "152";
         if (!rawCode || rawCode.trim() === '-' || rawCode.trim() === '') rawCode = '';
 
         // 안정적인 ID: 행 번호가 아니라 책자+품번(없으면 품명)으로 만들고, 겹치면 번호를 붙임
